@@ -4,7 +4,6 @@ Browser-based 2D map editor for drawing routes, markers, labels, camera moves an
 
 ## Important change
 
-The red `TN` logo block in the upper-left sidebar was removed from the page. The app header now shows only `PZ MAP`.
 
 ## Main files
 
