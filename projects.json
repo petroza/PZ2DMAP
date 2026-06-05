@@ -1,0 +1,186 @@
+[
+    {
+        "id": "proj_mnyhe3p2_hfns",
+        "name": "Projekt 14. 4. 2026 12:31:05",
+        "snapshot": {
+            "version": 2,
+            "baseStyle": "political",
+            "view": {
+                "center": [
+                    16.766818272895875,
+                    49.754937677127714
+                ],
+                "zoom": 5.372266758536523,
+                "pitch": 0,
+                "bearing": 0
+            },
+            "colors": {
+                "land": "#ece8dd",
+                "water": "#99b7d7",
+                "building": "#d9d2c3",
+                "park": "#d8dfc7",
+                "roadMajor": "#ffffff",
+                "roadMinor": "#f3efe6",
+                "label": "#2b3443",
+                "halo": "#f7f2e7"
+            },
+            "ranges": {
+                "majorWidth": "1.3",
+                "minorWidth": "1",
+                "buildingOpacity": "0.72",
+                "boundaryOpacity": "0.35"
+            },
+            "visibility": {
+                "showBuildings": true,
+                "showParks": true,
+                "showBoundaries": true,
+                "showLabels": true,
+                "showMinorRoads": true,
+                "showMajorRoads": true
+            },
+            "route": {
+                "pointA": [
+                    13.965556832525408,
+                    49.89594068631132
+                ],
+                "pointB": [
+                    14.578595405352473,
+                    49.956880272252874
+                ],
+                "clickPhase": "done",
+                "routeCoords": [],
+                "manualViaPoints": [],
+                "currentTransportMode": "driving",
+                "routeColor": "#ffd400",
+                "routeDotColor": "#ffffff",
+                "routeWidth": "4"
+            },
+            "sceneIcons": [],
+            "mapLabels": [],
+            "animation": {
+                "currentRotMode": "fixed",
+                "animIconSize": "34",
+                "invertIcons": false,
+                "animStart": "0",
+                "animDuration": "8",
+                "cameraPitch": "45",
+                "animDot": true,
+                "showTrail": true,
+                "followCamera": false
+            },
+            "overlays": {
+                "showCountryBordersOverlay": true,
+                "countryBorderMode": "all",
+                "countryFocusId": "",
+                "countryBorderColor": "#ffffff",
+                "countryBorderWidth": "1",
+                "countryBorderOpacity": "0.8",
+                "showPoliticalCountries": false,
+                "politicalCountrySelectedId": "",
+                "politicalCountryColor": "#ff6b6b",
+                "politicalCountryDefaultColor": "#e7e2d8",
+                "politicalFillOpacity": "0.92",
+                "politicalCountryPaintOnClick": false,
+                "countryColorMap": [],
+                "showCzRegions": false,
+                "czRegionSelectedId": "",
+                "czRegionColor": "#ffd400",
+                "czRegionDefaultColor": "#d7dbe2",
+                "czRegionFillOpacity": "0.82",
+                "czRegionPaintOnClick": false,
+                "czRegionColorMap": []
+            }
+        },
+        "createdAt": 1776162665270,
+        "updatedAt": 1776168288794
+    },
+    {
+        "id": "proj_mnykqmv9_xh46",
+        "createdAt": 1776168288837,
+        "name": "foto a krivka",
+        "snapshot": {
+            "version": 2,
+            "baseStyle": "satellite",
+            "view": {
+                "center": [
+                    15.835103670568628,
+                    49.71003837523375
+                ],
+                "zoom": 6.126643263286038,
+                "pitch": 0,
+                "bearing": 0
+            },
+            "colors": {
+                "land": "#ece8dd",
+                "water": "#99b7d7",
+                "building": "#d9d2c3",
+                "park": "#d8dfc7",
+                "roadMajor": "#ffffff",
+                "roadMinor": "#f3efe6",
+                "label": "#2b3443",
+                "halo": "#f7f2e7"
+            },
+            "ranges": {
+                "majorWidth": "1.3",
+                "minorWidth": "1",
+                "buildingOpacity": "0.72",
+                "boundaryOpacity": "0.35"
+            },
+            "visibility": {
+                "showBuildings": true,
+                "showParks": true,
+                "showBoundaries": true,
+                "showLabels": true,
+                "showMinorRoads": true,
+                "showMajorRoads": true
+            },
+            "route": {
+                "pointA": null,
+                "pointB": null,
+                "clickPhase": "A",
+                "routeCoords": [],
+                "manualViaPoints": [],
+                "currentTransportMode": "driving",
+                "routeColor": "#ffd400",
+                "routeDotColor": "#ffffff",
+                "routeWidth": "4"
+            },
+            "sceneIcons": [],
+            "mapLabels": [],
+            "animation": {
+                "currentRotMode": "fixed",
+                "animIconSize": "34",
+                "invertIcons": false,
+                "animStart": "0",
+                "animDuration": "8",
+                "cameraPitch": "45",
+                "animDot": true,
+                "showTrail": true,
+                "followCamera": false
+            },
+            "overlays": {
+                "showCountryBordersOverlay": true,
+                "countryBorderMode": "all",
+                "countryFocusId": "",
+                "countryBorderColor": "#ffffff",
+                "countryBorderWidth": "1",
+                "countryBorderOpacity": "0.8",
+                "showPoliticalCountries": false,
+                "politicalCountrySelectedId": "",
+                "politicalCountryColor": "#ff6b6b",
+                "politicalCountryDefaultColor": "#e7e2d8",
+                "politicalFillOpacity": "0.92",
+                "politicalCountryPaintOnClick": false,
+                "countryColorMap": [],
+                "showCzRegions": false,
+                "czRegionSelectedId": "",
+                "czRegionColor": "#ffd400",
+                "czRegionDefaultColor": "#d7dbe2",
+                "czRegionFillOpacity": "0.82",
+                "czRegionPaintOnClick": false,
+                "czRegionColorMap": []
+            }
+        },
+        "updatedAt": 1776168288794
+    }
+]

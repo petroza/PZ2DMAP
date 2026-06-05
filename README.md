@@ -15,6 +15,7 @@ map_api.php     Optional PHP API for saving/loading projects on PHP hosting
 presets.json    Style presets
 projects.json   Example/project data
 map_data/       Runtime data directory placeholders
+assets/         Original local icons
 ```
 
 ## Deployment

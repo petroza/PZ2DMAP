@@ -1,0 +1,782 @@
+[
+    {
+        "id": "p_modsoft1",
+        "name": "Modrá Jemná 1",
+        "icon": "✪",
+        "colors": {
+            "land": "#eaf4fa",
+            "water": "#cfe5f5",
+            "building": "#dce9f4",
+            "park": "#d9f0e2",
+            "landcover": "#e7f1f9",
+            "landuse": "#e3ecf7",
+            "aeroway": "#f0f6fb",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f5f9fd",
+            "label": "#183d5d",
+            "halo": "#ffffff",
+            "boundary": "#aebcd1"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft2",
+        "name": "Modrá Jemná 2",
+        "icon": "✪",
+        "colors": {
+            "land": "#e5f0f9",
+            "water": "#b8d4f2",
+            "building": "#d0e1f1",
+            "park": "#d8eae9",
+            "landcover": "#ddeaf7",
+            "landuse": "#d3e1f0",
+            "aeroway": "#edf5fa",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f3f8fc",
+            "label": "#1a456f",
+            "halo": "#ffffff",
+            "boundary": "#94a8c0"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft3",
+        "name": "Modrá Jemná 3",
+        "icon": "✪",
+        "colors": {
+            "land": "#f0f7fd",
+            "water": "#d3e3f7",
+            "building": "#e0ecf8",
+            "park": "#dff3eb",
+            "landcover": "#eaf0f9",
+            "landuse": "#dee6f2",
+            "aeroway": "#f5f9fc",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f9fbfd",
+            "label": "#1c4e7f",
+            "halo": "#ffffff",
+            "boundary": "#809ab3"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft4",
+        "name": "Modrá Jemná 4",
+        "icon": "✪",
+        "colors": {
+            "land": "#e7f3fa",
+            "water": "#b9d2ea",
+            "building": "#cfe0f0",
+            "park": "#cfeee0",
+            "landcover": "#def0f6",
+            "landuse": "#d1e4ef",
+            "aeroway": "#eaf5fa",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f4f9fb",
+            "label": "#163a5c",
+            "halo": "#ffffff",
+            "boundary": "#99b4cd"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft5",
+        "name": "Modrá Jemná 5",
+        "icon": "✪",
+        "colors": {
+            "land": "#eef8fc",
+            "water": "#c7daf2",
+            "building": "#d9e5f3",
+            "park": "#d2eddf",
+            "landcover": "#e5f3f9",
+            "landuse": "#d7eaf3",
+            "aeroway": "#f2f9fd",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f6fbfe",
+            "label": "#20486b",
+            "halo": "#ffffff",
+            "boundary": "#8ea7c3"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft6",
+        "name": "Modrá Jemná 6",
+        "icon": "✪",
+        "colors": {
+            "land": "#e8f2f8",
+            "water": "#abc9e5",
+            "building": "#c7d9ec",
+            "park": "#c7eadd",
+            "landcover": "#dceaf4",
+            "landuse": "#cdddee",
+            "aeroway": "#eaf3f9",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f0f7fc",
+            "label": "#173f66",
+            "halo": "#ffffff",
+            "boundary": "#93aac6"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft7",
+        "name": "Modrá Jemná 7",
+        "icon": "✪",
+        "colors": {
+            "land": "#e3edf7",
+            "water": "#9fbfde",
+            "building": "#c1d4e6",
+            "park": "#c0e3d5",
+            "landcover": "#d5e4f1",
+            "landuse": "#c5d8eb",
+            "aeroway": "#e7f1f9",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#eff5fb",
+            "label": "#173961",
+            "halo": "#ffffff",
+            "boundary": "#8ea5c1"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft8",
+        "name": "Modrá Jemná 8",
+        "icon": "✪",
+        "colors": {
+            "land": "#eaf2f9",
+            "water": "#b6cde7",
+            "building": "#d1e2f0",
+            "park": "#cde8db",
+            "landcover": "#dae7f1",
+            "landuse": "#cbdcef",
+            "aeroway": "#eef6fa",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f3f9fc",
+            "label": "#1a436d",
+            "halo": "#ffffff",
+            "boundary": "#91a7c3"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft9",
+        "name": "Modrá Jemná 9",
+        "icon": "✪",
+        "colors": {
+            "land": "#e6eff8",
+            "water": "#a3c3e3",
+            "building": "#c5d6e8",
+            "park": "#c5e4d6",
+            "landcover": "#d9e7f3",
+            "landuse": "#c9daec",
+            "aeroway": "#e9f2fa",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f2f8fc",
+            "label": "#163c64",
+            "halo": "#ffffff",
+            "boundary": "#8ba3bf"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft10",
+        "name": "Modrá Jemná 10",
+        "icon": "✪",
+        "colors": {
+            "land": "#eff6fb",
+            "water": "#c8daf0",
+            "building": "#d8e5f1",
+            "park": "#d1eedd",
+            "landcover": "#e2f0f8",
+            "landuse": "#d6e5f2",
+            "aeroway": "#f3f9fd",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f7fbfe",
+            "label": "#204d76",
+            "halo": "#ffffff",
+            "boundary": "#93acc8"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft11",
+        "name": "Modrá Jemná 11",
+        "icon": "✪",
+        "colors": {
+            "land": "#f4f9fc",
+            "water": "#d8e7f5",
+            "building": "#e5eff9",
+            "park": "#e4f6ec",
+            "landcover": "#edf4fa",
+            "landuse": "#e5eef7",
+            "aeroway": "#f6fbfe",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#fafcfe",
+            "label": "#234b78",
+            "halo": "#ffffff",
+            "boundary": "#a0b6d1"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft12",
+        "name": "Modrá Jemná 12",
+        "icon": "✪",
+        "colors": {
+            "land": "#eef5fa",
+            "water": "#bfd5eb",
+            "building": "#d2e3f2",
+            "park": "#d5eadd",
+            "landcover": "#e0ecf6",
+            "landuse": "#d4e1ee",
+            "aeroway": "#eff6fb",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f5f9fc",
+            "label": "#193f69",
+            "halo": "#ffffff",
+            "boundary": "#97abc6"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft13",
+        "name": "Modrá Jemná 13",
+        "icon": "✪",
+        "colors": {
+            "land": "#e7f1f8",
+            "water": "#a0bde0",
+            "building": "#c4d6e8",
+            "park": "#c4e1d8",
+            "landcover": "#d7e5f2",
+            "landuse": "#c8daed",
+            "aeroway": "#eaf3f9",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#eff5fb",
+            "label": "#173b62",
+            "halo": "#ffffff",
+            "boundary": "#899fc0"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft14",
+        "name": "Modrá Jemná 14",
+        "icon": "✪",
+        "colors": {
+            "land": "#edf4f9",
+            "water": "#bed1e6",
+            "building": "#d1e0ef",
+            "park": "#d2eadd",
+            "landcover": "#deeaf4",
+            "landuse": "#d2dfee",
+            "aeroway": "#eff6fa",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f5f9fc",
+            "label": "#19446e",
+            "halo": "#ffffff",
+            "boundary": "#92a9c8"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft15",
+        "name": "Modrá Jemná 15",
+        "icon": "✪",
+        "colors": {
+            "land": "#e9f3f8",
+            "water": "#b2c8e3",
+            "building": "#c9dced",
+            "park": "#cbe7dc",
+            "landcover": "#dae7f1",
+            "landuse": "#cddae9",
+            "aeroway": "#edf5fa",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f3f8fc",
+            "label": "#193d66",
+            "halo": "#ffffff",
+            "boundary": "#8ea3c4"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft16",
+        "name": "Modrá Jemná 16",
+        "icon": "✪",
+        "colors": {
+            "land": "#f1f8fc",
+            "water": "#d3e2f3",
+            "building": "#dfeaf7",
+            "park": "#e0f4e9",
+            "landcover": "#ecf4fa",
+            "landuse": "#e3edf8",
+            "aeroway": "#f4fafd",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f8fbfe",
+            "label": "#26527a",
+            "halo": "#ffffff",
+            "boundary": "#a2b8d0"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft17",
+        "name": "Modrá Jemná 17",
+        "icon": "✪",
+        "colors": {
+            "land": "#f4f9fd",
+            "water": "#dfecf9",
+            "building": "#e9f1fa",
+            "park": "#eaf8f2",
+            "landcover": "#f3f8fb",
+            "landuse": "#ecf3f9",
+            "aeroway": "#f7fcfe",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#fbfdff",
+            "label": "#295b80",
+            "halo": "#ffffff",
+            "boundary": "#b0c4d6"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft18",
+        "name": "Modrá Jemná 18",
+        "icon": "✪",
+        "colors": {
+            "land": "#edf5fa",
+            "water": "#c1d6ea",
+            "building": "#d4e4f1",
+            "park": "#d6ecdf",
+            "landcover": "#e1eef6",
+            "landuse": "#d5e1f0",
+            "aeroway": "#eff6fb",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f5f9fc",
+            "label": "#1d486e",
+            "halo": "#ffffff",
+            "boundary": "#9cb1c8"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft19",
+        "name": "Modrá Jemná 19",
+        "icon": "✪",
+        "colors": {
+            "land": "#e4eef7",
+            "water": "#adc3e0",
+            "building": "#c7d8e9",
+            "park": "#c7e2d6",
+            "landcover": "#d9e6f2",
+            "landuse": "#cadeeb",
+            "aeroway": "#e8f2f9",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f1f6fb",
+            "label": "#163c61",
+            "halo": "#ffffff",
+            "boundary": "#8ba0be"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    },
+    {
+        "id": "p_modsoft20",
+        "name": "Modrá Jemná 20",
+        "icon": "✪",
+        "colors": {
+            "land": "#f0f7fb",
+            "water": "#c9d9ef",
+            "building": "#d8e4f2",
+            "park": "#d3eddf",
+            "landcover": "#e5eff8",
+            "landuse": "#dae6f3",
+            "aeroway": "#f2f8fd",
+            "roadMajor": "#ffffff",
+            "roadMinor": "#f6fbfe",
+            "label": "#204a71",
+            "halo": "#ffffff",
+            "boundary": "#95adc7"
+        },
+        "ranges": {
+            "majorWidth": "1.3",
+            "minorWidth": "1",
+            "buildingOpacity": "0.72",
+            "boundaryOpacity": "0.35",
+            "boundaryWidth": "1"
+        },
+        "visibility": {
+            "showBuildings": true,
+            "showParks": true,
+            "showLandcover": true,
+            "showLanduse": true,
+            "showAeroway": true,
+            "showBoundaries": true,
+            "showLabels": true,
+            "showMinorRoads": false,
+            "showMajorRoads": true
+        },
+        "createdAt": 1780392762327,
+        "updatedAt": 1780392762327
+    }
+]
