@@ -1,5 +1,7 @@
 # PZ 2D Map
 
+![PZ 2D Map — browser map editor](screenshot.png)
+
 Browser-based 2D map editor for drawing routes, markers, labels, camera moves and exporting map frames/video-ready assets.
 
 ## Main files
