@@ -4,6 +4,16 @@
 
 Browser-based 2D map editor for drawing routes, markers, labels, camera moves and exporting map frames/video-ready assets.
 
+## Screenshots
+
+| Route (A→B) | Flight arc (globe) |
+| --- | --- |
+| ![Route](screenshots/01-route.png) | ![Flight arc](screenshots/02-flight-arc.png) |
+
+| Radius / perimeter (globe) | 3D model with cast shadow (globe) |
+| --- | --- |
+| ![Radius](screenshots/03-radius.png) | ![3D model](screenshots/04-3d-model.png) |
+
 ## Main files
 
 ```text
