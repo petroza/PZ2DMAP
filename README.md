@@ -47,6 +47,12 @@ Do not assume that a source is free for every use case just because it is public
 
 The main `index.html` embeds the original plane/car icons as data URIs, so the page can still run even when asset upload is incomplete.
 
-## License
+## Copyright and license
 
-Application wrapper code is published under the MIT License unless a file states otherwise. Third-party map providers, map tiles, geographic datasets, routing/geocoding services, satellite imagery and CDN libraries remain under their own licenses and terms.
+Copyright (c) 2026 **Petr Zavorka** and **TV Nova s.r.o.**
+
+The source code was written by Petr Zavorka. Proprietary (economic) rights to the application are held jointly by Petr Zavorka and TV Nova s.r.o.
+
+- **Source code:** published under the **MIT License** (see [LICENSE](LICENSE)) — you may use, modify and distribute it.
+- **Branding:** the **"TN" / "TV Nova" logo and branding are NOT covered by the MIT grant.** They are trademarks of TV Nova s.r.o. The application may be used and distributed in its delivered form **with the visible "TN" logo**, and that branding **must be retained** — it may not be removed, hidden or replaced without the prior written consent of TV Nova s.r.o.
+- **Third-party material:** map providers, tiles, geographic datasets, routing/geocoding services, satellite imagery, fonts and CDN libraries remain under their own licenses and terms (see [MAP_DATA_AND_LICENSES.md](MAP_DATA_AND_LICENSES.md)).

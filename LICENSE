@@ -1,7 +1,56 @@
-MIT License
+Copyright (c) 2026 Petr Zavorka and TV Nova s.r.o.
 
-Copyright (c) 2026 Petr Zavorka
+AUTHORSHIP AND OWNERSHIP
+The source code of this application (the "Software") was written by, and is the
+authorial work of, Petr Zavorka. The proprietary (economic) rights to the
+application are held jointly by Petr Zavorka and TV Nova s.r.o.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the software, subject to including this notice.
 
-THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND.
+SOURCE CODE LICENSE (MIT)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this Software and associated documentation files, to deal in the Software
+without restriction, including without limitation the rights to use, copy,
+modify, merge, publish, distribute, sublicense, and/or sell copies of the
+Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+1. The above copyright notice, this permission notice and the "Trademarks and
+   branding" notice below shall be included in all copies or substantial
+   portions of the Software.
+
+2. The "TN" / "TV Nova" branding included in the application must be retained
+   (see "Trademarks and branding" below).
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+TRADEMARKS AND BRANDING (NOT covered by the MIT grant above)
+
+The names, logos and brand marks "TN" and "TV Nova" are trademarks of
+TV Nova s.r.o. The MIT permission above applies to the source code only and
+does NOT grant any right, title or licence to the "TN" / "TV Nova" names,
+logos or brand identity.
+
+The application is delivered including the "TN" (TV Nova) logo and branding.
+You may use and distribute the application in its delivered form WITH the
+visible "TN" logo. You must NOT remove, hide, alter or replace the "TN" /
+"TV Nova" logo or branding without the prior written consent of TV Nova s.r.o.
+
+Any use of the "TN" / "TV Nova" marks beyond merely keeping the delivered
+branding intact — for example to suggest endorsement, affiliation or origin —
+requires the prior written permission of TV Nova s.r.o.
+
+
+THIRD-PARTY MATERIAL
+
+Third-party map providers, map tiles, geographic datasets, routing/geocoding
+services, satellite imagery, fonts and CDN libraries are NOT covered by this
+licence and remain subject to their own licences and terms. See
+MAP_DATA_AND_LICENSES.md.
