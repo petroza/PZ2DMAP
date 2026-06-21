@@ -1429,7 +1429,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
     <div class="sc-row"><kbd>Pravé tl. / Ctrl+táhnout</kbd><span data-i18n="sc_orbit">Naklonit a otočit (3D / glóbus)</span></div>
     <div class="sc-row"><kbd>Shift+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
   </div>
-  <div class="status-bar" id="statusBar"><span class="dot"></span>Připraveno — klikni do mapy pro bod A.</div>
+  <div class="status-bar" id="statusBar" role="status" aria-live="polite"><span class="dot"></span>Připraveno — klikni do mapy pro bod A.</div>
   <div class="export-progress" id="autosaveRestoreBar" hidden style="bottom:168px">
     <div class="export-progress-row">
       <span id="autosaveRestoreLabel">Obnovit rozdělanou práci?</span>
@@ -2811,8 +2811,9 @@ function loadPresetDB(){
 }
 function savePresetDB(db){
   recordRemovedIds('presets', PRESET_DB_KEY, db);
-  localStorage.setItem(PRESET_DB_KEY, JSON.stringify(db));
-  scheduleEntityPush('presets', db);
+  const ok = trySetLocal(PRESET_DB_KEY, JSON.stringify(db));
+  if(ok) scheduleEntityPush('presets', db);
+  return ok;
 }
 function loadProjectDB(){
   try{
@@ -2821,10 +2822,18 @@ function loadProjectDB(){
   }catch(e){}
   return [];
 }
+function trySetLocal(key, value){ try{ localStorage.setItem(key, value); return true; }catch(e){ return false; } }
+// Returns true on success. On a localStorage quota overflow it retries once with the
+// heavy base64 thumbnails stripped (keeps the projects, drops only the previews) so an
+// explicit Save never silently loses the day's work.
 function saveProjectDB(db){
   recordRemovedIds('projects', PROJECT_DB_KEY, db);
-  localStorage.setItem(PROJECT_DB_KEY, JSON.stringify(db));
-  scheduleEntityPush('projects', db);
+  let ok = trySetLocal(PROJECT_DB_KEY, JSON.stringify(db));
+  if(!ok){
+    try{ const lite = db.map(e => (e && e.thumb ? { ...e, thumb:null } : e)); ok = trySetLocal(PROJECT_DB_KEY, JSON.stringify(lite)); }catch(e){}
+  }
+  if(ok) scheduleEntityPush('projects', db);
+  return ok;
 }
 function normalizeProjectEntry(entry, idx){
   return {
@@ -5271,6 +5280,9 @@ function renderSceneArrowList(){
   });
 }
 function selectSceneArrow(id, syncInputs=true){
+  // Make selection exclusive — otherwise an arrow + another object can both look selected
+  // and Delete (priority-based getSelectedMapObject) would hit the wrong one.
+  if(id){ try{ clearRoutePointSelection?.(); clearSceneIconSelection?.(); clearScenePerimeterSelection?.(); clearSceneDistanceSelection?.(); clearMapLabelSelection?.(); }catch(e){} }
   state.selectedSceneArrowId = id || null;
   const a = id ? getSceneArrowById(id) : null;
   if(syncInputs && a) syncSceneArrowInputs(a);
@@ -6654,6 +6666,10 @@ function serializeProjectSnapshot(){
     scenePerimeters: state.scenePerimeters.map(item => ({id:item.id, lngLat:item.lngLat, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity})),
     sceneDistances: state.sceneDistances.map(item => ({id:item.id, a:item.a, b:item.b, unit:item.unit, color:item.color, width:item.width})),
     sceneArrows: state.sceneArrows.map(item => ({id:item.id, tail:item.tail, head:item.head, color:item.color, width:item.width})),
+    // 3D model: persist all transform/shadow scalars (the GLB binary itself is too big for
+    // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
+    // as the same .glb is loaded again; within a session it survives undo/redo + project switch).
+    model3d: (state.model3d && state.model3d.lngLat) ? (m=>({lngLat:m.lngLat, altitude:m.altitude, scale:m.scale, sizeMeters:m.sizeMeters, rotationDeg:m.rotationDeg, rotX:m.rotX, rotZ:m.rotZ, upAxis:m.upAxis, snapSurface:m.snapSurface, followRoute:m.followRoute, shadowOn:m.shadowOn, shadowBlur:m.shadowBlur, sun:m.sun}))(state.model3d) : null,
     mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     animation: {
       currentRotMode: state.currentRotMode,
@@ -6766,6 +6782,20 @@ function applyBasicProjectSnapshot(snapshot){
   (snapshot.scenePerimeters || []).forEach(item => createScenePerimeterAt(item.lngLat, {id:item.id, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, silent:true}));
   (snapshot.sceneDistances || []).forEach(item => createSceneDistance(item.a, item.b, {id:item.id, unit:item.unit, color:item.color, width:item.width, silent:true}));
   (snapshot.sceneArrows || []).forEach(item => createSceneArrow(item.tail, item.head, {id:item.id, color:item.color, width:item.width, silent:true}));
+  // 3D model transform/shadow scalars (the GLB binary isn't stored; if it's still loaded
+  // in this session the model re-renders at the saved placement, otherwise the placement
+  // is kept ready for when the same .glb is re-imported).
+  try{
+    const m3 = snapshot.model3d;
+    const m = model3dInit();
+    if(m3 && m3.lngLat){
+      Object.assign(m, {lngLat:m3.lngLat, altitude:m3.altitude??0, scale:m3.scale??1, sizeMeters:m3.sizeMeters??300, rotationDeg:m3.rotationDeg??0, rotX:m3.rotX??0, rotZ:m3.rotZ??0, upAxis:m3.upAxis||'y', snapSurface:!!m3.snapSurface, followRoute:!!m3.followRoute, shadowOn:!!m3.shadowOn, shadowBlur:(m3.shadowBlur??0.35), sun:m3.sun||{azimuthDeg:135,lengthM:0}});
+      if(model3dHasModel()){ model3dEnsureLayer(); model3dRefreshHandles(); model3dRedrawShadow(); }
+      try{ syncModel3dInputs(); }catch(_e){}
+    } else if(!m3 && model3dHasModel()){
+      model3dClear();
+    }
+  }catch(_e){}
   (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, silent:true}));
   if(state.mapLabels.length){
     const lastSize = state.mapLabels[state.mapLabels.length - 1].size || state.mapLabelGlobalSize || 28;
@@ -6970,7 +7000,8 @@ function saveCurrentProject(){
   };
   if(existingIdx >= 0) db[existingIdx] = entry;
   else db.push(entry);
-  saveProjectDB(db);
+  const ok = saveProjectDB(db);
+  if(!ok){ setStatus(t('Projekt se NEPODAŘILO uložit — úložiště prohlížeče je plné. Smaž staré projekty/zálohy a zkus to znovu.'), 'error'); return; }
   refreshProjectSelect();
   if($('savedProjectSelect')) $('savedProjectSelect').value = entry.id;
   updateProjectThumbPreview(entry);
@@ -7736,7 +7767,10 @@ function makeModel3dLayer(){
       this._camera.projectionMatrix = new T.Matrix4().fromArray(main).multiply(new T.Matrix4().fromArray(model)).multiply(L);
       this._renderer.resetState();
       this._renderer.render(this._scene, this._camera);
-      this._map.triggerRepaint();
+      // Only keep requesting frames while something actually moves (playback / follow-route
+      // / an active export). A static placed model used to pin the GPU at full frame-rate
+      // forever, draining battery on a newsroom laptop.
+      if(state.animPlaying || (m && m.followRoute) || state._exporting) this._map.triggerRepaint();
     },
     onRemove(){
       // Free the three.js renderer/scene when the layer is dropped (e.g. on a style
@@ -7765,6 +7799,7 @@ async function model3dLoadFile(file){
   try{
     new _GLTFLoader().parse(buf, '', (gltf) => {
       model3dRemoveLayer();
+      model3dDisposeGltf(m.gltf);   // free the previous model's GPU buffers before swapping
       m.gltf = gltf;
       if(!m.lngLat){ const c = state.map.getCenter(); m.lngLat = [c.lng, c.lat]; }
       // Local bounding box (model units) — used by snap-to-surface and shadow sizing.
@@ -8051,11 +8086,24 @@ function model3dUpdateFromInputs(){
   try{ const sun = (state._model3dMarkers||[])[1]; if(sun) sun.getElement().style.display = m.shadowOn ? '' : 'none'; }catch(e){}
   state.map?.triggerRepaint?.();
 }
+// Free the three.js GPU buffers of a GLB scene (geometry/material/textures). WebGLRenderer
+// .dispose() does NOT free these, so without this every model load/swap/delete leaked
+// tens–hundreds of MB of VRAM (Petr's GLBs are ~42MB) → eventual context loss.
+function model3dDisposeGltf(gltf){
+  try{
+    const scene = gltf && gltf.scene; if(!scene || !scene.traverse) return;
+    scene.traverse(o => {
+      if(o.geometry && o.geometry.dispose) o.geometry.dispose();
+      const mats = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+      mats.forEach(mat => { if(!mat) return; Object.keys(mat).forEach(k => { const v = mat[k]; if(v && v.isTexture && v.dispose) v.dispose(); }); if(mat.dispose) mat.dispose(); });
+    });
+  }catch(e){}
+}
 function model3dClear(){
   model3dRemoveLayer();
   (state._model3dMarkers||[]).forEach(mk=>{ try{ mk.remove(); }catch(e){} }); state._model3dMarkers = [];
   try{ state.map?.getSource('model3d-shadow')?.setData(emptyFC()); }catch(e){}
-  if(state.model3d){ state.model3d.gltf = null; state.model3d.lngLat = null; state.model3d.rotationLive = null; state.model3d.bbox = null; }
+  if(state.model3d){ model3dDisposeGltf(state.model3d.gltf); state.model3d.gltf = null; state.model3d.lngLat = null; state.model3d.rotationLive = null; state.model3d.bbox = null; state.model3d._silPts = null; }
   state.addingModel3d = false;
   const del = $('deleteModel3dBtn'); if(del) del.disabled = true;
   const up = $('model3dUpload'); if(up) up.value = '';
@@ -8698,6 +8746,10 @@ function getSelectedMapObject(){
     const item = getSceneDistanceById(state.selectedSceneDistanceId);
     if(item) return {type:'sceneDistance', id:item.id, item};
   }
+  if(state.selectedSceneArrowId){
+    const item = getSceneArrowById(state.selectedSceneArrowId);
+    if(item) return {type:'sceneArrow', id:item.id, item};
+  }
   if(state.selectedMapLabelId){
     const item = getMapLabelById(state.selectedMapLabelId);
     if(item) return {type:'mapLabel', id:item.id, item};
@@ -8848,6 +8900,10 @@ function deleteSelectedMapObject(){
     deleteSceneDistance(selected.id);
     return true;
   }
+  if(selected.type === 'sceneArrow'){
+    deleteSceneArrow(selected.id);
+    return true;
+  }
   if(selected.type === 'mapLabel'){
     deleteMapLabel(selected.id);
     return true;
@@ -8867,7 +8923,10 @@ function restorePointMarkers(){
 function parseLatLng(text){
   const m = String(text||'').trim().match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
   if(!m) return null;
-  return [parseFloat(m[2]), parseFloat(m[1])];
+  const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+  // Reject out-of-range pairs (typo / swapped order) so a marker never lands off-map silently.
+  if(!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return [lng, lat];
 }
 
 function getSearchAcceptLanguage(lang){
@@ -8883,8 +8942,11 @@ function getSearchAcceptLanguage(lang){
   return Array.from(new Set([key, ...(prefs[key] || ['en']), 'en'])).join(',');
 }
 
+// Abort a fetch after `ms` so a hung public endpoint never freezes the UI forever.
+function fetchTimeoutSignal(ms){ try{ return AbortSignal.timeout(ms); }catch(e){ return undefined; } }
 function getNominatimFetchOptions(){
   return {
+    signal: fetchTimeoutSignal(12000),
     headers:{
       'Accept':'application/json',
       'Accept-Language': getSearchAcceptLanguage(currentLang)
@@ -8971,6 +9033,7 @@ async function reverseGeocode(lngLat, zoom=10){
   url.searchParams.set('addressdetails', '1');
   url.searchParams.set('namedetails', '1');
   url.searchParams.set('accept-language', getSearchAcceptLanguage(currentLang));
+  await nominatimThrottle();   // share the ≥1.1s gate so map-click bursts don't get the IP banned
   const res = await fetch(url.toString(), getNominatimFetchOptions());
   if(!res.ok) throw new Error('Reverse geocoding failed');
   return await res.json();
@@ -9330,7 +9393,9 @@ async function routeFromPoints(a,b,mode){
   } else {
     url = `https://router.project-osrm.org/route/v1/car/${coordString}?overview=full&geometries=geojson`;
   }
-  const res = await fetch(url);
+  let res;
+  try{ res = await fetch(url, { signal: fetchTimeoutSignal(15000) }); }
+  catch(e){ throw new Error('Směrovací služba neodpovídá (časový limit) — zkus to znovu.'); }
   // Distinguish a busy/throttled routing server (429/503) from a genuine no-route,
   // so the user knows to retry rather than assuming the route is impossible.
   if(!res.ok){
@@ -10590,6 +10655,16 @@ function applyHiddenStyleLayerIds(layerIds){
   if(!Array.isArray(layerIds) || !layerIds.length) return;
   layerIds.forEach(id => safeSetLayout(id, 'visibility', 'none'));
 }
+// Per-frame export prep: (1) re-add the GLB 3D model + cast shadow (custom layers do not
+// survive the export style clone, so they vanished from single-pass exports); (2) hide
+// editing-only aids (perimeter centre dots, radius drag-handles, distance endpoint dots)
+// so they don't bake into the finished broadcast frame. Runs against state.map (= the
+// export map during export).
+function prepareExportSceneLayers(){
+  try{ if(model3dHasModel()){ model3dEnsureLayer(); ensureModel3dShadowLayer(); model3dRedrawShadow(); } }catch(e){}
+  ['scene-perimeter-centers-circle','scene-perimeter-handles-circle','scene-distance-points-circle']
+    .forEach(id => safeSetLayout(id, 'visibility', 'none'));
+}
 
 function getLiveSourceDataFromMap(map, sourceId){
   try{
@@ -10828,7 +10903,8 @@ async function drawNativeMapFrameChunked(targetCanvas, camera, capturedGhost, ca
     enforceRoadShieldToggle();
     applyHiddenStyleLayerIds(capturedHiddenLayers);
     applyCapturedRouteSources(capturedGhost, capturedAnim);
-    try{ model3dEnsureLayer(); ensureModel3dShadowLayer(); model3dRedrawShadow(); }catch(_e){}   // render the GLB model + shadow into the export too
+    try{ setSceneArrowData(); }catch(_e){}
+    prepareExportSceneLayers();   // re-add GLB model + shadow, hide editing aids
 
     tempMarkers = createNativeExportMarkers(exportMap);
     state.markerA = tempMarkers.markerA;
@@ -11059,6 +11135,8 @@ async function drawNativeMapFrame(targetCanvas){
     try{ exportMap.resize(); exportMap.triggerRepaint(); }catch(e){}
     // Arrows are screen-space → rebuild for this frame's exact projection.
     try{ setSceneArrowData(); }catch(e){}
+    // Re-add the 3D model + shadow and hide editing aids for this frame.
+    prepareExportSceneLayers();
     // Reused frames only nudge the camera a little, so tiles are already cached —
     // wait far less (faster render). Fresh frames keep the thorough wait for detail.
     await waitExportMapReady(exportMap, reuse ? 2200 : undefined, reuse ? {stable:2, interval:60} : null);
@@ -11917,9 +11995,12 @@ async function exportBatchFormats(){
     try{ updateExportFrame(); }catch(_e){}
     state._exportNameSuffix = f.tag;
     setStatus(t('Batch export') + ' ' + (i+1) + '/' + picks.length + ' · ' + f.label + ' …');
-    try{ await exportSelectedVideo(); done++; }
+    // exportSelectedVideo() returns null when the user cancelled. The cancel flag itself
+    // is reset by endExportProgress between items, so we must break on the null return.
+    let produced;
+    try{ produced = await exportSelectedVideo(); if(produced !== null) done++; }
     catch(e){ console.warn('batch item failed', f, e); }
-    if(state.exportCancelRequested) break;
+    if(produced === null || state.exportCancelRequested){ setStatus(t('Batch export zrušen.')); break; }
   }
   state._exportNameSuffix = null;
   if(resSel) resSel.value = origRes;
@@ -12179,7 +12260,7 @@ function wxInit(){ if(!state.weather) state.weather = {radar:false, clouds:false
 // The API key is kept OUT of the serialized project state (only in localStorage),
 // so sharing/exporting a project never leaks it.
 const WX_OWM_KEY_LS = 'tnmap_owm_key';
-const WX_OWM_KEY_DEFAULT = ''; // předvyplněný klíč; v poli ho lze kdykoli přepsat (uloží se do localStorage)
+const WX_OWM_KEY_DEFAULT = ''; // klíč NEzadávat natvrdo (unikl by); zadej ho v poli OpenWeather, uloží se do localStorage
 let wxOwmKey = WX_OWM_KEY_DEFAULT;
 try{ wxOwmKey = localStorage.getItem(WX_OWM_KEY_LS) || WX_OWM_KEY_DEFAULT; }catch(e){ wxOwmKey = WX_OWM_KEY_DEFAULT; }
 // flag in state → [OWM layer id, MapLibre source/layer base]
@@ -12190,9 +12271,15 @@ const WX_OWM_LAYERS = [
   ['pressure',  'pressure_new',      'wx-pressure'],
   ['wind',      'wind_new',          'wx-wind'],
 ];
+// Server-side proxy that injects the OpenWeather key (key stays on the server, never
+// reaches the browser). Empty string disables it. If the user types their own key in the
+// UI, that key is used directly instead.
+const WX_OWM_PROXY = 'wx_owm.php';
+function wxOwmOn(){ return !!(wxOwmKey || WX_OWM_PROXY); }
 function wxOwmTilesUrl(owmId){
-  if(!wxOwmKey) return WX_BLANK;
-  return 'https://tile.openweathermap.org/map/' + owmId + '/{z}/{x}/{y}.png?appid=' + encodeURIComponent(wxOwmKey);
+  if(wxOwmKey) return 'https://tile.openweathermap.org/map/' + owmId + '/{z}/{x}/{y}.png?appid=' + encodeURIComponent(wxOwmKey);
+  if(WX_OWM_PROXY) return WX_OWM_PROXY + '?layer=' + encodeURIComponent(owmId) + '&z={z}&x={x}&y={y}';
+  return WX_BLANK;
 }
 function wxBeforeId(m){ try{ const ls = m.getStyle()?.layers || []; const ov = ls.find(l => /^(route-|measure-|scene-|pz-|plane3d)/.test(l.id)); return ov ? ov.id : undefined; }catch(e){ return undefined; } }
 function ensureWeatherLayers(m){
@@ -12205,7 +12292,7 @@ function ensureWeatherLayers(m){
     if(!m.getLayer('wx-clouds-lyr')) m.addLayer({id:'wx-clouds-lyr', type:'raster', source:'wx-clouds', layout:{visibility:w.clouds?'visible':'none'}, paint:{'raster-opacity':Math.min(1,w.opacity+0.05), 'raster-fade-duration':140}}, before);
     for(const [flag, owmId, base] of WX_OWM_LAYERS){
       if(!m.getSource(base)) m.addSource(base, {type:'raster', tiles:[wxOwmTilesUrl(owmId)], tileSize:256, attribution:'© OpenWeather'});
-      if(!m.getLayer(base+'-lyr')) m.addLayer({id:base+'-lyr', type:'raster', source:base, layout:{visibility:(wxOwmKey && w[flag])?'visible':'none'}, paint:{'raster-opacity':Math.min(1,w.opacity+0.05), 'raster-fade-duration':140}}, before);
+      if(!m.getLayer(base+'-lyr')) m.addLayer({id:base+'-lyr', type:'raster', source:base, layout:{visibility:(wxOwmOn() && w[flag])?'visible':'none'}, paint:{'raster-opacity':Math.min(1,w.opacity+0.05), 'raster-fade-duration':140}}, before);
     }
   }catch(e){ console.warn('weather layers', e); }
 }
@@ -12216,7 +12303,7 @@ function applyWeather(){
     if(m.getLayer('wx-radar-lyr')){ m.setLayoutProperty('wx-radar-lyr','visibility', w.radar?'visible':'none'); m.setPaintProperty('wx-radar-lyr','raster-opacity', Math.min(1,w.opacity+0.05)); }
     if(m.getLayer('wx-clouds-lyr')){ m.setLayoutProperty('wx-clouds-lyr','visibility', w.clouds?'visible':'none'); m.setPaintProperty('wx-clouds-lyr','raster-opacity', Math.min(1,w.opacity+0.05)); }
     for(const [flag, , base] of WX_OWM_LAYERS){
-      if(m.getLayer(base+'-lyr')){ m.setLayoutProperty(base+'-lyr','visibility', (wxOwmKey && w[flag])?'visible':'none'); m.setPaintProperty(base+'-lyr','raster-opacity', Math.min(1,w.opacity+0.05)); }
+      if(m.getLayer(base+'-lyr')){ m.setLayoutProperty(base+'-lyr','visibility', (wxOwmOn() && w[flag])?'visible':'none'); m.setPaintProperty(base+'-lyr','raster-opacity', Math.min(1,w.opacity+0.05)); }
     }
   }catch(e){}
 }
@@ -12370,7 +12457,7 @@ function setupWeatherUI(){
   const owmStatus = () => {
     const st = $('wxOwmStatus'); if(!st) return;
     const anyOn = WX_OWM_LAYERS.some(([flag]) => w[flag]);
-    st.textContent = wxOwmKey ? '' : (anyOn ? 'Vlož platný OpenWeather API klíč, jinak zůstanou vrstvy prázdné.' : '');
+    st.textContent = wxOwmOn() ? '' : (anyOn ? 'Vlož platný OpenWeather API klíč, jinak zůstanou vrstvy prázdné.' : '');
   };
   const keyInput = $('wxOwmKey');
   if(keyInput){
@@ -12385,7 +12472,7 @@ function setupWeatherUI(){
   for(const [flag, id] of Object.entries(owmToggles)){
     const el = $(id); if(!el) continue;
     el.checked = !!w[flag];
-    el.addEventListener('change', e => { w[flag] = e.target.checked; if(w[flag] && wxOwmKey) wxRefreshOwm(); applyWeather(); owmStatus(); });
+    el.addEventListener('change', e => { w[flag] = e.target.checked; if(w[flag] && wxOwmOn()) wxRefreshOwm(); applyWeather(); owmStatus(); });
   }
   owmStatus();
 }
@@ -12454,18 +12541,26 @@ function bindUI(){
     cb.checked = !cb.checked;
     cb.dispatchEvent(new Event('change', {bubbles:true}));
   });
-  $('globeProjection')?.addEventListener('change', ()=>{
+  $('globeProjection')?.addEventListener('change', async ()=>{
     showMapLoading();
     applyGlobeProjection();
-    // Back to flat 2D: level the camera. The globe lets you tilt/rotate freely; without
-    // this the mercator map stays stuck at an odd pitch and "won't straighten".
-    try{ if(!isGlobeProjectionOn() && state.map && state.map.getPitch() > 0.5) state.map.easeTo({ pitch:0, duration:400 }); }catch(_e){}
     setStatus(t(isGlobeProjectionOn() ? 'Glóbus zapnut.' : 'Glóbus vypnut.'));
-    // The arc shape depends on the projection (great circle on the globe,
-    // decorative bulge on the flat map) — recompute an existing arc route.
+    // The arc shape depends on the projection (great circle on the globe, decorative
+    // bulge on the flat map) — recompute an existing arc route FIRST, because its
+    // fitRoute() re-frames the camera and would otherwise re-apply the tilt.
     if(state.currentTransportMode === 'planeArc' && state.routeCoords.length > 1 && state.pointA && state.pointB){
-      findRoute();
+      try{ await findRoute(); }catch(_e){}
     }
+    // Back to flat 2D: level the camera LAST so nothing (best-arc-view easeTo, fitRoute)
+    // can leave the mercator map stuck at an odd pitch ("won't straighten"). Re-assert
+    // once more after any fit animation settles.
+    try{
+      if(!isGlobeProjectionOn() && state.map){
+        const lvl = () => { try{ state.map.stop(); state.map.easeTo({ pitch:0, bearing:0, duration:250 }); }catch(_e){} };
+        lvl();
+        setTimeout(lvl, 950);
+      }
+    }catch(_e){}
   });
   ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','majorWidth','minorWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
@@ -13060,6 +13155,7 @@ function t(key, ...args) {
 function applyLang(lang) {
   currentLang = lang;
   localStorage.setItem('mapLang', lang);
+  try{ document.documentElement.lang = lang; }catch(e){}   // WCAG 3.1.2 — declare the active UI language
   setTimeout(applyPreferredMapLabelLanguage, 0);
   setTimeout(applyPreferredMapLabelLanguage, 120);
 
