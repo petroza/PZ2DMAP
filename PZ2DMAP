@@ -10347,10 +10347,15 @@ function setAnimProgress(progress){
   // On the globe with a 3D arc, draw the icon as a real 3D object that rides the
   // arc (see plane3dLayer). Everywhere else — and if the 3D layer can't be set up
   // — fall back to the HTML marker exactly as before.
-  const want3d = animDot && point && state.animIconData && isGlobeProjectionOn() && isArc3dActive();
+  // The moving object stays a CONSTANT-SIZE 2D marker (showing the user's chosen icon),
+  // lifted onto the 3D arc via a screen-pixel offset. The previous 3D-plane substitution
+  // was sized in metres, so it grew/shrank dramatically with camera zoom & perspective
+  // along the arc ("autíčko se samo zvětšuje") and it also replaced the chosen icon with a
+  // generic plane mesh. Disabled. (Set to the old condition to re-enable the 3D plane.)
+  const want3d = false;
   if(want3d && ensurePlane3dLayer()){
     const altM = arc3dAltMeters(eased);
-    const iconPx = parseFloat($('iconSize')?.value || '34');
+    const iconPx = parseFloat($('animIconSize')?.value || '34');
     const sizeM = PLANE3D_BASE_SIZE_M * (iconPx/34);
     let brg = 0, brg2 = 0;
     try{ brg = routeBearing(state.routeCoords, eased) || 0; }catch(e){}
