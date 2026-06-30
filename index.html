@@ -9844,8 +9844,11 @@ function refreshAnimatedMarkerPreview(){
 function getAnimMarkerAlignment(){
   const cameraFacing = !!($('followCamera')?.checked);
   const rotationAlignment = cameraFacing ? 'viewport' : 'map';
-  const is3DArc = state.currentTransportMode === 'planeArc';
-  const pitchAlignment = (!cameraFacing && is3DArc) ? 'map' : 'viewport';
+  // pitchAlignment is ALWAYS 'viewport' so the moving icon keeps a CONSTANT on-screen size
+  // and never foreshortens/scales with camera pitch, zoom or the globe — in the live preview
+  // AND in the exported video. (The old 'map' case for the 3D arc made it grow with the
+  // camera; the icon is now positioned on the arc via a screen-pixel lift offset instead.)
+  const pitchAlignment = 'viewport';
   return { rotationAlignment, pitchAlignment, key: rotationAlignment + '|' + pitchAlignment };
 }
 
@@ -10395,6 +10398,14 @@ function setAnimProgress(progress){
     if($('followCameraRotate')?.checked){
       camOpts.bearing = smoothCamBearing(routeBearing(state.routeCoords, eased));
     }
+    // On the 3D arc the icon is drawn LIFTED above its ground point, so following the ground
+    // point alone let the lifted icon drift up and "out of frame". Shift the camera down by
+    // the same lift so the visible icon stays centred. Zero off the arc → no change.
+    try{
+      let lift = 0;
+      if(isArc3dActive()){ const lp = arc3dLiftPx(point, eased); lift = Array.isArray(lp) ? (lp[1]||0) : (lp||0); }
+      if(lift) camOpts.offset = [0, lift];
+    }catch(e){}
     state.map.jumpTo(camOpts);
   }
   updateAnimReadout();
