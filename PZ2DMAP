@@ -9896,6 +9896,10 @@ function ensureAnimMarker(point, angle, liftPx=0){
 // mainly sets the apex height. Start ~2.0 and nudge by eye on the live globe:
 // plane sits below the arc → raise; above the arc → lower.
 const ARC3D_GLOBE_GAIN = 2.0;
+// Gain for the PITCH (vertical) lift component near the globe-disc centre — matches the
+// icon to the extruded ribbon's apparent height on tilted views. Tune by eye: plane below
+// the arc tip → raise; above it → lower.
+const ARC3D_GLOBE_PITCH_GAIN = 2.0;
 // ===========================================================================
 // 3D plane on the globe arc (custom WebGL layer)
 // The HTML marker can only be anchored to the ground; on the globe the arc is a
@@ -10130,9 +10134,21 @@ function arc3dLiftPx(point, eased){
       const d = Math.hypot(rx, ry) || 1;
       rx /= d; ry /= d;                                          // radial unit vector
       const sinPhi = Math.min(1, d / globeRpx);                 // 0 centre … 1 limb
+      const cosPhi = Math.sqrt(Math.max(0, 1 - sinPhi * sinPhi));
+      // Limb (radial) component — dominates at the globe's edge.
       const magPx = (altM / EARTH_R) * globeRpx * sinPhi * ARC3D_GLOBE_GAIN;
-      const mag = Math.min(magPx, mapH * 0.6);
-      return [rx * mag, ry * mag];
+      // Pitch (vertical) component — dominates near the disc centre when the camera is
+      // tilted. Without it the lift self-zeroed at the centre and the plane hung on the
+      // ground line ~dozens of px BELOW the extruded ribbon on any pitched view.
+      const latR = (point[1]) * Math.PI / 180;
+      const mpp = 156543.03392 * Math.cos(latR) / Math.pow(2, state.map.getZoom());
+      const pitchLift = (isFinite(mpp) && mpp > 0)
+        ? (altM / mpp) * Math.sin((state.map.getPitch() || 0) * Math.PI / 180) * cosPhi * ARC3D_GLOBE_PITCH_GAIN
+        : 0;
+      let vx = rx * magPx, vy = ry * magPx - pitchLift;
+      const len = Math.hypot(vx, vy), cap = mapH * 0.6;
+      if(len > cap){ vx *= cap / len; vy *= cap / len; }
+      return [vx, vy];
     }
     // Flat map: altitude reads as a straight-up screen lift scaled by tilt.
     const lat = (point[1]) * Math.PI / 180;
@@ -10802,6 +10818,10 @@ function createNativeExportMarkers(exportMap){
       temp.animatedMarkerEl = el;
       temp.animatedMarker = new maplibregl.Marker({element:el, anchor:'center', rotationAlignment:align.rotationAlignment, pitchAlignment:align.pitchAlignment})
         .setLngLat(point).addTo(exportMap);
+      // Lift the icon onto the 3D arc in the EXPORT too (state.map is already the export
+      // map here, so the lift is computed in export-camera pixels). Without this the plane
+      // detached from the arc ribbon in rendered videos on tilted/globe views.
+      try{ const lp = arc3dLiftPx(point, progress); const off = Array.isArray(lp) ? lp : [0, -(lp || 0)]; temp.animatedMarker.setOffset(off); }catch(e){}
       const displayAngle = cameraFacing ? (getFixedAngle(getCurrentAnimationIconType()) + getManualAnimAngle()) : finalAngle(progress);
       temp.animatedMarker.setRotation(displayAngle);
       temp.markerCameraMode = align.key;
