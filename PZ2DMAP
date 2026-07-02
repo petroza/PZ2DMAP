@@ -10801,7 +10801,14 @@ function makeExportCameraFromFrame(outW, outH){
   // "Match live view": export the current camera as-is (whole scene), so the globe
   // stays visible and the result matches the on-screen preview, instead of zooming
   // into the export frame (which flattens the globe and drops it out of view).
-  if($('exportLiveView')?.checked){
+  //
+  // ON THE GLOBE this is FORCED regardless of the checkbox: the frame-crop path below
+  // derives the export zoom as zoomDelta = log2(outW/frameWidth), which is only valid
+  // for the linear mercator plane. Applied to the globe it over-zooms and flattens the
+  // curvature, so the exported video no longer matched the tilted globe preview
+  // ("neodpovídá úhel kamery / není přepnuté na globus"). Rendering the current camera
+  // as-is reproduces the preview exactly.
+  if($('exportLiveView')?.checked || isGlobeProjectionOn()){
     const c = baseMap.getCenter();
     // The export renders in OUTPUT-resolution CSS space (cssW=outW), so fixed-pixel DOM
     // markers (the animated car/plane) would shrink vs the preview. Remember the ratio
@@ -11157,7 +11164,13 @@ async function drawNativeMapFrame(targetCanvas){
   }
 
   const sess = state._exportMapSession;
-  const reuse = !!(state._exportKeepSession && sess?.map && sess.cssW === camera.cssW && sess.cssH === camera.cssH);
+  // A reused session map keeps its projection from when it was created. If the user
+  // toggled globe/mercator between exports, a stale-projection session would render the
+  // wrong one → discard it on projection mismatch so a fresh map is built with the
+  // current projection.
+  const wantGlobe = isGlobeProjectionOn();
+  const sessProjOk = sess && (sess.globe === wantGlobe);
+  const reuse = !!(state._exportKeepSession && sess?.map && sess.cssW === camera.cssW && sess.cssH === camera.cssH && sessProjOk);
   if(sess && !reuse) endExportMapSession(); // settings changed mid-session
 
   let container = null;
@@ -11184,6 +11197,8 @@ async function drawNativeMapFrame(targetCanvas){
     if(reuse){
       container = sess.container;
       exportMap = sess.map;
+      // Re-assert the projection on the reused map (a style/basemap reload can drop it).
+      try{ applyGlobeProjection(exportMap); }catch(e){}
     } else {
       container = document.createElement('div');
       container.setAttribute('aria-hidden', 'true');
@@ -11250,7 +11265,7 @@ async function drawNativeMapFrame(targetCanvas){
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const ok = await drawBrowserMapFrame(targetCanvas);
     if(ok && state._exportKeepSession && !state._exportMapSession){
-      state._exportMapSession = { map: exportMap, container, cssW: camera.cssW, cssH: camera.cssH };
+      state._exportMapSession = { map: exportMap, container, cssW: camera.cssW, cssH: camera.cssH, globe: wantGlobe };
     }
     return !!ok;
   }catch(err){
