@@ -9675,45 +9675,56 @@ function updateRouteStyle(){
 }
 
 function animationTotal(){ return parseFloat($('animStart')?.value || '0') + parseFloat($('animDuration')?.value || '8'); }
-let _lineLenCache = {ref:null, val:0};
-function lineLength(coords){
-  // Memoize by array identity: routeCoords is always reassigned (never mutated in
-  // place), so the total length is constant between assignments. This turns the ~7
-  // sliceLineByProgress calls per animation frame from O(n) each into O(1) lookups.
-  if(coords && coords === _lineLenCache.ref) return _lineLenCache.val;
-  let t=0; for(let i=1;i<coords.length;i++){ const dx=coords[i][0]-coords[i-1][0], dy=coords[i][1]-coords[i-1][1]; t+=Math.hypot(dx,dy);}
-  _lineLenCache = {ref:coords, val:t};
-  return t;
+// Route parametrization uses TRUE GROUND (haversine) distance, not planar degree
+// lengths. Planar degrees overweight longitude at high latitudes, so on a long
+// great-circle arc the mover's "constant speed" drifted from the arc ribbon's
+// uniform-ground reveal — measured up to ~146 km apart on Praha→Novosibirsk
+// ("oblouk byl rychlejší než let letadla"). Ground distance also makes the car's
+// pace physically constant on driving routes. Cumulative lengths are memoized by
+// array identity (routeCoords is always reassigned, never mutated) and looked up
+// by binary search, so per-frame callers stay O(log n).
+let _cumLenCache = {ref:null, cum:null, total:0};
+function cumulativeRouteLengths(coords){
+  if(coords && coords === _cumLenCache.ref) return _cumLenCache;
+  const cum = new Float64Array(coords.length);
+  let t=0;
+  for(let i=1;i<coords.length;i++){ t += haversineKm(coords[i-1], coords[i]); cum[i]=t; }
+  _cumLenCache = {ref:coords, cum, total:t};
+  return _cumLenCache;
+}
+function lineLength(coords){ return cumulativeRouteLengths(coords).total; }
+// First segment index whose cumulative length reaches `target` (binary search).
+function _routeSegAt(cum, n, target){
+  let lo=1, hi=n-1;
+  while(lo<hi){ const mid=(lo+hi)>>1; if(cum[mid] < target) lo=mid+1; else hi=mid; }
+  return lo;
 }
 // Like sliceLineByProgress but returns ONLY the interpolated point, with no
 // allocation of the trail array. Used by per-frame callers that need just .point
-// (bearing, pitch, follow-camera) — avoids building/throwing away a full-route
-// array several times per frame. Mathematically identical to sliceLineByProgress().point.
+// (bearing, pitch, follow-camera). Mathematically identical to sliceLineByProgress().point.
 function pointAtProgress(coords, progress){
   if(!coords||coords.length<2) return null;
   if(progress<=0) return coords[0];
   if(progress>=1) return coords[coords.length-1];
-  const total=lineLength(coords), target=total*progress; let acc=0;
-  for(let i=1;i<coords.length;i++){
-    const a=coords[i-1], b=coords[i], dx=b[0]-a[0], dy=b[1]-a[1], seg=Math.hypot(dx,dy);
-    if(acc + seg < target){ acc += seg; continue; }
-    const t = seg === 0 ? 0 : (target - acc) / seg;
-    return [a[0] + dx*t, a[1] + dy*t];
-  }
-  return coords[coords.length-1];
+  const {cum, total} = cumulativeRouteLengths(coords);
+  const target = total*progress;
+  const i = _routeSegAt(cum, coords.length, target);
+  const a=coords[i-1], b=coords[i], seg=cum[i]-cum[i-1];
+  const t = seg === 0 ? 0 : (target - cum[i-1]) / seg;
+  return [a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t];
 }
 function sliceLineByProgress(coords,progress){
   if(!coords||coords.length<2) return {coords:[], point:null};
   if(progress<=0) return {coords:[coords[0]], point:coords[0]};
   if(progress>=1) return {coords:coords.slice(), point:coords[coords.length-1]};
-  const total=lineLength(coords), target=total*progress; let acc=0; const out=[coords[0]];
-  for(let i=1;i<coords.length;i++){
-    const a=coords[i-1], b=coords[i], dx=b[0]-a[0], dy=b[1]-a[1], seg=Math.hypot(dx,dy);
-    if(acc + seg < target){ out.push(b); acc += seg; continue; }
-    const t = seg === 0 ? 0 : (target - acc) / seg;
-    const p = [a[0] + dx*t, a[1] + dy*t]; out.push(p); return {coords:out, point:p};
-  }
-  return {coords:coords.slice(), point:coords[coords.length-1]};
+  const {cum, total} = cumulativeRouteLengths(coords);
+  const target = total*progress;
+  const i = _routeSegAt(cum, coords.length, target);
+  const a=coords[i-1], b=coords[i], seg=cum[i]-cum[i-1];
+  const t = seg === 0 ? 0 : (target - cum[i-1]) / seg;
+  const p = [a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t];
+  const out = coords.slice(0, i); out.push(p);
+  return {coords:out, point:p};
 }
 function routeAngle(coords,progress){
   if(!coords || coords.length < 2) return state.smoothAngle ?? 0;
