@@ -10020,7 +10020,10 @@ const plane3dLayer = {
     }catch(e){ this.prog=null; this.ready=false; }
   },
   render(gl, args){
-    const c=this.cur;
+    // Read the SHARED state from the canonical object — layer instances added to the
+    // live and export maps are independent clones (own GL program/buffer per context),
+    // but they all render the same current plane pose.
+    const c=plane3dLayer.cur;
     if(!this.prog || !this.ready || !c || !c.visible) return;
     try{ if(!isGlobeProjectionOn() || !isArc3dActive()) return; }catch(e){ return; }
     let model;
@@ -10034,7 +10037,19 @@ const plane3dLayer = {
     //   base:  nose0=(sinθ,0,-cosθ)  left0=(-cosθ,0,-sinθ)  up0=(0,1,0)
     //   pitch tilts the fuselage; the wing axis keeps y=0 → wings stay LEVEL on the arc.
     // det=+1 (proper rotation, no mirror) → correct winding/normals/lighting.
-    const s=c.sizeM, th=c.headingRad||0, roll=c.rollRad||0, pitch=c.pitchRad||0;
+    // Constant on-screen size, recomputed on EVERY paint from the current camera (zoom,
+    // pitch, globe) — so the plane keeps its pixel size even when the user zooms while
+    // the animation is paused, and in the export map's own projection.
+    let s=c.sizeM;
+    try{
+      if(c.iconPx){
+        const S0=state.map.project([c.lng,c.lat]);
+        const S1=state.map.project(geoDestinationLngLat([c.lng,c.lat],1,90));
+        const ppk=Math.hypot(S1.x-S0.x,S1.y-S0.y);
+        if(isFinite(ppk) && ppk>0.001) s=(c.iconPx*1000)/ppk;
+      }
+    }catch(e){}
+    const th=c.headingRad||0, roll=c.rollRad||0, pitch=c.pitchRad||0;
     const cs=Math.cos(th), sn=Math.sin(th), cr=Math.cos(roll), sr=Math.sin(roll), cp=Math.cos(pitch), sp=Math.sin(pitch);
     const Lm=[
       (sn*cp)*s,              (sp)*s,    (-cs*cp)*s,             0,
@@ -10062,6 +10077,16 @@ const plane3dLayer = {
     this.prog=null; this.buf=null; this._gl=null; this.ready=false;
   }
 };
+// Fresh, per-map instance of the plane layer. plane3dLayer itself is never added to a
+// map — it is the template + shared pose state (cur). Each map (live, export) gets its
+// own clone with its own GL program/buffer, so an export can no longer clobber the live
+// layer's GL objects (the old shared-singleton bug: plane vanished from the live map
+// after any export that touched it).
+function makePlane3dLayerInstance(){
+  const inst = Object.assign({}, plane3dLayer);
+  inst.prog=null; inst.buf=null; inst._gl=null; inst.ready=false; inst.vertCount=0;
+  return inst;
+}
 // Add the layer if the style is ready and it is not already present (robust to
 // style reloads, which drop custom layers). Returns true once it is on the map.
 function ensurePlane3dLayer(){
@@ -10069,7 +10094,7 @@ function ensurePlane3dLayer(){
     const m=state.map;
     if(!m || !m.isStyleLoaded || !m.isStyleLoaded()) return false;
     if(m.getLayer && m.getLayer('plane3d-icon')) return true;
-    m.addLayer(plane3dLayer);
+    m.addLayer(makePlane3dLayerInstance());
     return !!(m.getLayer && m.getLayer('plane3d-icon'));
   }catch(e){ return false; }
 }
@@ -10366,16 +10391,28 @@ function setAnimProgress(progress){
   // On the globe with a 3D arc, draw the icon as a real 3D object that rides the
   // arc (see plane3dLayer). Everywhere else — and if the 3D layer can't be set up
   // — fall back to the HTML marker exactly as before.
-  // The moving object stays a CONSTANT-SIZE 2D marker (showing the user's chosen icon),
-  // lifted onto the 3D arc via a screen-pixel offset. The previous 3D-plane substitution
-  // was sized in metres, so it grew/shrank dramatically with camera zoom & perspective
-  // along the arc ("autíčko se samo zvětšuje") and it also replaced the chosen icon with a
-  // generic plane mesh. Disabled. (Set to the old condition to re-enable the 3D plane.)
-  const want3d = false;
+  // On the globe with a 3D arc the mover is a TRUE 3D plane mesh riding the arc: heading
+  // along the flight path, pitch = climb/descent angle from the arc tangent, wings level
+  // (a great circle doesn't turn, so zero bank is physically right). Its size is computed
+  // PER FRAME from the local metres-per-pixel at its position, so it keeps a constant
+  // on-screen size — the old fixed-metres sizing grew/shrank with zoom & perspective
+  // ("autíčko se samo zvětšuje"). Everywhere else the mover is the chosen 2D icon.
+  const want3d = animDot && point && state.animIconData && isGlobeProjectionOn() && isArc3dActive();
   if(want3d && ensurePlane3dLayer()){
     const altM = arc3dAltMeters(eased);
     const iconPx = parseFloat($('animIconSize')?.value || '34');
-    const sizeM = PLANE3D_BASE_SIZE_M * (iconPx/34);
+    // Constant screen size: measure how many px 1 km spans at the plane's position and
+    // convert the desired pixel size to metres (× export upscale during a render).
+    let sizeM = PLANE3D_BASE_SIZE_M * (iconPx/34);
+    try{
+      const S0 = state.map.project(point);
+      const S1 = state.map.project(geoDestinationLngLat(point, 1, 90));
+      const pxPerKm = Math.hypot(S1.x - S0.x, S1.y - S0.y);
+      // NOTE: no _exportMarkerScale here — the mesh is sized in METRES, and the export
+      // camera's zoomDelta already magnifies metres to the output resolution. Adding the
+      // scale again would square it.
+      if(isFinite(pxPerKm) && pxPerKm > 0.001) sizeM = (iconPx * 1000) / pxPerKm;
+    }catch(e){}
     let brg = 0, brg2 = 0;
     try{ brg = routeBearing(state.routeCoords, eased) || 0; }catch(e){}
     try{ brg2 = routeBearing(state.routeCoords, Math.min(1, eased + 0.01)) || brg; }catch(e){ brg2 = brg; }
@@ -10400,7 +10437,7 @@ function setAnimProgress(progress){
         }
       }catch(e){}
     }
-    plane3dLayer.cur = { lng:point[0], lat:point[1], altM, sizeM, headingRad, rollRad, pitchRad, visible:true };
+    plane3dLayer.cur = { lng:point[0], lat:point[1], altM, sizeM, iconPx, headingRad, rollRad, pitchRad, visible:true };
     removeAnimMarker();
     state.map.triggerRepaint();
   } else {
@@ -10694,8 +10731,17 @@ function applyHiddenStyleLayerIds(layerIds){
 // export map during export).
 function prepareExportSceneLayers(){
   try{ if(model3dHasModel()){ model3dEnsureLayer(); ensureModel3dShadowLayer(); model3dRedrawShadow(); } }catch(e){}
+  // 3D plane on the globe arc: give the export map its own layer instance so the plane
+  // renders in the video exactly like in the live preview (pose comes from the shared
+  // plane3dLayer.cur updated by setAnimProgress each frame).
+  try{ if(exportUses3dPlane()) ensurePlane3dLayer(); }catch(e){}
   ['scene-perimeter-centers-circle','scene-perimeter-handles-circle','scene-distance-points-circle']
     .forEach(id => safeSetLayout(id, 'visibility', 'none'));
+}
+// True when the mover renders as the 3D plane mesh (globe + 3D arc + an icon selected),
+// mirroring the want3d condition in setAnimProgress.
+function exportUses3dPlane(){
+  try{ return !!($('animDot')?.checked && state.animIconData && isGlobeProjectionOn() && isArc3dActive()); }catch(e){ return false; }
 }
 
 function getLiveSourceDataFromMap(map, sourceId){
@@ -10803,7 +10849,9 @@ function createNativeExportMarkers(exportMap){
     const marker = new maplibregl.Marker({element:el, anchor:'center'}).setLngLat(item.lngLat).addTo(exportMap);
     temp.mapLabels.push({...item, marker});
   });
-  if($('animDot')?.checked && state.routeCoords?.length){
+  if($('animDot')?.checked && state.routeCoords?.length && !exportUses3dPlane()){
+    // (When the 3D plane mesh renders on the globe arc, no 2D icon marker is created —
+    // otherwise the export would show BOTH the mesh and the flat icon.)
     const progress = applyAnimEasing(getCurrentAnimationProgress());
     const sliced = sliceLineByProgress(state.routeCoords, progress);
     const point = sliced.point;
