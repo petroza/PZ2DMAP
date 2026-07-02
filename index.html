@@ -9890,8 +9890,21 @@ function ensureAnimMarker(point, angle, liftPx=0){
   // altitude at this point (markers can't carry real altitude in MapLibre).
   const off = Array.isArray(liftPx) ? liftPx : [0, -(liftPx || 0)];
   try{ state.animatedMarker.setOffset(off); }catch(e){}
-  const displayAngle = cameraFacing ? (getFixedAngle(getCurrentAnimationIconType()) + getManualAnimAngle()) : angle;
-  state.animatedMarker.setRotation(displayAngle);
+  state.animatedMarker.setRotation(cameraFacingDisplayAngle(cameraFacing, angle));
+}
+// With rotationAlignment:'viewport' (cameraFacing/follow-camera on), MapLibre applies the
+// rotation LITERALLY on screen — unlike 'map' alignment, it does NOT subtract the camera's
+// own bearing (confirmed empirically: 'map' shows rotateZ(userAngle - cameraBearing),
+// 'viewport' shows rotateZ(userAngle) unchanged). In 'smooth' rotation mode `angle` is a
+// compass bearing, so it must be converted to screen-space by subtracting the LIVE camera
+// bearing here — otherwise (the previous bug) the icon was hard-locked to a constant angle
+// and never visually pointed along the route ("letadlo neodpovídá směru letu"), most visibly
+// wrong whenever the camera bearing didn't already equal the exact route heading (camera
+// rotation off, or lagging the route's smoothed heading by even a little).
+function cameraFacingDisplayAngle(cameraFacing, angle){
+  if(!cameraFacing) return angle;
+  if(state.currentRotMode !== 'smooth') return getFixedAngle(getCurrentAnimationIconType()) + getManualAnimAngle();
+  return angle - (state.map?.getBearing?.() || 0);
 }
 
 // Screen-pixel lift of the plane so it rides on top of the 3D arc ribbon.
@@ -10888,8 +10901,7 @@ function createNativeExportMarkers(exportMap){
       // map here, so the lift is computed in export-camera pixels). Without this the plane
       // detached from the arc ribbon in rendered videos on tilted/globe views.
       try{ const lp = arc3dLiftPx(point, progress); const off = Array.isArray(lp) ? lp : [0, -(lp || 0)]; temp.animatedMarker.setOffset(off); }catch(e){}
-      const displayAngle = cameraFacing ? (getFixedAngle(getCurrentAnimationIconType()) + getManualAnimAngle()) : finalAngle(progress);
-      temp.animatedMarker.setRotation(displayAngle);
+      temp.animatedMarker.setRotation(cameraFacingDisplayAngle(cameraFacing, finalAngle(progress)));
       temp.markerCameraMode = align.key;
     }
   }
