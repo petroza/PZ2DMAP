@@ -686,7 +686,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <div class="preset-context-sep"></div>
           <button type="button" class="preset-context-item danger" data-action="delete" data-i18n="× Smazat">× Smazat</button>
         </div>
-        <p class="hint">Kliknutím použiješ preset. Ukládá barvy, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí více presetů, Delete je smaže. Pravým tlačítkem duplikuješ nebo smažeš.</p>
+        <p class="hint" data-i18n="hint_preset_click">Kliknutím použiješ preset. Ukládá barvy, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí více presetů, Delete je smaže. Pravým tlačítkem duplikuješ nebo smažeš.</p>
       </div>
       <div class="section" id="styleColorsSection">
         <h3 data-i18n="Vzhled podkladu">Vzhled podkladu</h3>
@@ -721,11 +721,11 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-primary" id="savePresetBtn" data-i18n="+ Přidat preset">+ Přidat preset</button>
           <button type="button" class="btn btn-sm" id="updatePresetBtn" data-i18n="Uložit změny">Uložit změny</button>
         </div>
-        <p class="hint" data-hint-key="hint_preset_manage">Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem.</p>
+        <p class="hint" data-i18n="hint_preset_manage">Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem.</p>
       </div>
       <div class="section" id="politicalStylePanel" style="display:none">
         <h3 data-i18n="Politická mapa">Politická mapa</h3>
-        <p class="hint" style="margin-top:0">Když je zvolený styl „Politická“, ovládání států světa a krajů ČR je přímo tady ve STYLU.</p>
+        <p class="hint" style="margin-top:0" data-i18n="hint_political_style">Když je zvolený styl „Politická“, ovládání států světa a krajů ČR je přímo tady ve STYLU.</p>
         <div id="politicalStylePanelMount"></div>
       </div>
       <div class="section" id="tileSourcesSection">
@@ -737,7 +737,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <input id="tileType" type="hidden" value="raster">
         <div class="btns"><button type="button" class="btn btn-sm btn-primary" id="addTileSourceBtn" data-i18n="+ Přidat zdroj">+ Přidat zdroj</button></div>
         <div id="tileSourceList" class="wp-list"></div>
-        <p class="hint" data-hint-key="hint_tile_sources">Rastrové dlaždice ve formátu {z}/{x}/{y}. Přidaný zdroj se objeví v Základních stylech.</p>
+        <p class="hint" data-i18n="hint_tile_sources">Rastrové dlaždice ve formátu {z}/{x}/{y}. Přidaný zdroj se objeví v Základních stylech.</p>
       </div>
 <div class="section">
         <h3 data-i18n="Viditelnost vrstev">Viditelnost vrstev</h3>
@@ -876,7 +876,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <h3 data-i18n="Zastávky na trase">Zastávky na trase</h3>
         <div class="btns"><button type="button" class="btn btn-sm" id="addWaypointBtn" data-i18n="+ Přidat zastávku">+ Přidat zastávku</button></div>
         <div id="waypointList" class="wp-list"></div>
-        <p class="hint">Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.</p>
+        <p class="hint" data-i18n="hint_via_points">Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.</p>
       </div>
 
       <div class="section" id="flightWaypointSection">
@@ -885,7 +885,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-danger" id="clearFlightWaypointsBtn" data-i18n="Smazat body">Smazat body</button>
         </div>
         <div id="flightWaypointList" class="wp-list"></div>
-        <p class="hint" data-hint-key="hint_custom_draw">Kresli trasu klikáním do mapy od začátku do konce. Každý klik přidá další bod. Pravým tlačítkem trasu ukončíš — poslední bod se stane cílem (B). Body jdou na mapě chytit a přetáhnout.</p>
+        <p class="hint" data-i18n="hint_custom_draw">Kresli trasu klikáním do mapy od začátku do konce. Každý klik přidá další bod. Pravým tlačítkem trasu ukončíš — poslední bod se stane cílem (B). Body jdou na mapě chytit a přetáhnout.</p>
       </div>
 
       <div class="section">
@@ -934,7 +934,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-danger" id="clearScenePerimetersBtn" data-i18n="Smazat perimetry">Smazat perimetry</button>
         </div>
         <div id="scenePerimeterList" class="wp-list"></div>
-        <p class="hint">Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.</p>
+        <p class="hint" data-i18n="hint_perimeter">Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.</p>
       </div>
 
       <div class="section" id="sceneDistanceSection">
@@ -954,7 +954,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-danger" id="clearSceneDistancesBtn" data-i18n="Smazat vzdálenosti">Smazat vzdálenosti</button>
         </div>
         <div id="sceneDistanceList" class="wp-list"></div>
-        <p class="hint">Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.</p>
+        <p class="hint" data-i18n="hint_distance">Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.</p>
       </div>
 
       <div class="section" id="sceneArrowSection">
@@ -970,7 +970,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-danger" id="clearSceneArrowsBtn" data-i18n="Smazat šipky">Smazat šipky</button>
         </div>
         <div id="sceneArrowList" class="wp-list"></div>
-        <p class="hint">Zapni režim a klikni do mapy dvakrát: první klik = začátek (ocas), druhý = hrot. Šipku vybereš kliknutím na ni, pak táhni za body T/H = posun konců. Barva a tloušťka se vztahují na vybranou. Vyrenderuje se i do videa.</p>
+        <p class="hint" data-i18n="hint_arrow">Zapni režim a klikni do mapy dvakrát: první klik = začátek (ocas), druhý = hrot. Šipku vybereš kliknutím na ni, pak táhni za body T/H = posun konců. Barva a tloušťka se vztahují na vybranou. Vyrenderuje se i do videa.</p>
       </div>
 
       <div class="section" id="sceneIconSection">
@@ -1019,7 +1019,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm" id="placeModel3dBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
           <button type="button" class="btn btn-sm btn-danger" id="deleteModel3dBtn" disabled data-i18n="Smazat">Smazat</button>
         </div>
-        <p class="hint">Nahraj .glb (binární glTF). Když model leží na boku, přepni „Osa nahoru" (glTF=Y, Blender/CAD=Z). Otočení Y = směr, Náklon X/Z = naklonění. „Přichytit k povrchu" ho postaví na zem. Umístěný model přesuneš tažením za modrý bod přímo v mapě. Zapni „Vrhat stín" a táhni žluté slunce — stín se podle něj otáčí a prodlužuje. Vše se vyrenderuje i do videa. Pro 3D pohled nakloň mapu nebo zapni glóbus.</p>
+        <p class="hint" data-i18n="hint_3d_model">Nahraj .glb (binární glTF). Když model leží na boku, přepni „Osa nahoru" (glTF=Y, Blender/CAD=Z). Otočení Y = směr, Náklon X/Z = naklonění. „Přichytit k povrchu" ho postaví na zem. Umístěný model přesuneš tažením za modrý bod přímo v mapě. Zapni „Vrhat stín" a táhni žluté slunce — stín se podle něj otáčí a prodlužuje. Vše se vyrenderuje i do videa. Pro 3D pohled nakloň mapu nebo zapni glóbus.</p>
       </div>
 
       <div class="section" id="mapLabelSection">
@@ -1039,7 +1039,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-danger" id="clearMapLabelsBtn" data-i18n="Smazat vše">Smazat vše</button>
         </div>
         <div id="mapLabelList" class="wp-list"></div>
-        <p class="hint">Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.</p>
+        <p class="hint" data-i18n="hint_labels">Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.</p>
       </div>
 
       <div class="section" id="weatherLayersSection">
@@ -1057,7 +1057,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <div class="row">
           <div class="color-row"><input id="wxCloudsToggle" type="checkbox"><label data-i18n="Satelitní oblačnost (denně)">Satelitní oblačnost (denně)</label></div>
         </div>
-        <p class="hint">Radar srážek je živý (RainViewer, ~10min). Satelitní oblačnost je nejnovější denní snímek z NASA GIBS (viditelné pásmo – nejlépe přes den; v noci je tmavý).</p>
+        <p class="hint" data-i18n="hint_weather_radar">Radar srážek je živý (RainViewer, ~10min). Satelitní oblačnost je nejnovější denní snímek z NASA GIBS (viditelné pásmo – nejlépe přes den; v noci je tmavý).</p>
       </div>
 
       <div class="section" id="weatherModelSection">
@@ -1081,7 +1081,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <div class="row">
           <div><label>Krytí <span class="val" id="wxOpacityVal">85 %</span></label><input id="wxOpacity" type="range" min="20" max="100" step="1" value="85"></div>
         </div>
-        <p class="hint">Globální teplotní/srážková/větrná mapa jako Windy (model OpenWeather). Stačí bezplatný klíč z openweathermap.org → API keys, vlož ho sem. Krytí ovládá všechny vrstvy počasí. Vrstvy se promítnou i do exportu videa.</p>
+        <p class="hint" data-i18n="hint_openweather">Globální teplotní/srážková/větrná mapa jako Windy (model OpenWeather). Stačí bezplatný klíč z openweathermap.org → API keys, vlož ho sem. Krytí ovládá všechny vrstvy počasí. Vrstvy se promítnou i do exportu videa.</p>
       </div>
     </div>
 
@@ -1098,7 +1098,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
             <span data-i18n="Auto">Auto</span>
           </button>
         </div>
-        <p class="hint" data-hint-key="hint_anim_system_icons">Kliknutím vybereš vestavěnou animační ikonku.</p>
+        <p class="hint" data-i18n="hint_anim_system_icons">Kliknutím vybereš vestavěnou animační ikonku.</p>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
         <input id="animIconSize" type="range" min="18" max="96" step="2" value="34">
         <label class="check" style="margin-top:10px"><input id="invertIcons" type="checkbox">  Invertovat ikonky (pro světlou mapu)</label>
@@ -1117,7 +1117,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
               </div>
             </div>
           </div>
-          <p class="hint" data-hint-key="hint_anim_custom_icon">Nahraj PNG nebo SVG pro vlastní animační ikonku. Když ji smažeš, použije se bod.</p>
+          <p class="hint" data-i18n="hint_anim_custom_icon">Nahraj PNG nebo SVG pro vlastní animační ikonku. Když ji smažeš, použije se bod.</p>
         </div>
 
         <div style="margin-top:12px">
@@ -1135,7 +1135,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
             <div><input id="animManualAngle" type="range" min="-180" max="180" step="1" value="0"></div>
             <div><input id="animManualAngleNumber" type="number" min="-180" max="180" step="1" value="0"></div>
           </div>
-          <p class="hint" data-hint-key="hint_anim_angle">V režimu Rovně nastavíš pevný úhel. V režimu Natočit tím doladíš natočení jako korekci k trase.</p>
+          <p class="hint" data-i18n="hint_anim_angle">V režimu Rovně nastavíš pevný úhel. V režimu Natočit tím doladíš natočení jako korekci k trase.</p>
         </div>
         <div style="margin-top:12px">
           <label data-i18n="Režim natočení">Režim natočení</label>
@@ -1149,7 +1149,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
             <span class="rot-label" data-i18n="Natočit">Natočit</span>
           </button>
         </div>
-          <p class="hint">Rovně = pevná orientace. Natočit = rotace podle trasy + ruční korekce.</p>
+          <p class="hint" data-i18n="hint_rot_mode_summary">Rovně = pevná orientace. Natočit = rotace podle trasy + ruční korekce.</p>
         </div>
       </div>
 
@@ -1175,7 +1175,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         </div>
         <label style="margin-top:10px">Plynulost pohybu objektu <span class="val" id="objSmoothVal">0 %</span></label>
         <input id="objSmooth" type="range" min="0" max="100" step="1" value="0" style="width:100%">
-        <p class="hint">Změkčí pohyb objektu (auta) na trase s mnoha malými zatáčkami, aby se „neklepal". Vyšší hodnota = plynulejší, ale lehce zaostává za přesnou polohou.</p>
+        <p class="hint" data-i18n="hint_obj_smooth">Změkčí pohyb objektu (auta) na trase s mnoha malými zatáčkami, aby se „neklepal". Vyšší hodnota = plynulejší, ale lehce zaostává za přesnou polohou.</p>
         <label class="check" style="margin-top:10px"><input id="animDot" type="checkbox" checked> Zobrazit objekt na trase</label>
         <label class="check"><input id="showTrail" type="checkbox" checked> Stopa za objektem</label>
       </div>
@@ -1221,10 +1221,10 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
               <button type="button" class="btn btn-danger" id="cameraClearKeyframesBtn" data-i18n="Smazat klíče">Smazat klíče</button>
             </div>
             <div id="cameraKeyframeList" class="camera-kf-list"></div>
-            <p class="hint" data-hint-key="hint_camera_keyframes">Najeď mapou na 1. záběr a dej „Přidat klíč". Pak na 2., 3. … a přidej další. Kamera jimi po spuštění plynule prolétne v pořadí přidání, rovnoměrně rozložené po celé délce animace.</p>
+            <p class="hint" data-i18n="hint_camera_keyframes">Najeď mapou na 1. záběr a dej „Přidat klíč". Pak na 2., 3. … a přidej další. Kamera jimi po spuštění plynule prolétne v pořadí přidání, rovnoměrně rozložené po celé délce animace.</p>
           </div>
 
-          <p class="hint" data-hint-key="hint_camera_anim" id="cameraAnimHint" style="display:none">Najeď mapou na první místo (posuň, přibliž, nakloň) a ulož „Nastavit start". Pak najeď na druhé místo a ulož „Nastavit cíl". Animace pak kameru plynule přeletí z místa na místo, nebo přiblíží/oddálí. Funguje i bez trasy — ideální pro zpravodajské přelety. Délku řídí „Délka animace" výše.</p>
+          <p class="hint" data-i18n="hint_camera_anim" id="cameraAnimHint" style="display:none">Najeď mapou na první místo (posuň, přibliž, nakloň) a ulož „Nastavit start". Pak najeď na druhé místo a ulož „Nastavit cíl". Animace pak kameru plynule přeletí z místa na místo, nebo přiblíží/oddálí. Funguje i bez trasy — ideální pro zpravodajské přelety. Délku řídí „Délka animace" výše.</p>
         </div>
       </div>
 
@@ -1254,7 +1254,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm" id="loadProjectBtn" data-i18n="Načíst projekt">Načíst projekt</button>
           <button type="button" class="btn btn-sm btn-danger" id="deleteProjectBtn" data-i18n="Smazat projekt">Smazat projekt</button>
         </div>
-        <p class="hint">Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.</p>
+        <p class="hint" data-i18n="hint_project">Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.</p>
         <div id="projectThumbWrap" style="margin-top:10px;display:none">
           <label data-i18n="Náhled projektu">Náhled projektu</label>
           <img id="projectThumbPreview" alt="" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
@@ -1267,7 +1267,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm" id="backupImportBtn" data-i18n="Obnovit ze zálohy">Obnovit ze zálohy</button>
         </div>
         <input id="backupImportFile" class="file-input-hidden" type="file" accept=".json,application/json">
-        <p class="hint" data-hint-key="hint_backup">Záloha obsahuje všechny projekty, presety stylů i vlastní mapové zdroje. Obnova data sloučí s aktuálními podle ID (stejné ID přepíše verze ze zálohy).</p>
+        <p class="hint" data-i18n="hint_backup">Záloha obsahuje všechny projekty, presety stylů i vlastní mapové zdroje. Obnova data sloučí s aktuálními podle ID (stejné ID přepíše verze ze zálohy).</p>
       </div>
     </div>
 
@@ -1315,8 +1315,8 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label class="check"><input id="showExportFrame" type="checkbox" checked> Zobrazit výřez exportu videa v mapě</label>
         <label class="check"><input id="exportTransparent" type="checkbox"> Průhledné pozadí (bez mapy)</label>
         <label class="check"><input id="exportLiveView" type="checkbox"> <span data-i18n="export_liveview">Export podle živého náhledu (celá scéna na glóbu)</span></label>
-        <p class="hint" data-hint-key="hint_export_visibility">Render běží přímo v prohlížeči. Během exportu nech okno viditelné a neminimalizuj ho — skryté okno prohlížeč uspí a render se zastaví. Obrazovka se po dobu renderu sama nevypne.</p>
-        <p class="hint" data-hint-key="hint_export_transparent">Vyexportuje jen trasu, objekty a popisky s alfa kanálem — ideální jako overlay vrstva do After Effects. Funguje pro PNG a PNG sekvenci; „Export video" v tomto režimu vyrobí balíček PNG + skript na MOV ProRes 4444 (s průhledností).</p>
+        <p class="hint" data-i18n="hint_export_visibility">Render běží přímo v prohlížeči. Během exportu nech okno viditelné a neminimalizuj ho — skryté okno prohlížeč uspí a render se zastaví. Obrazovka se po dobu renderu sama nevypne.</p>
+        <p class="hint" data-i18n="hint_export_transparent">Vyexportuje jen trasu, objekty a popisky s alfa kanálem — ideální jako overlay vrstva do After Effects. Funguje pro PNG a PNG sekvenci; „Export video" v tomto režimu vyrobí balíček PNG + skript na MOV ProRes 4444 (s průhledností).</p>
       </div>
       <div class="section">
         <h3 data-i18n="Akce">Akce</h3>
@@ -1326,7 +1326,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn" id="exportPngSeqBtn" data-i18n="PNG sekvence">PNG sekvence</button>
         </div>
         <label class="check" style="margin-top:12px"><input id="aeExport" type="checkbox"> <span data-i18n="Také skript pro After Effects (.jsx)">Také skript pro After Effects (.jsx)</span></label>
-        <p class="hint" data-hint-key="hint_ae_export">Zaškrtni PŘED stiskem „Export video" — vedle videa se vytvoří i .jsx pro After Effects. Nově udělá skutečnou 3D scénu: video/mapa je 3D plocha, trackovací NULL pointy jsou 3D a společné naklopení/rotaci řeší MAP_WORLD_ROOT_3D_ROTATE_ME. Model parentuj na MAP_TRACK_CAR_3D nebo MAP_TRACK_1_3D.</p>
+        <p class="hint" data-i18n="hint_ae_export">Zaškrtni PŘED stiskem „Export video" — vedle videa se vytvoří i .jsx pro After Effects. Nově udělá skutečnou 3D scénu: video/mapa je 3D plocha, trackovací NULL pointy jsou 3D a společné naklopení/rotaci řeší MAP_WORLD_ROOT_3D_ROTATE_ME. Model parentuj na MAP_TRACK_CAR_3D nebo MAP_TRACK_1_3D.</p>
       </div>
       <div class="section">
         <h3 data-i18n="Batch — více formátů">Batch — více formátů</h3>
@@ -1337,7 +1337,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <label class="check"><input type="checkbox" data-res="1080x1350" data-fps="30" data-tag="4x5" data-label="4:5 Instagram"> 4:5 · 1080×1350 · 30 fps · Instagram</label>
         </div>
         <button type="button" class="btn btn-primary" id="exportBatchBtn" data-i18n="Exportovat vybrané formáty" style="margin-top:10px;width:100%">Exportovat vybrané formáty</button>
-        <p class="hint">Vyrenderuje stejnou scénu/animaci do všech zaškrtnutých poměrů stran za sebou (každý soubor dostane příponu …-16x9, …-9x16). Použije aktuální formát videa i průhlednost. Jiný poměr stran než tvůj náhled se ořízne na střed.</p>
+        <p class="hint" data-i18n="hint_batch_export">Vyrenderuje stejnou scénu/animaci do všech zaškrtnutých poměrů stran za sebou (každý soubor dostane příponu …-16x9, …-9x16). Použije aktuální formát videa i průhlednost. Jiný poměr stran než tvůj náhled se ořízne na střed.</p>
       </div>
     </div>
 
@@ -1393,7 +1393,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
   <div class="map-actions">
     <button id="safeGuidesBtn" class="map-action-btn" type="button" title="Bezpečné zóny (jen náhled, neexportuje se)" aria-label="Bezpečné zóny">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><rect x="6" y="8" width="12" height="8" rx="1" stroke-dasharray="2 2"/></svg>
-      <span>Zóny</span>
+      <span data-i18n="Zóny">Zóny</span>
     </button>
     <button id="undoActionBtn" class="map-action-btn" type="button" title="Krok zpět (Ctrl+Z)" aria-label="Krok zpět" disabled>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-3"/></svg>
@@ -1556,9 +1556,42 @@ const I18N = {
   'Čtverec':   {cs:'Čtverec (1:1)',sk:'Štvorec (1:1)',bg:'Квадрат (1:1)',hr:'Kvadrat (1:1)',ro:'Pătrat (1:1)'},
   'Na výšku':  {cs:'Na výšku (portrait)',sk:'Na výšku (portrait)',bg:'Портрет (portrait)',hr:'Portret (portrait)',ro:'Portret (portrait)'},
 
+  // Base-style dropdown option labels (previously hardcoded Czech via createElement,
+  // never routed through t() — always showed Czech regardless of UI language).
+  'Liberty (výchozí)':      {cs:'Liberty (výchozí)',sk:'Liberty (predvolené)',bg:'Liberty (по подразбиране)',hr:'Liberty (zadano)',ro:'Liberty (implicit)',en:'Liberty (default)'},
+  'Satelitní':              {cs:'Satelitní',sk:'Satelitné',bg:'Сателитна',hr:'Satelitska',ro:'Satelit',en:'Satellite'},
+  'OSM Standard (CZ names)':{cs:'OSM Standard (CZ names)',sk:'OSM Standard (CZ names)',bg:'OSM Standard (CZ names)',hr:'OSM Standard (CZ names)',ro:'OSM Standard (CZ names)',en:'OSM Standard (CZ names)'},
+  'OpenTopoMap (topo)':     {cs:'OpenTopoMap (topo)',sk:'OpenTopoMap (topo)',bg:'OpenTopoMap (топо)',hr:'OpenTopoMap (topo)',ro:'OpenTopoMap (topo)',en:'OpenTopoMap (topo)'},
+  'CyclOSM (cyklo)':        {cs:'CyclOSM (cyklo)',sk:'CyclOSM (cyklo)',bg:'CyclOSM (вело)',hr:'CyclOSM (biciklo)',ro:'CyclOSM (ciclism)',en:'CyclOSM (cycling)'},
+  'Esri Terrain':           {cs:'Esri Terrain',sk:'Esri Terrain',bg:'Esri Terrain',hr:'Esri Terrain',ro:'Esri Terrain',en:'Esri Terrain'},
+  'Politická':              {cs:'Politická',sk:'Politická',bg:'Политическа',hr:'Politička',ro:'Politică',en:'Political'},
+  // Instructional hint paragraphs — most of the app's <p class="hint"> help texts
+  // had no data-i18n attribute at all, so they stayed Czech in every UI language
+  // (reported repeatedly across Scene/Animation/Project/Export sections).
+  'hint_preset_click':      {cs:'Kliknutím použiješ preset. Ukládá barvy, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí více presetů, Delete je smaže. Pravým tlačítkem duplikuješ nebo smažeš.',sk:'Kliknutím použiješ preset. Ukladá farby, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí viac presetov, Delete ich zmaže. Pravým tlačidlom duplikuješ alebo zmažeš.',bg:'С клик прилагаш пресет. Запазва цветове, интензивност и вкл/изкл слоеве. Ctrl+клик избира няколко пресета, Delete ги изтрива. С десен бутон дублираш или изтриваш.',hr:'Klikom primjenjuješ preset. Sprema boje, intenzitet i uključene/isključene slojeve. Ctrl+klik označava više preseta, Delete ih briše. Desnim klikom dupliciraš ili brišeš.',ro:'Cu un clic aplici presetarea. Salvează culorile, intensitatea și straturile activate/dezactivate. Ctrl+clic selectează mai multe presetări, Delete le șterge. Cu clic dreapta le duplici sau ștergi.'},
+  'hint_political_style':   {cs:'Když je zvolený styl „Politická", ovládání států světa a krajů ČR je přímo tady ve STYLU.',sk:'Keď je zvolený štýl „Politická", ovládanie štátov sveta a krajov ČR je priamo tu v ŠTÝLE.',bg:'Когато е избран стил „Политическа", управлението на държавите и областите на Чехия е точно тук в СТИЛ.',hr:'Kad je odabran stil „Politička", upravljanje državama svijeta i regijama ČR je izravno ovdje u STILU.',ro:'Când e ales stilul „Politică", controlul statelor lumii și regiunilor Cehiei este chiar aici, în STIL.'},
+  'hint_via_points':        {cs:'Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.',sk:'Pridaj zastávky medzi A a B. Trasa sa prepočíta automaticky.',bg:'Добави спирки между A и B. Маршрутът се преизчислява автоматично.',hr:'Dodaj stanice između A i B. Ruta se automatski preračunava.',ro:'Adaugă opriri între A și B. Traseul se recalculează automat.'},
+  'hint_perimeter':         {cs:'Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.',sk:'Zadaj radius číselne, vyber metre/kilometre a klikni do mapy (tlačidlo svieti, kým je vkladanie zapnuté). Hotový perimeter vyberieš kliknutím priamo v mape: ťahom bodu A posunieš stred, bodom B meníš radius, kolieskom myši nad ním plynule zväčšuješ/zmenšuješ, Delete ho zmaže.',bg:'Въведи радиус числово, избери метри/километри и кликни в картата (бутонът свети, докато вмъкването е включено). Готовия периметър избираш с клик направо в картата: с точка A местиш центъра, с точка B променяш радиуса, с колелцето на мишката плавно увеличаваш/намаляваш, Delete го изтрива.',hr:'Unesi radijus brojčano, odaberi metre/kilometre i klikni na kartu (gumb svijetli dok je unos uključen). Gotov perimetar odabireš klikom izravno na karti: povlačenjem točke A pomičeš središte, točkom B mijenjaš radijus, kotačićem miša glatko povećavaš/smanjuješ, Delete ga briše.',ro:'Introdu raza numeric, alege metri/kilometri și dă clic pe hartă (butonul luminează cât timp inserarea e activă). Perimetrul gata îl selectezi cu clic direct pe hartă: trăgând punctul A muți centrul, cu punctul B schimbi raza, cu rotița mouse-ului deasupra mărești/micșorezi lin, Delete îl șterge.'},
+  'hint_distance':          {cs:'Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.',sk:'Zapni režim, chyť mapu v bode A a ťahaj do bodu B. Hotovú vzdialenosť vyberieš kliknutím v mape, koncové body A/B môžeš presúvať a celú linku môžeš presunúť ťahaním za čiaru.',bg:'Включи режима, хвани картата в точка A и дърпай до точка B. Готовото разстояние избираш с клик в картата, крайните точки A/B могат да се местят, а цялата линия можеш да преместиш с дърпане на линията.',hr:'Uključi način rada, uhvati kartu u točki A i povuci do točke B. Gotovu udaljenost odabireš klikom na karti, krajnje točke A/B možeš povlačiti, a cijelu liniju možeš pomaknuti povlačenjem crte.',ro:'Activează modul, prinde harta în punctul A și trage până la punctul B. Distanța gata o selectezi cu clic pe hartă, punctele A/B pot fi trase, iar întreaga linie poate fi mutată trăgând de ea.'},
+  'hint_arrow':             {cs:'Zapni režim a klikni do mapy dvakrát: první klik = začátek (ocas), druhý = hrot. Šipku vybereš kliknutím na ni, pak táhni za body T/H = posun konců. Barva a tloušťka se vztahují na vybranou. Vyrenderuje se i do videa.',sk:'Zapni režim a klikni do mapy dvakrát: prvý klik = začiatok (chvost), druhý = hrot. Šípku vyberieš kliknutím na ňu, potom ťahaj za body T/H = posun koncov. Farba a hrúbka sa vzťahujú na vybranú. Vyrenderuje sa aj do videa.',bg:'Включи режима и кликни в картата два пъти: първи клик = начало (опашка), втори = връх. Стрелката избираш с клик върху нея, после дърпай точките T/H = местене на краищата. Цветът и дебелината важат за избраната. Ще се визуализира и във видеото.',hr:'Uključi način rada i klikni na kartu dvaput: prvi klik = početak (rep), drugi = vrh. Strelicu odabireš klikom na nju, zatim povuci točke T/H = pomak krajeva. Boja i debljina odnose se na odabranu. Renderirat će se i u video.',ro:'Activează modul și dă clic pe hartă de două ori: primul clic = început (coadă), al doilea = vârf. Săgeata se selectează cu clic pe ea, apoi tragi punctele T/H = mutarea capetelor. Culoarea și grosimea se aplică celei selectate. Se va reda și în video.'},
+  'hint_3d_model':          {cs:'Nahraj .glb (binární glTF). Když model leží na boku, přepni „Osa nahoru" (glTF=Y, Blender/CAD=Z). Otočení Y = směr, Náklon X/Z = naklonění. „Přichytit k povrchu" ho postaví na zem. Umístěný model přesuneš tažením za modrý bod přímo v mapě. Zapni „Vrhat stín" a táhni žluté slunce — stín se podle něj otáčí a prodlužuje. Vše se vyrenderuje i do videa. Pro 3D pohled nakloň mapu nebo zapni glóbus.',sk:'Nahraj .glb (binárny glTF). Keď model leží na boku, prepni „Os nahor" (glTF=Y, Blender/CAD=Z). Otočenie Y = smer, Náklon X/Z = naklonenie. „Prichytiť k povrchu" ho postaví na zem. Umiestnený model presunieš ťahaním za modrý bod priamo v mape. Zapni „Vrhať tieň" a ťahaj žlté slnko — tieň sa podľa neho otáča a predlžuje. Všetko sa vyrenderuje aj do videa. Pre 3D pohľad naklop mapu alebo zapni glóbus.',bg:'Качи .glb (двоичен glTF). Ако моделът лежи настрани, превключи „Ос нагоре" (glTF=Y, Blender/CAD=Z). Завъртане Y = посока, Наклон X/Z = накланяне. „Залепи за повърхността" го поставя на земята. Поставения модел местиш с дърпане на синята точка направо в картата. Включи „Хвърляй сянка" и дърпай жълтото слънце — сянката се завърта и удължава според него. Всичко се визуализира и във видеото. За 3D изглед наклони картата или включи глобус.',hr:'Učitaj .glb (binarni glTF). Kad model leži na boku, prebaci „Os prema gore" (glTF=Y, Blender/CAD=Z). Rotacija Y = smjer, Nagib X/Z = naginjanje. „Prihvati na površinu" postavlja ga na tlo. Postavljeni model pomičeš povlačenjem plave točke izravno na karti. Uključi „Baci sjenu" i povuci žuto sunce — sjena se okreće i produljuje prema njemu. Sve se renderira i u video. Za 3D pogled nagni kartu ili uključi globus.',ro:'Încarcă .glb (glTF binar). Dacă modelul stă pe o parte, comută „Axa în sus" (glTF=Y, Blender/CAD=Z). Rotația Y = direcție, Înclinare X/Z = înclinare. „Lipește de suprafață" îl așază pe sol. Modelul plasat îl muți trăgând punctul albastru direct pe hartă. Activează „Aruncă umbră" și trage soarele galben — umbra se rotește și se alungește după el. Totul se va reda și în video. Pentru vedere 3D, înclină harta sau activează globul.'},
+  'hint_labels':            {cs:'Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.',sk:'Klikni na popisok a vyberieš ho. Klikom na popisok ho rovno prepíšeš, Enter uloží. Popisok môžeš aj presunúť; veľkostný slider mení všetky popisky naraz.',bg:'Кликни върху надпис, за да го избереш. С клик върху него го редактираш веднага, Enter записва. Надписа можеш и да местиш; плъзгачът за размер променя всички надписи наведнъж.',hr:'Klikni na oznaku i odabireš je. Klikom na oznaku je odmah uređuješ, Enter sprema. Oznaku možeš i povući; klizač veličine mijenja sve oznake odjednom.',ro:'Dă clic pe etichetă pentru a o selecta. Cu clic pe etichetă o rescrii direct, Enter salvează. Eticheta poate fi și trasă; cursorul de dimensiune schimbă toate etichetele deodată.'},
+  'hint_weather_radar':     {cs:'Radar srážek je živý (RainViewer, ~10min). Satelitní oblačnost je nejnovější denní snímek z NASA GIBS (viditelné pásmo – nejlépe přes den; v noci je tmavý).',sk:'Radar zrážok je živý (RainViewer, ~10min). Satelitná oblačnosť je najnovšia denná snímka z NASA GIBS (viditeľné pásmo – najlepšie cez deň; v noci je tmavá).',bg:'Радарът за валежи е на живо (RainViewer, ~10 мин). Спътниковата облачност е най-новото дневно изображение от NASA GIBS (видим диапазон – най-добре през деня; през нощта е тъмно).',hr:'Radar oborina je uživo (RainViewer, ~10 min). Satelitska naoblaka je najnovija dnevna snimka NASA GIBS (vidljivi pojas – najbolje danju; noću je taman).',ro:'Radarul de precipitații este live (RainViewer, ~10 min). Norii din satelit sunt cea mai recentă imagine de zi de la NASA GIBS (banda vizibilă – cel mai bine ziua; noaptea e întunecat).'},
+  'hint_openweather':       {cs:'Globální teplotní/srážková/větrná mapa jako Windy (model OpenWeather). Stačí bezplatný klíč z openweathermap.org → API keys, vlož ho sem. Krytí ovládá všechny vrstvy počasí. Vrstvy se promítnou i do exportu videa.',sk:'Globálna teplotná/zrážková/veterná mapa ako Windy (model OpenWeather). Stačí bezplatný kľúč z openweathermap.org → API keys, vlož ho sem. Krytie ovláda všetky vrstvy počasia. Vrstvy sa premietnu aj do exportu videa.',bg:'Глобална температурна/валежна/ветрова карта като Windy (модел OpenWeather). Нужен е само безплатен ключ от openweathermap.org → API keys, постави го тук. Покритието управлява всички слоеве за времето. Слоевете се пренасят и в експорта на видео.',hr:'Globalna temperaturna/oborinska/vjetrovna karta poput Windyja (model OpenWeather). Dovoljan je besplatan ključ s openweathermap.org → API keys, umetni ga ovdje. Prekrivenost upravlja svim slojevima vremena. Slojevi se prenose i u izvoz videa.',ro:'Hartă globală de temperatură/precipitații/vânt ca Windy (model OpenWeather). E nevoie doar de o cheie gratuită de pe openweathermap.org → API keys, inserată aici. Acoperirea controlează toate straturile meteo. Straturile apar și în exportul video.'},
+  'hint_rot_mode_summary':  {cs:'Rovně = pevná orientace. Natočit = rotace podle trasy + ruční korekce.',sk:'Rovno = pevná orientácia. Natočiť = rotácia podľa trasy + ručná korekcia.',bg:'Право = фиксирана ориентация. Завърти = завъртане по маршрута + ръчна корекция.',hr:'Ravno = fiksna orijentacija. Zakreni = rotacija prema ruti + ručna korekcija.',ro:'Drept = orientare fixă. Rotire = rotație după traseu + corecție manuală.'},
+  'hint_obj_smooth':        {cs:'Změkčí pohyb objektu (auta) na trase s mnoha malými zatáčkami, aby se „neklepal". Vyšší hodnota = plynulejší, ale lehce zaostává za přesnou polohou.',sk:'Zmäkčí pohyb objektu (auta) na trase s mnohými malými zákrutami, aby sa „netriasol". Vyššia hodnota = plynulejšie, ale mierne zaostáva za presnou polohou.',bg:'Омекотява движението на обекта (колата) по маршрут с много малки завои, за да не „трепери". По-висока стойност = по-плавно, но леко изостава от точната позиция.',hr:'Ublažava kretanje objekta (auta) na ruti s mnogo malih zavoja, kako se ne bi „tresao". Veća vrijednost = glatkije, ali lagano kasni za točnom pozicijom.',ro:'Atenuează mișcarea obiectului (mașinii) pe un traseu cu multe curbe mici, ca să nu „tremure". Valoare mai mare = mai lin, dar rămâne puțin în urma poziției exacte.'},
+  'hint_project':           {cs:'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.',sk:'Projekt uloží trasu, vzhľad mapy, ikonky, popisky, animáciu aj politické farbenie. Záložky hore môžeš presúvať myšou.',bg:'Проектът запазва маршрута, изгледа на картата, иконите, надписите, анимацията и политическото оцветяване. Раздели горе можеш да местиш с мишката.',hr:'Projekt sprema rutu, izgled karte, ikone, oznake, animaciju i političko bojanje. Kartice gore možeš povlačiti mišem.',ro:'Proiectul salvează traseul, aspectul hărții, pictogramele, etichetele, animația și colorarea politică. Filele de sus pot fi trase cu mouse-ul.'},
+  'hint_batch_export':      {cs:'Vyrenderuje stejnou scénu/animaci do všech zaškrtnutých poměrů stran za sebou (každý soubor dostane příponu …-16x9, …-9x16). Použije aktuální formát videa i průhlednost. Jiný poměr stran než tvůj náhled se ořízne na střed.',sk:'Vyrenderuje rovnakú scénu/animáciu do všetkých zaškrtnutých pomerov strán za sebou (každý súbor dostane príponu …-16x9, …-9x16). Použije aktuálny formát videa aj priehľadnosť. Iný pomer strán ako tvoj náhľad sa orezá na stred.',bg:'Рендерира същата сцена/анимация във всички избрани съотношения последователно (всеки файл получава наставка …-16x9, …-9x16). Използва текущия видео формат и прозрачност. Друго съотношение от твоя преглед се изрязва в центъра.',hr:'Renderira istu scenu/animaciju u sve označene omjere slike zaredom (svaka datoteka dobiva nastavak …-16x9, …-9x16). Koristi trenutni format videa i prozirnost. Drugi omjer slike od tvog pregleda izrezuje se na sredinu.',ro:'Randează aceeași scenă/animație în toate rapoartele bifate, pe rând (fiecare fișier primește sufixul …-16x9, …-9x16). Folosește formatul video curent și transparența. Un alt raport de aspect decât previzualizarea ta este decupat central.'},
+  'Zatím není přidaný žádný perimetr.': {cs:'Zatím není přidaný žádný perimetr.',sk:'Zatiaľ nie je pridaný žiadny perimeter.',bg:'Все още няма добавен периметър.',hr:'Još nije dodan nijedan perimetar.',ro:'Încă niciun perimetru adăugat.',en:'No perimeter added yet.'},
+  'Zatím není přidaná žádná vzdálenost.': {cs:'Zatím není přidaná žádná vzdálenost.',sk:'Zatiaľ nie je pridaná žiadna vzdialenosť.',bg:'Все още няма добавено разстояние.',hr:'Još nije dodana nijedna udaljenost.',ro:'Încă nicio distanță adăugată.',en:'No distance added yet.'},
+  'Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.': {cs:'Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.',sk:'Zatiaľ žiadne body. Ctrl + klik pridáva bod. Ctrl + klik na existujúci bod ho zmaže. Backspace vráti posledný krok.',bg:'Все още няма точки. Ctrl + клик добавя точка. Ctrl + клик върху съществуваща точка я изтрива. Backspace връща последната стъпка.',hr:'Još nema točaka. Ctrl + klik dodaje točku. Ctrl + klik na postojeću točku je briše. Backspace vraća zadnji korak.',ro:'Încă niciun punct. Ctrl + clic adaugă un punct. Ctrl + clic pe un punct existent îl șterge. Backspace anulează ultimul pas.',en:'No points yet. Ctrl+click adds a point. Ctrl+click on an existing point deletes it. Backspace undoes the last step.'},
+  'Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.': {cs:'Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.',sk:'Zatiaľ žiadne ikonky. Nahraj ikonku a klikni do mapy.',bg:'Все още няма икони. Качи икона и кликни в картата.',hr:'Još nema ikona. Učitaj ikonu i klikni na kartu.',ro:'Încă nicio pictogramă. Încarcă o pictogramă și dă clic pe hartă.',en:'No icons yet. Upload an icon and click the map.'},
+  'Zatím žádné popisky. Zadej text a klikni do mapy.': {cs:'Zatím žádné popisky. Zadej text a klikni do mapy.',sk:'Zatiaľ žiadne popisky. Zadaj text a klikni do mapy.',bg:'Все още няма надписи. Въведи текст и кликни в картата.',hr:'Još nema oznaka. Unesi tekst i klikni na kartu.',ro:'Încă nicio etichetă. Introdu textul și dă clic pe hartă.',en:'No labels yet. Type text and click the map.'},
+
   // Buttons
   'Načíst styl':     {cs:'Načíst styl',sk:'Načítať štýl',bg:'Зареди стил',hr:'Učitaj stil',ro:'Încarcă stil'},
   'Aplikovat barvy': {cs:'Aplikovat barvy',sk:'Použiť farby',bg:'Приложи цветове',hr:'Primijeni boje',ro:'Aplică culori'},
+  'Zóny': {cs:'Zóny',sk:'Zóny',bg:'Зони',hr:'Zone',ro:'Zone',en:'Zones'},
   '+ Přidat preset': {cs:'+ Přidat preset',sk:'+ Pridať preset',bg:'+ Добави пресет',hr:'+ Dodaj preset',ro:'+ Adaugă preset'},
   'Načíst':          {cs:'Načíst',sk:'Načítať',bg:'Зареди',hr:'Učitaj',ro:'Încarcă'},
   'Přejmenovat':     {cs:'Přejmenovat',sk:'Premenovať',bg:'Преименувай',hr:'Preimenuj',ro:'Redenumește'},
@@ -2004,6 +2037,25 @@ const I18N = {
 };
 
 const EN_OVERRIDES = {
+  "hint_preset_click": "Click to apply a preset. Saves colors, intensity and enabled/disabled layers. Ctrl+click selects multiple presets, Delete removes them. Right-click to duplicate or delete.",
+  "hint_political_style": "When the \"Political\" style is selected, control of world countries and CZ regions is right here in STYLE.",
+  "hint_via_points": "Add stops between A and B. The route recalculates automatically.",
+  "hint_perimeter": "Enter a radius number, pick metres/kilometres and click the map (the button stays lit while inserting is on). Select a finished perimeter by clicking it on the map: dragging point A moves the centre, point B changes the radius, the mouse wheel over it smoothly grows/shrinks it, Delete removes it.",
+  "hint_distance": "Turn on the mode, grab the map at point A and drag to point B. Select a finished distance by clicking it on the map; endpoints A/B can be dragged, and the whole line can be moved by dragging it.",
+  "hint_arrow": "Turn on the mode and click the map twice: first click = start (tail), second = tip. Select an arrow by clicking it, then drag the T/H points to move the ends. Colour and thickness apply to the selected arrow. It renders into video too.",
+  "hint_3d_model": "Upload a .glb (binary glTF). If the model lies on its side, toggle \"Up axis\" (glTF=Y, Blender/CAD=Z). Y rotation = heading, X/Z tilt = leaning. \"Snap to surface\" plants it on the ground. Drag the blue point on the map to move a placed model. Turn on \"Cast shadow\" and drag the yellow sun — the shadow rotates and lengthens accordingly. Everything renders into video too. Tilt the map or turn on the globe for a 3D view.",
+  "hint_labels": "Click a label to select it. Clicking a label lets you retype it directly, Enter saves. Labels can be dragged too; the size slider changes all labels at once.",
+  "hint_weather_radar": "The precipitation radar is live (RainViewer, ~10 min). Cloud cover is the latest daily NASA GIBS pass (visible band — best during the day; dark at night).",
+  "hint_openweather": "A global temperature/precipitation/wind map like Windy (OpenWeather model). Just paste a free key from openweathermap.org → API keys here. Coverage controls all weather layers. Layers appear in the video export too.",
+  "hint_rot_mode_summary": "Straight = fixed orientation. Turn = rotation following the route + manual correction.",
+  "hint_obj_smooth": "Softens the object's (car's) motion on a route with many small turns so it doesn't \"jitter\". A higher value is smoother but lags slightly behind the exact position.",
+  "hint_project": "A project saves the route, map appearance, icons, labels, animation and political colouring. The tabs above can be dragged with the mouse.",
+  "hint_batch_export": "Renders the same scene/animation into every checked aspect ratio in sequence (each file gets a …-16x9, …-9x16 suffix). Uses the current video format and transparency. An aspect ratio other than your preview is centre-cropped.",
+  "Zatím není přidaný žádný perimetr.": "No perimeter added yet.",
+  "Zatím není přidaná žádná vzdálenost.": "No distance added yet.",
+  "Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.": "No points yet. Ctrl+click adds a point. Ctrl+click on an existing point deletes it. Backspace undoes the last step.",
+  "Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.": "No icons yet. Upload an icon and click the map.",
+  "Zatím žádné popisky. Zadej text a klikni do mapy.": "No labels yet. Type text and click the map.",
   "btn_undo": "Undo",
   "btn_redo": "Redo",
   "btn_refresh": "Refresh",
@@ -3526,7 +3578,7 @@ function refreshBaseStyleSelect(){
   const builtinGroup = document.createElement('optgroup');
   builtinGroup.label = t('Základní styly');
   [{k:'liberty',l:'Liberty (výchozí)'},{k:'bright',l:'Bright'},{k:'positron',l:'Positron'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
-    const o = document.createElement('option'); o.value = s.k; o.textContent = s.l; builtinGroup.appendChild(o);
+    const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l); builtinGroup.appendChild(o);
   });
   sel.appendChild(builtinGroup);
   if(custom.length){
@@ -5072,7 +5124,7 @@ function renderScenePerimeterList(){
   const list = $('scenePerimeterList'); if(!list) return;
   list.innerHTML = '';
   if(!state.scenePerimeters.length){
-    list.innerHTML = '<div class="small">Zatím není přidaný žádný perimetr.</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím není přidaný žádný perimetr.')) + '</div>';
     return;
   }
   state.scenePerimeters.forEach((item, idx) => {
@@ -5608,7 +5660,7 @@ function renderSceneDistanceList(){
   const list = $('sceneDistanceList'); if(!list) return;
   list.innerHTML = '';
   if(!state.sceneDistances.length){
-    list.innerHTML = '<div class="small">Zatím není přidaná žádná vzdálenost.</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím není přidaná žádná vzdálenost.')) + '</div>';
     return;
   }
   state.sceneDistances.forEach((item, idx) => {
@@ -8253,7 +8305,7 @@ function renderWaypointList(){
     if(!container) return;
     container.innerHTML = '';
     if(!state.manualViaPoints.length){
-      container.innerHTML = '<div class="small">Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.</div>';
+      container.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.')) + '</div>';
       return;
     }
     state.manualViaPoints.forEach((pt, idx) => {
@@ -8408,7 +8460,7 @@ function renderSceneIconList(){
   const list = $('sceneIconList'); if(!list) return;
   list.innerHTML = '';
   if(!state.sceneIcons.length){
-    list.innerHTML = '<div class="small">Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.')) + '</div>';
     return;
   }
   state.sceneIcons.forEach((item, idx) => {
@@ -8510,7 +8562,7 @@ function renderMapLabelList(){
   const list = $('mapLabelList'); if(!list) return;
   list.innerHTML = '';
   if(!state.mapLabels.length){
-    list.innerHTML = '<div class="small">Zatím žádné popisky. Zadej text a klikni do mapy.</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné popisky. Zadej text a klikni do mapy.')) + '</div>';
     return;
   }
   state.mapLabels.forEach((item, idx) => {
@@ -13288,6 +13340,19 @@ function applyLang(lang) {
   try{ document.documentElement.lang = lang; }catch(e){}   // WCAG 3.1.2 — declare the active UI language
   setTimeout(applyPreferredMapLabelLanguage, 0);
   setTimeout(applyPreferredMapLabelLanguage, 120);
+  // The base-style <select> is built once via document.createElement + textContent
+  // (never wired through the data-i18n sweep below), so its options — including
+  // "Liberty (výchozí)" — stayed Czech forever regardless of the chosen UI language.
+  try{ refreshBaseStyleSelect(); }catch(e){}
+  // Empty-state list placeholders ("Zatím žádné popisky…" etc.) are plain t()-wrapped
+  // innerHTML written at RENDER time, not data-i18n elements — so switching language
+  // left them showing whatever language was active when the list last (re)rendered,
+  // until the next add/remove. Force a re-render on every language switch too.
+  try{ renderScenePerimeterList(); }catch(e){}
+  try{ renderSceneDistanceList(); }catch(e){}
+  try{ renderSceneIconList(); }catch(e){}
+  try{ renderMapLabelList(); }catch(e){}
+  try{ renderWaypointList(); }catch(e){}
 
   // Update lang buttons
   document.querySelectorAll('.lang-btn').forEach(btn => {
