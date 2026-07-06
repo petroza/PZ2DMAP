@@ -5746,6 +5746,14 @@ function buildPreferredMapLabelExpr(lang){
   const props = getPreferredMapLabelProps(lang || 'cs');
   const baseExpr = ['coalesce', ...props.map(p => ['get', p])];
   const aliases = getMapLabelAliasPairs(lang || 'cs');
+  // A MapLibre "match" expression needs at least one label/output pair — with zero
+  // aliases (currently English) the old code emitted ["match", input, fallback] (2
+  // arguments), which MapLibre's style validator rejects ("Expected at least 4
+  // arguments, but found only 2"). setLayoutProperty then threw and was silently
+  // swallowed by the caller's try/catch, so the text-field update never applied and
+  // map labels stayed in whatever language was active before — the reported "flag
+  // click has no effect" bug. Skip the match/alias wrapper entirely when unneeded.
+  if(!aliases.length) return baseExpr;
   const matchExpr = ['match', ['var', 'nm']];
   aliases.forEach(([from, to]) => { matchExpr.push(from, to); });
   matchExpr.push(['var', 'nm']);
