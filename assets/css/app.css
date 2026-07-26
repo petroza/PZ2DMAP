@@ -87,6 +87,9 @@ input[type=color]:hover{border-color:var(--accent)}
 .preset-card-name{max-width:100%;font-size:8px;color:var(--tx3);white-space:normal;overflow:visible;line-height:1.25;text-align:center}
 .preset-card.active .preset-card-name{color:#fff}
 .preset-card.multi-selected{border-color:#26d0c4!important;box-shadow:0 0 0 2px rgba(38,208,196,.72),0 0 18px rgba(38,208,196,.18);background:linear-gradient(135deg,rgba(38,208,196,.16),var(--bg3));color:#fff}
+/* The preset the app opens with — a corner star, so it reads even on the active tile. */
+.preset-card.is-default{position:relative}
+.preset-card.is-default::after{content:'★';position:absolute;top:2px;right:4px;font-size:9px;line-height:1;color:#f2c200;text-shadow:0 0 3px rgba(0,0,0,.6);pointer-events:none}
 .preset-card.multi-selected .preset-card-name{color:#dffdfa}
 .preset-card.multi-selected .preset-card-number{color:#fff}
 .preset-context-menu{position:fixed;z-index:9999;background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 6px 24px rgba(0,0,0,.5);padding:4px 0;min-width:130px;display:none;animation:ctxFade .08s ease}

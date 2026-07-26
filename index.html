@@ -98,6 +98,9 @@ input[type=color]:hover{border-color:var(--accent)}
 .preset-card-name{max-width:100%;font-size:8px;color:var(--tx3);white-space:normal;overflow:visible;line-height:1.25;text-align:center}
 .preset-card.active .preset-card-name{color:#fff}
 .preset-card.multi-selected{border-color:#26d0c4!important;box-shadow:0 0 0 2px rgba(38,208,196,.72),0 0 18px rgba(38,208,196,.18);background:linear-gradient(135deg,rgba(38,208,196,.16),var(--bg3));color:#fff}
+/* The preset the app opens with — a corner star, so it reads even on the active tile. */
+.preset-card.is-default{position:relative}
+.preset-card.is-default::after{content:'★';position:absolute;top:2px;right:4px;font-size:9px;line-height:1;color:#f2c200;text-shadow:0 0 3px rgba(0,0,0,.6);pointer-events:none}
 .preset-card.multi-selected .preset-card-name{color:#dffdfa}
 .preset-card.multi-selected .preset-card-number{color:#fff}
 .preset-context-menu{position:fixed;z-index:9999;background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 6px 24px rgba(0,0,0,.5);padding:4px 0;min-width:130px;display:none;animation:ctxFade .08s ease}
@@ -681,6 +684,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <h3 data-i18n="Presety ">Presety </h3>
         <div id="presetTileGrid" class="preset-grid preset-grid-numbered"></div>
         <div id="presetContextMenu" class="preset-context-menu" style="display:none">
+          <button type="button" class="preset-context-item" data-action="setdefault" data-i18n="★ Nastavit jako výchozí">★ Nastavit jako výchozí</button>
           <button type="button" class="preset-context-item" data-action="duplicate" data-i18n="⎘ Duplikovat">⎘ Duplikovat</button>
           <button type="button" class="preset-context-item" data-action="rename" data-i18n="✎ Přejmenovat">✎ Přejmenovat</button>
           <div class="preset-context-sep"></div>
@@ -721,7 +725,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-primary" id="savePresetBtn" data-i18n="+ Přidat preset">+ Přidat preset</button>
           <button type="button" class="btn btn-sm" id="updatePresetBtn" data-i18n="Uložit změny">Uložit změny</button>
         </div>
-        <p class="hint" data-i18n="hint_preset_manage">Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem.</p>
+        <p class="hint" data-i18n="hint_preset_manage">Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem a zároveň uloží celý panel na server — přidané i smazané presety uvidí všichni.</p>
       </div>
       <div class="section" id="politicalStylePanel" style="display:none">
         <h3 data-i18n="Politická mapa">Politická mapa</h3>
@@ -758,7 +762,20 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label class="check"><input id="showRailways" type="checkbox" checked> Železnice</label>
         <label class="check"><input id="showMetro" type="checkbox"> Metro (Praha)</label>
         <label class="check"><input id="showTransit" type="checkbox"> MHD – tramvaje a zastávky</label>
-        <p class="hint" data-i18n="hint_transit_zoom">Metro a tramvaje jsou v mapových datech až od většího přiblížení — ve výřezu celé republiky se nevykreslí, přibliž na město.</p>
+        <p class="hint" data-i18n="hint_transit_zoom">Metro se vykreslí v každém přiblížení, každá linka ve své barvě (A zelená, B žlutá, C červená). Tramvaje jsou v mapových datech až od většího přiblížení — na celou republiku se nevykreslí.</p>
+      </div>
+      <div class="section" id="sunShadowSection">
+        <h3 data-i18n="Slunce a stíny">Slunce a stíny</h3>
+        <label class="check"><input id="sunShadowsOn" type="checkbox"> Vrhat stíny budov</label>
+        <label style="margin-top:10px" data-i18n="Směr slunce">Směr slunce <span class="val" id="sunAzimuthVal">135°</span></label>
+        <input id="sunAzimuth" type="range" min="0" max="360" step="1" value="135">
+        <label data-i18n="Výška slunce">Výška slunce <span class="val" id="sunElevationVal">35°</span></label>
+        <input id="sunElevation" type="range" min="5" max="85" step="1" value="35">
+        <label data-i18n="Síla stínu">Síla stínu <span class="val" id="shadowOpacityVal">45 %</span></label>
+        <input id="shadowOpacity" type="range" min="0" max="100" step="1" value="45">
+        <label data-i18n="Měkkost stínu">Měkkost stínu <span class="val" id="shadowSoftnessVal">50 %</span></label>
+        <input id="shadowSoftness" type="range" min="0" max="100" step="1" value="50">
+        <p class="hint" data-i18n="hint_sun_shadows">Slunce nasvítí stěny 3D budov a zároveň vrhá jejich stíny. Stíny se počítají z výšek budov, takže se objeví od přiblížení, kde má mapa 3D budovy (zhruba od zoomu 14). Nižší slunce = delší stíny. Vyrenderuje se i do videa.</p>
       </div>
       <div class="section" id="countryBordersOverlaySection">
         <h3 data-i18n="Hranice států overlay">Hranice států overlay</h3>
@@ -1637,7 +1654,14 @@ const I18N = {
   'Hranice (vrstva)':          {cs:'Hranice',sk:'Hranice',bg:'Граници',hr:'Granice',ro:'Frontiere'},
   'Názvy ulic a míst':         {cs:'Názvy ulic a míst',sk:'Názvy ulíc a miest',bg:'Имена на улици и места',hr:'Nazivi ulica i mjesta',ro:'Nume de străzi și locuri'},
   'Vedlejší silnice (vrstva)': {cs:'Vedlejší silnice',sk:'Vedľajšie cesty',bg:'Второст. пътища',hr:'Sporedne ceste',ro:'Drumuri secundare'},
-  'hint_transit_zoom': {cs:'Metro a tramvaje jsou v mapových datech až od většího přiblížení — ve výřezu celé republiky se nevykreslí, přibliž na město.',sk:'Metro a električky sú v mapových dátach až od väčšieho priblíženia — vo výreze celej republiky sa nevykreslia, priblíž na mesto.',bg:'Метрото и трамваите са в картните данни само при по-голямо приближение — при изглед на цялата държава не се изчертават, приближи към града.',hr:'Metro i tramvaji su u podacima karte tek od većeg približenja — u prikazu cijele države neće se iscrtati, približi na grad.',ro:'Metroul și tramvaiele apar în datele hărții doar la o apropiere mai mare — în cadrul întregii țări nu se desenează, apropie pe oraș.'},
+  'hint_transit_zoom': {cs:'Metro se vykreslí v každém přiblížení, každá linka ve své barvě (A zelená, B žlutá, C červená). Tramvaje jsou v mapových datech až od většího přiblížení — na celou republiku se nevykreslí.',sk:'Metro a električky sú v mapových dátach až od väčšieho priblíženia — vo výreze celej republiky sa nevykreslia, priblíž na mesto.',bg:'Метрото и трамваите са в картните данни само при по-голямо приближение — при изглед на цялата държава не се изчертават, приближи към града.',hr:'Metro i tramvaji su u podacima karte tek od većeg približenja — u prikazu cijele države neće se iscrtati, približi na grad.',ro:'Metroul și tramvaiele apar în datele hărții doar la o apropiere mai mare — în cadrul întregii țări nu se desenează, apropie pe oraș.'},
+  'Slunce a stíny': {cs:'Slunce a stíny',sk:'Slnko a tiene',bg:'Слънце и сенки',hr:'Sunce i sjene',ro:'Soare și umbre',en:'Sun and shadows'},
+  'Vrhat stíny budov': {cs:'Vrhat stíny budov',sk:'Vrhať tiene budov',bg:'Хвърляй сенки на сградите',hr:'Baci sjene zgrada',ro:'Aruncă umbrele clădirilor',en:'Cast building shadows'},
+  'Směr slunce': {cs:'Směr slunce',sk:'Smer slnka',bg:'Посока на слънцето',hr:'Smjer sunca',ro:'Direcția soarelui',en:'Sun direction'},
+  'Výška slunce': {cs:'Výška slunce',sk:'Výška slnka',bg:'Височина на слънцето',hr:'Visina sunca',ro:'Înălțimea soarelui',en:'Sun elevation'},
+  'Síla stínu': {cs:'Síla stínu',sk:'Sila tieňa',bg:'Сила на сянката',hr:'Jačina sjene',ro:'Intensitatea umbrei',en:'Shadow strength'},
+  'Měkkost stínu': {cs:'Měkkost stínu',sk:'Mäkkosť tieňa',bg:'Мекота на сянката',hr:'Mekoća sjene',ro:'Difuzia umbrei',en:'Shadow softness'},
+  'hint_sun_shadows': {cs:'Slunce nasvítí stěny 3D budov a zároveň vrhá jejich stíny. Stíny se počítají z výšek budov, takže se objeví od přiblížení, kde má mapa 3D budovy (zhruba od zoomu 14). Nižší slunce = delší stíny. Vyrenderuje se i do videa.',sk:'Slnko nasvieti steny 3D budov a zároveň vrhá ich tiene. Tiene sa počítajú z výšok budov, takže sa objavia od priblíženia, kde má mapa 3D budovy (zhruba od zoomu 14). Nižšie slnko = dlhšie tiene. Vyrenderuje sa aj do videa.',bg:'Слънцето осветява стените на 3D сградите и хвърля техните сенки. Сенките се изчисляват от височините на сградите, затова се появяват от приближението, при което картата има 3D сгради (около zoom 14). По-ниско слънце = по-дълги сенки. Визуализира се и във видеото.',hr:'Sunce osvjetljava zidove 3D zgrada i baca njihove sjene. Sjene se računaju iz visina zgrada, pa se pojavljuju od približenja na kojem karta ima 3D zgrade (otprilike od zooma 14). Niže sunce = duže sjene. Renderira se i u video.',ro:'Soarele luminează pereții clădirilor 3D și le aruncă umbrele. Umbrele se calculează din înălțimile clădirilor, deci apar de la apropierea la care harta are clădiri 3D (aproximativ de la zoom 14). Soare mai jos = umbre mai lungi. Se redă și în video.'},
   'Dálnice': {cs:'Dálnice',sk:'Diaľnice',bg:'Магистрали',hr:'Autoceste',ro:'Autostrăzi',en:'Motorways'},
   'Silnice 1. třídy': {cs:'Silnice 1. třídy',sk:'Cesty I. triedy',bg:'Пътища I клас',hr:'Ceste 1. reda',ro:'Drumuri de clasa I',en:'Primary roads'},
   'Silnice 2. třídy': {cs:'Silnice 2. třídy',sk:'Cesty II. triedy',bg:'Пътища II клас',hr:'Ceste 2. reda',ro:'Drumuri de clasa II',en:'Secondary roads'},
@@ -1951,7 +1975,7 @@ const I18N = {
   'Obnovit': {cs:'Obnovit',sk:'Obnoviť',bg:'Възстанови',hr:'Vrati',ro:'Restaurează'},
   'Zahodit': {cs:'Zahodit',sk:'Zahodiť',bg:'Отхвърли',hr:'Odbaci',ro:'Renunță'},
   '+ Přidat zdroj': {cs:'+ Přidat zdroj',sk:'+ Pridať zdroj',bg:'+ Добави източник',hr:'+ Dodaj izvor',ro:'+ Adaugă sursă'},
-  'hint_preset_manage': {cs:'Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem.',sk:'Klik na dlaždicu preset použije. Pravým tlačidlom ho premenuješ, zduplikuješ alebo zmažeš. „Uložiť zmeny" prepíše aktívny preset aktuálnym vzhľadom.',bg:'Клик върху плочка прилага пресета. С десен бутон го преименуваш, дублираш или изтриваш. „Запази промените" презаписва активния пресет с текущия вид.',hr:'Klik na pločicu primjenjuje preset. Desnom tipkom ga preimenuješ, dupliciraš ili izbrišeš. „Spremi promjene" prepisuje aktivni preset trenutnim izgledom.',ro:'Click pe o placă aplică presetul. Click dreapta îl redenumește, duplică sau șterge. „Salvează modificările" suprascrie presetul activ cu aspectul curent.'},
+  'hint_preset_manage': {cs:'Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem a zároveň uloží celý panel na server — přidané i smazané presety uvidí všichni.',sk:'Klik na dlaždicu preset použije. Pravým tlačidlom ho premenuješ, zduplikuješ alebo zmažeš. „Uložiť zmeny" prepíše aktívny preset aktuálnym vzhľadom.',bg:'Клик върху плочка прилага пресета. С десен бутон го преименуваш, дублираш или изтриваш. „Запази промените" презаписва активния пресет с текущия вид.',hr:'Klik na pločicu primjenjuje preset. Desnom tipkom ga preimenuješ, dupliciraš ili izbrišeš. „Spremi promjene" prepisuje aktivni preset trenutnim izgledom.',ro:'Click pe o placă aplică presetul. Click dreapta îl redenumește, duplică sau șterge. „Salvează modificările" suprascrie presetul activ cu aspectul curent.'},
   'hint_tile_sources': {cs:'Rastrové dlaždice ve formátu {z}/{x}/{y}. Přidaný zdroj se objeví v Základních stylech.',sk:'Rastrové dlaždice vo formáte {z}/{x}/{y}. Pridaný zdroj sa objaví v Základných štýloch.',bg:'Растерни плочки във формат {z}/{x}/{y}. Добавеният източник се появява в Основни стилове.',hr:'Rasterske pločice u formatu {z}/{x}/{y}. Dodani izvor pojavit će se u Osnovnim stilovima.',ro:'Plăci raster în format {z}/{x}/{y}. Sursa adăugată apare în Stiluri de bază.'},
   'hint_camera_keyframes': {cs:'Najeď mapou na 1. záběr a dej „Přidat klíč". Pak na 2., 3. … a přidej další. Kamera jimi po spuštění plynule prolétne v pořadí přidání, rovnoměrně rozložené po celé délce animace.',sk:'Nastav mapu na 1. záber a daj „Pridať kľúč". Potom na 2., 3. … a pridaj ďalší. Kamera nimi po spustení plynule preletí v poradí pridania, rovnomerne rozložené po celej dĺžke animácie.',bg:'Насочи картата към 1-ви кадър и натисни „Добави ключ". После към 2-ри, 3-ти … и добави още. При пускане камерата плавно преминава през тях в реда на добавяне, равномерно по цялата дължина на анимацията.',hr:'Postavi kartu na 1. kadar i klikni „Dodaj ključ". Zatim na 2., 3. … i dodaj još. Kamera nakon pokretanja glatko proleti kroz njih redoslijedom dodavanja, ravnomjerno raspoređeno po cijelom trajanju animacije.',ro:'Adu harta la primul cadru și apasă „Adaugă cheie". Apoi la al 2-lea, al 3-lea … și adaugă altele. La pornire camera trece lin prin ele în ordinea adăugării, distribuite uniform pe toată durata animației.',en:'Point the map at frame 1 and click "Add keyframe". Then frame 2, 3 … and add more. On playback the camera flies smoothly through them in the order added, spread evenly across the whole animation.'},
   'hint_camera_anim': {cs:'Najeď mapou na první místo (posuň, přibliž, nakloň) a ulož „Nastavit start". Pak najeď na druhé místo a ulož „Nastavit cíl". Animace pak kameru plynule přeletí z místa na místo, nebo přiblíží/oddálí. Funguje i bez trasy — ideální pro zpravodajské přelety. Délku řídí „Délka animace" výše.',sk:'Nastav mapu na prvé miesto (posuň, priblíž, nakloň) a ulož „Nastaviť štart". Potom prejdi na druhé miesto a ulož „Nastaviť cieľ". Animácia potom kameru plynule preletí z miesta na miesto, alebo priblíži/oddiali. Funguje aj bez trasy — ideálne pre spravodajské prelety. Dĺžku riadi „Dĺžka animácie" vyššie.',bg:'Насочи картата към първото място (премести, приближи, наклони) и запази „Задай начало". После премини към второто място и запази „Задай цел". Анимацията плавно прелита камерата от място на място или приближава/отдалечава. Работи и без маршрут — идеално за новинарски прелети. Дължината се управлява от „Дължина на анимацията" по-горе.',hr:'Postavi kartu na prvo mjesto (pomakni, približi, nagni) i spremi „Postavi početak". Zatim prijeđi na drugo mjesto i spremi „Postavi cilj". Animacija zatim glatko preleti kameru s mjesta na mjesto ili približi/udalji. Radi i bez rute — idealno za novinarske prelete. Trajanjem upravlja „Trajanje animacije" iznad.',ro:'Adu harta la primul loc (deplasează, apropie, înclină) și salvează „Setează start". Apoi mergi la al doilea loc și salvează „Setează ținta". Animația apoi mută lin camera dintr-un loc în altul sau apropie/depărtează. Funcționează și fără traseu — ideal pentru survoluri de știri. Durata o controlează „Durata animației" de mai sus.',en:'Point the map at the first spot (pan, zoom, tilt) and save "Set start". Then move to the second spot and save "Set target". The animation then flies the camera smoothly from place to place, or zooms in/out. Works without a route too — ideal for news flyovers. Length is controlled by "Animation length" above.'},
@@ -1979,6 +2003,7 @@ const I18N = {
   'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.': {cs:'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.',sk:'Projekt uloží trasu, vzhľad mapy, ikonky, popisky, animáciu aj politické farbenie. Záložky hore môžeš preťahovať myšou.',bg:'Проектът запазва маршрута, изгледа на картата, иконките, надписите, анимацията и политическото оцветяване. Разделите горе можеш да пренареждаш с мишката.',hr:'Projekt sprema rutu, izgled karte, ikone, oznake, animaciju i političko bojenje. Kartice gore možeš povlačiti mišem.',ro:'Proiectul salvează traseul, aspectul hărții, pictogramele, etichetele, animația și colorarea politică. Filele de sus pot fi reordonate cu mouse-ul.',en:'A project saves the route, map style, icons, labels, animation and political coloring. You can drag the tabs above to reorder them.'},
   'Načítám…': {cs:'Načítám…',sk:'Načítavam…',bg:'Зареждам…',hr:'Učitavam…',ro:'Se încarcă…',en:'Loading…'},
   '⎘ Duplikovat': {cs:'⎘ Duplikovat',sk:'⎘ Duplikovať',bg:'⎘ Дублирай',hr:'⎘ Dupliciraj',ro:'⎘ Duplică',en:'⎘ Duplicate'},
+  '★ Nastavit jako výchozí': {cs:'★ Nastavit jako výchozí',sk:'★ Nastaviť ako predvolený',bg:'★ Задай като начален',hr:'★ Postavi kao zadano',ro:'★ Setează ca implicit',en:'★ Set as default'},
   '✎ Přejmenovat': {cs:'✎ Přejmenovat',sk:'✎ Premenovať',bg:'✎ Преименувай',hr:'✎ Preimenuj',ro:'✎ Redenumește',en:'✎ Rename'},
   '× Smazat': {cs:'× Smazat',sk:'× Zmazať',bg:'× Изтрий',hr:'× Obriši',ro:'× Șterge',en:'× Delete'},
   'Uložit změny': {cs:'Uložit změny',sk:'Uložiť zmeny',bg:'Запази промените',hr:'Spremi promjene',ro:'Salvează modificările',en:'Save changes'},
@@ -2053,7 +2078,8 @@ const I18N = {
 };
 
 const EN_OVERRIDES = {
-  "hint_transit_zoom": "Metro and tram lines only exist in the map data at closer zoom levels — they will not draw in a whole-country view, so zoom in to a city.",
+  "hint_sun_shadows": "The sun lights the walls of the 3D buildings and casts their shadows. Shadows are computed from building heights, so they appear at the zoom where the map has 3D buildings (roughly zoom 14 and closer). A lower sun means longer shadows. Renders into video too.",
+  "hint_transit_zoom": "The metro draws at every zoom, each line in its own colour (A green, B yellow, C red). Tram lines only exist in the map data at closer zoom, so they will not draw in a whole-country view.",
   "hint_preset_click": "Click to apply a preset. Saves colors, intensity and enabled/disabled layers. Ctrl+click selects multiple presets, Delete removes them. Right-click to duplicate or delete.",
   "hint_political_style": "When the \"Political\" style is selected, control of world countries and CZ regions is right here in STYLE.",
   "hint_via_points": "Add stops between A and B. The route recalculates automatically.",
@@ -2399,7 +2425,7 @@ const EN_OVERRIDES = {
   "Obnovit": "Restore",
   "Zahodit": "Discard",
   "+ Přidat zdroj": "+ Add source",
-  "hint_preset_manage": "Clicking a tile applies the preset. Right-click a tile to rename, duplicate or delete it. \"Save changes\" overwrites the active preset with the current look.",
+  "hint_preset_manage": "Clicking a tile applies the preset. Right-click a tile to rename, duplicate or delete it. \"Save changes\" overwrites the active preset with the current look and also saves the whole panel to the server — presets you add or delete show up for everyone.",
   "hint_tile_sources": "Raster tiles in {z}/{x}/{y} format. The added source appears under Base styles.",
   "SYS IKONY": "SYSTEM ICONS",
   "hint_anim_system_icons": "Click to choose a built-in animation icon.",
@@ -2425,6 +2451,15 @@ const EN_OVERRIDES = {
   "Výstrahy ČHMÚ (ČR)": "ČHMÚ warnings (CZ)",
   "Zobrazit výstrahy": "Show warnings",
 };
+
+</script>
+<script>
+/* assets/js/praha_metro.js inlined for single-file / host-agnostic deploy (v6.45) */
+// Prague metro (lines A/B/C) — geometry imported from OpenStreetMap via Overpass,
+// © OpenStreetMap contributors, ODbL. Vector basemap tiles only carry transit
+// geometry from z14 up and do not distinguish the lines, so the network is
+// embedded here to draw it at overview zooms with one colour per line.
+const PRAHA_METRO_GEOJSON = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{"line":"A","kind":"line"},"geometry":{"type":"LineString","coordinates":[[14.34186,50.07548],[14.34236,50.07563],[14.3429,50.07581],[14.34337,50.07597],[14.34394,50.0762],[14.34455,50.07649],[14.34492,50.0767],[14.34543,50.07702],[14.3459,50.07737],[14.34625,50.07767],[14.34669,50.07812],[14.3469,50.07838],[14.3471,50.07866],[14.34739,50.07917],[14.34763,50.07973],[14.34778,50.08022],[14.34782,50.08044],[14.34786,50.08072],[14.34788,50.08094],[14.34788,50.08115],[14.34787,50.08137],[14.34785,50.08159],[14.34781,50.08181],[14.34776,50.08204],[14.34769,50.08226],[14.34762,50.08249],[14.34752,50.08271],[14.34742,50.08293],[14.34685,50.08386],[14.34567,50.08577],[14.34552,50.08601],[14.34482,50.08718],[14.34397,50.08853],[14.34386,50.08874],[14.34377,50.08894],[14.34368,50.08915],[14.34361,50.08936],[14.34354,50.08957],[14.34349,50.08978],[14.34346,50.09],[14.34343,50.09021],[14.34342,50.09043],[14.34342,50.09065],[14.34343,50.09087],[14.34346,50.09109],[14.3435,50.09131],[14.34355,50.09153],[14.34361,50.09175],[14.34369,50.09197],[14.34378,50.09218],[14.34389,50.09239],[14.344,50.0926],[14.34413,50.09281],[14.34428,50.09302],[14.34444,50.09323],[14.34461,50.09343],[14.34479,50.09363],[14.34499,50.09382],[14.3452,50.09401],[14.34543,50.0942],[14.34567,50.09438],[14.34592,50.09456],[14.34618,50.09473],[14.34646,50.0949],[14.34674,50.09505],[14.34702,50.0952],[14.34732,50.09535],[14.34762,50.09549],[14.34794,50.09562],[14.3491,50.09612],[14.34911,50.09613],[14.35014,50.09657],[14.35044,50.09669],[14.35061,50.09676],[14.35075,50.09681],[14.35107,50.09692],[14.35139,50.09703],[14.35171,50.09712],[14.35204,50.09721],[14.35238,50.0973],[14.35276,50.09739],[14.35315,50.09746],[14.35354,50.09753],[14.35393,50.09759],[14.35433,50.09765],[14.35473,50.09769],[14.36048,50.0981],[14.36067,50.09812],[14.36131,50.09817],[14.36214,50.09825],[14.36356,50.09837],[14.36359,50.09837],[14.36364,50.09838],[14.36384,50.09839],[14.36416,50.09842],[14.36447,50.09844],[14.36534,50.09855],[14.36565,50.09859],[14.36597,50.09862],[14.3663,50.09865],[14.36664,50.09868],[14.37501,50.09936],[14.37562,50.09942],[14.37685,50.0995],[14.37866,50.09964],[14.38361,50.09991],[14.38741,50.10011],[14.38855,50.10018],[14.39188,50.10034],[14.39249,50.10038],[14.39382,50.10044],[14.39425,50.10046],[14.39456,50.10047],[14.39488,50.10048],[14.39514,50.10047],[14.3954,50.10046],[14.39566,50.10044],[14.39591,50.1004],[14.39617,50.10036],[14.39641,50.10031],[14.39666,50.10026],[14.3969,50.10019],[14.39713,50.10012],[14.39734,50.10004],[14.39755,50.09996],[14.39774,50.09987],[14.39794,50.09977],[14.39812,50.09967],[14.39829,50.09956],[14.39846,50.09945],[14.39972,50.09853],[14.3999,50.09841],[14.4001,50.09828],[14.4003,50.09817],[14.40052,50.09806],[14.40074,50.09796],[14.40094,50.09788],[14.40115,50.09781],[14.40136,50.09774],[14.40157,50.09768],[14.40179,50.09762],[14.40296,50.09738],[14.40375,50.09721],[14.40413,50.09713],[14.40441,50.09707],[14.40472,50.09699],[14.40491,50.09693],[14.40511,50.09686],[14.4053,50.09679],[14.40549,50.09671],[14.40566,50.09663],[14.40583,50.09654],[14.40599,50.09646],[14.40615,50.09636],[14.40631,50.09626],[14.40646,50.09616],[14.40649,50.09613],[14.4066,50.09605],[14.40673,50.09594],[14.40687,50.09581],[14.407,50.09567],[14.40711,50.09553],[14.40722,50.09539],[14.40731,50.09524],[14.40745,50.09498],[14.4076,50.09463],[14.40792,50.0938],[14.40807,50.09345],[14.40821,50.0932],[14.40828,50.09306],[14.40835,50.09291],[14.40856,50.09252],[14.40886,50.092],[14.4094,50.09106],[14.40988,50.09037],[14.40998,50.09027],[14.41009,50.09016],[14.4102,50.09006],[14.41035,50.08993],[14.41047,50.08985],[14.41064,50.08973],[14.41076,50.08965],[14.41096,50.08954],[14.411,50.08951],[14.41122,50.0894],[14.41142,50.08932],[14.41162,50.08923],[14.41188,50.08914],[14.41218,50.08905],[14.41255,50.08895],[14.41287,50.08888],[14.41319,50.08883],[14.41347,50.0888],[14.41375,50.08877],[14.41403,50.08875],[14.41408,50.08874],[14.41423,50.08873],[14.41444,50.08871],[14.41474,50.08868],[14.41487,50.08867],[14.41505,50.08865],[14.41535,50.08861],[14.41565,50.08857],[14.41596,50.08851],[14.41628,50.08844],[14.41659,50.08837],[14.41696,50.08827],[14.41814,50.08797],[14.41826,50.08794],[14.41841,50.08791],[14.41866,50.08785],[14.41897,50.08777],[14.41933,50.08768],[14.41958,50.0876],[14.41996,50.08748],[14.42034,50.08732],[14.42061,50.08719],[14.42086,50.08705],[14.42114,50.08688],[14.4214,50.08667],[14.42166,50.08644],[14.42193,50.08613],[14.42216,50.08579],[14.42234,50.08552],[14.4227,50.08501],[14.42292,50.08473],[14.42323,50.08443],[14.42346,50.08425],[14.42387,50.08394],[14.42482,50.08321],[14.42495,50.08311],[14.42592,50.0824],[14.42615,50.08223],[14.42647,50.08202],[14.42665,50.08191],[14.42686,50.08182],[14.42727,50.08164],[14.42773,50.08147],[14.42853,50.08119],[14.42927,50.08091],[14.42962,50.08075],[14.42992,50.08058],[14.43037,50.08028],[14.43109,50.07974],[14.43193,50.07912],[14.43201,50.07906],[14.43208,50.07901],[14.4322,50.07892],[14.43234,50.07881],[14.43248,50.0787],[14.43259,50.07861],[14.43284,50.07838],[14.43298,50.07822],[14.43324,50.07785],[14.43345,50.07754],[14.43365,50.07724],[14.43374,50.07709],[14.43385,50.07695],[14.43396,50.07682],[14.43409,50.07668],[14.43422,50.07655],[14.43437,50.07642],[14.43453,50.0763],[14.43469,50.07618],[14.43487,50.07607],[14.43506,50.07596],[14.43525,50.07586],[14.43545,50.07576],[14.43565,50.07567],[14.43584,50.0756],[14.43604,50.07553],[14.43624,50.07547],[14.43644,50.07541],[14.43664,50.07537],[14.43684,50.07533],[14.43705,50.0753],[14.43762,50.07524],[14.43789,50.07522],[14.43833,50.0752],[14.43987,50.07521],[14.43993,50.07521],[14.4406,50.07522],[14.44295,50.07523],[14.44323,50.07524],[14.44351,50.07525],[14.44378,50.07528],[14.44405,50.07531],[14.44433,50.07535],[14.44459,50.0754],[14.44486,50.07545],[14.44514,50.07552],[14.44541,50.07559],[14.44567,50.07567],[14.44593,50.07576],[14.44619,50.07586],[14.44643,50.07596],[14.44667,50.07607],[14.44808,50.07677],[14.44848,50.07695],[14.44872,50.07704],[14.44906,50.07715],[14.4494,50.07724],[14.45016,50.07745],[14.45146,50.07779],[14.45158,50.07781],[14.45225,50.07798],[14.45252,50.07803],[14.4528,50.07808],[14.45307,50.07811],[14.45335,50.07815],[14.45364,50.07817],[14.45393,50.07819],[14.45423,50.0782],[14.45452,50.0782],[14.45482,50.07819],[14.45511,50.07818],[14.45858,50.07797],[14.45891,50.07795],[14.45924,50.07794],[14.45958,50.07793],[14.45987,50.07793],[14.46016,50.07794],[14.46044,50.07795],[14.46073,50.07797],[14.46144,50.07804],[14.46299,50.07822],[14.46305,50.07822],[14.46494,50.07845],[14.46844,50.07885],[14.46943,50.07896],[14.46972,50.07899],[14.47001,50.07901],[14.47031,50.07902],[14.4706,50.07903],[14.4709,50.07903],[14.4712,50.07902],[14.4715,50.079],[14.4718,50.07898],[14.4721,50.07894],[14.4724,50.0789],[14.4727,50.07886],[14.47299,50.07881],[14.47363,50.07867],[14.47483,50.07836],[14.47633,50.07795],[14.47667,50.07786],[14.47936,50.07711],[14.48048,50.07681],[14.48113,50.07663],[14.48159,50.07648],[14.4819,50.07636],[14.48421,50.07527],[14.48454,50.07513],[14.48487,50.075],[14.48521,50.07487],[14.48559,50.07474],[14.48598,50.07461],[14.48637,50.07449],[14.48773,50.07414],[14.48802,50.07406],[14.4883,50.07397],[14.48857,50.07388],[14.4888,50.07379],[14.48901,50.07371],[14.48922,50.07361],[14.48943,50.07352],[14.48969,50.07339],[14.49087,50.07281],[14.49129,50.07261],[14.49158,50.07253],[14.49177,50.07243],[14.49493,50.07091],[14.49673,50.07005],[14.4978,50.0696],[14.49879,50.06921],[14.49993,50.06878],[14.5004,50.06862],[14.50064,50.06854],[14.50088,50.06847],[14.50113,50.06841],[14.50138,50.06835],[14.50163,50.0683],[14.50192,50.06825],[14.50221,50.06821],[14.5025,50.06818],[14.5028,50.06815],[14.50309,50.06813],[14.50339,50.06812],[14.50369,50.06812],[14.50398,50.06813],[14.50587,50.06825],[14.50722,50.06832],[14.50863,50.06841],[14.51045,50.06854],[14.51069,50.06856],[14.51093,50.0686],[14.51116,50.06864],[14.51139,50.06869],[14.51161,50.06875],[14.51183,50.06882],[14.51204,50.0689],[14.51224,50.06898],[14.51244,50.06907],[14.51264,50.06917],[14.51282,50.06927],[14.51299,50.06938],[14.51316,50.06949],[14.51331,50.06962],[14.51345,50.06974],[14.51359,50.06987],[14.51366,50.06997],[14.51369,50.07001],[14.51373,50.07006],[14.51375,50.07011],[14.51378,50.07016],[14.51386,50.07033],[14.51391,50.07042],[14.51403,50.07067],[14.51424,50.07111],[14.51429,50.07122],[14.51436,50.07135],[14.51447,50.07161],[14.51454,50.07184],[14.51455,50.07189],[14.51457,50.07194],[14.51459,50.07203],[14.5146,50.07209],[14.51461,50.07215],[14.51462,50.0722],[14.51462,50.07226],[14.51462,50.07231],[14.51462,50.07237],[14.51461,50.07243],[14.5146,50.07249],[14.51459,50.07253],[14.51458,50.07258],[14.51456,50.07264],[14.51454,50.07269],[14.51449,50.07284],[14.51446,50.07292],[14.51445,50.07295],[14.51443,50.07307],[14.51443,50.07312],[14.51442,50.07318],[14.51442,50.07323],[14.51443,50.07328],[14.51444,50.07334],[14.51445,50.07341],[14.51447,50.07346],[14.51448,50.07351],[14.51451,50.07357],[14.51453,50.07361],[14.51454,50.07362],[14.51455,50.07365],[14.51457,50.0737],[14.51502,50.0746],[14.51503,50.07462],[14.51546,50.07553]]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.34186,50.07548]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.34482,50.08718]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.3491,50.09612]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.36359,50.09837]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.39382,50.10044]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.40375,50.09721]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.4094,50.09106]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.41814,50.08797]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.42482,50.08321]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43193,50.07912]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43987,50.07521]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.45146,50.07779]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.47633,50.07795]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.49087,50.07281]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.50863,50.06841]}},{"type":"Feature","properties":{"line":"A","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.51503,50.07462]}},{"type":"Feature","properties":{"line":"B","kind":"line"},"geometry":{"type":"LineString","coordinates":[[14.57753,50.10905],[14.57598,50.10885],[14.57583,50.10883],[14.57493,50.10872],[14.57411,50.10862],[14.57316,50.1085],[14.57274,50.10845],[14.57233,50.10841],[14.56746,50.10794],[14.56598,50.10776],[14.56504,50.10764],[14.56397,50.10747],[14.56117,50.107],[14.55985,50.10678],[14.55765,50.10642],[14.5569,50.10631],[14.55615,50.10624],[14.5554,50.10624],[14.55484,50.10626],[14.55438,50.10631],[14.55381,50.10639],[14.55139,50.10684],[14.55111,50.1069],[14.55083,50.10695],[14.55054,50.10699],[14.55025,50.10703],[14.54996,50.10706],[14.54969,50.10708],[14.54942,50.10709],[14.54916,50.1071],[14.54889,50.1071],[14.5484,50.10709],[14.54762,50.10704],[14.54222,50.10652],[14.54132,50.10645],[14.5406,50.10644],[14.53993,50.10644],[14.53933,50.10647],[14.53866,50.10653],[14.53796,50.1066],[14.53738,50.10666],[14.53592,50.10683],[14.53411,50.10703],[14.53277,50.10719],[14.53164,50.10732],[14.53087,50.10745],[14.53009,50.10764],[14.52943,50.10784],[14.52878,50.10808],[14.52796,50.10845],[14.52739,50.10877],[14.52629,50.10937],[14.52538,50.10978],[14.52466,50.11004],[14.52419,50.11017],[14.52375,50.11028],[14.5226,50.11047],[14.52192,50.11055],[14.52124,50.11058],[14.5206,50.11058],[14.51832,50.11051],[14.51715,50.11051],[14.5157,50.11046],[14.51394,50.11043],[14.51196,50.11039],[14.51095,50.11036],[14.51005,50.11037],[14.50929,50.11043],[14.50862,50.1105],[14.50718,50.11073],[14.5067,50.1108],[14.50628,50.11085],[14.50555,50.1109],[14.50493,50.11092],[14.50416,50.11086],[14.50355,50.11079],[14.50307,50.11071],[14.50257,50.11059],[14.50191,50.11039],[14.50055,50.10998],[14.49937,50.10965],[14.49892,50.10951],[14.49853,50.10938],[14.49807,50.10917],[14.49759,50.1089],[14.49634,50.10808],[14.49593,50.10784],[14.49548,50.10761],[14.49497,50.10741],[14.49434,50.10718],[14.49245,50.10651],[14.49226,50.10645],[14.49096,50.10601],[14.48882,50.10526],[14.48843,50.10513],[14.48821,50.10507],[14.48799,50.10502],[14.48777,50.10497],[14.48749,50.10491],[14.4872,50.10486],[14.48691,50.10482],[14.48662,50.10478],[14.48632,50.10475],[14.48602,50.10473],[14.48572,50.10471],[14.48544,50.1047],[14.48517,50.1047],[14.4849,50.10471],[14.48462,50.10472],[14.48181,50.1049],[14.48102,50.10496],[14.48065,50.10498],[14.4798,50.10504],[14.47957,50.10505],[14.47934,50.10507],[14.47912,50.10507],[14.47889,50.10507],[14.47866,50.10506],[14.47841,50.10504],[14.47816,50.10502],[14.47791,50.10499],[14.47766,50.10495],[14.47742,50.1049],[14.47715,50.10485],[14.4769,50.10478],[14.47663,50.10471],[14.47578,50.10443],[14.4752,50.10421],[14.47381,50.1037],[14.4731,50.10342],[14.47255,50.10319],[14.47232,50.10309],[14.47209,50.10298],[14.47187,50.10286],[14.47165,50.10273],[14.47144,50.1026],[14.47124,50.10246],[14.47104,50.10232],[14.47083,50.10217],[14.47062,50.10198],[14.47036,50.10177],[14.46773,50.09936],[14.46752,50.09916],[14.46727,50.09895],[14.46707,50.09879],[14.46685,50.09863],[14.46664,50.09849],[14.46646,50.09837],[14.46625,50.09825],[14.46603,50.09813],[14.46579,50.09801],[14.46554,50.09789],[14.46397,50.09724],[14.4627,50.09672],[14.4564,50.09418],[14.45561,50.09386],[14.45527,50.09372],[14.45493,50.09358],[14.45456,50.09345],[14.45412,50.09331],[14.45202,50.09279],[14.45057,50.09244],[14.4484,50.09195],[14.44523,50.09121],[14.44475,50.09109],[14.44424,50.09098],[14.44409,50.09095],[14.44364,50.09087],[14.44288,50.09077],[14.4415,50.0907],[14.44139,50.09069],[14.43985,50.09064],[14.43839,50.0906],[14.43692,50.09055],[14.4364,50.09053],[14.43605,50.09051],[14.43574,50.09048],[14.43545,50.09045],[14.43514,50.0904],[14.4349,50.09035],[14.43462,50.09029],[14.43435,50.09022],[14.43408,50.09014],[14.43375,50.09005],[14.4312,50.08914],[14.42986,50.08866],[14.42923,50.08844],[14.42902,50.08836],[14.42881,50.08829],[14.42861,50.0882],[14.42842,50.08811],[14.42825,50.08802],[14.42808,50.08792],[14.42792,50.08782],[14.42777,50.08772],[14.42763,50.08761],[14.42749,50.08749],[14.42736,50.08737],[14.42724,50.08725],[14.42712,50.08712],[14.42701,50.08697],[14.4269,50.08681],[14.42681,50.08666],[14.42624,50.0856],[14.42615,50.08545],[14.42604,50.08529],[14.42594,50.08516],[14.42583,50.08502],[14.4257,50.08489],[14.42555,50.08475],[14.42538,50.0846],[14.42519,50.08446],[14.42497,50.08432],[14.42475,50.08418],[14.42463,50.08412],[14.42439,50.08399],[14.42389,50.08376],[14.42278,50.08323],[14.42249,50.08309],[14.42229,50.083],[14.42208,50.08289],[14.42189,50.08278],[14.42169,50.08266],[14.42141,50.08248],[14.42124,50.08235],[14.42109,50.08222],[14.42094,50.08208],[14.42081,50.08194],[14.42069,50.08179],[14.42058,50.08164],[14.42049,50.0815],[14.42042,50.08136],[14.42035,50.08122],[14.4203,50.08107],[14.42026,50.08092],[14.4202,50.08067],[14.42018,50.08056],[14.42017,50.08047],[14.42016,50.08039],[14.42013,50.07947],[14.42007,50.07805],[14.42005,50.07787],[14.42002,50.07769],[14.41998,50.0775],[14.41992,50.07732],[14.41985,50.07715],[14.41977,50.07697],[14.41967,50.0768],[14.41956,50.07663],[14.41944,50.07647],[14.41932,50.07632],[14.41918,50.07617],[14.41904,50.07603],[14.41888,50.07589],[14.41872,50.07576],[14.41854,50.07563],[14.41836,50.07551],[14.41817,50.07539],[14.41797,50.07528],[14.41737,50.07493],[14.41629,50.07435],[14.41597,50.07418],[14.41577,50.07408],[14.41556,50.07397],[14.41534,50.07387],[14.41509,50.07377],[14.41483,50.07369],[14.41436,50.07357],[14.41413,50.07352],[14.41391,50.07348],[14.41367,50.07345],[14.41344,50.07342],[14.41321,50.0734],[14.41298,50.07339],[14.41275,50.07339],[14.41252,50.07339],[14.41228,50.0734],[14.41206,50.07342],[14.40967,50.07366],[14.40917,50.0737],[14.40891,50.0737],[14.40866,50.0737],[14.40841,50.0737],[14.40816,50.07368],[14.4079,50.07365],[14.40765,50.07362],[14.4074,50.07358],[14.40715,50.07353],[14.40691,50.07348],[14.40653,50.07336],[14.40604,50.07317],[14.40557,50.07294],[14.40494,50.07252],[14.40462,50.07225],[14.40437,50.07195],[14.40417,50.07163],[14.40403,50.0713],[14.40385,50.07044],[14.40364,50.06951],[14.40348,50.06885],[14.40342,50.06854],[14.40336,50.06827],[14.40336,50.06806],[14.4034,50.06781],[14.40348,50.06749],[14.40366,50.06711],[14.40385,50.06678],[14.40418,50.06636],[14.40456,50.06599],[14.40501,50.06565],[14.40531,50.06546],[14.40567,50.06526],[14.40691,50.06465],[14.40712,50.06453],[14.40732,50.0644],[14.40752,50.06426],[14.4077,50.06412],[14.40787,50.06397],[14.40802,50.06383],[14.40816,50.06369],[14.40829,50.06354],[14.4084,50.06338],[14.40851,50.06322],[14.4086,50.06306],[14.40878,50.06266],[14.40886,50.06231],[14.40892,50.06184],[14.40894,50.06162],[14.40908,50.06073],[14.40909,50.06059],[14.40922,50.05949],[14.40925,50.05929],[14.40926,50.05908],[14.40926,50.05888],[14.40925,50.05868],[14.40922,50.05852],[14.40919,50.05837],[14.40916,50.05822],[14.40909,50.05805],[14.40902,50.05788],[14.40893,50.05771],[14.40882,50.05755],[14.40871,50.05739],[14.40858,50.05724],[14.40844,50.05709],[14.40828,50.05694],[14.40812,50.0568],[14.40794,50.05667],[14.40777,50.05655],[14.40758,50.05643],[14.40739,50.05632],[14.40718,50.05622],[14.40697,50.05612],[14.40676,50.05603],[14.40653,50.05594],[14.4063,50.05586],[14.40607,50.05579],[14.40583,50.05573],[14.40558,50.05568],[14.4053,50.05563],[14.40166,50.05517],[14.40005,50.05497],[14.39862,50.0548],[14.39836,50.05478],[14.3981,50.05476],[14.39783,50.05476],[14.39757,50.05476],[14.3973,50.05477],[14.39704,50.05478],[14.39677,50.05481],[14.39651,50.05484],[14.39626,50.05488],[14.396,50.05493],[14.39575,50.05498],[14.3955,50.05505],[14.39526,50.05512],[14.39502,50.0552],[14.39479,50.05528],[14.39456,50.05537],[14.39435,50.05547],[14.39414,50.05558],[14.39394,50.05569],[14.39212,50.05685],[14.39193,50.05697],[14.39173,50.05708],[14.39152,50.05719],[14.3913,50.05729],[14.39108,50.05739],[14.39088,50.05746],[14.39068,50.05753],[14.39047,50.0576],[14.39025,50.05766],[14.39004,50.05771],[14.38841,50.05806],[14.38715,50.0583],[14.38611,50.0585],[14.38583,50.05853],[14.38555,50.05856],[14.38527,50.05858],[14.38499,50.05859],[14.38471,50.0586],[14.38443,50.05859],[14.38415,50.05858],[14.38387,50.05856],[14.38359,50.05853],[14.38331,50.05849],[14.38304,50.05845],[14.38277,50.05839],[14.3825,50.05833],[14.38224,50.05826],[14.38199,50.05818],[14.38174,50.0581],[14.38149,50.058],[14.38126,50.0579],[14.37935,50.05709],[14.37894,50.05694],[14.37853,50.05679],[14.37811,50.05665],[14.37769,50.05651],[14.37728,50.05638],[14.37685,50.05625],[14.37039,50.05445],[14.36911,50.0541],[14.36851,50.05393],[14.3682,50.05385],[14.36788,50.05375],[14.36758,50.05366],[14.36727,50.05356],[14.36696,50.05344],[14.36653,50.05326],[14.3658,50.05294],[14.36482,50.0525],[14.36461,50.0524],[14.36438,50.05231],[14.36416,50.05222],[14.36392,50.05214],[14.36368,50.05207],[14.36345,50.05201],[14.36322,50.05196],[14.36299,50.05191],[14.36275,50.05187],[14.36251,50.05183],[14.36226,50.05181],[14.36202,50.05179],[14.35281,50.05097],[14.35145,50.05084],[14.35132,50.05083],[14.34548,50.05031],[14.34339,50.05012],[14.34216,50.05002],[14.34152,50.04996],[14.34123,50.04992],[14.34094,50.04988],[14.34066,50.04983],[14.34038,50.04977],[14.34037,50.04977],[14.34034,50.04976],[14.34032,50.04976],[14.34015,50.04972],[14.33993,50.04966],[14.3397,50.04959],[14.33948,50.04952],[14.33925,50.04945],[14.339,50.04936],[14.33875,50.04926],[14.33853,50.04915],[14.33833,50.04903],[14.33813,50.0489],[14.33793,50.04877],[14.33778,50.04864],[14.33762,50.0485],[14.3374,50.04827],[14.3372,50.04804],[14.33664,50.04735],[14.33593,50.04649],[14.33573,50.04625],[14.33551,50.04604],[14.3354,50.04594],[14.33528,50.04584],[14.33515,50.04574],[14.33507,50.04568],[14.33486,50.04555],[14.33464,50.04544],[14.33441,50.04533],[14.33417,50.04523],[14.33393,50.04514],[14.33368,50.04505],[14.33343,50.04497],[14.3332,50.04491],[14.33297,50.04485],[14.33273,50.0448],[14.33249,50.04476],[14.33225,50.04472],[14.33201,50.04469],[14.33176,50.04467],[14.33116,50.04461],[14.32977,50.04448],[14.3276,50.04428],[14.32729,50.04425],[14.32703,50.04422],[14.32677,50.04421],[14.3265,50.0442],[14.32624,50.0442],[14.32597,50.04421],[14.32571,50.04422],[14.32545,50.04425],[14.32519,50.04428],[14.32493,50.04432],[14.32468,50.04437],[14.32443,50.04443],[14.32419,50.04449],[14.32395,50.04456],[14.32371,50.04464],[14.32348,50.04472],[14.32326,50.04482],[14.32305,50.04491],[14.32284,50.04502],[14.32196,50.04545],[14.3209,50.04597],[14.31903,50.04687],[14.31878,50.04697],[14.31853,50.04707],[14.31826,50.04715],[14.318,50.04723],[14.31772,50.0473],[14.31744,50.04736],[14.31716,50.04741],[14.31689,50.04745],[14.31663,50.04749],[14.31636,50.04751],[14.31608,50.04753],[14.31581,50.04754],[14.31554,50.04754],[14.31527,50.04753],[14.31499,50.04752],[14.30763,50.04688],[14.3068,50.04682],[14.30538,50.04668],[14.30298,50.04645],[14.30256,50.04642],[14.30212,50.04642],[14.30187,50.04643],[14.30162,50.04644],[14.30137,50.04647],[14.30113,50.0465],[14.30089,50.04653],[14.30062,50.04658],[14.30037,50.04663],[14.30011,50.04669],[14.29986,50.04676],[14.29962,50.04683],[14.29895,50.04706],[14.29835,50.04728],[14.29802,50.04742],[14.2977,50.04757],[14.29739,50.04773],[14.29708,50.04789],[14.29678,50.04806],[14.2965,50.04824],[14.29621,50.04843],[14.29593,50.04863],[14.29566,50.04883],[14.29541,50.04904],[14.29516,50.04926],[14.29229,50.05217],[14.29164,50.05284],[14.29082,50.0537]]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.57598,50.10885]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.55985,50.10678]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.53592,50.10683]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.5157,50.11046]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.50055,50.10998]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.47381,50.1037]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.4627,50.09672]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.45057,50.09244]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43692,50.09055]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.42986,50.08866]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.42278,50.08323]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.42013,50.07947]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.41629,50.07435]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.40364,50.06951]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.40908,50.06073]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.38715,50.0583]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.36911,50.0541]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.35145,50.05084]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.34216,50.05002]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.32977,50.04448]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.3209,50.04597]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.30538,50.04668]}},{"type":"Feature","properties":{"line":"B","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.29082,50.0537]}},{"type":"Feature","properties":{"line":"C","kind":"line"},"geometry":{"type":"LineString","coordinates":[[14.51623,50.1274],[14.51612,50.12542],[14.51611,50.12513],[14.5161,50.12421],[14.51605,50.12349],[14.51597,50.12264],[14.51592,50.12236],[14.51584,50.12203],[14.51561,50.12156],[14.51528,50.12103],[14.51493,50.12064],[14.51445,50.1202],[14.51387,50.11975],[14.51315,50.11931],[14.51175,50.11866],[14.50912,50.11746],[14.50856,50.11727],[14.50793,50.11707],[14.50716,50.11689],[14.50685,50.11684],[14.50653,50.11679],[14.50621,50.11676],[14.50589,50.11674],[14.50557,50.11672],[14.50525,50.11672],[14.50493,50.11672],[14.50461,50.11674],[14.50429,50.11676],[14.50397,50.11679],[14.50365,50.11683],[14.50334,50.11689],[14.50304,50.11695],[14.50273,50.11701],[14.50244,50.11709],[14.50215,50.11718],[14.50186,50.11727],[14.50159,50.11737],[14.50132,50.11749],[14.50106,50.1176],[14.5008,50.11773],[14.50056,50.11786],[14.50033,50.118],[14.49963,50.1185],[14.49874,50.1192],[14.4975,50.12012],[14.49672,50.12065],[14.49566,50.12137],[14.49467,50.12208],[14.49347,50.12303],[14.49216,50.12404],[14.49109,50.12498],[14.49002,50.12584],[14.48914,50.12651],[14.48791,50.12743],[14.4877,50.12758],[14.48748,50.12772],[14.48725,50.12785],[14.48702,50.12797],[14.48677,50.12808],[14.48652,50.12819],[14.48626,50.12829],[14.486,50.12839],[14.48572,50.12848],[14.48544,50.12856],[14.48516,50.12863],[14.48488,50.12869],[14.48461,50.12875],[14.48434,50.1288],[14.48407,50.12883],[14.4838,50.12887],[14.48352,50.12889],[14.48325,50.12891],[14.48292,50.12892],[14.4826,50.12892],[14.48228,50.12891],[14.48196,50.1289],[14.48164,50.12887],[14.48132,50.12883],[14.48104,50.12879],[14.48076,50.12874],[14.48048,50.12869],[14.48021,50.12863],[14.47994,50.12856],[14.47617,50.12759],[14.4744,50.12719],[14.47361,50.12705],[14.47278,50.12692],[14.47204,50.12683],[14.47131,50.12678],[14.47029,50.12674],[14.47017,50.12673],[14.46986,50.12671],[14.46955,50.12668],[14.46925,50.12666],[14.46873,50.12663],[14.46843,50.12661],[14.46672,50.12648],[14.46327,50.12624],[14.46286,50.12621],[14.46245,50.12617],[14.46204,50.12613],[14.46164,50.12607],[14.46124,50.126],[14.46089,50.12593],[14.46055,50.12586],[14.46021,50.12578],[14.45987,50.1257],[14.45954,50.12561],[14.45801,50.12515],[14.45729,50.12496],[14.4562,50.12469],[14.45508,50.12441],[14.45336,50.12395],[14.45214,50.12367],[14.45152,50.12352],[14.45095,50.1234],[14.45011,50.12326],[14.4497,50.12322],[14.44934,50.12319],[14.44852,50.12314],[14.44498,50.1231],[14.44394,50.12306],[14.44361,50.12304],[14.44328,50.123],[14.44295,50.12296],[14.44263,50.12292],[14.44231,50.12286],[14.44199,50.1228],[14.44168,50.12274],[14.44137,50.12266],[14.44107,50.12258],[14.44077,50.1225],[14.44048,50.12241],[14.44019,50.12231],[14.43956,50.12207],[14.43895,50.1218],[14.43827,50.12143],[14.43758,50.12099],[14.43679,50.12035],[14.4363,50.11984],[14.43584,50.11927],[14.43557,50.11884],[14.43525,50.11821],[14.43508,50.11761],[14.43504,50.1174],[14.435,50.11718],[14.43498,50.11697],[14.43497,50.11676],[14.43497,50.11655],[14.43498,50.11634],[14.435,50.11612],[14.43503,50.11591],[14.43508,50.1157],[14.43513,50.11549],[14.43534,50.11471],[14.43565,50.11394],[14.43575,50.11373],[14.43585,50.11353],[14.43596,50.11332],[14.43608,50.11312],[14.43622,50.11292],[14.43636,50.11272],[14.43652,50.11252],[14.4367,50.11231],[14.43688,50.11211],[14.43708,50.11192],[14.43729,50.11173],[14.4375,50.11154],[14.43838,50.11071],[14.43923,50.10979],[14.43957,50.10944],[14.43961,50.1094],[14.44036,50.10856],[14.44038,50.10854],[14.44097,50.10778],[14.44117,50.10746],[14.44129,50.1072],[14.44134,50.10703],[14.44139,50.10686],[14.44142,50.10668],[14.44144,50.10651],[14.44145,50.10633],[14.44144,50.10616],[14.44143,50.10598],[14.44139,50.10581],[14.44135,50.10563],[14.44129,50.10546],[14.44122,50.1053],[14.44114,50.10513],[14.44104,50.10497],[14.44094,50.10481],[14.44082,50.10465],[14.44069,50.1045],[14.44055,50.10435],[14.43937,50.10322],[14.43922,50.10307],[14.43908,50.10291],[14.43895,50.10275],[14.43883,50.10258],[14.43873,50.10241],[14.43864,50.10224],[14.43856,50.10207],[14.4385,50.10189],[14.43845,50.10171],[14.43842,50.10153],[14.4384,50.10135],[14.43839,50.10117],[14.43839,50.10067],[14.43842,50.09975],[14.43842,50.09971],[14.43843,50.09894],[14.43845,50.09877],[14.43848,50.0986],[14.43852,50.09843],[14.43857,50.09826],[14.43863,50.09809],[14.43871,50.09791],[14.4388,50.09774],[14.4389,50.09757],[14.43902,50.0974],[14.43981,50.09628],[14.44034,50.09551],[14.4405,50.09517],[14.44061,50.0949],[14.44068,50.09467],[14.44071,50.09451],[14.44073,50.09436],[14.44075,50.09407],[14.44073,50.09364],[14.44066,50.09339],[14.44057,50.09307],[14.44019,50.09226],[14.4395,50.0909],[14.4393,50.09049],[14.43888,50.08963],[14.43885,50.08959],[14.43884,50.08955],[14.43837,50.08862],[14.43765,50.08718],[14.43756,50.08702],[14.43746,50.08687],[14.43735,50.08671],[14.43723,50.08656],[14.43709,50.0864],[14.43694,50.08625],[14.43677,50.0861],[14.4366,50.08596],[14.43551,50.08516],[14.43531,50.08499],[14.43515,50.08485],[14.43499,50.08467],[14.4348,50.08444],[14.43461,50.0842],[14.4344,50.08392],[14.43386,50.08317],[14.43368,50.08293],[14.43343,50.08259],[14.43325,50.08237],[14.43307,50.08215],[14.4328,50.08185],[14.43252,50.08157],[14.43224,50.08134],[14.43179,50.08095],[14.43145,50.08064],[14.43063,50.07994],[14.43045,50.07978],[14.43009,50.07943],[14.4299,50.07921],[14.42981,50.07908],[14.42973,50.07896],[14.42951,50.0785],[14.42947,50.07836],[14.42944,50.07822],[14.42941,50.07808],[14.4294,50.07796],[14.4294,50.07785],[14.4294,50.07773],[14.42942,50.07747],[14.42956,50.07699],[14.42981,50.07637],[14.42999,50.07575],[14.43014,50.0748],[14.43015,50.07472],[14.43027,50.07392],[14.43028,50.07387],[14.43029,50.07382],[14.43033,50.07345],[14.43035,50.07302],[14.43034,50.07253],[14.43033,50.07224],[14.43028,50.07198],[14.43023,50.07147],[14.43021,50.07118],[14.43019,50.07088],[14.43022,50.06996],[14.43029,50.06825],[14.4303,50.06793],[14.43047,50.06361],[14.43048,50.06338],[14.43051,50.06268],[14.43051,50.06261],[14.43051,50.0625],[14.4305,50.06239],[14.43049,50.06229],[14.43047,50.06217],[14.43044,50.06206],[14.43041,50.06194],[14.43013,50.06105],[14.43004,50.0607],[14.43001,50.06054],[14.42999,50.06038],[14.42998,50.06022],[14.42998,50.06006],[14.43,50.0599],[14.43003,50.05974],[14.43007,50.05958],[14.43013,50.05943],[14.4302,50.05927],[14.43027,50.05913],[14.43037,50.05898],[14.43047,50.05884],[14.43058,50.0587],[14.43071,50.05856],[14.43084,50.05843],[14.43099,50.05831],[14.43114,50.05818],[14.43131,50.05807],[14.43259,50.05722],[14.43273,50.05713],[14.43376,50.05651],[14.43378,50.05649],[14.43385,50.05645],[14.43393,50.05641],[14.43417,50.05626],[14.43464,50.05593],[14.43487,50.05579],[14.43509,50.05564],[14.43531,50.05549],[14.43556,50.05531],[14.4358,50.05512],[14.43604,50.05493],[14.43654,50.05447],[14.43758,50.05351],[14.43775,50.05334],[14.43792,50.05317],[14.43809,50.05297],[14.43825,50.05277],[14.43926,50.05142],[14.4399,50.0506],[14.43999,50.05049],[14.44038,50.04998],[14.44056,50.04974],[14.44074,50.04954],[14.44092,50.04935],[14.44116,50.04914],[14.44143,50.04893],[14.44185,50.04867],[14.44233,50.04838],[14.44609,50.04608],[14.44738,50.0452],[14.44798,50.04481],[14.4482,50.04468],[14.44925,50.04404],[14.44959,50.04384],[14.44979,50.04371],[14.45,50.0436],[14.45022,50.04349],[14.45043,50.04339],[14.45066,50.04329],[14.45095,50.04319],[14.45118,50.04311],[14.45138,50.04306],[14.45159,50.043],[14.45185,50.04295],[14.45241,50.04286],[14.45859,50.04189],[14.45994,50.04169],[14.46004,50.04167],[14.46104,50.04151],[14.46211,50.04135],[14.46344,50.04115],[14.4646,50.041],[14.46553,50.04092],[14.46607,50.04088],[14.46657,50.04082],[14.46705,50.04072],[14.4675,50.04061],[14.46845,50.0403],[14.46981,50.03988],[14.47147,50.03933],[14.47481,50.03824],[14.47633,50.03774],[14.47763,50.03732],[14.48193,50.03591],[14.48268,50.03566],[14.48314,50.03548],[14.48351,50.03533],[14.4841,50.03505],[14.4869,50.03364],[14.48912,50.03255],[14.49049,50.03188],[14.49161,50.03129],[14.49276,50.03071],[14.49306,50.03056],[14.49343,50.03039],[14.49394,50.03018],[14.49457,50.02996],[14.49525,50.02975],[14.49935,50.02847],[14.50135,50.02785],[14.50165,50.02777],[14.50195,50.02769],[14.50226,50.02762],[14.50258,50.02756],[14.50289,50.02751],[14.50321,50.02747],[14.50353,50.02743],[14.50384,50.02741],[14.50416,50.02739],[14.50448,50.02738],[14.5048,50.02738],[14.50512,50.02739],[14.50543,50.02741],[14.5067,50.02754],[14.5084,50.02773],[14.50979,50.02791],[14.51158,50.02809],[14.51197,50.02813],[14.51235,50.02818],[14.51274,50.02823],[14.51312,50.02829],[14.51351,50.02836],[14.51389,50.02843],[14.52134,50.02986],[14.52341,50.03026],[14.52396,50.03036],[14.5246,50.03045],[14.5264,50.03066],[14.52797,50.03087]]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.5161,50.12421]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.49874,50.1192]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.48914,50.12651]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.46873,50.12663]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.45336,50.12395]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.44036,50.10856]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43842,50.09975]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43888,50.08963]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43386,50.08317]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43063,50.07994]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43028,50.07387]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43051,50.06268]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.43376,50.05651]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.4399,50.0506]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.44925,50.04404]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.45994,50.04169]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.47763,50.03732]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.49161,50.03129]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.50979,50.02791]}},{"type":"Feature","properties":{"line":"C","kind":"stop"},"geometry":{"type":"Point","coordinates":[14.52797,50.03087]}}]};
 
 </script>
 <script>
@@ -2876,10 +2911,33 @@ function normalizePresetEntry(entry, idx){
     updatedAt: entry.updatedAt || entry.createdAt || Date.now() + idx
   };
 }
+// The "which preset opens by default" choice rides along inside the shared presets
+// list as one hidden record, so it syncs to every workstation through the existing
+// map_api.php merge instead of needing a second storage mechanism. It is filtered
+// out of loadPresetDB() (and re-attached by savePresetDB) so no caller ever sees it
+// as a preset — it must never show up as a tile or in the dropdown.
+const PZ_DEFAULT_PRESET_ID = '__pz_default_preset__';
+function readRawPresetDB(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(PRESET_DB_KEY) || '[]');
+    return Array.isArray(raw) ? raw : [];
+  }catch(e){ return []; }
+}
+function getDefaultPresetToken(){
+  const rec = readRawPresetDB().find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
+  return (rec && typeof rec.token === 'string') ? rec.token : '';
+}
+function setDefaultPresetToken(token){
+  const raw = readRawPresetDB().filter(i => !(i && i.id === PZ_DEFAULT_PRESET_ID));
+  if(token) raw.push({id:PZ_DEFAULT_PRESET_ID, token, updatedAt: Date.now()});
+  trySetLocal(PRESET_DB_KEY, JSON.stringify(raw));
+  scheduleEntityPush('presets', raw);
+}
+
 function loadPresetDB(){
   try{
     const raw = JSON.parse(localStorage.getItem(PRESET_DB_KEY) || '[]');
-    if(Array.isArray(raw)) return raw.map(normalizePresetEntry);
+    if(Array.isArray(raw)) return raw.filter(i => !(i && i.id === PZ_DEFAULT_PRESET_ID)).map(normalizePresetEntry);
   }catch(e){}
   try{
     const legacy = JSON.parse(localStorage.getItem('map60_presets') || '{}');
@@ -2892,9 +2950,15 @@ function loadPresetDB(){
   return [];
 }
 function savePresetDB(db){
-  recordRemovedIds('presets', PRESET_DB_KEY, db);
-  const ok = trySetLocal(PRESET_DB_KEY, JSON.stringify(db));
-  if(ok) scheduleEntityPush('presets', db);
+  // Carry the hidden default-preset record through: callers hand us the filtered
+  // list from loadPresetDB(), so writing it verbatim would silently drop the choice.
+  // Re-attach it BEFORE recordRemovedIds, or the marker would look deleted and get
+  // tombstoned — which would then wipe the shared default off the server.
+  const marker = readRawPresetDB().find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
+  const toStore = marker ? db.concat([marker]) : db;
+  recordRemovedIds('presets', PRESET_DB_KEY, toStore);
+  const ok = trySetLocal(PRESET_DB_KEY, JSON.stringify(toStore));
+  if(ok) scheduleEntityPush('presets', toStore);
   return ok;
 }
 function loadProjectDB(){
@@ -3030,14 +3094,21 @@ function mergeServerIntoLocal(serverItems, localItems){
 async function syncPresetDBFromServer(){
   try{
     const tombs = loadTombstones('presets');
-    const server = (await fetchEntityFromServer('presets'))
-      .filter(item => !tombs.includes(item?.id))
-      .map(normalizePresetEntry);
+    const serverRaw = (await fetchEntityFromServer('presets')).filter(item => !tombs.includes(item?.id));
+    // Pull the hidden default-preset record out before normalising: run through
+    // normalizePresetEntry it would turn into a bogus tile, and it must survive the
+    // merge so the shared default isn't lost on the next write.
+    const serverMarker = serverRaw.find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
+    const localMarker = readRawPresetDB().find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
+    const marker = (!localMarker || (Number(serverMarker?.updatedAt) || 0) >= (Number(localMarker?.updatedAt) || 0))
+      ? (serverMarker || localMarker) : localMarker;
+    const server = serverRaw.filter(i => !(i && i.id === PZ_DEFAULT_PRESET_ID)).map(normalizePresetEntry);
     const local = loadPresetDB().map(normalizePresetEntry).filter(item => !tombs.includes(item?.id));
     const merged = mergeServerIntoLocal(server, local);
-    localStorage.setItem(PRESET_DB_KEY, JSON.stringify(merged));
+    localStorage.setItem(PRESET_DB_KEY, JSON.stringify(marker ? merged.concat([marker]) : merged));
     refreshPresetSelect();
     renderPresetTiles();
+    applyDefaultPresetOnStartup();   // the shared default only arrives with this pull
   }catch(e){
     console.warn('Preset sync unavailable', e);
     if(state.serverApiAvailable == null) state.serverApiAvailable = false;
@@ -3105,6 +3176,37 @@ function openPresetContextMenu(x, y, isBuiltin, presetKeyOrId){
 }
 function closePresetContextMenu(){
   const menu = $('presetContextMenu'); if(menu) menu.style.display = 'none';
+}
+
+// Mark a tile as the look the app opens with. Stored in the shared preset list, so
+// the whole newsroom starts from the same map instead of each machine keeping its own.
+function setPresetAsDefault(token){
+  if(!token) return;
+  const already = getDefaultPresetToken() === token;
+  setDefaultPresetToken(already ? '' : token);   // right-clicking the current default clears it
+  renderPresetTiles();
+  const name = presetTokenLabel(token);
+  setStatus(already ? `Preset „${name}“ už není výchozí.` : `Preset „${name}“ je teď výchozí — takhle se mapa otevře všem.`);
+}
+function presetTokenLabel(token){
+  const [kind, key] = String(token || '').split(':');
+  if(kind === 'builtin') return getBuiltinPresetLabel ? getBuiltinPresetLabel(key) : key;
+  const entry = loadPresetDB().find(e => e.id === key);
+  return entry?.name || key || '';
+}
+// Apply the shared default once at startup. Only touches a map the user hasn't
+// styled yet: if a project/session restore already set a look, that wins.
+function applyDefaultPresetOnStartup(){
+  if(state._defaultPresetApplied) return;
+  const token = getDefaultPresetToken();
+  if(!token) return;
+  if(state.activePresetToken) return;            // something already chose a look
+  const [kind, key] = token.split(':');
+  try{
+    if(kind === 'builtin') applyPreset(key);
+    else applyCustomPreset(key);
+    state._defaultPresetApplied = true;
+  }catch(e){ console.warn('Default preset apply failed', e); }
 }
 function duplicatePreset(id, isBuiltin){
   const db = loadPresetDB();
@@ -3322,11 +3424,12 @@ function renderPresetTiles(){
     state.activePresetToken = null;
   }
   const db = loadPresetDB();
+  const defaultToken = getDefaultPresetToken();
   grid.innerHTML = '';
   const visibleBuiltinKeys = getVisibleBuiltinPresetKeys();
   visibleBuiltinKeys.forEach((key, idx) => {
     const btn = document.createElement('button');
-    btn.className = 'preset-btn preset-card' + (active === ('builtin:' + key) ? ' active' : '');
+    btn.className = 'preset-btn preset-card' + (active === ('builtin:' + key) ? ' active' : '') + (defaultToken === ('builtin:' + key) ? ' is-default' : '');
     btn.type = 'button';
     btn.title = getBuiltinPresetLabel(key);
     btn.dataset.builtin = 'true';
@@ -3338,7 +3441,7 @@ function renderPresetTiles(){
   });
   db.forEach((entry, idx) => {
     const btn = document.createElement('button');
-    btn.className = 'preset-btn preset-card' + (active === ('custom:' + entry.id) ? ' active' : '');
+    btn.className = 'preset-btn preset-card' + (active === ('custom:' + entry.id) ? ' active' : '') + (defaultToken === ('custom:' + entry.id) ? ' is-default' : '');
     btn.type = 'button';
     btn.title = entry.name;
     btn.dataset.builtin = 'false';
@@ -3398,32 +3501,52 @@ function dbLoadPreset(){
   renderPresetTiles();
   setStatus(t('Preset načten.', getCustomPresetNumber(idx)));
 }
+// Push the WHOLE preset panel to the shared server right now, bypassing the debounce:
+// every preset plus the tombstones for the ones deleted since the last push. Additions
+// and deletions already sync on their own, but they do it 500 ms later and silently —
+// so "Uložit změny" now also force-commits the entire panel and reports the result,
+// giving one deliberate "everything on screen is what everyone else gets" action.
+async function savePresetPanelToServer(){
+  const db = loadPresetDB();
+  if(_syncTimers['presets']){ clearTimeout(_syncTimers['presets']); _syncTimers['presets'] = null; _syncPending['presets'] = null; }
+  try{
+    await pushEntityToServer('presets', db);
+    return {ok:true, count:db.length};
+  }catch(e){
+    console.warn('Preset panel save failed', e);
+    return {ok:false, count:db.length};
+  }
+}
+
 function dbUpdatePreset(){
   const id = getSelectedCustomPresetId();
-  if(!id){
-    const token = state.activePresetToken || '';
-    if(token.startsWith('builtin:')){
-      setStatus('Vestavěný preset nelze přepsat. Použij „+ Přidat preset“ pro uložení vlastní kopie.');
-    }else{
-      setStatus(t('Vyber preset ze seznamu nebo klikni na dlaždici.'));
-    }
-    return;
+  let updatedName = '';
+  if(id){
+    const {db, idx, entry} = findCustomPresetById(id);
+    if(!entry){ setStatus(t('Preset nenalezen.')); return; }
+    const nextName = $('presetName')?.value?.trim();
+    if(nextName) db[idx].name = nextName;
+    const snapshot = getCurrentStylePresetSnapshot();
+    db[idx].colors = snapshot.colors; // obsahuje i colors.boundary
+    db[idx].ranges = snapshot.ranges;
+    db[idx].visibility = snapshot.visibility;
+    db[idx].updatedAt = Date.now();
+    updatedName = db[idx].name || '';
+    savePresetDB(db);
+    refreshPresetSelect();
+    syncPresetSelection(id);
+    state.activePresetToken = 'custom:' + id;
+    renderPresetTiles();
+  }else if((state.activePresetToken || '').startsWith('builtin:')){
+    // A builtin can't be overwritten, but the panel around it still gets saved —
+    // the user asked for one button that commits the whole set.
+    setStatus('Vestavěný preset nelze přepsat. Použij „+ Přidat preset“ pro uložení vlastní kopie. Ukládám celý panel…');
   }
-  const {db, idx, entry} = findCustomPresetById(id);
-  if(!entry){ setStatus(t('Preset nenalezen.')); return; }
-  const nextName = $('presetName')?.value?.trim();
-  if(nextName) db[idx].name = nextName;
-  const snapshot = getCurrentStylePresetSnapshot();
-  db[idx].colors = snapshot.colors; // obsahuje i colors.boundary
-  db[idx].ranges = snapshot.ranges;
-  db[idx].visibility = snapshot.visibility;
-  db[idx].updatedAt = Date.now();
-  savePresetDB(db);
-  refreshPresetSelect();
-  syncPresetSelection(id);
-  state.activePresetToken = 'custom:' + id;
-  renderPresetTiles();
-  setStatus('Preset aktualizován včetně barvy hranic států.');
+  savePresetPanelToServer().then(res => {
+    const what = updatedName ? `Preset „${updatedName}“ uložen. ` : '';
+    if(res.ok) setStatus(`${what}Celý panel uložen na server (${res.count} presetů) — vidí ho všichni.`);
+    else setStatus(`${what}Uloženo lokálně, ale server neodpověděl — zkusí se znovu automaticky.`, 'error');
+  });
 }
 function dbRenamePreset(){
   const id = getSelectedCustomPresetId(); if(!id){ setStatus(t('Vyber preset ze seznamu nebo klikni na dlaždici.')); return; }
@@ -4467,6 +4590,9 @@ function initMap(){
   // The map settling (tiles done, no animation) is the right moment to drop the
   // loading overlay — covers initial load, style switches and reprojection.
   state.map.on('idle', hideMapLoading);
+  // Building shadows are computed from the buildings currently in view, so they
+  // must follow the camera. 'moveend' (not 'move') keeps the pan itself smooth.
+  state.map.on('moveend', () => { if(sunShadowsEnabled()) scheduleShadowRefresh(); });
   // visualizePitch shows a draggable compass/pitch dial — the orbit handle.
   state.map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
   try{ state.map.dragRotate.enable(); state.map.touchZoomRotate.enableRotation(); state.map.touchPitch?.enable?.(); }catch(e){}
@@ -7371,31 +7497,58 @@ function setRoadShieldVisibility(visible){
   });
 }
 
-// Colours for the added rail overlays. The vector tiles carry no per-line colour
-// (Prague metro A/B/C is a single "subway" subclass), so one accent per mode.
-const PZ_METRO_COLOR = '#d3272e';
+// Official DPP line colours. The basemap tiles lump every subway into one
+// "subclass=subway" with no line identity and only carry the geometry from z14
+// up, so the network itself ships with the app (PRAHA_METRO_GEOJSON, imported
+// from OpenStreetMap) and is drawn from these colours instead.
+const PZ_METRO_LINE_COLORS = {A:'#00A562', B:'#F5C400', C:'#E30613'};
+const PZ_METRO_COLOR_EXPR = ['match', ['get','line'],
+  'A', PZ_METRO_LINE_COLORS.A, 'B', PZ_METRO_LINE_COLORS.B, 'C', PZ_METRO_LINE_COLORS.C, '#888888'];
 const PZ_TRAM_COLOR  = '#8a5a2b';
-const PZ_TRANSIT_LAYERS = ['pz-metro-line', 'pz-tram-line', 'pz-transit-stops'];
+const PZ_TRANSIT_LAYERS = ['pz-metro-line', 'pz-metro-stops', 'pz-tram-line', 'pz-transit-stops'];
 
 // The basemap merges subway + tram into one faint "transit_rail" set and draws
 // metro barely visibly (it is almost all brunnel=tunnel). These extra layers pull
-// the two modes apart via the tiles' `subclass` field so each gets its own toggle
-// and a colour that reads on air. Off by default — they change the map's look, so
-// existing presets keep rendering exactly as before unless the user asks for them.
+// the two modes apart so each gets its own toggle and a colour that reads on air.
+// Off by default — they change the map's look, so existing presets keep rendering
+// exactly as before unless the user asks for them.
+//
+// Trams still come from the vector tiles (subclass=tram). The metro does NOT: the
+// tiles only carry transit geometry from z14 up and give every line the same
+// subclass, so at a city-wide shot — exactly the framing a news graphic uses — the
+// network vanished and A/B/C were indistinguishable. It is drawn from the bundled
+// PRAHA_METRO_GEOJSON instead, which renders at any zoom in the real line colours.
 function ensureTransitLayers(){
   const map = state.map;
   if(!map?.isStyleLoaded?.()) return;
-  if(!map.getSource('openmaptiles')) return;   // raster basemaps have no vector transit data
-  const notBridgeTunnelOnly = cls => ['all', ['==', ['get','class'], 'transit'], ['==', ['get','subclass'], cls]];
   const add = (id, def) => { if(!map.getLayer(id)){ try{ map.addLayer(def); }catch(e){} } };
 
-  add('pz-metro-line', {
-    id:'pz-metro-line', type:'line', source:'openmaptiles', 'source-layer':'transportation',
-    filter: notBridgeTunnelOnly('subway'), minzoom: 9,
-    layout:{'line-cap':'round','line-join':'round',visibility:'none'},
-    paint:{'line-color':PZ_METRO_COLOR,'line-opacity':0.95,
-      'line-width':['interpolate',['linear'],['zoom'],9,1.4,12,2.6,16,5.5]}
-  });
+  if(typeof PRAHA_METRO_GEOJSON !== 'undefined'){
+    if(!map.getSource('pz-metro')){
+      try{ map.addSource('pz-metro', {type:'geojson', data:PRAHA_METRO_GEOJSON}); }catch(e){}
+    }
+    add('pz-metro-line', {
+      id:'pz-metro-line', type:'line', source:'pz-metro',
+      filter:['==', ['get','kind'], 'line'],
+      layout:{'line-cap':'round','line-join':'round',visibility:'none'},
+      paint:{'line-color':PZ_METRO_COLOR_EXPR,'line-opacity':0.95,
+        'line-width':['interpolate',['linear'],['zoom'],6,1.2,9,2,12,3.4,16,6]}
+    });
+    add('pz-metro-stops', {
+      id:'pz-metro-stops', type:'circle', source:'pz-metro',
+      filter:['==', ['get','kind'], 'stop'], minzoom: 10,
+      layout:{visibility:'none'},
+      paint:{
+        'circle-radius':['interpolate',['linear'],['zoom'],10,1.6,13,2.8,16,4.5],
+        'circle-color':'#ffffff',
+        'circle-stroke-width':['interpolate',['linear'],['zoom'],10,0.8,16,1.8],
+        'circle-stroke-color':PZ_METRO_COLOR_EXPR
+      }
+    });
+  }
+
+  if(!map.getSource('openmaptiles')) return;   // raster basemaps have no vector transit data
+  const notBridgeTunnelOnly = cls => ['all', ['==', ['get','class'], 'transit'], ['==', ['get','subclass'], cls]];
   add('pz-tram-line', {
     id:'pz-tram-line', type:'line', source:'openmaptiles', 'source-layer':'transportation',
     filter: notBridgeTunnelOnly('tram'), minzoom: 11,
@@ -7409,7 +7562,7 @@ function ensureTransitLayers(){
     layout:{visibility:'none'},
     paint:{
       'circle-radius':['interpolate',['linear'],['zoom'],13,1.8,16,3.6],
-      'circle-color':['match',['get','subclass'],'subway',PZ_METRO_COLOR,'tram_stop',PZ_TRAM_COLOR,'#4a6178'],
+      'circle-color':['match',['get','subclass'],'subway',PZ_METRO_LINE_COLORS.C,'tram_stop',PZ_TRAM_COLOR,'#4a6178'],
       'circle-stroke-width':0.8,'circle-stroke-color':'#ffffff','circle-opacity':0.95
     }
   });
@@ -7437,11 +7590,169 @@ function applyRoadClassVisibility(){
   const metro = !!$('showMetro')?.checked;
   const transit = !!$('showTransit')?.checked;
   safeSetLayout('pz-metro-line', 'visibility', metro ? 'visible' : 'none');
+  safeSetLayout('pz-metro-stops', 'visibility', metro ? 'visible' : 'none');
   safeSetLayout('pz-tram-line', 'visibility', transit ? 'visible' : 'none');
   safeSetLayout('pz-transit-stops', 'visibility', transit ? 'visible' : 'none');
   // Hide the basemap's merged transit lines while our split ones are drawn, so the
   // same track isn't stroked twice.
   setVisibilityByRegex(/transit_rail/, !(metro || transit), ['line']);
+}
+
+// ===========================================================================
+// Sun & building shadows
+//
+// MapLibre can LIGHT the 3D buildings (map.setLight positions a directional
+// light, which shades their walls) but it cannot CAST shadows — there is no
+// shadow pass for fill-extrusion, and the Mapbox-only ambient-occlusion /
+// flood-light paint properties are rejected here (verified at runtime). So the
+// shadows are built by hand: take each visible building footprint, translate a
+// copy of it away from the sun by height / tan(elevation), and fill that copy
+// underneath the buildings. Softness stacks a few copies at slightly different
+// lengths — fills can't be blurred, so overlapping translucent layers stand in
+// for a penumbra.
+// ===========================================================================
+const SHADOW_SOURCE_ID = 'pz-bldg-shadow';
+const SHADOW_LAYER_IDS = ['pz-bldg-shadow-0', 'pz-bldg-shadow-1', 'pz-bldg-shadow-2'];
+const SHADOW_MAX_FEATURES = 4000;   // keeps a city-wide frame from stalling the render
+const SHADOW_MIN_ZOOM = 13.5;       // below this the tiles carry no building heights
+
+function sunShadowsEnabled(){ return !!$('sunShadowsOn')?.checked; }
+function sunAzimuthDeg(){ return parseFloat($('sunAzimuth')?.value ?? '135') || 0; }
+function sunElevationDeg(){ return Math.max(5, Math.min(85, parseFloat($('sunElevation')?.value ?? '35') || 35)); }
+function shadowOpacity01(){ return Math.max(0, Math.min(1, (parseFloat($('shadowOpacity')?.value ?? '45') || 0) / 100)); }
+function shadowSoftness01(){ return Math.max(0, Math.min(1, (parseFloat($('shadowSoftness')?.value ?? '50') || 0) / 100)); }
+
+// Light the extrusions from the same sun the shadows use. MapLibre's position is
+// [radial, azimuth°, polar°] with polar measured from straight up, so a high sun
+// (elevation 85°) becomes polar 5°.
+function applySunLight(map = state.map){
+  if(!map?.setLight) return;
+  // Only take over the light while the sun is actually in play. Overwriting it
+  // unconditionally would re-shade every existing preset's 3D buildings for users
+  // who never asked for sun at all.
+  if(!sunShadowsEnabled()){
+    if(state._sunLightApplied){
+      try{ map.setLight({anchor:'viewport', position:[1.15, 210, 30], color:'#ffffff', intensity:0.5}); }catch(e){}
+      state._sunLightApplied = false;
+    }
+    return;
+  }
+  try{
+    map.setLight({
+      anchor: 'map',
+      position: [1.5, sunAzimuthDeg(), 90 - sunElevationDeg()],
+      color: '#ffffff',
+      intensity: 0.35
+    });
+    state._sunLightApplied = true;
+  }catch(e){}
+}
+
+function ensureShadowLayers(map = state.map){
+  if(!map?.isStyleLoaded?.()) return;
+  if(!map.getSource(SHADOW_SOURCE_ID)){
+    try{ map.addSource(SHADOW_SOURCE_ID, {type:'geojson', data:{type:'FeatureCollection', features:[]}}); }
+    catch(e){ return; }
+  }
+  // Keep the shadows under the buildings themselves, and under anything drawn on
+  // top of them, so a building never looks like it is standing in its own shade.
+  const beneath = map.getLayer('building-3d') ? 'building-3d' : undefined;
+  SHADOW_LAYER_IDS.forEach((id, i) => {
+    if(map.getLayer(id)) return;
+    try{
+      map.addLayer({
+        id, type:'fill', source: SHADOW_SOURCE_ID,
+        filter: ['==', ['get','pass'], i],
+        layout:{visibility:'none'},
+        // Cool near-black rather than pure black: overlapping shadows in a dense
+        // old town stack into a flat grey with #000, which reads as dirt on air.
+        paint:{'fill-color':'#0f1721', 'fill-opacity':0.15, 'fill-antialias':true}
+      }, beneath);
+    }catch(e){}
+  });
+}
+
+// Metres → degrees at this latitude. Good enough over a single viewport.
+function metresToDegrees(dxM, dyM, lat){
+  const dLat = dyM / 111320;
+  const dLng = dxM / (111320 * Math.max(0.1, Math.cos(lat * Math.PI / 180)));
+  return [dLng, dLat];
+}
+
+function buildShadowFeatures(map){
+  const feats = [];
+  let src = null;
+  try{ src = map.querySourceFeatures('openmaptiles', {sourceLayer:'building'}); }catch(e){ return feats; }
+  if(!src?.length) return feats;
+
+  const az = sunAzimuthDeg();
+  const elev = sunElevationDeg();
+  const soft = shadowSoftness01();
+  // Shadow points AWAY from the sun; screen/compass azimuth is clockwise from north.
+  const dir = (az + 180) * Math.PI / 180;
+  const lenPerMetre = 1 / Math.tan(elev * Math.PI / 180);
+  // Soft edge = the same silhouette repeated at slightly different lengths.
+  const passes = soft > 0.02 ? [1 - 0.35 * soft, 1, 1 + 0.45 * soft] : [1];
+
+  let used = 0;
+  for(const f of src){
+    if(used >= SHADOW_MAX_FEATURES) break;
+    const g = f.geometry;
+    if(!g || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) continue;
+    const h = Number(f.properties?.render_height ?? f.properties?.height ?? 0);
+    if(!(h > 1)) continue;
+    const rings = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+    const lat = rings[0]?.[0]?.[0]?.[1] ?? map.getCenter().lat;
+    const baseLen = h * lenPerMetre;
+
+    passes.forEach((mult, pass) => {
+      const dist = baseLen * mult;
+      const [dLng, dLat] = metresToDegrees(Math.sin(dir) * dist, Math.cos(dir) * dist, lat);
+      const moved = rings.map(poly => poly.map(ring => ring.map(([x, y]) => [x + dLng, y + dLat])));
+      feats.push({
+        type:'Feature',
+        properties:{pass: passes.length === 1 ? 1 : pass},
+        geometry: g.type === 'Polygon' ? {type:'Polygon', coordinates: moved[0]} : {type:'MultiPolygon', coordinates: moved}
+      });
+    });
+    used++;
+  }
+  return feats;
+}
+
+function refreshBuildingShadows(map = state.map){
+  if(!map?.isStyleLoaded?.()) return;
+  ensureShadowLayers(map);
+  const on = sunShadowsEnabled();
+  const soft = shadowSoftness01();
+  const passes = soft > 0.02 ? 3 : 1;
+  // Split the ink across the stacked copies so raising softness blurs the edge
+  // instead of darkening the shadow. Divide by MORE than the pass count: shadows
+  // of neighbouring buildings also overlap each other, and in a dense centre that
+  // compounding is what turns the whole block into one grey slab.
+  const per = shadowOpacity01() / (passes === 1 ? 1.6 : passes * 1.5);
+
+  SHADOW_LAYER_IDS.forEach((id, i) => {
+    if(!map.getLayer(id)) return;
+    const active = on && (passes === 1 ? i === 1 : true);
+    safeSetLayout(id, 'visibility', active ? 'visible' : 'none');
+    if(active) safeSetPaint(id, 'fill-opacity', per);
+  });
+
+  const srcObj = map.getSource(SHADOW_SOURCE_ID);
+  if(!srcObj) return;
+  if(!on || map.getZoom() < SHADOW_MIN_ZOOM){
+    try{ srcObj.setData({type:'FeatureCollection', features:[]}); }catch(e){}
+    return;
+  }
+  try{ srcObj.setData({type:'FeatureCollection', features: buildShadowFeatures(map)}); }catch(e){}
+}
+
+// Rebuilding scans every building in view, so coalesce the map's move events.
+let _shadowTimer = null;
+function scheduleShadowRefresh(delay = 220){
+  if(_shadowTimer) clearTimeout(_shadowTimer);
+  _shadowTimer = setTimeout(() => { _shadowTimer = null; refreshBuildingShadows(); }, delay);
 }
 
 function applyMapTweaks(){
@@ -7516,6 +7827,8 @@ function applyMapTweaks(){
   setVisibilityByRegex(/road|street|minor/, $('showMinorRoads')?.checked !== false, ['line']);
   setVisibilityByRegex(/motorway|trunk|primary|major/, $('showMajorRoads')?.checked !== false, ['line']);
   applyRoadClassVisibility();
+  applySunLight();
+  scheduleShadowRefresh(60);
 
   if(state.countriesGeojson || state.countryBorderLinesGeojson || state.czRegionsGeojson){
     ensurePoliticalLayers();
@@ -7664,6 +7977,10 @@ function updateReadouts(){
   set('routeWidthVal', ($('routeWidth')?.value || '4') + ' px');
   set('routeEndpointSizeVal', ($('routeEndpointSize')?.value || '28') + ' px');
   set('sceneIconSizeVal', ($('sceneIconSize')?.value || '30') + ' px');
+  set('sunAzimuthVal', ($('sunAzimuth')?.value || '135') + '°');
+  set('sunElevationVal', ($('sunElevation')?.value || '35') + '°');
+  set('shadowOpacityVal', ($('shadowOpacity')?.value || '45') + ' %');
+  set('shadowSoftnessVal', ($('shadowSoftness')?.value || '50') + ' %');
   set('mapLabelSizeVal', ($('mapLabelSize')?.value || '28') + ' px');
   set('animIconSizeVal', ($('animIconSize')?.value || '34') + ' px');
   set('animAngleVal', `${Math.round(getManualAnimAngle())}°`);
@@ -12853,6 +13170,12 @@ function bindUI(){
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
   ['boundaryOpacity','boundaryWidth']
     .forEach(id => $(id)?.addEventListener('input', applyBoundaryTweaksDebounced));
+  // Sun & shadows: the shadow geometry is derived from whatever buildings are in
+  // view, so it has to be rebuilt as the camera moves, not just when a slider does.
+  $('sunShadowsOn')?.addEventListener('change', () => { applySunLight(); refreshBuildingShadows(); updateReadouts(); });
+  ['sunAzimuth','sunElevation','shadowOpacity','shadowSoftness'].forEach(id => {
+    $(id)?.addEventListener('input', () => { applySunLight(); scheduleShadowRefresh(120); updateReadouts(); });
+  });
   $('showBoundaries')?.addEventListener('change', applyBoundaryTweaks);
   ['countryBorderColor','countryBorderWidth','countryBorderOpacity','politicalCountryDefaultColor','politicalFillOpacity','czRegionDefaultColor','czRegionFillOpacity']
     .forEach(id => $(id)?.addEventListener('input', applyPoliticalOverlayTweaksDebounced));
@@ -13273,7 +13596,8 @@ function bindUI(){
       if(!item) return;
       const action = item.dataset.action;
       const isBuiltin = ctxMenu.dataset.isBuiltin === '1';
-      if(action === 'duplicate'){ duplicatePreset(ctxMenu.dataset.target, isBuiltin); }
+      if(action === 'setdefault'){ setPresetAsDefault(ctxMenu.dataset.targetToken); }
+      else if(action === 'duplicate'){ duplicatePreset(ctxMenu.dataset.target, isBuiltin); }
       else if(action === 'rename'){ renamePresetFromContextMenu(); }
       else if(action === 'delete'){ deletePresetFromContextMenu(); }
       closePresetContextMenu();
