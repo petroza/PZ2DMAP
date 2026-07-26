@@ -751,6 +751,14 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label class="check"><input id="showRoadShields" type="checkbox" checked> Obdélníčky s čísly silnic</label>
         <label class="check"><input id="showMinorRoads" type="checkbox" checked> Vedlejší silnice</label>
         <label class="check"><input id="showMajorRoads" type="checkbox" checked> Hlavní silnice</label>
+        <label class="check"><input id="showMotorways" type="checkbox" checked> Dálnice</label>
+        <label class="check"><input id="showPrimaryRoads" type="checkbox" checked> Silnice 1. třídy</label>
+        <label class="check"><input id="showSecondaryRoads" type="checkbox" checked> Silnice 2. třídy</label>
+        <label class="check"><input id="showWaterways" type="checkbox" checked> Řeky a vodní toky</label>
+        <label class="check"><input id="showRailways" type="checkbox" checked> Železnice</label>
+        <label class="check"><input id="showMetro" type="checkbox"> Metro (Praha)</label>
+        <label class="check"><input id="showTransit" type="checkbox"> MHD – tramvaje a zastávky</label>
+        <p class="hint" data-i18n="hint_transit_zoom">Metro a tramvaje jsou v mapových datech až od většího přiblížení — ve výřezu celé republiky se nevykreslí, přibliž na město.</p>
       </div>
       <div class="section" id="countryBordersOverlaySection">
         <h3 data-i18n="Hranice států overlay">Hranice států overlay</h3>
@@ -1629,6 +1637,14 @@ const I18N = {
   'Hranice (vrstva)':          {cs:'Hranice',sk:'Hranice',bg:'Граници',hr:'Granice',ro:'Frontiere'},
   'Názvy ulic a míst':         {cs:'Názvy ulic a míst',sk:'Názvy ulíc a miest',bg:'Имена на улици и места',hr:'Nazivi ulica i mjesta',ro:'Nume de străzi și locuri'},
   'Vedlejší silnice (vrstva)': {cs:'Vedlejší silnice',sk:'Vedľajšie cesty',bg:'Второст. пътища',hr:'Sporedne ceste',ro:'Drumuri secundare'},
+  'hint_transit_zoom': {cs:'Metro a tramvaje jsou v mapových datech až od většího přiblížení — ve výřezu celé republiky se nevykreslí, přibliž na město.',sk:'Metro a električky sú v mapových dátach až od väčšieho priblíženia — vo výreze celej republiky sa nevykreslia, priblíž na mesto.',bg:'Метрото и трамваите са в картните данни само при по-голямо приближение — при изглед на цялата държава не се изчертават, приближи към града.',hr:'Metro i tramvaji su u podacima karte tek od većeg približenja — u prikazu cijele države neće se iscrtati, približi na grad.',ro:'Metroul și tramvaiele apar în datele hărții doar la o apropiere mai mare — în cadrul întregii țări nu se desenează, apropie pe oraș.'},
+  'Dálnice': {cs:'Dálnice',sk:'Diaľnice',bg:'Магистрали',hr:'Autoceste',ro:'Autostrăzi',en:'Motorways'},
+  'Silnice 1. třídy': {cs:'Silnice 1. třídy',sk:'Cesty I. triedy',bg:'Пътища I клас',hr:'Ceste 1. reda',ro:'Drumuri de clasa I',en:'Primary roads'},
+  'Silnice 2. třídy': {cs:'Silnice 2. třídy',sk:'Cesty II. triedy',bg:'Пътища II клас',hr:'Ceste 2. reda',ro:'Drumuri de clasa II',en:'Secondary roads'},
+  'Řeky a vodní toky': {cs:'Řeky a vodní toky',sk:'Rieky a vodné toky',bg:'Реки и водни течения',hr:'Rijeke i vodotoci',ro:'Râuri și cursuri de apă',en:'Rivers and waterways'},
+  'Železnice': {cs:'Železnice',sk:'Železnice',bg:'Железници',hr:'Željeznice',ro:'Căi ferate',en:'Railways'},
+  'Metro (Praha)': {cs:'Metro (Praha)',sk:'Metro (Praha)',bg:'Метро (Прага)',hr:'Metro (Prag)',ro:'Metrou (Praga)',en:'Metro (Prague)'},
+  'MHD – tramvaje a zastávky': {cs:'MHD – tramvaje a zastávky',sk:'MHD – električky a zastávky',bg:'Градски транспорт – трамваи и спирки',hr:'Javni prijevoz – tramvaji i stajališta',ro:'Transport public – tramvaie și stații',en:'Public transit – trams and stops'},
   'Hlavní silnice (vrstva)':   {cs:'Hlavní silnice',sk:'Hlavné cesty',bg:'Главни пътища',hr:'Glavne ceste',ro:'Drumuri principale'},
   'Zobrazit výřez exportu videa v mapě': {cs:'Zobrazit výřez exportu videa v mapě',sk:'Zobraziť výrez exportu videa v mape',bg:'Покажи рамка за експорт',hr:'Prikaži okvir za izvoz',ro:'Afișează cadru export video'},
   'export_liveview': {cs:'Export podle živého náhledu (celá scéna)',sk:'Export podľa živého náhľadu (celá scéna)',bg:'Експорт според живия преглед (цялата сцена)',hr:'Izvoz prema živom pregledu (cijela scena)',ro:'Export conform previzualizării live (toată scena)'},
@@ -2037,6 +2053,7 @@ const I18N = {
 };
 
 const EN_OVERRIDES = {
+  "hint_transit_zoom": "Metro and tram lines only exist in the map data at closer zoom levels — they will not draw in a whole-country view, so zoom in to a city.",
   "hint_preset_click": "Click to apply a preset. Saves colors, intensity and enabled/disabled layers. Ctrl+click selects multiple presets, Delete removes them. Right-click to duplicate or delete.",
   "hint_political_style": "When the \"Political\" style is selected, control of world countries and CZ regions is right here in STYLE.",
   "hint_via_points": "Add stops between A and B. The route recalculates automatically.",
@@ -2568,6 +2585,9 @@ const STYLES = {
 
 const PRESETS = {
   mapycz:{land:'#f1eee5',water:'#a7cdeb',building:'#ddd4c8',park:'#c8e6b8',landcover:'#d8e8cd',landuse:'#e8dfcf',aeroway:'#ece8dd',roadMajor:'#f0a03a',roadMinor:'#f5d6a0',label:'#2c2f33',halo:'#ffffff',boundary:'#4f5356'},
+  // Matched by eye against mapy.com "Turistická": warm paper base, muted sage forests,
+  // dusty-blue water, amber first-class roads and white minor roads with soft casings.
+  mapycomTuristicka:{land:'#f4f1e6',water:'#a8cadf',building:'#e2dcd0',park:'#c3daa6',landcover:'#d9e7c2',landuse:'#eae4d5',aeroway:'#e8e3d6',roadMajor:'#f2ad4e',roadMinor:'#ffffff',label:'#3f3a31',halo:'#fbfaf6',boundary:'#8d8375'},
   waze:{land:'#f5f7f8',water:'#bdefff',building:'#e6eef2',park:'#c8efd3',landcover:'#e1f5e8',landuse:'#eef1f2',aeroway:'#f5f7f8',roadMajor:'#00a9e8',roadMinor:'#d7e1e7',label:'#263238',halo:'#ffffff',boundary:'#535c63'},
   uber:{land:'#111418',water:'#162b3b',building:'#1b2028',park:'#14291f',landcover:'#171d24',landuse:'#20252c',aeroway:'#222830',roadMajor:'#ffffff',roadMinor:'#555c66',label:'#f5f7fa',halo:'#000000',boundary:'#cfd4da'},
   ct24:{land:'#eef2f6',water:'#bed8ee',building:'#dce3ea',park:'#dcefdc',landcover:'#e6edf3',landuse:'#dfe8f1',aeroway:'#f2f4f8',roadMajor:'#ffffff',roadMinor:'#e4ebf2',label:'#162a43',halo:'#ffffff',boundary:'#1a2a44'},
@@ -2618,9 +2638,9 @@ const PRESETS = {
   modSoft20:{land:'#f0f7fb',water:'#c9d9ef',building:'#d8e4f2',park:'#d3eddf',landcover:'#e5eff8',landuse:'#dae6f3',aeroway:'#f2f8fd',roadMajor:'#ffffff',roadMinor:'#f6fbfe',label:'#204a71',halo:'#ffffff',boundary:'#57697b'}
 };
 
-const BUILTIN_PRESET_ORDER = ['mapycz','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
+const BUILTIN_PRESET_ORDER = ['mapycz','mapycomTuristicka','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
 const BUILTIN_PRESET_LABELS = {
-  mapycz:'Mapy.cz clean', waze:'Waze světlá', uber:'Uber dark', ct24:'ČT24', tnNovaClean:'TN Nova clean',
+  mapycz:'Mapy.cz clean', mapycomTuristicka:'Mapy.com turistická', waze:'Waze světlá', uber:'Uber dark', ct24:'ČT24', tnNovaClean:'TN Nova clean',
   modSoft1:'Modrá Jemná 1', modSoft7:'Modrá Jemná 7', modSoft11:'Modrá Jemná 11', modSoft16:'Modrá Jemná 16', modSoft20:'Modrá Jemná 20',
   novaBlue:'TV Modrá', novaTerrain:'TV Reliéf',
   ua:'UA', dark:'Tmavá', slate:'Slate', paper:'Paper', news:'News', sunset:'Sunset',
@@ -2629,9 +2649,12 @@ const BUILTIN_PRESET_LABELS = {
   newsBlue:'TN News Blue', newsSoft:'TN News Soft', newsClean:'TN News Clean', newsNight:'TN News Night', gptBlue:'GPT Blue', gptWhite:'GPT White'
 };
 const DEFAULT_BUILTIN_PRESET_RANGES = {majorWidth:'1.3', minorWidth:'1.0', buildingOpacity:'0.72', boundaryOpacity:'1', boundaryWidth:'1.2'};
-const DEFAULT_BUILTIN_PRESET_VISIBILITY = {showBuildings:true, showParks:true, showLandcover:true, showLanduse:true, showAeroway:true, showBoundaries:true, showLabels:true, showRoadShields:true, showMinorRoads:true, showMajorRoads:true};
+const DEFAULT_BUILTIN_PRESET_VISIBILITY = {showBuildings:true, showParks:true, showLandcover:true, showLanduse:true, showAeroway:true, showBoundaries:true, showLabels:true, showRoadShields:true, showMinorRoads:true, showMajorRoads:true, showMotorways:true, showPrimaryRoads:true, showSecondaryRoads:true, showWaterways:true, showRailways:true, showMetro:false, showTransit:false};
 const BUILTIN_PRESET_STYLE_OVERRIDES = {
   mapycz:{ranges:{majorWidth:'1.3',minorWidth:'1.0',buildingOpacity:'0.72',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
+  // Tourist maps lean on terrain and water rather than traffic, so rivers/rail stay on,
+  // roads are drawn a touch thinner and buildings sit back.
+  mapycomTuristicka:{ranges:{majorWidth:'1.15',minorWidth:'0.9',buildingOpacity:'0.55',boundaryOpacity:'1',boundaryWidth:'1.4'},visibility:{showBoundaries:true,showWaterways:true,showRailways:true,showLandcover:true,showParks:true}},
   waze:{ranges:{majorWidth:'1.45',minorWidth:'1.05',buildingOpacity:'0.70',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
   uber:{ranges:{majorWidth:'1.5',minorWidth:'1.05',buildingOpacity:'0.68',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
   ct24:{ranges:{majorWidth:'1.3',minorWidth:'1.0',buildingOpacity:'0.72',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
@@ -2784,7 +2807,14 @@ function getCurrentStyleVisibility(){
     showLabels: !!$('showLabels')?.checked,
     showRoadShields: !!$('showRoadShields')?.checked,
     showMinorRoads: !!$('showMinorRoads')?.checked,
-    showMajorRoads: !!$('showMajorRoads')?.checked
+    showMajorRoads: !!$('showMajorRoads')?.checked,
+    showMotorways: !!$('showMotorways')?.checked,
+    showPrimaryRoads: !!$('showPrimaryRoads')?.checked,
+    showSecondaryRoads: !!$('showSecondaryRoads')?.checked,
+    showWaterways: !!$('showWaterways')?.checked,
+    showRailways: !!$('showRailways')?.checked,
+    showMetro: !!$('showMetro')?.checked,
+    showTransit: !!$('showTransit')?.checked
   };
 }
 function getCurrentStylePresetSnapshot(){
@@ -2802,7 +2832,7 @@ function applyStylePresetSnapshot(snapshot={}){
     if($(id) && ranges[id] != null) $(id).value = String(ranges[id]);
   });
   const visibility = snapshot.visibility || {};
-  ['showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads'].forEach(id => {
+  ['showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'].forEach(id => {
     if($(id) && visibility[id] != null) $(id).checked = !!visibility[id];
   });
   applyMapTweaks();
@@ -6781,7 +6811,7 @@ function applyBasicProjectSnapshot(snapshot){
   ['majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth'].forEach(id => {
     if($(id) && ranges[id] != null) $(id).value = String(ranges[id]);
   });
-  ['showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads'].forEach(id => {
+  ['showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'].forEach(id => {
     if($(id) && visibility[id] != null) $(id).checked = !!visibility[id];
   });
 
@@ -7341,6 +7371,79 @@ function setRoadShieldVisibility(visible){
   });
 }
 
+// Colours for the added rail overlays. The vector tiles carry no per-line colour
+// (Prague metro A/B/C is a single "subway" subclass), so one accent per mode.
+const PZ_METRO_COLOR = '#d3272e';
+const PZ_TRAM_COLOR  = '#8a5a2b';
+const PZ_TRANSIT_LAYERS = ['pz-metro-line', 'pz-tram-line', 'pz-transit-stops'];
+
+// The basemap merges subway + tram into one faint "transit_rail" set and draws
+// metro barely visibly (it is almost all brunnel=tunnel). These extra layers pull
+// the two modes apart via the tiles' `subclass` field so each gets its own toggle
+// and a colour that reads on air. Off by default — they change the map's look, so
+// existing presets keep rendering exactly as before unless the user asks for them.
+function ensureTransitLayers(){
+  const map = state.map;
+  if(!map?.isStyleLoaded?.()) return;
+  if(!map.getSource('openmaptiles')) return;   // raster basemaps have no vector transit data
+  const notBridgeTunnelOnly = cls => ['all', ['==', ['get','class'], 'transit'], ['==', ['get','subclass'], cls]];
+  const add = (id, def) => { if(!map.getLayer(id)){ try{ map.addLayer(def); }catch(e){} } };
+
+  add('pz-metro-line', {
+    id:'pz-metro-line', type:'line', source:'openmaptiles', 'source-layer':'transportation',
+    filter: notBridgeTunnelOnly('subway'), minzoom: 9,
+    layout:{'line-cap':'round','line-join':'round',visibility:'none'},
+    paint:{'line-color':PZ_METRO_COLOR,'line-opacity':0.95,
+      'line-width':['interpolate',['linear'],['zoom'],9,1.4,12,2.6,16,5.5]}
+  });
+  add('pz-tram-line', {
+    id:'pz-tram-line', type:'line', source:'openmaptiles', 'source-layer':'transportation',
+    filter: notBridgeTunnelOnly('tram'), minzoom: 11,
+    layout:{'line-cap':'round','line-join':'round',visibility:'none'},
+    paint:{'line-color':PZ_TRAM_COLOR,'line-opacity':0.9,
+      'line-width':['interpolate',['linear'],['zoom'],11,0.8,14,1.8,17,3.4]}
+  });
+  add('pz-transit-stops', {
+    id:'pz-transit-stops', type:'circle', source:'openmaptiles', 'source-layer':'poi',
+    filter:['match',['get','subclass'],['subway','tram_stop','bus_stop'],true,false], minzoom: 13,
+    layout:{visibility:'none'},
+    paint:{
+      'circle-radius':['interpolate',['linear'],['zoom'],13,1.8,16,3.6],
+      'circle-color':['match',['get','subclass'],'subway',PZ_METRO_COLOR,'tram_stop',PZ_TRAM_COLOR,'#4a6178'],
+      'circle-stroke-width':0.8,'circle-stroke-color':'#ffffff','circle-opacity':0.95
+    }
+  });
+}
+
+// Per-road-class visibility, applied AFTER the broad minor/major toggles so it can
+// refine them. Motorway/primary/secondary are gated by their parent toggle (AND):
+// unchecking "Hlavní silnice" still hides every major road, while the new switches
+// carve out one class at a time. Rail is deliberately NOT gated — the basemap names
+// its rail layers road_major_rail / road_transit_rail, so they used to vanish along
+// with "Hlavní silnice"; they now answer only to their own switches.
+function applyRoadClassVisibility(){
+  if(!state.map?.isStyleLoaded?.()) return;
+  const on = id => $(id)?.checked !== false;         // missing element ⇒ treated as on
+  const major = on('showMajorRoads');
+  const minor = on('showMinorRoads');
+
+  setVisibilityByRegex(/motorway/, major && on('showMotorways'), ['line']);
+  setVisibilityByRegex(/trunk_primary/, major && on('showPrimaryRoads'), ['line']);
+  setVisibilityByRegex(/secondary_tertiary/, minor && on('showSecondaryRoads'), ['line']);
+  setVisibilityByRegex(/waterway/, on('showWaterways'), ['line','symbol']);
+  setVisibilityByRegex(/major_rail/, on('showRailways'), ['line']);
+
+  ensureTransitLayers();
+  const metro = !!$('showMetro')?.checked;
+  const transit = !!$('showTransit')?.checked;
+  safeSetLayout('pz-metro-line', 'visibility', metro ? 'visible' : 'none');
+  safeSetLayout('pz-tram-line', 'visibility', transit ? 'visible' : 'none');
+  safeSetLayout('pz-transit-stops', 'visibility', transit ? 'visible' : 'none');
+  // Hide the basemap's merged transit lines while our split ones are drawn, so the
+  // same track isn't stroked twice.
+  setVisibilityByRegex(/transit_rail/, !(metro || transit), ['line']);
+}
+
 function applyMapTweaks(){
   if(!state.map?.isStyleLoaded()) return;
   const land = $('landColor')?.value || PRESETS.reset.land;
@@ -7412,6 +7515,7 @@ function applyMapTweaks(){
   enforceRoadShieldToggle();
   setVisibilityByRegex(/road|street|minor/, $('showMinorRoads')?.checked !== false, ['line']);
   setVisibilityByRegex(/motorway|trunk|primary|major/, $('showMajorRoads')?.checked !== false, ['line']);
+  applyRoadClassVisibility();
 
   if(state.countriesGeojson || state.countryBorderLinesGeojson || state.czRegionsGeojson){
     ensurePoliticalLayers();
@@ -12744,7 +12848,7 @@ function bindUI(){
       }
     }catch(_e){}
   });
-  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','majorWidth','minorWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads']
+  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','majorWidth','minorWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
   ['boundaryOpacity','boundaryWidth']
@@ -13479,6 +13583,13 @@ function applyLang(lang) {
       'showRoadShields': 'Obdélníčky s čísly silnic',
       'showMinorRoads': 'Vedlejší silnice (vrstva)',
       'showMajorRoads': 'Hlavní silnice (vrstva)',
+      'showMotorways': 'Dálnice',
+      'showPrimaryRoads': 'Silnice 1. třídy',
+      'showSecondaryRoads': 'Silnice 2. třídy',
+      'showWaterways': 'Řeky a vodní toky',
+      'showRailways': 'Železnice',
+      'showMetro': 'Metro (Praha)',
+      'showTransit': 'MHD – tramvaje a zastávky',
       'showExportFrame': 'Zobrazit výřez exportu videa v mapě',
       'globeProjection': 'Glóbus (3D zeměkoule)',
       'followCameraRotate': 'Kamera se otáčí podle směru jízdy',
@@ -13742,6 +13853,31 @@ updateExportFrame();
 initMap();
 syncPresetDBFromServer();
 syncProjectDBFromServer();
+
+// Presets/projects live in one shared file on the server (map_api.php), so every
+// workstation sees the same set. Until now the pull only happened once at startup,
+// which meant a colleague's new/renamed/deleted preset stayed invisible in a window
+// that was already open — sometimes for a whole shift. Re-pull periodically and
+// whenever the tab regains focus, so edits made anywhere show up everywhere.
+// Skipped while hidden (background tabs are throttled anyway) and while the user is
+// mid-edit of a preset name, so a refresh can't yank the field out from under them.
+const SHARED_DB_POLL_MS = 60000;
+function sharedDbPollDue(){
+  if(document.hidden) return false;
+  const el = document.activeElement;
+  if(el && (el.id === 'presetName' || el.id === 'projectName')) return false;
+  return true;
+}
+setInterval(() => {
+  if(!sharedDbPollDue()) return;
+  syncPresetDBFromServer();
+  syncProjectDBFromServer();
+}, SHARED_DB_POLL_MS);
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) return;
+  syncPresetDBFromServer();
+  syncProjectDBFromServer();
+});
 
 // ====== Escape key: close open dropdowns / search results ======
 document.addEventListener('keydown', e => {
