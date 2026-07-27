@@ -680,6 +680,12 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <select id="baseStyle" autocomplete="off"></select>
         <div class="btns"><button type="button" class="btn btn-primary" id="reloadStyleBtn" data-i18n="Načíst styl">Načíst styl</button></div>
         <label class="check" style="margin-top:8px"><input id="globeProjection" type="checkbox"> Glóbus (3D zeměkoule)</label>
+        <label class="check"><input id="terrain3dOn" type="checkbox"> 3D terén (reálný reliéf krajiny)</label>
+        <div id="terrain3dControls" style="display:none">
+          <label data-i18n="Převýšení terénu">Převýšení terénu <span class="val" id="terrainExaggerationVal">1.5×</span></label>
+          <input id="terrainExaggeration" type="range" min="0.2" max="4" step="0.1" value="1.5">
+        </div>
+        <p class="hint" data-i18n="hint_terrain3d">Posadí mapu na skutečnou výškopisnou síť — kopce se zvednou a budovy stojí na svazích místo na rovině. Nakloň mapu (pravé tlačítko nebo kompas vpravo nahoře), jinak reliéf shora nevynikne. Převýšení zvýrazní kopce nad skutečnost, což se pro grafiku často hodí. Funguje se všemi podklady i v exportu.</p>
       </div>
       <div class="section" id="stylePresetSection">
         <h3 data-i18n="Presety ">Presety </h3>
@@ -1659,6 +1665,11 @@ const I18N = {
   'hint_transit_zoom': {cs:'Metro se vykreslí v každém přiblížení, každá linka ve své barvě (A zelená, B žlutá, C červená). Tramvaje jsou v mapových datech až od většího přiblížení — na celou republiku se nevykreslí.',sk:'Metro a električky sú v mapových dátach až od väčšieho priblíženia — vo výreze celej republiky sa nevykreslia, priblíž na mesto.',bg:'Метрото и трамваите са в картните данни само при по-голямо приближение — при изглед на цялата държава не се изчертават, приближи към града.',hr:'Metro i tramvaji su u podacima karte tek od većeg približenja — u prikazu cijele države neće se iscrtati, približi na grad.',ro:'Metroul și tramvaiele apar în datele hărții doar la o apropiere mai mare — în cadrul întregii țări nu se desenează, apropie pe oraș.'},
   'hint_base_style_vs_preset': {cs:'Podklad = odkud se berou data mapy (silnice, budovy, satelit). Barvy podkladu pak přebarvíš Presety níž.',sk:'Podklad = odkiaľ sa berú dáta mapy (cesty, budovy, satelit). Farby podkladu potom prefarbíš Presetmi nižšie.',bg:'Основата = откъде идват данните на картата (пътища, сгради, сателит). Цветовете ѝ после променяш с пресетите по-долу.',hr:'Podloga = odakle dolaze podaci karte (ceste, zgrade, satelit). Boje podloge zatim mijenjaš presetima ispod.',ro:'Fundalul = de unde vin datele hărții (drumuri, clădiri, satelit). Culorile lui le schimbi apoi cu presetările de mai jos.'},
   'hint_preset_vs_base_style': {cs:'Preset = barvy a zapnuté vrstvy nad zvoleným podkladem. Podklad sám nemění — ten vybereš v Základních stylech.',sk:'Preset = farby a zapnuté vrstvy nad zvoleným podkladom. Podklad sám nemení — ten vyberieš v Základných štýloch.',bg:'Пресетът = цветове и включени слоеве върху избраната основа. Самата основа не се променя — нея избираш в Основни стилове.',hr:'Preset = boje i uključeni slojevi nad odabranom podlogom. Samu podlogu ne mijenja — nju biraš u Osnovnim stilovima.',ro:'Presetarea = culorile și straturile active peste fundalul ales. Fundalul în sine nu se schimbă — pe el îl alegi în Stiluri de bază.'},
+  '3D terén (reálný reliéf krajiny)': {cs:'3D terén (reálný reliéf krajiny)',sk:'3D terén (reálny reliéf krajiny)',bg:'3D терен (реален релеф)',hr:'3D teren (stvarni reljef)',ro:'Teren 3D (relief real)',en:'3D terrain (real elevation)'},
+  'Převýšení terénu': {cs:'Převýšení terénu',sk:'Prevýšenie terénu',bg:'Преувеличение на релефа',hr:'Nadvišenje terena',ro:'Exagerarea reliefului',en:'Terrain exaggeration'},
+  '3D terén zapnut — nakloň mapu, ať reliéf vynikne.': {cs:'3D terén zapnut — nakloň mapu, ať reliéf vynikne.',sk:'3D terén zapnutý — nakloň mapu, nech reliéf vynikne.',bg:'3D теренът е включен — наклони картата, за да изпъкне релефът.',hr:'3D teren uključen — nagni kartu da reljef dođe do izražaja.',ro:'Teren 3D activat — înclină harta ca reliefully să iasă în evidență.',en:'3D terrain on — tilt the map so the relief shows.'},
+  '3D terén vypnut.': {cs:'3D terén vypnut.',sk:'3D terén vypnutý.',bg:'3D теренът е изключен.',hr:'3D teren isključen.',ro:'Teren 3D dezactivat.',en:'3D terrain off.'},
+  'hint_terrain3d': {cs:'Posadí mapu na skutečnou výškopisnou síť — kopce se zvednou a budovy stojí na svazích místo na rovině. Nakloň mapu (pravé tlačítko nebo kompas vpravo nahoře), jinak reliéf shora nevynikne. Převýšení zvýrazní kopce nad skutečnost, což se pro grafiku často hodí. Funguje se všemi podklady i v exportu.',sk:'Posadí mapu na skutočnú výškopisnú sieť — kopce sa zdvihnú a budovy stoja na svahoch namiesto na rovine. Nakloň mapu (pravé tlačidlo alebo kompas vpravo hore), inak reliéf zhora nevynikne. Prevýšenie zvýrazní kopce nad skutočnosť, čo sa pre grafiku často hodí. Funguje so všetkými podkladmi aj v exporte.',bg:'Поставя картата върху истинска височинна мрежа — хълмовете се издигат и сградите стоят по склоновете, а не на равно. Наклони картата (десен бутон или компасът горе вдясно), иначе релефът отгоре не личи. Преувеличението подчертава хълмовете над действителността, което често помага за графиката. Работи с всички основи и в експорта.',hr:'Postavlja kartu na stvarnu visinsku mrežu — brda se podižu i zgrade stoje na padinama umjesto na ravnini. Nagni kartu (desna tipka ili kompas gore desno), inače se reljef odozgo ne vidi. Nadvišenje naglašava brda iznad stvarnosti, što za grafiku često dobro dođe. Radi sa svim podlogama i u izvozu.',ro:'Așază harta pe o rețea altimetrică reală — dealurile se ridică, iar clădirile stau pe pante, nu pe plan. Înclină harta (clic dreapta sau busola din dreapta sus), altfel relieful nu se vede de sus. Exagerarea accentuează dealurile peste realitate, ceea ce ajută adesea la grafică. Funcționează cu toate fundalurile și la export.'},
   'Slunce a stíny': {cs:'Slunce a stíny',sk:'Slnko a tiene',bg:'Слънце и сенки',hr:'Sunce i sjene',ro:'Soare și umbre',en:'Sun and shadows'},
   'Vrhat stíny budov': {cs:'Vrhat stíny budov',sk:'Vrhať tiene budov',bg:'Хвърляй сенки на сградите',hr:'Baci sjene zgrada',ro:'Aruncă umbrele clădirilor',en:'Cast building shadows'},
   'Směr slunce': {cs:'Směr slunce',sk:'Smer slnka',bg:'Посока на слънцето',hr:'Smjer sunca',ro:'Direcția soarelui',en:'Sun direction'},
@@ -2084,6 +2095,7 @@ const I18N = {
 const EN_OVERRIDES = {
   "hint_base_style_vs_preset": "The base map is where the map data comes from (roads, buildings, satellite). Its colours are then restyled by the presets below.",
   "hint_preset_vs_base_style": "A preset is the colours and enabled layers on top of the chosen base map. It does not change the base map itself — pick that under Base styles.",
+  "hint_terrain3d": "Puts the map on a real elevation mesh — hills rise and buildings stand on the slopes instead of on a flat plane. Tilt the map (right-drag, or the compass at top right), otherwise relief does not read from straight above. Exaggeration lifts the hills beyond reality, which often suits a graphic. Works with every base map and in the export.",
   "hint_sun_shadows": "The sun lights the walls of the 3D buildings and casts their shadows. Shadows are computed from building heights, so they appear at the zoom where the map has 3D buildings (roughly zoom 14 and closer). A lower sun means longer shadows. Renders into video too.",
   "hint_transit_zoom": "The metro draws at every zoom, each line in its own colour (A green, B yellow, C red). Tram lines only exist in the map data at closer zoom, so they will not draw in a whole-country view.",
   "hint_preset_click": "Click to apply a preset. Saves colors, intensity and enabled/disabled layers. Ctrl+click selects multiple presets, Delete removes them. Right-click to duplicate or delete.",
@@ -7606,6 +7618,49 @@ function applyRoadClassVisibility(){
 }
 
 // ===========================================================================
+// Real 3D terrain
+//
+// The existing "hillshade" overlay only PAINTS relief onto a flat plane. This
+// hands the same free elevation tiles to map.setTerrain(), which displaces the
+// actual mesh — so the ground gains height and the 3D buildings stand on the
+// slopes instead of all sitting at zero. Terrain is a style property, so it has
+// to be re-applied after every style reload, exactly like the projection.
+// ===========================================================================
+const TERRAIN_DEM_SOURCE_ID = 'pz-terrain-dem';
+
+function terrain3dEnabled(){ return !!$('terrain3dOn')?.checked; }
+function terrainExaggeration(){
+  const v = parseFloat($('terrainExaggeration')?.value ?? '1.5');
+  return Number.isFinite(v) ? Math.max(0.1, Math.min(6, v)) : 1.5;
+}
+
+function applyTerrain3d(map = state.map){
+  if(!map?.setTerrain) return;
+  const ctl = $('terrain3dControls');
+  if(ctl) ctl.style.display = terrain3dEnabled() ? '' : 'none';
+  if(!map.isStyleLoaded?.()) return;
+
+  if(!terrain3dEnabled()){
+    try{ if(map.getTerrain?.()) map.setTerrain(null); }catch(e){}
+    return;
+  }
+  if(!map.getSource(TERRAIN_DEM_SOURCE_ID)){
+    try{
+      map.addSource(TERRAIN_DEM_SOURCE_ID, {
+        type:'raster-dem',
+        tiles: LIBERTY_HILLSHADE_DEM_TILES,
+        tileSize: 256,
+        maxzoom: 15,
+        encoding: 'terrarium',
+        attribution: 'Terrain Tiles'
+      });
+    }catch(e){ return; }
+  }
+  try{ map.setTerrain({source: TERRAIN_DEM_SOURCE_ID, exaggeration: terrainExaggeration()}); }
+  catch(e){ console.warn('Terrain apply failed', e); }
+}
+
+// ===========================================================================
 // Sun & building shadows
 //
 // MapLibre can LIGHT the 3D buildings (map.setLight positions a directional
@@ -7850,6 +7905,7 @@ function applyMapTweaks(){
   setVisibilityByRegex(/road|street|minor/, $('showMinorRoads')?.checked !== false, ['line']);
   setVisibilityByRegex(/motorway|trunk|primary|major/, $('showMajorRoads')?.checked !== false, ['line']);
   applyRoadClassVisibility();
+  applyTerrain3d();
   applySunLight();
   scheduleShadowRefresh(60);
 
@@ -8000,6 +8056,7 @@ function updateReadouts(){
   set('routeWidthVal', ($('routeWidth')?.value || '4') + ' px');
   set('routeEndpointSizeVal', ($('routeEndpointSize')?.value || '28') + ' px');
   set('sceneIconSizeVal', ($('sceneIconSize')?.value || '30') + ' px');
+  set('terrainExaggerationVal', ($('terrainExaggeration')?.value || '1.5') + '×');
   set('sunAzimuthVal', ($('sunAzimuth')?.value || '135') + '°');
   set('sunElevationVal', ($('sunElevation')?.value || '35') + '°');
   set('shadowOpacityVal', ($('shadowOpacity')?.value || '45') + ' %');
@@ -13195,6 +13252,18 @@ function bindUI(){
     .forEach(id => $(id)?.addEventListener('input', applyBoundaryTweaksDebounced));
   // Sun & shadows: the shadow geometry is derived from whatever buildings are in
   // view, so it has to be rebuilt as the camera moves, not just when a slider does.
+  $('terrain3dOn')?.addEventListener('change', () => {
+    applyTerrain3d();
+    updateReadouts();
+    const on = terrain3dEnabled();
+    // Relief is invisible straight down — give the camera a tilt the first time so
+    // the user actually sees what they just switched on.
+    if(on && (state.map?.getPitch?.() ?? 0) < 15){
+      try{ state.map.easeTo({pitch: 55, duration: 700}); }catch(e){}
+    }
+    setStatus(on ? t('3D terén zapnut — nakloň mapu, ať reliéf vynikne.') : t('3D terén vypnut.'));
+  });
+  $('terrainExaggeration')?.addEventListener('input', () => { applyTerrain3d(); updateReadouts(); });
   $('sunShadowsOn')?.addEventListener('change', () => { state._shadowViewSig = null; applySunLight(); refreshBuildingShadows(); updateReadouts(); });
   ['sunAzimuth','sunElevation','shadowOpacity','shadowSoftness'].forEach(id => {
     $(id)?.addEventListener('input', () => { state._shadowViewSig = null; applySunLight(); scheduleShadowRefresh(120); updateReadouts(); });
