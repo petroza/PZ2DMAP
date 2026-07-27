@@ -98,6 +98,9 @@ input[type=color]:hover{border-color:var(--accent)}
 .preset-card-name{max-width:100%;font-size:8px;color:var(--tx3);white-space:normal;overflow:visible;line-height:1.25;text-align:center}
 .preset-card.active .preset-card-name{color:#fff}
 .preset-card.multi-selected{border-color:#26d0c4!important;box-shadow:0 0 0 2px rgba(38,208,196,.72),0 0 18px rgba(38,208,196,.18);background:linear-gradient(135deg,rgba(38,208,196,.16),var(--bg3));color:#fff}
+/* Live DOF preview. The export re-does this on canvas, so this overlay must never
+   catch clicks or sit above the UI — it only blurs the map beneath it. */
+#dofOverlay{position:absolute;inset:0;pointer-events:none;z-index:2}
 /* The preset the app opens with — a corner star, so it reads even on the active tile. */
 .preset-card.is-default{position:relative}
 .preset-card.is-default::after{content:'★';position:absolute;top:2px;right:4px;font-size:9px;line-height:1;color:#f2c200;text-shadow:0 0 3px rgba(0,0,0,.6);pointer-events:none}
@@ -784,6 +787,24 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label data-i18n="Měkkost stínu">Měkkost stínu <span class="val" id="shadowSoftnessVal">50 %</span></label>
         <input id="shadowSoftness" type="range" min="0" max="100" step="1" value="50">
         <p class="hint" data-i18n="hint_sun_shadows">Slunce nasvítí stěny 3D budov a zároveň vrhá jejich stíny. Stíny se počítají z výšek budov, takže se objeví od přiblížení, kde má mapa 3D budovy (zhruba od zoomu 14). Nižší slunce = delší stíny. Vyrenderuje se i do videa.</p>
+      </div>
+      <div class="section" id="atmosphereSection">
+        <h3 data-i18n="Atmosféra a hloubka ostrosti">Atmosféra a hloubka ostrosti</h3>
+        <label class="check"><input id="fogOn" type="checkbox"> Mlha do dálky</label>
+        <div id="fogControls" style="display:none">
+          <label data-i18n="Hustota mlhy">Hustota mlhy <span class="val" id="fogStrengthVal">55 %</span></label>
+          <input id="fogStrength" type="range" min="0" max="100" step="1" value="55">
+        </div>
+        <label class="check" style="margin-top:8px"><input id="dofOn" type="checkbox"> Hloubka ostrosti (DOF)</label>
+        <div id="dofControls" style="display:none">
+          <label data-i18n="Rovina ostrosti">Rovina ostrosti <span class="val" id="dofFocusVal">55 %</span></label>
+          <input id="dofFocus" type="range" min="0" max="100" step="1" value="55">
+          <label data-i18n="Šířka ostrého pásu">Šířka ostrého pásu <span class="val" id="dofRangeVal">40 %</span></label>
+          <input id="dofRange" type="range" min="5" max="100" step="1" value="40">
+          <label data-i18n="Síla rozostření">Síla rozostření <span class="val" id="dofStrengthVal">8 px</span></label>
+          <input id="dofStrength" type="range" min="1" max="30" step="1" value="8">
+        </div>
+        <p class="hint" data-i18n="hint_atmosphere">Mlha nechá dálku splynout s obzorem — hodí se i proto, že 3D budovy mají data jen do určité vzdálenosti a mlha ten předěl schová. DOF rozostří popředí a pozadí mimo rovinu ostrosti (efekt jako u dlouhého objektivu / „maketa"). Tvoje popisky, ikony a trasa zůstávají ostré (rozostří se jen mapa pod nimi). Obojí se vyrenderuje i do videa.</p>
       </div>
       <div class="section" id="countryBordersOverlaySection">
         <h3 data-i18n="Hranice států overlay">Hranice států overlay</h3>
@@ -1670,6 +1691,14 @@ const I18N = {
   '3D terén zapnut — nakloň mapu, ať reliéf vynikne.': {cs:'3D terén zapnut — nakloň mapu, ať reliéf vynikne.',sk:'3D terén zapnutý — nakloň mapu, nech reliéf vynikne.',bg:'3D теренът е включен — наклони картата, за да изпъкне релефът.',hr:'3D teren uključen — nagni kartu da reljef dođe do izražaja.',ro:'Teren 3D activat — înclină harta ca reliefully să iasă în evidență.',en:'3D terrain on — tilt the map so the relief shows.'},
   '3D terén vypnut.': {cs:'3D terén vypnut.',sk:'3D terén vypnutý.',bg:'3D теренът е изключен.',hr:'3D teren isključen.',ro:'Teren 3D dezactivat.',en:'3D terrain off.'},
   'hint_terrain3d': {cs:'Posadí mapu na skutečnou výškopisnou síť — kopce se zvednou a budovy stojí na svazích místo na rovině. Nakloň mapu (pravé tlačítko nebo kompas vpravo nahoře), jinak reliéf shora nevynikne. Převýšení zvýrazní kopce nad skutečnost, což se pro grafiku často hodí. Funguje se všemi podklady i v exportu.',sk:'Posadí mapu na skutočnú výškopisnú sieť — kopce sa zdvihnú a budovy stoja na svahoch namiesto na rovine. Nakloň mapu (pravé tlačidlo alebo kompas vpravo hore), inak reliéf zhora nevynikne. Prevýšenie zvýrazní kopce nad skutočnosť, čo sa pre grafiku často hodí. Funguje so všetkými podkladmi aj v exporte.',bg:'Поставя картата върху истинска височинна мрежа — хълмовете се издигат и сградите стоят по склоновете, а не на равно. Наклони картата (десен бутон или компасът горе вдясно), иначе релефът отгоре не личи. Преувеличението подчертава хълмовете над действителността, което често помага за графиката. Работи с всички основи и в експорта.',hr:'Postavlja kartu na stvarnu visinsku mrežu — brda se podižu i zgrade stoje na padinama umjesto na ravnini. Nagni kartu (desna tipka ili kompas gore desno), inače se reljef odozgo ne vidi. Nadvišenje naglašava brda iznad stvarnosti, što za grafiku često dobro dođe. Radi sa svim podlogama i u izvozu.',ro:'Așază harta pe o rețea altimetrică reală — dealurile se ridică, iar clădirile stau pe pante, nu pe plan. Înclină harta (clic dreapta sau busola din dreapta sus), altfel relieful nu se vede de sus. Exagerarea accentuează dealurile peste realitate, ceea ce ajută adesea la grafică. Funcționează cu toate fundalurile și la export.'},
+  'Atmosféra a hloubka ostrosti': {cs:'Atmosféra a hloubka ostrosti',sk:'Atmosféra a hĺbka ostrosti',bg:'Атмосфера и дълбочина на рязкост',hr:'Atmosfera i dubinska oštrina',ro:'Atmosferă și profunzime de câmp',en:'Atmosphere and depth of field'},
+  'Mlha do dálky': {cs:'Mlha do dálky',sk:'Hmla do diaľky',bg:'Мъгла в далечината',hr:'Magla u daljini',ro:'Ceață în depărtare',en:'Distance haze'},
+  'Hustota mlhy': {cs:'Hustota mlhy',sk:'Hustota hmly',bg:'Плътност на мъглата',hr:'Gustoća magle',ro:'Densitatea ceții',en:'Haze density'},
+  'Hloubka ostrosti (DOF)': {cs:'Hloubka ostrosti (DOF)',sk:'Hĺbka ostrosti (DOF)',bg:'Дълбочина на рязкост (DOF)',hr:'Dubinska oštrina (DOF)',ro:'Profunzime de câmp (DOF)',en:'Depth of field (DOF)'},
+  'Rovina ostrosti': {cs:'Rovina ostrosti',sk:'Rovina ostrosti',bg:'Равнина на фокуса',hr:'Ravnina oštrine',ro:'Planul de focalizare',en:'Focus plane'},
+  'Šířka ostrého pásu': {cs:'Šířka ostrého pásu',sk:'Šírka ostrého pásu',bg:'Ширина на резкия пояс',hr:'Širina oštrog pojasa',ro:'Lățimea zonei clare',en:'Sharp band width'},
+  'Síla rozostření': {cs:'Síla rozostření',sk:'Sila rozostrenia',bg:'Сила на замъгляването',hr:'Jačina zamućenja',ro:'Intensitatea blurului',en:'Blur strength'},
+  'hint_atmosphere': {cs:'Mlha nechá dálku splynout s obzorem — hodí se i proto, že 3D budovy mají data jen do určité vzdálenosti a mlha ten předěl schová. DOF rozostří popředí a pozadí mimo rovinu ostrosti (efekt jako u dlouhého objektivu / „maketa"). Tvoje popisky, ikony a trasa zůstávají ostré (rozostří se jen mapa pod nimi). Obojí se vyrenderuje i do videa.',sk:'Hmla nechá diaľku splynúť s obzorom — hodí sa aj preto, že 3D budovy majú dáta len do určitej vzdialenosti a hmla ten predel schová. DOF rozostrí popredie a pozadie mimo roviny ostrosti (efekt ako pri dlhom objektíve / „maketa"). Popisky a značky zostávajú ostré. Oboje sa vyrenderuje aj do videa.',bg:'Мъглата слива далечината с хоризонта — полезно е и защото 3D сградите имат данни само до определено разстояние и мъглата скрива този преход. DOF замъглява предния и задния план извън равнината на фокуса (ефект като при дълъг обектив / „макет"). Надписите и знаците остават резки. И двете се визуализират във видеото.',hr:'Magla stapa daljinu s obzorom — korisno je i zato što 3D zgrade imaju podatke samo do određene udaljenosti pa magla skriva taj prijelaz. DOF zamućuje prednji i stražnji plan izvan ravnine oštrine (efekt kao kod dugog objektiva / „maketa"). Oznake i znakovi ostaju oštri. Oboje se renderira i u video.',ro:'Ceața topește depărtarea în orizont — ajută și pentru că datele clădirilor 3D se opresc la o anumită distanță, iar ceața ascunde acea limită. DOF estompează prim-planul și fundalul din afara planului de focalizare (efect de obiectiv lung / „machetă"). Etichetele și marcajele rămân clare. Ambele se redau și în video.'},
   'Slunce a stíny': {cs:'Slunce a stíny',sk:'Slnko a tiene',bg:'Слънце и сенки',hr:'Sunce i sjene',ro:'Soare și umbre',en:'Sun and shadows'},
   'Vrhat stíny budov': {cs:'Vrhat stíny budov',sk:'Vrhať tiene budov',bg:'Хвърляй сенки на сградите',hr:'Baci sjene zgrada',ro:'Aruncă umbrele clădirilor',en:'Cast building shadows'},
   'Směr slunce': {cs:'Směr slunce',sk:'Smer slnka',bg:'Посока на слънцето',hr:'Smjer sunca',ro:'Direcția soarelui',en:'Sun direction'},
@@ -2096,6 +2125,7 @@ const EN_OVERRIDES = {
   "hint_base_style_vs_preset": "The base map is where the map data comes from (roads, buildings, satellite). Its colours are then restyled by the presets below.",
   "hint_preset_vs_base_style": "A preset is the colours and enabled layers on top of the chosen base map. It does not change the base map itself — pick that under Base styles.",
   "hint_terrain3d": "Puts the map on a real elevation mesh — hills rise and buildings stand on the slopes instead of on a flat plane. Tilt the map (right-drag, or the compass at top right), otherwise relief does not read from straight above. Exaggeration lifts the hills beyond reality, which often suits a graphic. Works with every base map and in the export.",
+  "hint_atmosphere": "Haze melts the distance into the horizon — useful because 3D buildings only have data out to a certain range, and the haze hides that edge. DOF blurs foreground and background outside the focus plane (a long-lens / tilt-shift look). Your labels, icons and route stay sharp (only the map beneath them blurs). Both render into video too.",
   "hint_sun_shadows": "The sun lights the walls of the 3D buildings and casts their shadows. Shadows are computed from building heights, so they appear at the zoom where the map has 3D buildings (roughly zoom 14 and closer). A lower sun means longer shadows. Renders into video too.",
   "hint_transit_zoom": "The metro draws at every zoom, each line in its own colour (A green, B yellow, C red). Tram lines only exist in the map data at closer zoom, so they will not draw in a whole-country view.",
   "hint_preset_click": "Click to apply a preset. Saves colors, intensity and enabled/disabled layers. Ctrl+click selects multiple presets, Delete removes them. Right-click to duplicate or delete.",
@@ -7618,6 +7648,120 @@ function applyRoadClassVisibility(){
 }
 
 // ===========================================================================
+// Atmospheric haze + depth of field
+//
+// Why the haze matters beyond looks: vector tiles only carry building geometry
+// at high zoom, and a pitched camera covers the far field with low-zoom tiles,
+// so the 3D buildings genuinely STOP at some distance — no setting can conjure
+// data that isn't in the tiles. Fading the distance into haze turns that hard
+// edge into an atmosphere, which is also how a real long lens sees a city.
+//
+// DOF is a post-process, not a lens: MapLibre gives us no depth buffer, so the
+// blur is driven by screen height (far = top on a pitched view), i.e. a
+// tilt-shift. It runs twice — a CSS backdrop-filter overlay for the live
+// preview, and a canvas pass for the export, applied to the map BEFORE labels
+// and markers are composited so type stays sharp.
+// ===========================================================================
+function fogEnabled(){ return !!$('fogOn')?.checked; }
+function fogStrength01(){ return Math.max(0, Math.min(1, (parseFloat($('fogStrength')?.value ?? '55') || 0) / 100)); }
+function dofEnabled(){ return !!$('dofOn')?.checked; }
+function dofFocus01(){ return Math.max(0, Math.min(1, (parseFloat($('dofFocus')?.value ?? '55') || 0) / 100)); }
+function dofRange01(){ return Math.max(0.05, Math.min(1, (parseFloat($('dofRange')?.value ?? '40') || 40) / 100)); }
+function dofStrengthPx(){ return Math.max(0, Math.min(30, parseFloat($('dofStrength')?.value ?? '8') || 0)); }
+
+function applyFog(map = state.map){
+  if(!map?.setSky) return;
+  const ctl = $('fogControls');
+  if(ctl) ctl.style.display = fogEnabled() ? '' : 'none';
+  if(!map.isStyleLoaded?.()) return;
+  try{
+    if(!fogEnabled()){
+      // No documented "remove sky", so neutralise it instead: no atmosphere and
+      // no ground blend leaves the map rendering exactly as before.
+      if(state._fogApplied){ map.setSky({'atmosphere-blend':0, 'fog-ground-blend':1, 'horizon-fog-blend':1}); state._fogApplied = false; }
+      return;
+    }
+    const s = fogStrength01();
+    map.setSky({
+      'sky-color':'#a8c8e8',
+      'horizon-color':'#dde7f0',
+      'fog-color':'#e9eef4',
+      // Lower blend values start the fog closer to the camera → denser haze.
+      'fog-ground-blend': 0.95 - 0.55 * s,
+      'horizon-fog-blend': 0.9 - 0.6 * s,
+      'sky-horizon-blend': 0.6 + 0.35 * s,
+      'atmosphere-blend': 0.4 + 0.6 * s
+    });
+    state._fogApplied = true;
+  }catch(e){ console.warn('Fog apply failed', e); }
+}
+
+// Mask stops: fully blurred outside the band, sharp inside, with a soft ramp so
+// the transition doesn't show as a line.
+function dofMaskStops(){
+  const f = dofFocus01(), r = dofRange01();
+  const half = r / 2, feather = Math.max(0.04, r * 0.45);
+  return {
+    farEnd:   Math.max(0, f - half - feather),   // fully blurred above this
+    farSharp: Math.max(0, f - half),             // sharp from here
+    nearSharp: Math.min(1, f + half),            // sharp until here
+    nearEnd:  Math.min(1, f + half + feather)    // fully blurred below this
+  };
+}
+
+function updateDofOverlay(){
+  const ctl = $('dofControls');
+  if(ctl) ctl.style.display = dofEnabled() ? '' : 'none';
+  const mapEl = $('map');
+  if(!mapEl) return;
+  let el = $('dofOverlay');
+  if(!dofEnabled()){ if(el) el.style.display = 'none'; return; }
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'dofOverlay';
+    el.setAttribute('aria-hidden','true');
+    mapEl.appendChild(el);
+  }
+  const s = dofMaskStops();
+  const pct = v => (v * 100).toFixed(1) + '%';
+  const mask = `linear-gradient(to bottom, #000 0%, #000 ${pct(s.farEnd)}, transparent ${pct(s.farSharp)}, transparent ${pct(s.nearSharp)}, #000 ${pct(s.nearEnd)}, #000 100%)`;
+  el.style.display = '';
+  el.style.backdropFilter = `blur(${dofStrengthPx()}px)`;
+  el.style.webkitBackdropFilter = `blur(${dofStrengthPx()}px)`;
+  el.style.webkitMaskImage = mask;
+  el.style.maskImage = mask;
+}
+
+// Export pass. Blur is scaled to the output width so a 4K render gets the same
+// LOOK as the 1080p preview rather than a proportionally weaker blur.
+function applyDofToExportCtx(ctx, w, h){
+  if(!dofEnabled() || !ctx || w < 2 || h < 2) return;
+  const blur = dofStrengthPx() * (w / 1920);
+  if(blur < 0.4) return;
+  try{
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const tctx = tmp.getContext('2d');
+    tctx.filter = `blur(${blur}px)`;
+    tctx.drawImage(ctx.canvas, 0, 0);
+    tctx.filter = 'none';
+    const s = dofMaskStops();
+    const g = tctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, 'rgba(0,0,0,1)');
+    g.addColorStop(Math.min(0.999, s.farEnd), 'rgba(0,0,0,1)');
+    g.addColorStop(Math.min(0.999, s.farSharp), 'rgba(0,0,0,0)');
+    g.addColorStop(Math.min(1, s.nearSharp), 'rgba(0,0,0,0)');
+    g.addColorStop(Math.min(1, s.nearEnd), 'rgba(0,0,0,1)');
+    g.addColorStop(1, 'rgba(0,0,0,1)');
+    tctx.globalCompositeOperation = 'destination-in';
+    tctx.fillStyle = g;
+    tctx.fillRect(0, 0, w, h);
+    tctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(tmp, 0, 0);
+  }catch(e){ console.warn('DOF pass failed', e); }
+}
+
+// ===========================================================================
 // Real 3D terrain
 //
 // The existing "hillshade" overlay only PAINTS relief onto a flat plane. This
@@ -7906,6 +8050,8 @@ function applyMapTweaks(){
   setVisibilityByRegex(/motorway|trunk|primary|major/, $('showMajorRoads')?.checked !== false, ['line']);
   applyRoadClassVisibility();
   applyTerrain3d();
+  applyFog();
+  updateDofOverlay();
   applySunLight();
   scheduleShadowRefresh(60);
 
@@ -8057,6 +8203,10 @@ function updateReadouts(){
   set('routeEndpointSizeVal', ($('routeEndpointSize')?.value || '28') + ' px');
   set('sceneIconSizeVal', ($('sceneIconSize')?.value || '30') + ' px');
   set('terrainExaggerationVal', ($('terrainExaggeration')?.value || '1.5') + '×');
+  set('fogStrengthVal', ($('fogStrength')?.value || '55') + ' %');
+  set('dofFocusVal', ($('dofFocus')?.value || '55') + ' %');
+  set('dofRangeVal', ($('dofRange')?.value || '40') + ' %');
+  set('dofStrengthVal', ($('dofStrength')?.value || '8') + ' px');
   set('sunAzimuthVal', ($('sunAzimuth')?.value || '135') + '°');
   set('sunElevationVal', ($('sunElevation')?.value || '35') + '°');
   set('shadowOpacityVal', ($('shadowOpacity')?.value || '45') + ' %');
@@ -11949,6 +12099,9 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
     drawRouteLinesToExportCtx(ctx, crop);
   } else {
     ctx.drawImage(crop.source, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.outW, crop.outH);
+    // Blur the MAP only — everything composited after this (endpoints, icons,
+    // labels, the animated marker) stays sharp, which is what reads on air.
+    applyDofToExportCtx(ctx, crop.outW, crop.outH);
   }
 
   const mapCanvas = crop.source;
@@ -13264,6 +13417,12 @@ function bindUI(){
     setStatus(on ? t('3D terén zapnut — nakloň mapu, ať reliéf vynikne.') : t('3D terén vypnut.'));
   });
   $('terrainExaggeration')?.addEventListener('input', () => { applyTerrain3d(); updateReadouts(); });
+  $('fogOn')?.addEventListener('change', () => { applyFog(); updateReadouts(); });
+  $('fogStrength')?.addEventListener('input', () => { applyFog(); updateReadouts(); });
+  $('dofOn')?.addEventListener('change', () => { updateDofOverlay(); updateReadouts(); });
+  ['dofFocus','dofRange','dofStrength'].forEach(id => {
+    $(id)?.addEventListener('input', () => { updateDofOverlay(); updateReadouts(); });
+  });
   $('sunShadowsOn')?.addEventListener('change', () => { state._shadowViewSig = null; applySunLight(); refreshBuildingShadows(); updateReadouts(); });
   ['sunAzimuth','sunElevation','shadowOpacity','shadowSoftness'].forEach(id => {
     $(id)?.addEventListener('input', () => { state._shadowViewSig = null; applySunLight(); scheduleShadowRefresh(120); updateReadouts(); });

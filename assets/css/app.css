@@ -87,6 +87,9 @@ input[type=color]:hover{border-color:var(--accent)}
 .preset-card-name{max-width:100%;font-size:8px;color:var(--tx3);white-space:normal;overflow:visible;line-height:1.25;text-align:center}
 .preset-card.active .preset-card-name{color:#fff}
 .preset-card.multi-selected{border-color:#26d0c4!important;box-shadow:0 0 0 2px rgba(38,208,196,.72),0 0 18px rgba(38,208,196,.18);background:linear-gradient(135deg,rgba(38,208,196,.16),var(--bg3));color:#fff}
+/* Live DOF preview. The export re-does this on canvas, so this overlay must never
+   catch clicks or sit above the UI — it only blurs the map beneath it. */
+#dofOverlay{position:absolute;inset:0;pointer-events:none;z-index:2}
 /* The preset the app opens with — a corner star, so it reads even on the active tile. */
 .preset-card.is-default{position:relative}
 .preset-card.is-default::after{content:'★';position:absolute;top:2px;right:4px;font-size:9px;line-height:1;color:#f2c200;text-shadow:0 0 3px rgba(0,0,0,.6);pointer-events:none}
