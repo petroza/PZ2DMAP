@@ -10,10 +10,14 @@ var ALLOWED = [
   "https://www.appcreate.cloud",
   "https://appcreate.cloud",
   "https://www.appcrate.cloud",
-  "https://appcrate.cloud"
+  "https://appcrate.cloud",
+  "https://tnmap.petrzavorka.workers.dev"
 ];
+// Verze workeru mají preview URL <hash>-tnmap.<subdoména>.workers.dev, takže je
+// potřeba pustit i je — jinak se nová verze mapy nedá odladit vedle produkce.
+var ALLOWED_RE = /^https:\/\/([a-z0-9-]+\.)?(tnmap|map3d)\.petrzavorka\.workers\.dev$/;
 function corsHeaders(origin) {
-  const ok = origin && (ALLOWED.includes(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin));
+  const ok = origin && (ALLOWED.includes(origin) || ALLOWED_RE.test(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin));
   return {
     "Access-Control-Allow-Origin": ok ? origin : ALLOWED[0],
     "Access-Control-Allow-Methods": "POST, OPTIONS",
