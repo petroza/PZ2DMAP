@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="cs">
-<head>
+<head><base href="/apps/TNmap/">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PZ MAP</title>
 <link rel="stylesheet" href="assets/vendor/maplibre-gl.css" onerror="this.onerror=null;this.href='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css'">
-<script src="assets/vendor/maplibre-gl.js"></script>
-<script>if(typeof maplibregl==='undefined'){document.write('<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"><\/script>');}</script>
+<!-- defer: download the 1 MB engine in parallel with HTML/inline-JS parsing instead
+     of blocking the parser in <head>. onerror keeps the CDN fallback working under
+     defer (document.write can't run after parsing). initMap() waits for it below. -->
+<script defer src="assets/vendor/maplibre-gl.js" onerror="(function(){var s=document.createElement('script');s.defer=true;s.src='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js';document.head.appendChild(s);})()"></script>
 <style>
 /* assets/css/app.css inlined for single-file / host-agnostic deploy (v6.45) */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -774,6 +776,11 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
       </div>
       <div class="section" id="sunShadowSection">
         <h3 data-i18n="Slunce a stíny">Slunce a stíny</h3>
+        <label class="check"><input id="aoOn" type="checkbox" checked> <span data-i18n="Ambientní okluze (AO)">Ambientní okluze (AO)</span></label>
+        <label data-i18n="Síla AO">Síla AO <span class="val" id="aoStrengthVal">55 %</span></label>
+        <input id="aoStrength" type="range" min="0" max="100" step="1" value="55">
+        <p class="hint" data-i18n="hint_ao">Automatické měkké zastínění u paty budov a v mezerách mezi nimi — dodá 3D budovám hloubku bez slunce. Funguje samo od přiblížení s 3D budovami (zhruba zoom 14) a renderuje se i do videa.</p>
+        <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
         <label class="check"><input id="sunShadowsOn" type="checkbox"> Vrhat stíny budov</label>
         <label style="margin-top:10px" data-i18n="Směr slunce">Směr slunce <span class="val" id="sunAzimuthVal">135°</span></label>
         <input id="sunAzimuth" type="range" min="0" max="360" step="1" value="135">
@@ -1127,7 +1134,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
             <span data-i18n="Letadlo">Letadlo</span>
           </button>
           <button type="button" class="sys-icon-btn" data-sys-icon="car" title="Auto">
-            <img src="assets/sys_car.png" alt="">
+            <img src="assets/sys_car.png" alt="" loading="lazy" decoding="async">
             <span data-i18n="Auto">Auto</span>
           </button>
         </div>
@@ -2746,7 +2753,7 @@ const TAB_ORDER_KEY = 'map60_tab_order_v1';
 const SERVER_API_URL = 'map_api.php';
 // Optional shared secret. Leave empty for no auth (default, works out of the box).
 // If you set it, put the SAME value in map_api.php ($API_TOKEN) to require it for writes.
-const SERVER_API_TOKEN = '';
+const SERVER_API_TOKEN = 'cb33ba7ccfac453f960cccf692654bbd3f7cf79a7264460a';
 const COUNTRY_SOURCE_URLS = [
   'https://gisco-services.ec.europa.eu/distribution/v2/countries/geojson/CNTR_RG_20M_2024_4326.geojson',
   'https://gisco-services.ec.europa.eu/distribution/v2/countries/geojson/CNTR_RG_10M_2024_4326.geojson',
@@ -3766,7 +3773,7 @@ function refreshBaseStyleSelect(){
   sel.innerHTML = '';
   const builtinGroup = document.createElement('optgroup');
   builtinGroup.label = t('Základní styly');
-  [{k:'liberty',l:'Liberty'},{k:'bright',l:'Bright (výchozí)'},{k:'positron',l:'Positron'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
+  [{k:'liberty',l:'Liberty 3D'},{k:'bright',l:'Bright (výchozí)'},{k:'positron',l:'Positron'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
     const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l); builtinGroup.appendChild(o);
   });
   sel.appendChild(builtinGroup);
@@ -3803,7 +3810,7 @@ function renderTileSourceList(){
   const custom = loadTileDB();
   list.innerHTML = '';
   BUILTIN_TILE_KEYS.forEach((key, idx) => {
-    const names = {liberty:'Liberty',bright:'Bright',positron:'Positron',satellite:'Satelitní',hybrid:'Hybrid',osmStandard:'OSM Standard (CZ names)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Esri Terrain',osmHot:'OSM Humanitarian'};
+    const names = {liberty:'Liberty 3D',bright:'Bright',positron:'Positron',satellite:'Satelitní',hybrid:'Hybrid',osmStandard:'OSM Standard (CZ names)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Esri Terrain',osmHot:'OSM Humanitarian'};
     const wrap = document.createElement('div'); wrap.className = 'wp-item';
     wrap.innerHTML = `<span class="wp-badge" style="background:var(--green);font-size:8px">B${idx+1}</span><div style="flex:1;"><span style="font-weight:600">${names[key]||key}</span> <span class="small">— vestavěný</span></div>`;
     list.appendChild(wrap);
@@ -4139,29 +4146,63 @@ function resetAppToStart(){
   try{ closeNavSuggest('startInput'); closeNavSuggest('endInput'); }catch(_e){}
   try{ document.body.classList.remove('mobile-panel-open'); }catch(_e){}
   try{ document.querySelector('.sidebar')?.scrollTo({top:0, behavior:'smooth'}); }catch(_e){}
-  // Frame the WHOLE Czech Republic inside the 16:9 export frame, slightly inset from the
-  // edges so nothing is clipped on a TV (title-safe), and level the camera out.
+  // The "home" reset also drops the basemap back to Positron, the chosen default
+  // base style. reloadStyle() rebuilds the map, so the Czech-Republic framing
+  // below must wait for the new style to load — otherwise reloadStyle's own
+  // camera restore would clobber it.
+  let switchedStyle = false;
   try{
-    if(state.map){
-      state.screenPan = {x:0, y:0};
-      try{ updateExportFrame(); }catch(_e){}
-      const CZ = [[12.0, 48.55], [18.95, 51.10]];
-      let padding = 48;
-      const mapEl = $('map'), frame = $('exportFrame');
-      if(mapEl && frame && !frame.classList.contains('hidden')){
-        const mr = mapEl.getBoundingClientRect(), fr = frame.getBoundingClientRect();
-        const insX = fr.width * 0.08, insY = fr.height * 0.08;   // TV-safe inset inside the frame
-        padding = {
-          left:   Math.max(0, (fr.left - mr.left) + insX),
-          right:  Math.max(0, (mr.right - fr.right) + insX),
-          top:    Math.max(0, (fr.top - mr.top) + insY),
-          bottom: Math.max(0, (mr.bottom - fr.bottom) + insY)
-        };
-      }
-      state.map.fitBounds(CZ, { padding, bearing:0, pitch:0, maxZoom:9, duration:750 });
+    const sel = $('baseStyle');
+    if(sel && sel.value !== 'positron'){
+      sel.value = 'positron';
+      if(typeof reloadStyle === 'function'){ reloadStyle(); switchedStyle = true; }
     }
   }catch(_e){}
-  setStatus(t('Aplikace resetována na začátek — vycentrováno na ČR, sekce sbaleny.'));
+  // Frame the country of the CURRENTLY SELECTED LANGUAGE inside the 16:9 export frame,
+  // slightly inset from the edges so nothing is clipped on a TV (title-safe), and level
+  // the camera out. Switching the flag therefore also switches what "home" means —
+  // a Slovak user resetting should land on Slovakia, not on Czechia.
+  const frameHomeCountry = () => {
+    try{
+      if(state.map){
+        state.screenPan = {x:0, y:0};
+        try{ updateExportFrame(); }catch(_e){}
+        // [[west, south], [east, north]] per UI language. 'en' has no single home
+        // country, so it frames Europe.
+        const HOME_BOUNDS = {
+          cs: [[12.00, 48.55], [18.95, 51.10]],   // Česko
+          sk: [[16.83, 47.73], [22.57, 49.62]],   // Slovensko
+          bg: [[22.35, 41.23], [28.61, 44.22]],   // Bulharsko
+          hr: [[13.49, 42.38], [19.45, 46.56]],   // Chorvatsko
+          ro: [[20.26, 43.62], [29.71, 48.27]],   // Rumunsko
+          en: [[-11.00, 35.00], [32.00, 60.00]]   // Evropa
+        };
+        const CZ = HOME_BOUNDS[String(typeof currentLang !== 'undefined' && currentLang || 'cs').toLowerCase()]
+                   || HOME_BOUNDS.cs;
+        let padding = 48;
+        const mapEl = $('map'), frame = $('exportFrame');
+        if(mapEl && frame && !frame.classList.contains('hidden')){
+          const mr = mapEl.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+          const insX = fr.width * 0.08, insY = fr.height * 0.08;   // TV-safe inset inside the frame
+          padding = {
+            left:   Math.max(0, (fr.left - mr.left) + insX),
+            right:  Math.max(0, (mr.right - fr.right) + insX),
+            top:    Math.max(0, (fr.top - mr.top) + insY),
+            bottom: Math.max(0, (mr.bottom - fr.bottom) + insY)
+          };
+        }
+        state.map.fitBounds(CZ, { padding, bearing:0, pitch:0, maxZoom:9, duration:750 });
+      }
+    }catch(_e){}
+  };
+  if(switchedStyle){
+    // Runs after reloadStyle's own once('style.load'); the defer lets its camera
+    // restore happen first so ours is the final word.
+    try{ state.map.once('style.load', () => setTimeout(frameHomeCountry, 30)); }catch(_e){ frameHomeCountry(); }
+  } else {
+    frameHomeCountry();
+  }
+  setStatus(t('Aplikace resetována na začátek — sekce sbaleny.'));
 }
 
 // Sections in the Trasa tab only make sense for some transport modes:
@@ -4630,6 +4671,10 @@ function initMap(){
   // must follow the camera. 'moveend' (not 'move') keeps the pan itself smooth.
   state.map.on('moveend', () => { if(sunShadowsEnabled()){ state._shadowViewSig = null; scheduleShadowRefresh(); } });
   state.map.on('idle', refreshShadowsOnIdle);
+  // Ambient occlusion is directionless and always on, so it follows the camera
+  // the same way but independent of the sun toggle.
+  state.map.on('moveend', () => { if(aoEnabled()){ state._aoViewSig = null; scheduleAORefresh(); } });
+  state.map.on('idle', refreshAOOnIdle);
   // visualizePitch shows a draggable compass/pitch dial — the orbit handle.
   state.map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
   try{ state.map.dragRotate.enable(); state.map.touchZoomRotate.enableRotation(); state.map.touchPitch?.enable?.(); }catch(e){}
@@ -7701,11 +7746,21 @@ function applyTerrain3d(map = state.map){
 // light, which shades their walls) but it cannot CAST shadows — there is no
 // shadow pass for fill-extrusion, and the Mapbox-only ambient-occlusion /
 // flood-light paint properties are rejected here (verified at runtime). So the
-// shadows are built by hand: take each visible building footprint, translate a
-// copy of it away from the sun by height / tan(elevation), and fill that copy
-// underneath the buildings. Softness stacks a few copies at slightly different
-// lengths — fills can't be blurred, so overlapping translucent layers stand in
-// for a penumbra.
+// shadows are built by hand.
+//
+// Each building casts ONE connected shadow: we take its footprint, make a copy
+// offset away from the sun by height / tan(elevation), and fill the convex hull
+// of {footprint ∪ offset copy}. The hull is a single simple polygon that runs
+// from the building base out to the roof-tip shadow, so the shadow stays glued
+// to the building instead of floating away as a detached copy (which is what
+// made the old translate-only shadows look fragmented). One polygon per building
+// also means no internal self-overlap, so the fill has an even tone.
+//
+// Fills can't be blurred, so softness fakes a penumbra by stacking the same hull
+// at a few sizes: a small solid core plus larger, fainter copies grown outward
+// around it. Where they overlap the ink adds up, so the centre stays dark and
+// the edge feathers out evenly in every direction (the old version only scaled
+// the LENGTH, which stepped/banded along the sun axis).
 // ===========================================================================
 const SHADOW_SOURCE_ID = 'pz-bldg-shadow';
 const SHADOW_LAYER_IDS = ['pz-bldg-shadow-0', 'pz-bldg-shadow-1', 'pz-bldg-shadow-2'];
@@ -7775,10 +7830,57 @@ function metresToDegrees(dxM, dyM, lat){
   return [dLng, dLat];
 }
 
+// Scanning every building footprint in view (querySourceFeatures) is the pricey
+// part of both the shadow and the AO rebuild, and in Liberty they run back to
+// back for the SAME view. Cache the scan by view signature so the second caller
+// reuses the first one's result instead of re-scanning. Invalidated the moment
+// the camera moves (signature changes).
+let _bldgQueryCache = {sig:null, feats:null};
+function queryBuildingFeatures(map){
+  const sig = shadowViewSignature(map);
+  if(_bldgQueryCache.sig === sig && _bldgQueryCache.feats) return _bldgQueryCache.feats;
+  let src = [];
+  try{ src = map.querySourceFeatures('openmaptiles', {sourceLayer:'building'}) || []; }catch(e){ src = []; }
+  _bldgQueryCache = {sig, feats:src};
+  return src;
+}
+
+// Andrew's monotone-chain convex hull. Input/return: [[lng,lat], ...].
+// A building shadow is the hull of its footprint plus that footprint pushed
+// away from the sun — one simple polygon spanning base to tip, so the fill has
+// no internal overlap and stays glued to the building.
+function convexHull(pts){
+  if(pts.length < 3) return pts.slice();
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower = [];
+  for(const q of p){
+    while(lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], q) <= 0) lower.pop();
+    lower.push(q);
+  }
+  const upper = [];
+  for(let i = p.length - 1; i >= 0; i--){
+    const q = p[i];
+    while(upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], q) <= 0) upper.pop();
+    upper.push(q);
+  }
+  lower.pop(); upper.pop();
+  return lower.concat(upper);
+}
+
+// Grow a ring outward from its own centroid by `factor` (1 = unchanged). Used to
+// feather the penumbra: a larger, fainter copy sits under the solid core.
+function dilateRing(ring, factor){
+  if(factor === 1) return ring;
+  let cx = 0, cy = 0;
+  for(const [x, y] of ring){ cx += x; cy += y; }
+  cx /= ring.length; cy /= ring.length;
+  return ring.map(([x, y]) => [cx + (x - cx) * factor, cy + (y - cy) * factor]);
+}
+
 function buildShadowFeatures(map){
   const feats = [];
-  let src = null;
-  try{ src = map.querySourceFeatures('openmaptiles', {sourceLayer:'building'}); }catch(e){ return feats; }
+  const src = queryBuildingFeatures(map);
   if(!src?.length) return feats;
 
   const az = sunAzimuthDeg();
@@ -7787,8 +7889,10 @@ function buildShadowFeatures(map){
   // Shadow points AWAY from the sun; screen/compass azimuth is clockwise from north.
   const dir = (az + 180) * Math.PI / 180;
   const lenPerMetre = 1 / Math.tan(elev * Math.PI / 180);
-  // Soft edge = the same silhouette repeated at slightly different lengths.
-  const passes = soft > 0.02 ? [1 - 0.35 * soft, 1, 1 + 0.45 * soft] : [1];
+  const sinD = Math.sin(dir), cosD = Math.cos(dir);
+  // Penumbra passes: grow the same silhouette outward so the soft edge feathers
+  // evenly in every direction. pass 2 = solid core, 1 & 0 = larger/fainter halo.
+  const grow = soft > 0.02 ? [1 + 0.14 * soft, 1 + 0.06 * soft, 1] : [1];
 
   let used = 0;
   for(const f of src){
@@ -7799,18 +7903,28 @@ function buildShadowFeatures(map){
     if(!(h > 1)) continue;
     const rings = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
     const lat = rings[0]?.[0]?.[0]?.[1] ?? map.getCenter().lat;
-    const baseLen = h * lenPerMetre;
+    const dist = h * lenPerMetre;
+    const [dLng, dLat] = metresToDegrees(sinD * dist, cosD * dist, lat);
 
-    passes.forEach((mult, pass) => {
-      const dist = baseLen * mult;
-      const [dLng, dLat] = metresToDegrees(Math.sin(dir) * dist, Math.cos(dir) * dist, lat);
-      const moved = rings.map(poly => poly.map(ring => ring.map(([x, y]) => [x + dLng, y + dLat])));
-      feats.push({
-        type:'Feature',
-        properties:{pass: passes.length === 1 ? 1 : pass},
-        geometry: g.type === 'Polygon' ? {type:'Polygon', coordinates: moved[0]} : {type:'MultiPolygon', coordinates: moved}
+    // Gather each footprint's outline plus its sun-offset copy, then hull them
+    // into one connected shadow. MultiPolygon buildings hull each part.
+    for(const poly of rings){
+      const outer = poly[0];
+      if(!outer || outer.length < 3) continue;
+      const cloud = [];
+      for(const [x, y] of outer){ cloud.push([x, y], [x + dLng, y + dLat]); }
+      const hull = convexHull(cloud);
+      if(hull.length < 3) continue;
+      grow.forEach((factor, i) => {
+        const ring = dilateRing(hull, factor);
+        ring.push(ring[0]); // close
+        feats.push({
+          type:'Feature',
+          properties:{pass: grow.length === 1 ? 1 : i},
+          geometry:{type:'Polygon', coordinates:[ring]}
+        });
       });
-    });
+    }
     used++;
   }
   return feats;
@@ -7867,6 +7981,147 @@ function refreshShadowsOnIdle(){
   refreshBuildingShadows();
 }
 
+// ===========================================================================
+// Automatic ambient occlusion (ground contact shading)
+//
+// Real per-fragment AO isn't available on MapLibre fill-extrusions, so this
+// fakes the look that actually reads as AO to the eye: a soft, DIRECTIONLESS
+// dark halo hugging the outside of every building footprint on the ground.
+// It is not a cast shadow — it has no sun direction and is the same all the way
+// round. Two things make it read as occlusion:
+//   • where two buildings sit close, their halos overlap and the narrow gap
+//     between them goes darker — the crevice-darkening AO is famous for;
+//   • each building gets a faint dark skirt at its base, grounding it.
+// The halo is the ring between the footprint and a slightly grown copy, stacked
+// at a couple of sizes so the edge fades out. Combined with the wall
+// vertical-gradient (set in applyMapTweaks) this gives the buildings depth
+// without needing the sun/shadow feature at all. Always on; tunable strength.
+// ===========================================================================
+const AO_SOURCE_ID = 'pz-bldg-ao';
+const AO_LAYER_IDS = ['pz-bldg-ao-0', 'pz-bldg-ao-1', 'pz-bldg-ao-2'];
+const AO_MAX_FEATURES = 4000;
+const AO_MIN_ZOOM = 13.5;
+
+// AO is deliberately scoped to the Liberty basemap only (the default 3D style).
+// Every other style — Positron, Satellite, Bright, Political, … — gets none.
+function styleUsesAO(){
+  const key = $('baseStyle')?.value || 'liberty';
+  return key === 'liberty' || key === 'libertyHillshade';
+}
+function aoEnabled(){ const el = $('aoOn'); const on = el ? !!el.checked : true; return on && styleUsesAO(); }
+function aoStrength01(){ return Math.max(0, Math.min(1, (parseFloat($('aoStrength')?.value ?? '55') || 0) / 100)); }
+
+function ensureAOLayers(map = state.map){
+  if(!map?.isStyleLoaded?.()) return;
+  if(!map.getSource(AO_SOURCE_ID)){
+    try{ map.addSource(AO_SOURCE_ID, {type:'geojson', data:{type:'FeatureCollection', features:[]}}); }
+    catch(e){ return; }
+  }
+  // Sit just under the 3D buildings so a building never covers its own contact
+  // skirt entirely, and gaps between buildings show the darkened ground.
+  const beneath = map.getLayer('building-3d') ? 'building-3d'
+                : (map.getLayer('pz-bldg-shadow-0') ? 'pz-bldg-shadow-0' : undefined);
+  AO_LAYER_IDS.forEach((id, i) => {
+    if(map.getLayer(id)) return;
+    try{
+      map.addLayer({
+        id, type:'fill', source: AO_SOURCE_ID,
+        filter: ['==', ['get','ring'], i],
+        layout:{visibility:'none'},
+        // Cool near-black, matching the cast shadows, so the two never clash.
+        paint:{'fill-color':'#0d141d', 'fill-opacity':0.12, 'fill-antialias':true}
+      }, beneath);
+    }catch(e){}
+  });
+}
+
+// The occlusion halo of one footprint: the area between the footprint and a
+// grown copy, i.e. a band that hugs the outside edge. `grow` is the outward
+// scale (>1). Returned as a polygon with the footprint as a hole so only the
+// skirt is inked (an even tone, no double-draw inside the building).
+function aoHaloFeature(outer, grow, ring){
+  if(!outer || outer.length < 4) return null;
+  let cx = 0, cy = 0;
+  for(const [x, y] of outer){ cx += x; cy += y; }
+  cx /= outer.length; cy /= outer.length;
+  const big = outer.map(([x, y]) => [cx + (x - cx) * grow, cy + (y - cy) * grow]);
+  // outer ring CCW-agnostic; MapLibre fills use even-odd so a hole just needs to
+  // be the inner loop. Keep both closed.
+  const close = r => (r[0][0] === r[r.length-1][0] && r[0][1] === r[r.length-1][1]) ? r : r.concat([r[0]]);
+  return {
+    type:'Feature',
+    properties:{ring},
+    geometry:{type:'Polygon', coordinates:[close(big), close(outer.slice())]}
+  };
+}
+
+function buildAOFeatures(map){
+  const feats = [];
+  const src = queryBuildingFeatures(map);
+  if(!src?.length) return feats;
+
+  const z = map.getZoom();
+  // Halo width in "footprint scale". Grow a touch as you zoom out so it stays
+  // visible, and clamp so towers don't get a huge skirt. Three nested rings give
+  // a soft outward falloff.
+  const base = 1 + (0.10 + Math.max(0, (16 - z)) * 0.02);   // ~1.10 close, wider far
+  const rings = [base + 0.14, base + 0.07, base];           // outer→inner (faint→solid)
+
+  let used = 0;
+  for(const f of src){
+    if(used >= AO_MAX_FEATURES) break;
+    const g = f.geometry;
+    if(!g || (g.type !== 'Polygon' && g.type !== 'MultiPolygon')) continue;
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+    for(const poly of polys){
+      const outer = poly[0];
+      if(!outer || outer.length < 4) continue;
+      rings.forEach((grow, i) => {
+        const feat = aoHaloFeature(outer, grow, i);
+        if(feat) feats.push(feat);
+      });
+    }
+    used++;
+  }
+  return feats;
+}
+
+function refreshAO(map = state.map){
+  if(!map?.isStyleLoaded?.()) return;
+  ensureAOLayers(map);
+  const on = aoEnabled();
+  // Split the ink across the three nested rings. Overlap of neighbours' halos
+  // in tight gaps compounds this into the darker crevice tone we want.
+  const per = aoStrength01() * 0.28 / AO_LAYER_IDS.length;
+
+  AO_LAYER_IDS.forEach((id) => {
+    if(!map.getLayer(id)) return;
+    safeSetLayout(id, 'visibility', on ? 'visible' : 'none');
+    if(on) safeSetPaint(id, 'fill-opacity', per);
+  });
+
+  const srcObj = map.getSource(AO_SOURCE_ID);
+  if(!srcObj) return;
+  if(!on || map.getZoom() < AO_MIN_ZOOM){
+    try{ srcObj.setData({type:'FeatureCollection', features:[]}); }catch(e){}
+    return;
+  }
+  try{ srcObj.setData({type:'FeatureCollection', features: buildAOFeatures(map)}); }catch(e){}
+}
+
+let _aoTimer = null;
+function scheduleAORefresh(delay = 220){
+  if(_aoTimer) clearTimeout(_aoTimer);
+  _aoTimer = setTimeout(() => { _aoTimer = null; refreshAO(); }, delay);
+}
+function refreshAOOnIdle(){
+  if(!aoEnabled()) return;
+  const sig = shadowViewSignature(state.map);
+  if(sig === state._aoViewSig) return;
+  state._aoViewSig = sig;
+  refreshAO();
+}
+
 function applyMapTweaks(){
   if(!state.map?.isStyleLoaded()) return;
   const land = $('landColor')?.value || PRESETS.reset.land;
@@ -7882,7 +8137,13 @@ function applyMapTweaks(){
   const halo = $('haloColor')?.value || PRESETS.reset.halo;
   const majorWidth = parseFloat($('majorWidth')?.value || '1.3');
   const minorWidth = parseFloat($('minorWidth')?.value || '1.0');
-  const buildingOpacity = parseFloat($('buildingOpacity')?.value || '0.72');
+  let buildingOpacity = parseFloat($('buildingOpacity')?.value || '0.72');
+  // Liberty is the default 3D style and the only one that gets the AO treatment
+  // (ground halo + wall gradient); there its buildings must read as solid, so
+  // force them fully opaque regardless of the slider. Other styles keep the
+  // slider value and stay flat.
+  const isLibertyStyle = styleUsesAO();
+  if(isLibertyStyle) buildingOpacity = 1;
   const boundaryOpacity = parseFloat($('boundaryOpacity')?.value || '1');
   const boundaryWidth = parseFloat($('boundaryWidth')?.value || '1.2');
   const boundaryColor = ($('boundaryColor')?.value || '#6f7378');
@@ -7897,7 +8158,13 @@ function applyMapTweaks(){
   applyColorToLayers(matchLayers(/building/, 'fill'), 'fill-color', building);
   applyColorToLayers(matchLayers(/building/, 'fill-extrusion'), 'fill-extrusion-color', building);
   matchLayers(/building/, 'fill').forEach(l => safeSetPaint(l.id, 'fill-opacity', buildingOpacity));
-  matchLayers(/building/, 'fill-extrusion').forEach(l => safeSetPaint(l.id, 'fill-extrusion-opacity', buildingOpacity));
+  matchLayers(/building/, 'fill-extrusion').forEach(l => {
+    safeSetPaint(l.id, 'fill-extrusion-opacity', buildingOpacity);
+    // Cheap ambient occlusion — Liberty only: the vertical gradient darkens each
+    // wall towards the ground, grounding the buildings and softening the flat,
+    // cut-out look. Other styles keep flat walls (no AO anywhere but Liberty).
+    safeSetPaint(l.id, 'fill-extrusion-vertical-gradient', isLibertyStyle);
+  });
   const controlledBoundaries = getControlledBoundaryLayers();
   applyColorToLayers(controlledBoundaries.target, 'line-color', boundaryColor);
   controlledBoundaries.target.forEach(l => {
@@ -7942,6 +8209,12 @@ function applyMapTweaks(){
   applyTerrain3d();
   applySunLight();
   scheduleShadowRefresh(60);
+  scheduleAORefresh(60);
+  // Grey out the AO controls outside Liberty, where the effect is disabled.
+  const aoRow = $('aoOn')?.closest('label');
+  if(aoRow){ aoRow.style.opacity = isLibertyStyle ? '' : '0.45'; }
+  if($('aoOn')) $('aoOn').disabled = !isLibertyStyle;
+  if($('aoStrength')) $('aoStrength').disabled = !isLibertyStyle;
 
   if(state.countriesGeojson || state.countryBorderLinesGeojson || state.czRegionsGeojson){
     ensurePoliticalLayers();
@@ -8095,6 +8368,7 @@ function updateReadouts(){
   set('sunElevationVal', ($('sunElevation')?.value || '35') + '°');
   set('shadowOpacityVal', ($('shadowOpacity')?.value || '45') + ' %');
   set('shadowSoftnessVal', ($('shadowSoftness')?.value || '50') + ' %');
+  set('aoStrengthVal', ($('aoStrength')?.value || '55') + ' %');
   set('mapLabelSizeVal', ($('mapLabelSize')?.value || '28') + ' px');
   set('animIconSizeVal', ($('animIconSize')?.value || '34') + ' px');
   set('animAngleVal', `${Math.round(getManualAnimAngle())}°`);
@@ -13305,6 +13579,8 @@ function bindUI(){
   ['sunAzimuth','sunElevation','shadowOpacity','shadowSoftness'].forEach(id => {
     $(id)?.addEventListener('input', () => { state._shadowViewSig = null; applySunLight(); scheduleShadowRefresh(120); updateReadouts(); });
   });
+  $('aoOn')?.addEventListener('change', () => { state._aoViewSig = null; refreshAO(); updateReadouts(); });
+  $('aoStrength')?.addEventListener('input', () => { state._aoViewSig = null; scheduleAORefresh(120); updateReadouts(); });
   $('showBoundaries')?.addEventListener('change', applyBoundaryTweaks);
   ['countryBorderColor','countryBorderWidth','countryBorderOpacity','politicalCountryDefaultColor','politicalFillOpacity','czRegionDefaultColor','czRegionFillOpacity']
     .forEach(id => $(id)?.addEventListener('input', applyPoliticalOverlayTweaksDebounced));
@@ -14305,7 +14581,18 @@ refreshProjectSelect();
 bindUI();
 syncPoliticalPaintModes('country');
 updateExportFrame();
-initMap();
+// MapLibre now loads deferred, so it may not be parsed yet at this point. Wait for
+// the global before creating the map (covers both the deferred local file and the
+// async CDN fallback). Everything above is pure DOM/UI setup and needs no engine.
+(function bootMap(){
+  if(typeof maplibregl !== 'undefined'){ initMap(); return; }
+  let tries = 0;
+  (function wait(){
+    if(typeof maplibregl !== 'undefined'){ initMap(); return; }
+    if(tries++ > 400){ setStatus('Chyba: mapový engine se nenačetl.', 'error'); return; }
+    setTimeout(wait, 25);
+  })();
+})();
 syncPresetDBFromServer();
 syncProjectDBFromServer();
 
@@ -14597,9 +14884,812 @@ document.addEventListener('keydown', e => {
   }
   initMobileLayout();
 
+  // =========================================================================
+  // PUBLIC TOOL API (window.TNMAP) — the surface the AI chat is allowed to use.
+  //
+  // Everything in this file lives in a closure, so the assistant can only reach
+  // what is explicitly published here. This is a WHITELIST on purpose: only
+  // navigation / display / read actions. Nothing here deletes user data,
+  // overwrites projects, saves presets or starts a video export — those stay
+  // unreachable from the chat by construction, not by asking the model nicely.
+  //
+  // Every tool returns a plain object the chat can read back and narrate.
+  // =========================================================================
+  const TOOL_STYLE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
+  const TOOL_TABS = ['styly','trasa','scena','animace','projekt','export'];
+  const TOOL_MODES = ['driving','foot','cycle','planeDirect','planeArc','planeCustom'];
+
+  function toolOpenSection(sectionId, open = true){
+    const sec = $(sectionId);
+    if(!sec) return {ok:false, error:'Sekce ' + sectionId + ' neexistuje.'};
+    try{ setAccordionOpen(sec, !!open, null, false); }catch(e){ return {ok:false, error:String(e)}; }
+    try{ sec.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
+    return {ok:true, section:sectionId, open:!!open};
+  }
+
+  function toolMapState(){
+    const m = state.map;
+    if(!m) return {ok:false, error:'Mapa není načtená.'};
+    const c = m.getCenter();
+    return {ok:true,
+      center:{lng:+c.lng.toFixed(5), lat:+c.lat.toFixed(5)},
+      zoom:+m.getZoom().toFixed(2), pitch:+m.getPitch().toFixed(1), bearing:+m.getBearing().toFixed(1),
+      baseStyle: $('baseStyle')?.value || null,
+      globe: isGlobeProjectionOn(),
+      transportMode: state.currentTransportMode,
+      tab: state.currentTab,
+      hasRoute: (state.routeCoords||[]).length > 0,
+      shadows: !!$('sunShadowsOn')?.checked,
+      ao: !!$('aoOn')?.checked
+    };
+  }
+
+  window.TNMAP = {
+    // ---- meta -------------------------------------------------------------
+    version: 1,
+    catalog: {styles: TOOL_STYLE_KEYS, tabs: TOOL_TABS, modes: TOOL_MODES,
+              presets: (typeof BUILTIN_PRESET_ORDER !== 'undefined' ? BUILTIN_PRESET_ORDER.slice() : [])},
+    getState: toolMapState,
+
+    // ---- navigation -------------------------------------------------------
+    // Fly to a named place (city, street, country) or "lat,lng".
+    async gotoPlace({query} = {}){
+      if(!query) return {ok:false, error:'Chybí query.'};
+      try{
+        const item = await geocode(String(query));
+        focusPlaceResult(item);
+        return {ok:true, found: item.display_name || String(query),
+                center:{lat:+item.lat, lng:+item.lon}};
+      }catch(e){ return {ok:false, error:'Místo „' + query + '" jsem nenašel.'}; }
+    },
+    // Direct camera control: any of zoom/pitch/bearing.
+    setCamera({zoom, pitch, bearing, duration = 900} = {}){
+      const m = state.map; if(!m) return {ok:false, error:'Mapa není načtená.'};
+      const opts = {duration: Math.max(0, Math.min(6000, Number(duration) || 0))};
+      if(zoom   != null) opts.zoom    = Math.max(0,  Math.min(22, Number(zoom)));
+      if(pitch  != null) opts.pitch   = Math.max(0,  Math.min(85, Number(pitch)));
+      if(bearing!= null) opts.bearing = Number(bearing);
+      try{ m.easeTo(opts); }catch(e){ return {ok:false, error:String(e)}; }
+      return {ok:true, applied:opts};
+    },
+    // One call for the common "show me 3D of X" request.
+    async show3D({query, pitch = 60, zoom = 16} = {}){
+      const out = {};
+      if(query){ const g = await window.TNMAP.gotoPlace({query}); if(!g.ok) return g; out.place = g.found; }
+      const sel = $('baseStyle');
+      if(sel && sel.value !== 'liberty'){ sel.value = 'liberty'; try{ reloadStyle(); }catch(e){} out.styleSwitchedTo = 'liberty'; }
+      setTimeout(() => { try{ state.map.easeTo({pitch:Math.min(85, Number(pitch)||60), zoom:Number(zoom)||16, duration:1200}); }catch(e){} }, 700);
+      return {ok:true, ...out, pitch, zoom, note:'3D budovy + AO jsou aktivní ve stylu Liberty 3D.'};
+    },
+
+    // ---- look & feel ------------------------------------------------------
+    setBaseStyle({style} = {}){
+      if(!TOOL_STYLE_KEYS.includes(style)) return {ok:false, error:'Neznámý styl. Dostupné: ' + TOOL_STYLE_KEYS.join(', ')};
+      const sel = $('baseStyle'); if(!sel) return {ok:false, error:'Přepínač stylu není dostupný.'};
+      sel.value = style;
+      try{ reloadStyle(); }catch(e){ return {ok:false, error:String(e)}; }
+      return {ok:true, style};
+    },
+    applyPreset({preset} = {}){
+      const keys = (typeof BUILTIN_PRESET_ORDER !== 'undefined') ? BUILTIN_PRESET_ORDER : [];
+      if(!keys.includes(preset)) return {ok:false, error:'Neznámý preset. Např.: ' + keys.slice(0,8).join(', ')};
+      try{ applyPreset(preset); }catch(e){ return {ok:false, error:String(e)}; }
+      return {ok:true, preset};
+    },
+    setGlobe({on = true} = {}){
+      const cb = $('globeProjection'); if(!cb) return {ok:false, error:'Glóbus není dostupný.'};
+      if(!!cb.checked !== !!on){ cb.checked = !!on; cb.dispatchEvent(new Event('change', {bubbles:true})); }
+      return {ok:true, globe: !!on};
+    },
+    // Building shadows + ambient occlusion (Liberty only, zoom ~14+).
+    setShadows({on, ao, strength} = {}){
+      const res = {ok:true};
+      if(on != null){ const cb = $('sunShadowsOn'); if(cb && !!cb.checked !== !!on){ cb.checked = !!on; cb.dispatchEvent(new Event('change', {bubbles:true})); } res.shadows = !!on; }
+      if(ao != null){ const cb = $('aoOn'); if(cb && !cb.disabled && !!cb.checked !== !!ao){ cb.checked = !!ao; cb.dispatchEvent(new Event('change', {bubbles:true})); } res.ao = !!ao; }
+      if(strength != null){ const s = $('aoStrength'); if(s && !s.disabled){ s.value = String(Math.max(0, Math.min(100, Number(strength)||0))); s.dispatchEvent(new Event('input', {bubbles:true})); res.aoStrength = s.value; } }
+      if($('aoOn')?.disabled) res.note = 'AO/stíny fungují jen ve stylu Liberty 3D.';
+      return res;
+    },
+
+    // Doramuje pohled na dva body (šipka/měření). fitBounds si poradí s pořadím rohů.
+    _fitTwo(p, q){
+      try{
+        state.screenPan = {x:0, y:0};
+        state.map.fitBounds([[Math.min(p[0], q[0]), Math.min(p[1], q[1])],
+                             [Math.max(p[0], q[0]), Math.max(p[1], q[1])]],
+                            {padding: getFitPadding(), duration: 900});
+      }catch(e){}
+    },
+
+    // ---- ikonka ve scéně ----------------------------------------------------
+    // Obrázek ikonky nahrává uživatel (je to jeho soubor), ale jakmile je v appce,
+    // umístit ji na jmenované místo už umíme — stejný princip jako u GLB modelu.
+    async placeIcon({place, size} = {}){
+      if(!state.sceneIconData){
+        try{ toolOpenSection('sceneIconSection', true); }catch(e){}
+        return {ok:false, error:'Není nahraná žádná ikonka. Otevřel jsem sekci ikonek — ' +
+                                'obrázek nahraj ručně, pak ho umístím kam řekneš.'};
+      }
+      if(!place) return {ok:false, error:'Chybí place (kam ikonku umístit).'};
+      let g; try{ g = await geocode(String(place)); }
+      catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
+      const item = createSceneIconAt({lng:+g.lon, lat:+g.lat}, {size: size});
+      if(!item) return {ok:false, error:'Ikonku se nepodařilo umístit.'};
+      return {ok:true, place: g.display_name, size: item.size,
+              center:{lat:+g.lat, lng:+g.lon}};
+    },
+
+    // ---- popisek v mapě -----------------------------------------------------
+    // Nejčastější anotace v grafice vůbec. Text bere buď zadaný, nebo název místa.
+    async addLabel({place, text, size, side} = {}){
+      if(!place) return {ok:false, error:'Chybí place (kam popisek patří).'};
+      let g; try{ g = await geocode(String(place)); }
+      catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
+      // Bez zadaného textu použij první část názvu z geokodéru („Brno, okres…" -> „Brno").
+      const label = (text != null && String(text).trim()) ? String(text).trim()
+                  : String(g.display_name || place).split(',')[0].trim();
+      const item = addMapLabelAt({lng:+g.lon, lat:+g.lat},
+                     {text: label, size: size, side: side === 'left' ? 'left' : undefined});
+      if(!item && item !== undefined) return {ok:false, error:'Popisek se nepodařilo přidat.'};
+      return {ok:true, place: g.display_name, text: label,
+              center:{lat:+g.lat, lng:+g.lon}};
+    },
+
+    // ---- počasí (radar, srážky, teplota, vítr, mraky, tlak) ------------------
+    setWeather(spec = {}){
+      const MAP = {
+        radar:'wxRadarToggle', precip:'wxPrecipToggle', clouds:'wxCloudsToggle',
+        temp:'wxTempToggle', wind:'wxWindToggle', pressure:'wxPressureToggle',
+        owmClouds:'wxOwmCloudsToggle'
+      };
+      const changed = {}, unknown = [], needsKey = [];
+      Object.keys(spec || {}).forEach(k => {
+        if(k === 'opacity') return;      // řešíme níž
+        const id = MAP[k];
+        if(!id){ unknown.push(k); return; }
+        const cb = $(id);
+        if(!cb) return;
+        const want = !!spec[k];
+        if(cb.disabled && want){ needsKey.push(k); return; }
+        if(cb.checked !== want){ cb.checked = want; cb.dispatchEvent(new Event('change', {bubbles:true})); }
+        changed[k] = want;
+      });
+      if(spec.opacity != null){
+        const el = $('wxOpacity');
+        if(el){
+          const lo = parseFloat(el.min) || 0, hi = parseFloat(el.max) || 100;
+          const v = Math.max(lo, Math.min(hi, Number(spec.opacity) || 0));
+          el.value = String(v); el.dispatchEvent(new Event('input', {bubbles:true}));
+          changed.opacity = v;
+        }
+      }
+      if(!Object.keys(changed).length){
+        return {ok:false, error:'Nic jsem nezapnul.' +
+          (needsKey.length ? ' Vrstvy ' + needsKey.join(', ') + ' potřebují API klíč OpenWeather (doplň ho v sekci počasí).' : '') +
+          (unknown.length ? ' Neznámé: ' + unknown.join(', ') + '.' : '') +
+          ' Dostupné: ' + Object.keys(MAP).join(', ') + ', opacity'};
+      }
+      const res = {ok:true, changed};
+      if(needsKey.length) res.needsApiKey = needsKey;
+      if(unknown.length) res.ignored = unknown;
+      return res;
+    },
+
+    // ---- politická mapa: vybarvení krajů a států ----------------------------
+    // Volební a regionální grafika. Text od redaktora („Středočeský kraj", „Německo")
+    // páruje s položkami selectu bez ohledu na diakritiku a skloňování.
+    colorPolitical({region, country, color, clear} = {}){
+      const dia = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      // Select má státy v DOMÁCÍCH názvech („Deutschland"), ale redakce píše česky
+      // („Německo"). Bez tohohle překladu selhalo i tak základní zadání jako
+      // „zvýrazni Německo". Mapujeme na ISO kód = hodnotu optionu.
+      const CZ_COUNTRY = {
+        nemecko:'DE', rakousko:'AT', polsko:'PL', slovensko:'SK', cesko:'CZ',
+        'ceska republika':'CZ', ukrajina:'UA', rusko:'RU', francie:'FR', italie:'IT',
+        spanelsko:'ES', 'velka britanie':'GB', britanie:'GB', anglie:'GB',
+        usa:'US', 'spojene staty':'US', amerika:'US', madarsko:'HU', svycarsko:'CH',
+        nizozemsko:'NL', holandsko:'NL', belgie:'BE', chorvatsko:'HR', srbsko:'RS',
+        rumunsko:'RO', bulharsko:'BG', recko:'GR', turecko:'TR', svedsko:'SE',
+        norsko:'NO', finsko:'FI', dansko:'DK', irsko:'IE', portugalsko:'PT',
+        cina:'CN', japonsko:'JP', izrael:'IL', egypt:'EG', belorusko:'BY',
+        litva:'LT', lotyssko:'LV', estonsko:'EE', slovinsko:'SI', kanada:'CA',
+        indie:'IN', brazilie:'BR', australie:'AU', moldavsko:'MD', gruzie:'GE',
+        armenie:'AM', azerbajdzan:'AZ', kazachstan:'KZ', syrie:'SY', irak:'IQ',
+        iran:'IR', afghanistan:'AF', 'severni korea':'KP', 'jizni korea':'KR',
+        bosna:'BA', albanie:'AL', makedonie:'MK', kosovo:'XK', cernahora:'ME',
+        'cerna hora':'ME', kypr:'CY', island:'IS', lucembursko:'LU', malta:'MT'
+      };
+      const pick = (selId, needle) => {
+        const sel = $(selId); if(!sel) return null;
+        const n = dia(needle).trim();
+        if(!n) return null;
+        const opts = [...sel.options].filter(o => o.value);
+        // 1) přesná shoda na ID/kód, 2) celý název, 3) název začíná, 4) obsahuje
+        return opts.find(o => dia(o.value) === n)
+            || opts.find(o => dia(o.textContent) === n)
+            || opts.find(o => dia(o.textContent).startsWith(n))
+            || opts.find(o => dia(o.textContent).includes(n))
+            // „Středočeský" bez slova „kraj" apod.
+            || opts.find(o => n.split(' ').every(w => w.length < 3 || dia(o.textContent).includes(w)))
+            || null;
+      };
+      if(clear){
+        try{ clearPoliticalPainting(); }catch(e){ return {ok:false, error:String(e)}; }
+        return {ok:true, cleared:true};
+      }
+      const res = {ok:true, painted:[]};
+      // Barvu vezmeme přes setColors, ať platí stejné názvy („červená") i pro politiku.
+      const applyColor = (inputId, value) => {
+        if(value == null) return true;
+        const key = inputId === 'czRegionColor' ? 'czRegion' : 'country';
+        const r = window.TNMAP.setColors({[key]: value});
+        return r.ok;
+      };
+      if(region){
+        const opt = pick('czRegionSelect', region);
+        if(!opt) return {ok:false, error:'Kraj „' + region + '" jsem v seznamu nenašel.'};
+        if(!applyColor('czRegionColor', color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
+        const sel = $('czRegionSelect');
+        sel.value = opt.value; sel.dispatchEvent(new Event('change', {bubbles:true}));
+        if($('showCzRegions') && !$('showCzRegions').checked){
+          $('showCzRegions').checked = true; $('showCzRegions').dispatchEvent(new Event('change', {bubbles:true}));
+        }
+        try{ applyCzRegionColor(); }catch(e){ return {ok:false, error:String(e)}; }
+        res.painted.push({region: opt.textContent.trim(), id: opt.value, color: $('czRegionColor')?.value});
+      }
+      if(country){
+        // Nejdřív zkus český název -> ISO kód, pak teprve hledání v názvech optionů.
+        const iso = CZ_COUNTRY[dia(country).replace(/\s+/g, ' ').trim()];
+        let opt = iso ? pick('politicalCountrySelect', iso) : null;
+        if(!opt) opt = pick('politicalCountrySelect', country);
+        if(!opt) return {ok:false, error:'Stát „' + country + '" jsem v seznamu nenašel.'};
+        if(!applyColor('politicalCountryColor', color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
+        const sel = $('politicalCountrySelect');
+        sel.value = opt.value; sel.dispatchEvent(new Event('change', {bubbles:true}));
+        try{ applyPoliticalCountryColor(); }catch(e){ return {ok:false, error:String(e)}; }
+        res.painted.push({country: opt.textContent.trim(), id: opt.value, color: $('politicalCountryColor')?.value});
+      }
+      if(!res.painted.length) return {ok:false, error:'Zadej region (kraj) nebo country (stát), případně clear:true.'};
+      return res;
+    },
+
+    // ---- šipka mezi dvěma místy ---------------------------------------------
+    // Základ zpravodajské grafiky (postup vojsk, migrace, směr úderu). Bez nástroje
+    // model „šipku z A do B" nahrazoval trasou, což je něco úplně jiného.
+    async drawArrow({from, to, color, width, fit} = {}){
+      if(!from || !to) return {ok:false, error:'Chybí from/to (odkud a kam šipka míří).'};
+      let a, b;
+      try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.'}; }
+      try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.'}; }
+      const tail = {lng:+a.lon, lat:+a.lat}, head = {lng:+b.lon, lat:+b.lat};
+      const item = createSceneArrow(tail, head, {color: color || undefined, width: width});
+      if(!item) return {ok:false, error:'Šipku se nepodařilo vytvořit.'};
+      if(fit !== false) window.TNMAP._fitTwo([tail.lng, tail.lat], [head.lng, head.lat]);
+      return {ok:true, from:a.display_name, to:b.display_name,
+              tail:{lat:tail.lat, lng:tail.lng}, head:{lat:head.lat, lng:head.lng}};
+    },
+
+    // ---- měřená vzdálenost mezi dvěma místy ---------------------------------
+    // Vzdušná linka s labelem přímo v mapě — na to se redakce ptá pořád.
+    async measureDistance({from, to, color, unit, fit} = {}){
+      if(!from || !to) return {ok:false, error:'Chybí from/to.'};
+      let a, b;
+      try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.'}; }
+      try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.'}; }
+      const p = {lng:+a.lon, lat:+a.lat}, q = {lng:+b.lon, lat:+b.lat};
+      const item = createSceneDistance(p, q, {color: color || undefined,
+                     unit: (unit === 'm' ? 'm' : undefined)});
+      if(!item) return {ok:false, error:'Měření se nepodařilo vytvořit.'};
+      let km = null;
+      try{ km = Math.round(haversineKm([p.lng, p.lat], [q.lng, q.lat])); }catch(e){}
+      if(fit !== false) window.TNMAP._fitTwo([p.lng, p.lat], [q.lng, q.lat]);
+      const res = {ok:true, from:a.display_name, to:b.display_name};
+      if(km != null) res.distanceKm = km;
+      return res;
+    },
+
+    // ---- 3D model (GLB) -----------------------------------------------------
+    // Nahrát soubor za uživatele neumíme (to je jeho disk), ale jakmile je model
+    // v appce, umístit a nastavit ho už zvládneme.
+    async placeModel3d({place, size, scale, rotation, snap} = {}){
+      if(!model3dHasModel()){
+        try{ toolOpenSection('model3dSection', true); }catch(e){}
+        return {ok:false, error:'Není nahraný žádný GLB model. Otevřel jsem sekci 3D modelu — ' +
+                                'soubor .glb musíš nahrát ručně, pak ho umístím.'};
+      }
+      if(place){
+        let g; try{ g = await geocode(String(place)); }
+        catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
+        model3dPlaceAt({lng:+g.lon, lat:+g.lat});
+      }
+      const num = (id, v) => { const el = $(id); if(el && v != null && isFinite(Number(v))){
+        const lo = parseFloat(el.min), hi = parseFloat(el.max);
+        let n = Number(v); if(isFinite(lo) && isFinite(hi)) n = Math.max(lo, Math.min(hi, n));
+        el.value = String(n); el.dispatchEvent(new Event('input', {bubbles:true})); return n; } return null; };
+      const applied = {};
+      const s = num('model3dSize', size);      if(s != null) applied.size = s;
+      const sc = num('model3dScale', scale);   if(sc != null) applied.scale = sc;
+      const r = num('model3dRot', rotation);   if(r != null) applied.rotation = r;
+      if(snap != null){ const cb = $('model3dSnap');
+        if(cb && !!cb.checked !== !!snap){ cb.checked = !!snap; cb.dispatchEvent(new Event('change', {bubbles:true})); }
+        applied.snap = !!snap; }
+      return {ok:true, place: place || 'nezměněno', applied};
+    },
+
+    // ---- barvy --------------------------------------------------------------
+    // Appka má 22 barevných voličů a chat na ně nedosáhl vůbec, takže si model
+    // vymýšlel klíče („routeColor" v setValues). Přijímáme #rrggbb i názvy barev.
+    setColors(spec = {}){
+      const MAP = {
+        route:'routeColor', routeDots:'routeDotColor', land:'landColor', water:'waterColor',
+        building:'buildingColor', park:'parkColor', landcover:'landcoverColor',
+        landuse:'landuseColor', aeroway:'aerowayColor', roadMajor:'roadMajorColor',
+        roadMinor:'roadMinorColor', label:'labelColor', labelHalo:'haloColor',
+        boundary:'boundaryColor', countryBorder:'countryBorderColor',
+        perimeter:'scenePerimeterColor', arrow:'sceneArrowColor',
+        distance:'sceneDistanceColor', czRegion:'czRegionColor',
+        country:'politicalCountryColor'
+      };
+      // Diakritiku zahazujeme, ať „žlutá" == „zluta".
+      const dia = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const NAMES = {
+        cervena:'#e63946', red:'#e63946',
+        modra:'#2f81f7', blue:'#2f81f7',
+        zelena:'#3cbf60', green:'#3cbf60',
+        zluta:'#ffd400', yellow:'#ffd400',
+        oranzova:'#e6863c', orange:'#e6863c',
+        bila:'#ffffff', white:'#ffffff',
+        cerna:'#111111', black:'#111111',
+        seda:'#8b94a6', gray:'#8b94a6', grey:'#8b94a6',
+        hneda:'#8b5a2b', brown:'#8b5a2b',
+        fialova:'#8b5cf6', purple:'#8b5cf6',
+        ruzova:'#ec4899', pink:'#ec4899',
+        tyrkysova:'#26d0c4', cyan:'#26d0c4', turquoise:'#26d0c4'
+      };
+      // „tmavě/světle X" řešíme posunem jasu, ať nemusíme vypisovat všechny kombinace.
+      const shade = (hex, f) => {
+        const n = parseInt(hex.slice(1), 16);
+        const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v =>
+          Math.max(0, Math.min(255, Math.round(f < 1 ? v * f : v + (255 - v) * (f - 1)))));
+        return '#' + ch.map(v => v.toString(16).padStart(2, '0')).join('');
+      };
+      const norm = v => {
+        const s = String(v == null ? '' : v).trim();
+        if(/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase();
+        if(/^#[0-9a-f]{3}$/i.test(s)) return ('#' + s[1]+s[1] + s[2]+s[2] + s[3]+s[3]).toLowerCase();
+        let key = dia(s).replace(/\s+/g, ' ').trim();
+        if(NAMES[key]) return NAMES[key];
+        const m = key.match(/^(tmave|tmavo|svetle|svetlo|dark|light)\s*(.+)$/);
+        if(m){
+          const base = NAMES[m[2].trim()];
+          if(base) return shade(base, /^(tmave|tmavo|dark)$/.test(m[1]) ? 0.55 : 1.45);
+        }
+        return null;
+      };
+      const changed = {}, unknown = [], badColor = [];
+      Object.keys(spec || {}).forEach(k => {
+        const id = MAP[k];
+        if(!id){ unknown.push(k); return; }
+        const el = $(id);
+        if(!el) return;
+        const hex = norm(spec[k]);
+        if(!hex){ badColor.push(k + '=' + spec[k]); return; }
+        el.value = hex;
+        el.dispatchEvent(new Event('input', {bubbles:true}));
+        el.dispatchEvent(new Event('change', {bubbles:true}));
+        changed[k] = hex;
+      });
+      if(!Object.keys(changed).length){
+        return {ok:false, error:'Nic jsem nenastavil.' +
+          (unknown.length ? ' Neznámé: ' + unknown.join(', ') + '.' : '') +
+          (badColor.length ? ' Nerozpoznaná barva: ' + badColor.join(', ') + '.' : '') +
+          ' Dostupné: ' + Object.keys(MAP).join(', ')};
+      }
+      const res = {ok:true, changed};
+      if(unknown.length) res.ignored = unknown;
+      if(badColor.length) res.badColor = badColor;
+      return res;
+    },
+
+    // ---- perimetr: kružnice o daném rádiusu okolo místa ---------------------
+    // Klasická zpravodajská grafika („dosah rakety 2000 km od Moskvy"). Dřív na to
+    // nebyl nástroj, takže si model vymýšlel neexistující parametry.
+    async drawPerimeter({place, meters, km, color, fit} = {}){
+      let radius = Number(meters);
+      if(!isFinite(radius) || radius <= 0){
+        const k = Number(km);
+        if(isFinite(k) && k > 0) radius = k * 1000;
+      }
+      if(!isFinite(radius) || radius <= 0) return {ok:false, error:'Chybí rádius (meters nebo km).'};
+      let center;
+      if(place){
+        let g; try{ g = await geocode(String(place)); }
+        catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
+        center = [+g.lon, +g.lat];
+      } else {
+        const c = state.map?.getCenter(); if(!c) return {ok:false, error:'Mapa není připravená.'};
+        center = [c.lng, c.lat];
+      }
+      // Nad ~1000 km má smysl psát km, jinak metry — ať label nekřičí „2000000 m".
+      const unit = radius >= 10000 ? 'km' : 'm';
+      const item = createScenePerimeterAt({lng:center[0], lat:center[1]},
+                    {radiusMeters:radius, unit, color: color || undefined});
+      if(!item) return {ok:false, error:'Perimetr se nepodařilo vytvořit.'};
+      // Doramuj, ať je celá kružnice v záběru (jinak redaktor vidí jen kus oblouku).
+      if(fit !== false){
+        try{
+          const dLat = radius / 111320, dLng = radius / (111320 * Math.max(0.1, Math.cos(center[1] * Math.PI / 180)));
+          state.map.fitBounds([[center[0] - dLng, center[1] - dLat], [center[0] + dLng, center[1] + dLat]],
+                              {padding: 80, duration: 900});
+        }catch(e){}
+      }
+      return {ok:true, place: place || 'střed mapy', radiusMeters: radius,
+              center:{lat:center[1], lng:center[0]}, unit};
+    },
+
+    // ---- číselné ovladače (slidery) ----------------------------------------
+    // Appka jich má ~37 a chat na ně dřív nedosáhl vůbec — hlavně poloha slunce,
+    // na které visí stíny i AO. Meze se čtou z ovladače, aby se nemohly rozejít.
+    setValues(spec = {}){
+      const MAP = {
+        sunAzimuth:'sunAzimuth', sunElevation:'sunElevation',
+        shadowOpacity:'shadowOpacity', shadowSoftness:'shadowSoftness',
+        aoStrength:'aoStrength', buildingOpacity:'buildingOpacity',
+        routeWidth:'routeWidth', mapLabelSize:'mapLabelSize',
+        boundaryWidth:'boundaryWidth', boundaryOpacity:'boundaryOpacity',
+        majorRoadWidth:'majorWidth', minorRoadWidth:'minorWidth',
+        sceneIconSize:'sceneIconSize', animIconSize:'animIconSize',
+        animDuration:'animDuration', cameraPitch:'cameraPitch',
+        routeEndpointSize:'routeEndpointSize'
+      };
+      const changed = {}, unknown = [], clamped = [];
+      Object.keys(spec || {}).forEach(k => {
+        const id = MAP[k];
+        if(!id){ unknown.push(k); return; }
+        const el = $(id);
+        if(!el || el.disabled) return;
+        let v = Number(spec[k]);
+        if(!isFinite(v)) { unknown.push(k); return; }
+        const lo = parseFloat(el.min), hi = parseFloat(el.max);
+        if(isFinite(lo) && isFinite(hi)){
+          const c = Math.max(lo, Math.min(hi, v));
+          if(c !== v){ clamped.push(k + ': ' + v + '->' + c); v = c; }
+        }
+        el.value = String(v);
+        el.dispatchEvent(new Event('input', {bubbles:true}));
+        el.dispatchEvent(new Event('change', {bubbles:true}));
+        changed[k] = v;
+      });
+      if(!Object.keys(changed).length){
+        return {ok:false, error:'Neznámý ovladač' + (unknown.length ? ' (' + unknown.join(', ') + ')' : '') +
+                              '. Dostupné: ' + Object.keys(MAP).join(', ')};
+      }
+      const res = {ok:true, changed};
+      if(clamped.length) res.clamped = clamped;
+      if(unknown.length) res.ignored = unknown;
+      // Ve stylu Liberty 3D se krytí budov drží natvrdo na 100 %, takže posuvník
+      // tam nic neudělá. Radši to přiznáme, než abychom hlásili úspěch naplano.
+      if('buildingOpacity' in changed && typeof styleUsesAO === 'function' && styleUsesAO()){
+        res.note = 'Ve stylu Liberty 3D jsou budovy vždy plně kryté, průhlednost tam nemá vliv — ' +
+                   'přepni podklad (např. bright), pokud ji chceš měnit.';
+      }
+      return res;
+    },
+
+    // ---- vrstvy: zapnout/vypnout co je v mapě vidět -------------------------
+    // Bez tohoto model na „vypni budovy" sahal po setBaseStyle a měnil celý podklad.
+    setLayers(spec = {}){
+      const MAP = {
+        buildings:'showBuildings', parks:'showParks', labels:'showLabels',
+        roadShields:'showRoadShields', majorRoads:'showMajorRoads',
+        minorRoads:'showMinorRoads', motorways:'showMotorways',
+        railways:'showRailways', waterways:'showWaterways', metro:'showMetro',
+        transit:'showTransit', boundaries:'showBoundaries', landcover:'showLandcover',
+        landuse:'showLanduse', aeroway:'showAeroway', exportFrame:'showExportFrame'
+      };
+      const changed = {}, unknown = [];
+      Object.keys(spec || {}).forEach(k => {
+        const id = MAP[k];
+        if(!id){ unknown.push(k); return; }
+        const cb = $(id);
+        if(!cb) return;
+        const want = !!spec[k];
+        if(cb.checked !== want){ cb.checked = want; cb.dispatchEvent(new Event('change', {bubbles:true})); }
+        changed[k] = want;
+      });
+      if(!Object.keys(changed).length){
+        return {ok:false, error:'Neznámá vrstva' + (unknown.length ? ' (' + unknown.join(', ') + ')' : '') +
+                              '. Dostupné: ' + Object.keys(MAP).join(', ')};
+      }
+      const res = {ok:true, changed};
+      if(unknown.length) res.ignored = unknown;
+      return res;
+    },
+
+    // ---- route (draws a route; does not export anything) -------------------
+    setTransportMode({mode} = {}){
+      if(!TOOL_MODES.includes(mode)) return {ok:false, error:'Neznámý režim. Dostupné: ' + TOOL_MODES.join(', ')};
+      const btn = document.querySelector('.transport-btn[data-mode="' + mode + '"]');
+      if(!btn) return {ok:false, error:'Přepínač režimu nenalezen.'};
+      btn.click();
+      return {ok:true, mode};
+    },
+    async routeBetween({from, to, mode} = {}){
+      if(!from || !to) return {ok:false, error:'Chybí from/to.'};
+      if(mode){ const r = window.TNMAP.setTransportMode({mode}); if(!r.ok) return r; }
+      let a, b;
+      try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Start „' + from + '" jsem nenašel.'}; }
+      try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Cíl „' + to + '" jsem nenašel.'}; }
+      // findRoute() trusts state.pointA/B over the input text, so set both.
+      state.pointA = [+a.lon, +a.lat];
+      state.pointB = [+b.lon, +b.lat];
+      if($('startInput')) $('startInput').value = a.display_name || String(from);
+      if($('endInput'))   $('endInput').value   = b.display_name || String(to);
+      try{ await findRoute(); }catch(e){ return {ok:false, error:String(e)}; }
+      const n = (state.routeCoords||[]).length;
+      if(!n) return {ok:false, error:'Trasu se nepodařilo najít.'};
+      // Doramuj sám: model si na to nevzpomene spolehlivě, a trasa bez správného
+      // pohledu je půl práce. Letecký oblouk chce 3D pohled, ostatní jen fit.
+      let framed = 'fitRoute';
+      try{
+        if(state.currentTransportMode === 'planeArc'){ arcBestView(); framed = 'arcBestView'; }
+        else { fitRoute(); }
+      }catch(e){ framed = 'none'; }
+      // Vzdálenost vracíme rovnou, ať asistent umí odpovědět i na „kolik je to
+      // vzdušnou linkou" — dřív trasu nakreslil, ale číslo neřekl.
+      let km = null;
+      try{ const L = lineLength(state.routeCoords); if(isFinite(L)) km = Math.round(L / 1000); }catch(e){}
+      const res = {ok:true, from:a.display_name, to:b.display_name, mode: state.currentTransportMode, points:n, framed};
+      if(km != null) res.distanceKm = km;
+      return res;
+    },
+    clearRoute(){ try{ clearRoute(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; },
+    fitRoute(){ try{ fitRoute(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; },
+    arcBestView(){ try{ arcBestView(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; },
+
+    // ---- UI navigation ("open the tool for me") ---------------------------
+    openTab({tab} = {}){
+      if(!TOOL_TABS.includes(tab)) return {ok:false, error:'Neznámá záložka. Dostupné: ' + TOOL_TABS.join(', ')};
+      try{ setTab(tab); }catch(e){ return {ok:false, error:String(e)}; }
+      return {ok:true, tab};
+    },
+    openSection({section, open = true} = {}){ return toolOpenSection(section, open); },
+    resetApp(){ try{ resetAppToStart(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; }
+  };
+
 })();
 </script>
-<script src="assets/vendor/jszip.min.js"></script>
-<script>if(typeof JSZip==='undefined'){document.write('<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"><\/script>');}</script>
+<!-- =====================================================================
+     AI ASISTENT (chat) — ovládá mapu přes veřejné window.TNMAP API.
+     Mozek běží na Cloudflare Workeru (viz TNCHAT_ENDPOINT); tady je jen UI,
+     vykonávání nástrojů a smyčka „model → nástroj → výsledek → model".
+     ===================================================================== -->
+<style>
+.tnchat-fab{position:absolute;right:18px;bottom:64px;z-index:130;width:64px;height:64px;border-radius:50%;
+  border:2px solid var(--border-hi);background:var(--accent);color:#fff;font-size:30px;line-height:1;cursor:pointer;
+  box-shadow:0 8px 28px rgba(0,0,0,.5);display:grid;place-items:center;transition:.15s}
+.tnchat-fab:hover{background:var(--accent-hi);transform:translateY(-2px) scale(1.06)}
+.tnchat-fab:active{transform:translateY(0) scale(.98)}
+/* Jemný prstenec, aby si ho uživatel všiml i na pestrém satelitním podkladu.
+   Respektuje prefers-reduced-motion — v aplikaci na vysílací grafiku se nehodí
+   nutit animaci nikomu, kdo ji má vypnutou. */
+.tnchat-fab::after{content:'';position:absolute;inset:-6px;border-radius:50%;
+  border:2px solid var(--accent);opacity:.55;animation:tnchatPulse 2.4s ease-out infinite;pointer-events:none}
+.tnchat-fab:hover::after,.tnchat-panel.open ~ .tnchat-fab::after{animation:none;opacity:0}
+@keyframes tnchatPulse{0%{transform:scale(.9);opacity:.55}70%{transform:scale(1.25);opacity:0}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){.tnchat-fab::after{animation:none;opacity:.35}}
+.tnchat-panel{position:absolute;right:14px;bottom:116px;z-index:131;width:min(380px,calc(100vw - 28px));
+  max-height:min(560px,70vh);display:none;flex-direction:column;background:rgba(13,17,25,.97);
+  backdrop-filter:blur(14px);border:1px solid var(--border-hi);border-radius:14px;
+  box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}
+.tnchat-panel.open{display:flex}
+.tnchat-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border);
+  font:700 12px var(--font);letter-spacing:.4px;color:var(--tx1);flex:0 0 auto}
+.tnchat-head .tnchat-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.tnchat-head button{margin-left:auto;background:none;border:none;color:var(--tx2);font-size:18px;cursor:pointer;line-height:1}
+.tnchat-log{flex:1 1 auto;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.tnchat-msg{font:13px/1.45 var(--font);padding:8px 11px;border-radius:10px;max-width:88%;white-space:pre-wrap;word-break:break-word}
+.tnchat-msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:3px}
+.tnchat-msg.bot{align-self:flex-start;background:var(--bg3);color:var(--tx1);border-bottom-left-radius:3px}
+.tnchat-msg.err{align-self:flex-start;background:rgba(230,57,70,.14);color:#ffb3ba;border:1px solid rgba(230,57,70,.4)}
+.tnchat-act{align-self:flex-start;font:600 11px var(--font);color:var(--tx2);display:flex;align-items:center;gap:6px;padding-left:4px}
+.tnchat-act .ok{color:var(--green)}.tnchat-act .bad{color:var(--accent-hi)}
+.tnchat-form{flex:0 0 auto;display:flex;gap:8px;padding:10px;border-top:1px solid var(--border)}
+.tnchat-form input{flex:1;background:var(--bg2);border:1px solid var(--border);color:var(--tx1);
+  padding:9px 11px;border-radius:8px;font:13px var(--font)}
+.tnchat-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);outline:none}
+.tnchat-form button{background:var(--accent);border:none;color:#fff;padding:0 14px;border-radius:8px;cursor:pointer;font:700 13px var(--font)}
+.tnchat-form button:disabled{opacity:.5;cursor:not-allowed}
+.tnchat-hint{padding:0 12px 10px;font:11px/1.4 var(--font);color:var(--tx3)}
+.tnchat-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px}
+.tnchat-chip{background:var(--bg3);border:1px solid var(--border);color:var(--tx2);font:600 11px var(--font);
+  padding:5px 9px;border-radius:999px;cursor:pointer}
+.tnchat-chip:hover{border-color:var(--accent);color:var(--tx1)}
+@media(max-width:900px){.tnchat-fab{bottom:14px;right:14px;width:56px;height:56px;font-size:26px}.tnchat-panel{bottom:70px;max-height:60vh}}
+</style>
+<button type="button" class="tnchat-fab" id="tnchatFab" title="AI asistent mapy" aria-label="AI asistent">✦</button>
+<div class="tnchat-panel" id="tnchatPanel" role="dialog" aria-label="AI asistent mapy">
+  <div class="tnchat-head"><span class="tnchat-dot"></span>AI ASISTENT MAPY<button type="button" id="tnchatClose" aria-label="Zavřít">×</button></div>
+  <div class="tnchat-log" id="tnchatLog"></div>
+  <div class="tnchat-chips" id="tnchatChips"></div>
+  <form class="tnchat-form" id="tnchatForm" autocomplete="off">
+    <input id="tnchatInput" type="text" placeholder="Např. ukaž 3D Staré Město v Praze…" aria-label="Zpráva">
+    <button type="submit" id="tnchatSend">▲</button>
+  </form>
+</div>
+<script>
+(function(){
+  'use strict';
+  // Cloudflare Worker s LLM (tool-calling). Doména se doplní po nasazení workeru.
+  const TNCHAT_ENDPOINT = 'https://tnmap-chat.petrzavorka.workers.dev/api/chat';
+  const MAX_ROUNDS = 4;   // model → nástroje → výsledky → model … (strop proti smyčce)
+
+  const $q = id => document.getElementById(id);
+  const panel = $q('tnchatPanel'), log = $q('tnchatLog'), input = $q('tnchatInput'),
+        form = $q('tnchatForm'), sendBtn = $q('tnchatSend');
+  let history = [];   // [{role:'user'|'assistant', content:string}]
+  let busy = false;
+
+  function esc(s){ const d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
+  function add(kind, text){
+    const el = document.createElement('div');
+    el.className = 'tnchat-msg ' + kind;
+    el.textContent = text;
+    log.appendChild(el); log.scrollTop = log.scrollHeight;
+    return el;
+  }
+  function addAction(label, ok){
+    const el = document.createElement('div');
+    el.className = 'tnchat-act';
+    el.innerHTML = '<span class="' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓' : '✕') + '</span>' + esc(label);
+    log.appendChild(el); log.scrollTop = log.scrollHeight;
+  }
+
+  // Vše, co uživatel v této konverzaci napsal — proti tomu ověřujeme názvy míst.
+  function userSaidText(){
+    return history.filter(m => m && m.role === 'user').map(m => m.content || '').join(' ');
+  }
+  // Diakritiku pryč, ať „Vídeň" == „vidne" a „Praha" == „prahu".
+  function stripDia(s){
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+  function commonPrefixLen(a, b){
+    let i = 0; while(i < a.length && i < b.length && a[i] === b[i]) i++; return i;
+  }
+  // Má název místa oporu v tom, co uživatel napsal? Porovnává se po slovech na společný
+  // začátek, aby přežilo české skloňování i doplnění kontextu modelem („Staré Město" ->
+  // „Staré Město, Praha" projde díky „Staré Město").
+  function placeHasBasis(query, said){
+    const words = stripDia(said).split(/[^a-z0-9]+/).filter(Boolean);
+    const toks = stripDia(query).split(/[^a-z0-9]+/).filter(t => t.length >= 4);
+    if(!toks.length) return true;             // krátký/nejednoznačný název neposuzujeme
+    return toks.some(t => words.some(w => {
+      const p = commonPrefixLen(t, w);
+      // 4+ společných znaků = jistá shoda. Tři stačí jen u slov podobné délky
+      // (skloňování typu Vídeň/Vídně, kde vypadne samohláska) — díky podmínce na
+      // délku se tím nepropašuje „hoď" jako Hodonín.
+      return p >= 4 || (p >= 3 && Math.abs(t.length - w.length) <= 2);
+    }));
+  }
+
+  // Spustí jeden nástroj z whitelistu (window.TNMAP). Nikdy nevyhodí — vrací výsledek.
+  async function runTool(call){
+    const api = window.TNMAP;
+    const name = call && call.tool;
+    if(!api) return {ok:false, error:'API mapy není připravené.'};
+    if(!name || typeof api[name] !== 'function') return {ok:false, error:'Neznámý nástroj: ' + name};
+    try{
+      const r = await api[name](call.args || {});
+      return (r && typeof r === 'object') ? r : {ok:true};
+    }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
+  }
+
+  async function ask(userText){
+    if(busy) return;
+    busy = true; sendBtn.disabled = true;
+    add('user', userText);
+    history.push({role:'user', content:userText});
+    const thinking = add('bot', '…');
+
+    try{
+      let rounds = 0, toolResults = null;
+      while(rounds++ < MAX_ROUNDS){
+        const res = await fetch(TNCHAT_ENDPOINT, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            messages: history,
+            mapState: (window.TNMAP && window.TNMAP.getState) ? window.TNMAP.getState() : null,
+            catalog: (window.TNMAP && window.TNMAP.catalog) || null,
+            toolResults
+          })
+        });
+        if(!res.ok) throw new Error('Server ' + res.status);
+        const data = await res.json();
+
+        if(data.say){ thinking.textContent = data.say; }
+        const calls = Array.isArray(data.calls) ? data.calls : [];
+        if(!calls.length){
+          if(!data.say) thinking.textContent = 'Hotovo.';
+          history.push({role:'assistant', content: data.say || 'Hotovo.'});
+          break;
+        }
+        // Vykonej nástroje popořadě a nasbírej výsledky pro další kolo.
+        // Model občas pošle dva přelety v jednom plánu (např. „ukaž Brno a Ostravu");
+        // viditelný by byl jen ten poslední, takže ty další zahodíme — ušetří to
+        // i sekundy čekání na geokódování. Přeskočení uživateli přiznáme.
+        const MOVERS = ['gotoPlace','show3D'];
+        let moved = false;
+        toolResults = [];
+        for(const c of calls){
+          if(MOVERS.includes(c.tool)){
+            if(moved){
+              addAction((c.label || c.tool) + ' — přeskočeno (už letíme jinam)', false);
+              toolResults.push({tool:c.tool, args:c.args || {}, result:{ok:false, error:'Přeskočeno: v jednom plánu jde jen jeden přelet.'}});
+              continue;
+            }
+            // Model si občas vymyslí město z běžného slova („hoď tam satelit" -> Hodonín
+            // / Hradec Králové) a odletí pryč, aniž o to kdokoli žádal. Přelet proto
+            // pustíme jen tehdy, když má název oporu v tom, co uživatel skutečně napsal.
+            const q = (c.args || {}).query;
+            if(q && !placeHasBasis(q, userSaidText())){
+              addAction((c.label || c.tool) + ' — přeskočeno („' + q + '" jsi nezmínil)', false);
+              toolResults.push({tool:c.tool, args:c.args || {}, result:{ok:false,
+                error:'Přeskočeno: místo „' + q + '" uživatel nezmínil. Nevymýšlej místa; když je potřeba, zeptej se.'}});
+              continue;
+            }
+            moved = true;
+          }
+          const out = await runTool(c);
+          addAction((c.label || c.tool), out.ok !== false);
+          toolResults.push({tool:c.tool, args:c.args || {}, result:out});
+        }
+        history.push({role:'assistant', content:(data.say || '') + ' [provedeno: ' + calls.map(c=>c.tool).join(', ') + ']'});
+        if(data.done) break;
+      }
+    }catch(e){
+      thinking.remove();
+      add('err', 'Asistent není dostupný: ' + (e && e.message || e) +
+          '\n(Zkontroluj, že je nasazený Cloudflare Worker na ' + TNCHAT_ENDPOINT + ')');
+    }finally{
+      busy = false; sendBtn.disabled = false; input.focus();
+    }
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const v = input.value.trim();
+    if(!v || busy) return;
+    input.value = '';
+    ask(v);
+  });
+  $q('tnchatFab').addEventListener('click', () => {
+    panel.classList.toggle('open');
+    if(panel.classList.contains('open')){
+      if(!log.childElementCount){
+        add('bot', 'Ahoj! Řekni mi, co má mapa udělat — např. „ukaž 3D Staré Město v Praze", „trasa autem z Prahy do Brna", „přepni na satelit" nebo „otevři export".');
+      }
+      input.focus();
+    }
+  });
+  $q('tnchatClose').addEventListener('click', () => panel.classList.remove('open'));
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && panel.classList.contains('open')){ panel.classList.remove('open'); }
+  });
+  // Rychlé návrhy
+  [['3D Staré Město','ukaž 3D Staré Město v Praze'],
+   ['Praha → Brno','trasa autem z Prahy do Brna'],
+   ['Satelit','přepni podklad na satelit'],
+   ['Glóbus','zapni glóbus a ukaž Evropu']
+  ].forEach(([label, prompt]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'tnchat-chip'; b.textContent = label;
+    b.addEventListener('click', () => { if(!busy) ask(prompt); });
+    $q('tnchatChips').appendChild(b);
+  });
+})();
+</script>
+<!-- defer: only used by video/PNG-sequence export (a much later user action), so it
+     must not sit on the load critical path. onerror preserves the CDN fallback. -->
+<script defer src="assets/vendor/jszip.min.js" onerror="(function(){var s=document.createElement('script');s.defer=true;s.src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';document.head.appendChild(s);})()"></script>
 </body>
 </html>
