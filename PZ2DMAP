@@ -14893,6 +14893,24 @@ document.addEventListener('keydown', e => {
       }catch(e){}
     },
 
+    // ---- ikonka ve scéně ----------------------------------------------------
+    // Obrázek ikonky nahrává uživatel (je to jeho soubor), ale jakmile je v appce,
+    // umístit ji na jmenované místo už umíme — stejný princip jako u GLB modelu.
+    async placeIcon({place, size} = {}){
+      if(!state.sceneIconData){
+        try{ toolOpenSection('sceneIconSection', true); }catch(e){}
+        return {ok:false, error:'Není nahraná žádná ikonka. Otevřel jsem sekci ikonek — ' +
+                                'obrázek nahraj ručně, pak ho umístím kam řekneš.'};
+      }
+      if(!place) return {ok:false, error:'Chybí place (kam ikonku umístit).'};
+      let g; try{ g = await geocode(String(place)); }
+      catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
+      const item = createSceneIconAt({lng:+g.lon, lat:+g.lat}, {size: size});
+      if(!item) return {ok:false, error:'Ikonku se nepodařilo umístit.'};
+      return {ok:true, place: g.display_name, size: item.size,
+              center:{lat:+g.lat, lng:+g.lon}};
+    },
+
     // ---- popisek v mapě -----------------------------------------------------
     // Nejčastější anotace v grafice vůbec. Text bere buď zadaný, nebo název místa.
     async addLabel({place, text, size, side} = {}){
