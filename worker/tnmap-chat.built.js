@@ -3,6 +3,9 @@ var __name = (target, value) => __defProp(target, "name", { value, configurable:
 
 // src/worker.js
 var MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Nástroje, jejichž výsledek se musí uživateli říct nahlas -> vynutí další kolo.
+var READBACK = new Set(["measureDistance", "routeBetween", "drawPerimeter", "getState"]);
+var TOOL_NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/;
 var ALLOWED = [
   "https://www.appcreate.cloud",
   "https://appcreate.cloud",
@@ -153,9 +156,25 @@ PRAVIDLA:
    VLAK ANI AUTOBUS aplikace neum\xED \u2014 nevym\xFD\u0161lej mode "train"/"bus". Kdy\u017E u\u017Eivatel chce
    vlak/autobus, \u0159ekni to na rovinu a nab\xEDdni auto (driving) nebo vzdu\u0161nou linku
    (planeDirect) jako n\xE1hradu; trasu vykresli jen v tom n\xE1hradn\xEDm re\u017Eimu.
-6d. Kdy\u017E se u\u017Eivatel pt\xE1 NA VZD\xC1LENOST ("kolik je to", "jak daleko"), vykresli trasu
-   (planeDirect pro vzdu\u0161nou linku) \u2014 z v\xFDsledku dostane\u0161 distanceKm a v dal\u0161\xEDm kole
-   to \u010D\xEDslo NAPI\u0160 do "say".
+6d. Na dotaz NA VZD\xC1LENOST ("kolik je to", "jak daleko", "vzdu\u0161nou \u010Darou")
+   pou\u017Eij measureDistance {from, to} a vra\u0165 "done":false. \u010C\xEDslo NAPI\u0160 do "say"
+   TEPRVE v dal\u0161\xEDm kole z distanceKm ve V\xDDSLEDC\xCDCH.
+   NIKDY neuve\u010F \u017E\xE1dnou vzd\xE1lenost, azimut, plochu ani jin\xE9 \u010D\xEDslo, kter\xE9 nep\u0159i\u0161lo
+   ve V\xDDSLEDC\xCDCH PROVEDEN\xDDCH N\xC1STROJ\u016E. Kdy\u017E \u010D\xEDslo nem\xE1\u0161, ZM\u011A\u0158 ho \u2014 nikdy nehádej.
+   routeBetween d\xE1v\xE1 d\xE9lku po silnici; pro vzdu\u0161nou \u010D\xE1ru je to \u0161patn\xFD n\xE1stroj.
+6g. Z\xE1jmena a odkazy ("to", "tam", "ten kraj", "na t\xE9 map\u011B", "tu barvu") vztahuj
+   k AKTU\xC1LN\xCDMU STAVU MAPY v\xFD\u0161e a k tomu, co se provedlo v p\u0159edchoz\xEDch tazích.
+   Kdy\u017E se odpov\u011B\u010F d\xE1 ur\u010Dit ze stavu, NEPTEJ se znovu a rovnou to prove\u010F.
+   Odeb\xEDrac\xED a opravn\xE9 pokyny ("nechci", "zru\u0161", "ostatn\xED ne", "jen X", "vra\u0165 zp\xE1tky")
+   NEJSOU nov\xFD p\u0159\xEDkaz \u2014 jsou \xFAprava toho, co u\u017E na map\u011B je. Spl\u0148 je zru\u0161en\xEDm nebo
+   p\u0159ebarven\xEDm existuj\xEDc\xEDho prvku (nap\u0159. colorPolitical {"clear":true}), ne nov\xFDm vytvo\u0159en\xEDm.
+6h. N\xE1zvy m\xEDst se spojovn\xEDkem jsou JEDNO m\xEDsto: "Brno-Kom\xEDn", "Praha-Libu\u0161",
+   "Fr\xFDdek-M\xEDstek" -> gotoPlace {"query":"Brno-Kom\xEDn"}. Pomlčka NEN\xCD odd\u011Blova\u010D dvou m\xEDst
+   a m\u011Bstsk\xE9 \u010D\xE1sti pi\u0161 v\u017Edy s m\u011Bstem: {"query":"Brno-Kom\xEDn"}.
+6i. Odpov\xEDdej gramaticky spr\xE1vnou \u010De\u0161tinou a n\xE1zvy m\xEDst pi\u0161 spr\xE1vn\u011B i tehdy,
+   kdy\u017E je u\u017Eivatel napsal s p\u0159eklepem (\u201EBarandov" -> Barrandov, \u201Ezemekoule" ->
+   zem\u011Bkoule). P\u0159eklepy u\u017Eivatele do odpov\u011Bdi nep\u0159eb\xEDrej.
+   Na dotaz "co um\xED\u0161" popi\u0161 schopnosti lidsky \u2014 NIKDY nevypisuj intern\xED jm\xE9na funkc\xED.
 7. NEUM\xCD\u0160: exportovat video, mazat projekty, ukl\xE1dat presety. Kdy\u017E to u\u017Eivatel chce,
    nastav "calls" na otev\u0159en\xED spr\xE1vn\xE9 z\xE1lo\u017Eky (openTab export / projekt) a v "say"
    vysv\u011Btli, \u017Ee posledn\xED krok mus\xED kliknout s\xE1m.
@@ -253,7 +272,7 @@ var worker_default = {
       });
     }
     try {
-      const out = await env.AI.run(MODEL, { messages, max_tokens: 700, temperature: 0.2 });
+      const out = await env.AI.run(MODEL, { messages, max_tokens: 1200, temperature: 0.2 });
       const r = out && (out.response ?? out.result ?? out.output_text);
       let plan = null;
       if (r && typeof r === "object") plan = r;
@@ -263,7 +282,48 @@ var worker_default = {
         if (typeof c === "string") plan = extractPlan(c);
         else if (c && typeof c === "object") plan = c;
       }
+      // Jedno opravné kolo. Bez něj je selhání parsování koncový stav a uživatel
+      // dostane hluché "Nerozumím" i na dotaz, kterému model rozuměl.
+      if (!plan) {
+        try {
+          const fix = await env.AI.run(MODEL, {
+            messages: [
+              ...messages,
+              { role: "assistant", content: String(r || "").slice(0, 500) },
+              { role: "user", content: 'Tohle nebyl platn\xFD JSON. Vra\u0165 POUZE jeden JSON objekt {"say":"\u2026","calls":[],"done":true}, nic jin\xE9ho, \u017E\xE1dn\xFD text okolo.' }
+            ],
+            max_tokens: 900,
+            temperature: 0
+          });
+          const fr = fix && (fix.response ?? fix.result ?? fix.output_text);
+          plan = fr && typeof fr === "object" ? fr : typeof fr === "string" ? extractPlan(fr) : null;
+        } catch (_) {
+        }
+      }
+      // Když i tak přišla próza, je to skoro vždy použitelná odpověď nebo doptání.
+      // Ukázat ji je vždy lepší než ji zahodit a napsat "Nerozumím".
+      if (!plan && typeof r === "string" && r.trim().length > 2 && !r.includes("{")) {
+        plan = { say: r.trim().slice(0, 400), calls: [], done: true };
+      }
       const finalPlan = sanitizePlan(plan);
+      // Model občas pošle totéž volání dvakrát — jednou s prázdnými args. Nechat
+      // oboje znamená nakreslit dvě čáry nebo spustit akci dvakrát. Držíme pro
+      // každý nástroj tu variantu, která opravdu nese argumenty.
+      {
+        const best = /* @__PURE__ */ new Map();
+        for (const c of finalPlan.calls) {
+          if (!TOOL_NAME.test(c.tool)) continue;
+          const prev = best.get(c.tool);
+          const n = Object.keys(c.args || {}).length;
+          if (!prev || n > Object.keys(prev.args || {}).length) best.set(c.tool, c);
+        }
+        finalPlan.calls = [...best.values()];
+      }
+      // say občas nese ocásek rozbitého JSON — uživateli ho neukazujeme.
+      finalPlan.say = String(finalPlan.say || "").replace(/[,{\[]?\s*['"]?(done|calls|args|tool)['"]?\s*:.*$/s, "").trim() || (finalPlan.calls.length ? "Prov\xE1d\xEDm\u2026" : "Hotovo.");
+      // done defaultuje na true, takže klient smyčku ukončil a změřenou hodnotu
+      // nikdy nevyslovil. U čtecích nástrojů si další kolo vynutíme sami.
+      if (finalPlan.calls.some((c) => READBACK.has(c.tool))) finalPlan.done = false;
       try {
         const lastUser = [...history].reverse().find((m) => m && m.role === "user");
         const tools = (finalPlan.calls || []).map((c) => c.tool).join(",") || "NONE";
@@ -287,4 +347,4 @@ export {
   worker_default as default
 };
 //# sourceMappingURL=worker.js.map
-
+
