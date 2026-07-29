@@ -1,43 +1,160 @@
-# Analýza logu AI asistenta mapy (tnmap-chat)
+# Ladění AI asistenta mapy (worker `tnmap-chat`)
 
-Zdroj: Cloudflare Workers Observability, worker `tnmap-chat`
-(account 24472f8c…4281, script version 322f21b1-8685-4b2d-bcbc-9ef5497b9e46).
-Worker loguje každý tah s poli `tag:"tnchat"`, `q`, `say`, `tools`, `round`, `miss`.
+Zdroje:
 
-Vzorek: **86 konverzačních tahů**, 29. 7. 2026, 05:33–11:02 UTC.
-
----
-
-## Souhrn
-
-| Metrika | Hodnota |
-|---|---|
-| Tahů celkem | 86 |
-| `miss` (model nevrátil žádný nástroj) | 7 (8 %) |
-| Tahů končících `openSection` („udělej si to sám") | 18 (21 %) |
-| Nástrojů v API | 26 |
-| Nástrojů nikdy nepoužitých | 7 |
-
-Rozložení nástrojů:
-
-```
- 18x openSection      5x show3D           1x clearRoute
- 12x routeBetween     5x drawPerimeter    1x resetApp
- 11x gotoPlace        4x setCamera        1x openTab
- 11x setLayers        4x setTransportMode 1x measureDistance
- 11x setValues        3x setColors        1x colorPolitical
- 11x fitRoute         2x setShadows
-  8x setGlobe         6x setBaseStyle
-```
-
-Nikdy nepoužité: `applyPreset`, `placeIcon`, `addLabel`, `setWeather`,
-`drawArrow`, `arcBestView`, `getState`.
+- **Log**: Cloudflare Workers Observability, worker `tnmap-chat`, 86 tahů
+  z 29. 7. 2026, 05:33–11:02 UTC. Worker loguje každý tah
+  (`tag:"tnchat"`, `q`, `say`, `tools`, `round`, `miss`).
+- **Kód**: `GET /workers/services/tnmap-chat/environments/production/content`
+  (289 řádků, verze 15 = `322f21b1`, nasazeno 29. 7. 07:12 UTC).
+  Model: **`@cf/meta/llama-3.3-70b-instruct-fp8-fast`**, `temperature 0.2`,
+  `max_tokens 700`.
 
 ---
 
-## Nálezy podle závažnosti
+## Hlavní zjištění: verze 15 je regrese
 
-### 1. Model si vymýšlí čísla, která jdou do vysílání — kritické
+Prompt byl nasazen 07:12, tedy uprostřed logu. Rozdělení podle verze:
+
+| | tahů | miss | |
+|---|---|---|---|
+| před v15 (05:33–06:36) | 72 | 2 | **3 %** |
+| po v15 (10:43–11:02) | 14 | 5 | **36 %** |
+
+A hlavně se změnil **druh** selhání. Starý prompt vracel vždy platný JSON,
+jen občas špatné nástroje. Nový prompt vrací **neplatný JSON** — a to je
+mnohem horší, protože z toho uživatel dostane hluché „Nerozumím".
+
+Malý vzorek (14 tahů) — ale všech 5 selhání má stejnou příčinu, viz níže.
+
+---
+
+## Příčina č. 1 — „Nerozumím" neznamená nerozumím
+
+`worker.js:204` — `sanitizePlan()`:
+
+```js
+if (!plan || typeof plan !== "object")
+  return { say: "Nerozumím, zkus to prosím jinak.", calls: [], done: true };
+```
+
+Tato větev nastane **jedině tehdy, když se nepodařilo naparsovat JSON**
+z odpovědi modelu. Nemá to nic společného s tím, že by model dotaz nepochopil.
+
+Všech 5 nedávných selhání je tedy: *llama vrátila prózu místo JSON objektu.*
+
+```
+ukaz brno - komín a přehradu           → neplatný JSON
+ukaž Brno -Komín a přehradu            → neplatný JSON
+ukaž Brno - Komín - je to městská část → neplatný JSON
+zapni na tom hranice států             → neplatný JSON
+ostatní země nechci označit            → neplatný JSON
+```
+
+Proč právě u těchhle? Všechny jsou nejednoznačné — dvě místa v jednom dotazu,
+zájmenný odkaz, negace. Model chce **doptat se nebo vysvětlit**, a v tu chvíli
+sklouzne z JSON formátu do běžné věty. Pravidlo 2 („calls může být prázdné,
+když se ptáš na doplnění") mu to dovoluje, ale 70B model si u toho neudrží formát.
+
+### Co s tím — tři opravy, každá samostatně účinná
+
+**a) Vynutit formát na úrovni API místo promptem.** Workers AI umí
+`response_format`, což formát garantuje a `extractPlan` se stane jen záložkou:
+
+```js
+const out = await env.AI.run(MODEL, {
+  messages, max_tokens: 1200, temperature: 0.2,
+  response_format: {
+    type: "json_schema",
+    json_schema: {
+      type: "object",
+      properties: {
+        say:  { type: "string" },
+        calls: { type: "array", items: {
+          type: "object",
+          properties: { tool: {type:"string"}, args: {type:"object"}, label: {type:"string"} },
+          required: ["tool"]
+        }},
+        done: { type: "boolean" }
+      },
+      required: ["say", "calls"]
+    }
+  }
+});
+```
+
+**b) Přidat jedno opravné kolo.** Dnes je parse failure koncová — žádný retry:
+
+```js
+if (!plan) {
+  const retry = await env.AI.run(MODEL, { messages: [...messages,
+    { role: "assistant", content: String(r).slice(0, 500) },
+    { role: "user", content: 'Tohle nebyl platný JSON. Vrať POUZE jeden JSON objekt {"say":…,"calls":[…],"done":…}, nic jiného.' }
+  ], max_tokens: 700, temperature: 0 });
+  plan = extractPlan(retry?.response ?? "");
+}
+```
+
+**c) Nezahazovat prózu.** Když model vrátí větu, je to skoro vždy použitelná
+odpověď nebo doptání. Místo „Nerozumím" ji ukázat jako `say` s prázdnými `calls`:
+
+```js
+if (!plan && typeof r === "string" && r.trim().length > 2 && !r.includes("{"))
+  plan = { say: r.trim().slice(0, 400), calls: [], done: true };
+```
+
+Tím zmizí hluché „Nerozumím" i v případě, že a) a b) neuspějí.
+
+**d) `max_tokens: 700` je málo.** Prompt povoluje až 8 volání
+(`calls.slice(0, 8)`). Osm objektů s `args` a `label` plus `say` se do 700
+tokenů nevejde → odpověď se odřízne v půlce → neplatný JSON. Zvednout na 1200.
+
+---
+
+## Příčina č. 2 — druhé kolo se nikdy nespustí
+
+`worker.js:225`:
+
+```js
+done: plan.done !== false
+```
+
+`done` je tedy **`true` pokaždé, když ho model výslovně nenastaví na `false`**.
+Klient se na `data.done` spoléhá a smyčku ukončí (`index.html`: `if(data.done) break;`).
+
+Důsledek — přesně to, co je v logu vidět:
+
+```
+Q:  ukaž celou zeměkouli globus satelitní a ukaž vzdálenost mezi moskvou a kyjevem
+SAY: … Vzdálenost mezi Moskvou a Kyjevem se bude měřit vzdušnou čarou.
+TOOLS: setGlobe, setBaseStyle, measureDistance
+```
+
+`measureDistance` proběhl a vrátil hodnotu (Moskva–Kyjev = 756 km), ale
+`done:true` smyčku ukončil, `toolResults` se nikdy neposlaly zpět a číslo
+uživatel nedostal. Odpověď zůstala v budoucím čase.
+
+**Oprava** — když plán obsahuje nástroj, jehož výsledek se má vyslovit,
+vynutit další kolo bez ohledu na to, co řekl model:
+
+```js
+const READBACK = new Set(["measureDistance", "routeBetween", "getState", "drawPerimeter"]);
+const needsRound = finalPlan.calls.some(c => READBACK.has(c.tool));
+finalPlan.done = needsRound ? false : (plan.done !== false);
+```
+
+## Příčina č. 3 — pravidlo 6d nezná `measureDistance`
+
+Prompt, pravidlo 6d:
+
+> Když se uživatel ptá NA VZDÁLENOST („kolik je to", „jak daleko"), vykresli trasu
+> (planeDirect pro vzdušnou linku) — z výsledku dostaneš distanceKm a v dalším kole
+> to číslo NAPIŠ do "say".
+
+Mluví se tu jen o `routeBetween`. `measureDistance` — dedikovaný nástroj na
+přesně tuhle věc — v pravidle chybí, a tak model buď použije `routeBetween`
+(a dostane délku po silnici, ne vzdušnou čarou), nebo `measureDistance` zavolá
+a číslo nepřečte. To přímo způsobilo nejhorší nález v logu:
 
 ```
 Q:  kolik je to vzdušnou linkou z Prahy do Kyjeva
@@ -45,161 +162,146 @@ SAY: … Vzdálenost mezi těmito městy je přibližně 1046 km.
 TOOLS: routeBetween, fitRoute
 ```
 
-Skutečná ortodroma Praha–Kyjev je **1142 km**. Model číslo neodečetl z výsledku
-nástroje (nezavolal `measureDistance`), ale vygeneroval ho z hlavy — chyba 8 %.
-V nástroji na zpravodajskou grafiku je vymyšlené číslo nejhorší možná vada.
+Skutečná ortodroma Praha–Kyjev je **1142 km**. Model číslo **vymyslel** — nemohl
+ho mít odkud vzít, `measureDistance` nezavolal. V nástroji na zpravodajskou
+grafiku je vymyšlené číslo nejzávažnější možná vada.
 
-**Oprava:** systémový prompt musí zakázat uvádět jakoukoli číselnou hodnotu
-(vzdálenost, azimut, čas), která nepřišla v `toolResults`. Když číslo chybí,
-zavolej `measureDistance` a odpověz až v dalším kole z jeho výstupu.
+**Oprava** — přeformulovat 6d na `measureDistance` a přidat tvrdý zákaz:
 
-### 2. Nástroj se zavolá, ale výsledek se nikdy nepřečte
+> 6d. Na dotaz NA VZDÁLENOST („kolik je to", „jak daleko", „vzdušnou čarou")
+> použij **measureDistance** (from, to) a vrať `done:false`. Číslo NAPIŠ do
+> „say" teprve v dalším kole z `distanceKm` ve VÝSLEDCÍCH.
+> **NIKDY neuveď žádnou vzdálenost, azimut ani jiné číslo, které nepřišlo ve
+> VÝSLEDCÍCH PROVEDENÝCH NÁSTROJŮ.** Když číslo nemáš, změř ho.
+> `routeBetween` dává délku po silnici — pro vzdušnou čáru je špatný nástroj.
 
-```
-Q:  ukaž celou zeměkouli globus satelitní a ukaž vzdálenost bezi moskvou a kyjevem
-SAY: … Vzdálenost mezi Moskvou a Kyjevem se bude měřit vzdušnou čarou.
-TOOLS: setGlobe, setBaseStyle, measureDistance
-```
+## Příčina č. 4 — navazující pokyny nemají do čeho se zakotvit
 
-`measureDistance` proběhl a vrátil hodnotu (756 km), ale asistent ji uživateli
-neřekl — skončil budoucím časem „bude se měřit". Klient přitom smyčku na další
-kolo má (`MAX_ROUNDS = 4`, `toolResults` se posílají zpět).
+`round` v logu = `history.filter(m => m.role === "user").length`, a historie je
+`body.messages.slice(-10)` — proto se `round` zastaví na 5.
 
-**Oprava:** když plán obsahuje měřicí/čtecí nástroj, worker nesmí nastavit
-`done:true` — musí si vyžádat další kolo a hodnotu vyslovit.
+Do modelu jde jako asistentův obsah řetězec, který skládá klient:
 
-### 3. Pomlčka v názvu místa asistenta úplně složí
-
-```
-10:45:18  ukaz brno - komín a přehradu        → Nerozumím, zkus to prosím jinak.
-10:45:43  ukaž Brno -Komín a přehradu         → Nerozumím, zkus to prosím jinak.
-10:46:08  ukaž Brno - Komín - je to městská část → Nerozumím, zkus to prosím jinak.
+```js
+history.push({role:'assistant', content:(data.say||'') + ' [provedeno: ' + calls.map(c=>c.tool).join(', ') + ']'});
 ```
 
-Uživatel to zkusil **třikrát** a třikrát dostal `miss`. „Brno-Komín" je běžný
-tvar názvu městské části; jméno s pomlčkou/spojovníkem musí projít.
+Model tedy z minulých tahů vidí jen **jména nástrojů** — ne jejich `args`
+ani výsledky. Když pak přijde „ostatní země nechci označit", nemá informaci
+o tom, že se v předchozím tahu obarvilo Rusko, ani čím. `mapState` se posílá,
+ale ten obarvené státy neobsahuje (`toolMapState()` vrací jen center/zoom/
+pitch/bearing/baseStyle/globe/mode/tab/hasRoute/shadows/ao).
 
-**Oprava:** normalizovat `-`/`–`/`—` v dotazu, tolerovat `Město-Část` jako jeden
-`gotoPlace.query`, a fallback „nenašel jsem, mysleli jste Komín (Brno)?" místo
-hluchého „Nerozumím".
+**Oprava, dvě části:**
 
-### 4. Navazující a opravné pokyny padají — kontext se ztrácí
+1. Do historie ukládat i argumenty a výsledek, ne jen jméno nástroje:
+   `[provedeno: colorPolitical {country:"Rusko",color:"#e63946"} → ok]`
+2. Rozšířit `toolMapState()` o seznam aktivních prvků — obarvené státy/kraje,
+   nakreslené perimetry, šipky, popisky. Bez toho nemůže model splnit
+   „zruš to", „změň barvu", „ostatní ne" — nemá co adresovat.
 
-```
-round 4:  zapni na tom hranice států        → Nerozumím
-round 5:  zapni hranice států ted na té mapě a označ rusko červeně → OK
-round 5:  ostatní země nechci označit       → Nerozumím
-```
+## Příčina č. 5 — volba modelu
 
-Miss podle pořadí tahu v konverzaci:
+`@cf/meta/llama-3.3-70b-instruct-fp8-fast` musí zvládat současně:
 
-| round | miss / tahů |
-|---|---|
-| 1 | 2 / 74 |
-| 2 | 0 / 4 |
-| 3 | 0 / 2 |
-| 4 | **2 / 2** |
-| 5 | **3 / 4** |
+- striktní JSON bez markdownu,
+- 26 nástrojů s parametry,
+- češtinu včetně skloňování a překlepů,
+- systémový prompt, který má po v15 přes 60 řádků pravidel.
 
-První tah selhává v 3 % případů, čtvrtý a pátý v **83 %**. Selhávají přesně
-ty dotazy, které odkazují na dřívější kontext („na tom", „ostatní země
-nechci"). To ukazuje na to, že se historie do workeru nepředává celá /
-prompt s ní nepracuje.
+To je na 70B model ve fp8 kvantizaci hodně a projevuje se to přesně tam, kde
+je vidět: formát se rozpadá u nejednoznačných dotazů, a to i po `temperature 0.2`.
+Nález č. 6 (nedeterminismus) má stejný původ.
 
-**Oprava:** předávat plnou historii včetně provedených nástrojů a aktuálního
-`mapState`; naučit prompt zájmenné odkazy („to"/„tam"/„ta mapa" = současný
-stav mapy) a odebírací pokyny („nechci", „zruš", „jen X") jako `clear`/negaci
-existujícího nástroje, ne jako nový příkaz.
+Doporučení v tomto pořadí:
 
-### 5. `openSection` jako výmluva — 21 % tahů
+1. Nasadit `response_format` (výše) — to samo většinu formátových chyb odstraní
+   a je zdaleka nejlevnější.
+2. Vyzkoušet na Workers AI silnější model s nativním tool-callingem.
+3. Nejčastější intenty (globus, podklad, vrstvy, perimetr, barva trasy) vyřídit
+   deterministickým routerem **před** LLM. Z logu jde o většinu provozu, byly by
+   okamžité a nikdy by neselhaly.
 
-Asistent otevře panel a řekne „udělejte to sám", i když **nástroj existuje**:
+---
 
-| Dotaz | Použito | Mělo být |
+## Nedeterminismus — stejný dotaz, jiný výsledek
+
+Ze starší části logu, kde totéž bylo zadáno vícekrát:
+
+| dotaz | 1. pokus | 2. pokus |
 |---|---|---|
-| pridej popisek Brno do mapy | `openSection` | `addLabel` |
-| přidej popisek Letňany na mapu | `openSection` | `addLabel` |
-| vyznač na politické mapě Středočeský kraj červeně | `openSection` | `colorPolitical` |
-| přidej ikonku výbuchu do Kyjeva | `openSection` | `placeIcon` |
-| zapni radar srážek | `openSection` | `setWeather` |
-| ukaž teplotu z OpenWeatheru | `openSection` | `setWeather` |
-| ukaz hranice statu | `openSection` | `setLayers` |
-| zvětši body A a B na trase | `openSection` | `setValues` |
-
-`addLabel`, `placeIcon`, `setWeather` nebyly za 86 tahů zavolány **ani jednou**,
-přitom v API jsou. Model o nich zjevně neví, nebo je popis v promptu tak slabý,
-že si na ně netroufne.
-
-**Oprava:** doplnit do promptu ke každému nástroji 1–2 příkladové dotazy;
-`openSection` povolit teprve jako poslední možnost s výslovným zdůvodněním.
-
-### 6. Nedeterminismus — stejný dotaz, jiný (a někdy špatný) výsledek
-
-| Dotaz | 1. pokus | 2. pokus |
-|---|---|---|
-| ukaž mi perimetr 2000 m od Moskvy na glóbusu | `gotoPlace,setGlobe,setLayers,setValues` ✗ perimetr se nenakreslil | `gotoPlace,drawPerimeter,setGlobe` ✓ |
+| perimetr 2000 m od Moskvy na glóbusu | `gotoPlace,setGlobe,setLayers,setValues` — perimetr se vůbec nenakreslil | `gotoPlace,drawPerimeter,setGlobe` ✓ |
 | udělej trasu červenou a tlustší | `setLayers,setValues` ✗ | `setColors,setValues` ✓ |
-| vypni budovy | `setBaseStyle` ✗ přepnul podklad | `setLayers` ✓ |
-| ukaž mi cestu vlakem z Prahy do Brna | `setTransportMode,routeBetween` — tvářil se, že vlak umí | správně odmítl a nabídl auto |
+| vypni budovy | `setBaseStyle` — přepnulo podklad ✗ | `setLayers` ✓ |
 | ukaz hranice statu | `openSection` ✗ | `setLayers` ✓ |
+| cesta vlakem z Prahy do Brna | tvářil se, že vlak umí | správně odmítl a nabídl auto ✓ |
 
 Pro nástroj na výrobu grafiky do vysílání je nepředvídatelnost horší než
-otevřené odmítnutí. Snížit `temperature`, případně několik nejčastějších
-intentů (perimetr, barva trasy, vrstvy) řešit deterministickým routerem před LLM.
+otevřené odmítnutí.
 
-### 7. Tiché no-opy — asistent tvrdí, že něco udělal, a neudělal
+## Tiché no-opy
+
+Odpověď tvrdí, že se něco stalo, a nestalo se:
 
 ```
 Q:  zvýrazni Německo na politické mapě
 SAY: Zobrazuji Německo na politické mapě
-TOOLS: gotoPlace, setBaseStyle          ← colorPolitical chybí, nic se nezvýraznilo
+TOOLS: gotoPlace, setBaseStyle        ← colorPolitical chybí, nic se nezvýraznilo
 ```
 
 ```
 Q:  dej šipku z Prahy na Brno
 SAY: Vykresluji trasu z Prahy do Brna
-TOOLS: routeBetween, fitRoute           ← drawArrow existuje, nebyl použit
+TOOLS: routeBetween, fitRoute         ← drawArrow existuje (prompt 6f ho i zmiňuje)
 ```
 
-```
-Q:  změř vzdálenost z Prahy do Brna
-TOOLS: routeBetween, fitRoute           ← measureDistance existuje, nebyl použit
-```
+Pravidlo 6 („say MUSÍ popisovat jen to, co nástroje SKUTEČNĚ udělaly") tomu
+nezabrání, protože `say` vzniká **současně** s `calls`, tedy dřív, než je známý
+výsledek. Řešení je stejné jako u příčiny č. 2: u akcí, které mají viditelný
+výsledek, vynutit druhé kolo a `say` formulovat až podle `toolResults`.
 
-**Oprava:** `say` generovat teprve po `toolResults` a formulovat podle toho,
-co se skutečně povedlo. Rozlišit v promptu „šipka" → `drawArrow`,
-„změř / vzdušnou čarou" → `measureDistance`, „trasa / kudy" → `routeBetween`.
+## Nevyužité nástroje
 
-### 8. Únik interních detailů
+Za 86 tahů nebyly zavolány ani jednou: `applyPreset`, `placeIcon`, `addLabel`,
+`setWeather`, `drawArrow`, `arcBestView`, `getState`. Prompt (6f) je přitom
+výslovně jmenuje. `openSection` naopak tvoří **21 % všech tahů** — model se
+k němu uchyluje i tam, kde nástroj existuje:
 
-```
-Q:  jake mas nastroje
-SAY: Mám následující nástroje: gotoPlace, show3D, setCamera, setBaseStyle, setLayers, applyPreset, setGlobe, setShadows, setT…
-```
+| dotaz | použito | mělo být |
+|---|---|---|
+| pridej popisek Brno do mapy | `openSection` | `addLabel` |
+| vyznač na politické mapě Středočeský kraj červeně | `openSection` | `colorPolitical` |
+| přidej ikonku výbuchu do Kyjeva | `openSection` | `placeIcon` |
+| zapni radar srážek | `openSection` | `setWeather` |
+| ukaž teplotu z OpenWeatheru | `openSection` | `setWeather` |
+| zvětši body A a B na trase | `openSection` | `setValues` |
 
-Uživateli se vysypaly interní názvy funkcí. Má odpovědět lidsky
-(„umím lítat na místa, přepínat podklad, kreslit trasy a perimetry, …").
+Vyjmenovat nástroj v promptu zjevně nestačí. K popisu každého nástroje
+v `TOOLS` přidat 1–2 příkladové dotazy v češtině.
 
-### 9. Čeština v odpovědích
+## Drobnosti
 
-Drobné, ale je to vidět ve vysílacím nástroji: „Scho**z**uji vedlejší silnice",
-„ukazu**jí** Evropu", „dlouhými stín**ami**", „nahra**n**out",
-„Vyhledávám trasu z **Barandova**" (Barrandov — a přesto to geokódoval).
+**Únik interních jmen.** Na „jake mas nastroje" model vysypal
+`gotoPlace, show3D, setCamera, setBaseStyle, …`. Přidat do promptu, že se
+schopnosti popisují lidsky.
+
+**Čeština v odpovědích.** „Scho**z**uji vedlejší silnice", „ukazu**jí** Evropu",
+„dlouhými stín**ami**", „nahra**n**out", „z **Barandova**" (Barrandov).
 Model také přebírá překlepy uživatele do odpovědi („celou zem**e**kouli").
-
-**Oprava:** do promptu pravidlo, že odpověď je vždy gramaticky správná čeština
-a názvy míst se píší správně, i když je uživatel napsal s překlepem.
+Doplnit pravidlo: odpověď je vždy gramaticky správná čeština a názvy míst se
+píší správně i tehdy, když je uživatel napsal s překlepem.
 
 ---
 
 ## Priority
 
-1. Zákaz vymyšlených čísel + dočtení výsledku měření (nálezy 1, 2)
-2. Předávání kontextu a navazující/opravné pokyny (nález 4)
-3. Pomlčka v názvech míst (nález 3)
-4. Zpřístupnit modelu `addLabel`, `placeIcon`, `setWeather`, `drawArrow` (nálezy 5, 7)
-5. Snížit nedeterminismus (nález 6)
-6. Kosmetika: interní názvy, čeština (nálezy 8, 9)
+1. **`response_format` + `max_tokens` 1200 + opravné kolo** — smaže „Nerozumím“ (příčina 1)
+2. **`done` u čtecích nástrojů vynutit na `false`** — bez toho asistent nikdy nevysloví změřenou hodnotu (příčina 2)
+3. **Pravidlo 6d na `measureDistance` + zákaz nezměřených čísel** (příčina 3)
+4. **Historie s argumenty a `mapState` s aktivními prvky** — navazující pokyny (příčina 4)
+5. Příklady u nástrojů v `TOOLS`, `openSection` až jako poslední možnost
+6. Deterministický router na nejčastější intenty (příčina 5)
+7. Kosmetika: interní jména, čeština
 
 ---
 
@@ -214,5 +316,7 @@ Ani jedna verze není nadmnožinou druhé:
 | 3D terén (`terrain-dem`) | **ano** | ne |
 | tramvaje (`praha_tram.js`) | **ano** | ne |
 
-Než se bude cokoli na asistentovi opravovat, je potřeba tyto dvě linie sloučit
-do gitu jako jediný zdroj pravdy — jinak každé nasazení jednu sadu změn přepíše.
+Zdrojový kód workeru `tnmap-chat` není v gitu vůbec (nasazuje se wranglerem
+odjinud). Než se bude na asistentovi cokoli opravovat, měl by být worker
+i front-end v repozitáři jako jediný zdroj pravdy — jinak každé nasazení
+jednu sadu změn přepíše.
