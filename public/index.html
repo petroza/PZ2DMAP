@@ -1303,7 +1303,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         </div>
       </div>
 
-      <div class="section" data-no-collapse>
+      <div class="section">
         <h3 data-i18n="Přehrávač">Přehrávač</h3>
         <div class="player-controls">
           <button type="button" class="player-btn" id="animRewindBtn" title="Na začátek">⏮</button>
@@ -4479,24 +4479,12 @@ function getAccordionStorageKey(section, idx){
   const pane = section.closest('.tab-pane')?.dataset.pane || 'global';
   const h3 = section.querySelector(':scope > h3');
   const raw = h3?.dataset?.i18n || h3?.cloneNode(true)?.textContent || ('section-' + idx);
-  return 'pzAccordion:' + pane + ':' + slugifyName(String(raw).trim() || ('section-' + idx));
+  // v2 starts every menu closed once, while still remembering later choices.
+  return 'pzAccordion2:' + pane + ':' + slugifyName(String(raw).trim() || ('section-' + idx));
 }
 
 function isAccordionDefaultOpen(section, idx){
-  const pane = section.closest('.tab-pane')?.dataset.pane || '';
-  const h3 = section.querySelector(':scope > h3');
-  const key = slugifyName((h3?.dataset?.i18n || h3?.textContent || '').trim());
-  const openMap = {
-    styly: ['zakladni-styl','zakladni-styly','vzhled-podkladu','sprava-presetu','spr-va-preset','vrstvy','viditelnost-vrstev','hranice-statu-overlay','staty-sveta','kraje-cr'],
-    trasa: ['zastavky-na-trase','zast-vky-na-trase','vzhled-trasy'],
-    scena: ['ikonky-ve-scene','ikonky-ve-sc-n','popisky'],
-    animace: ['ikona-objektu','parametry-animace','kamera','prehravac','preh-v'],
-    projekt: ['projekty'],
-    export: ['nastaveni-exportu','nastaven-exportu','akce']
-  };
-  const defaults = openMap[pane] || [];
-  if(defaults.length) return defaults.includes(key);
-  return idx === 0;
+  return false;
 }
 
 function setAccordionOpen(section, open, storageKey, persist=true){
