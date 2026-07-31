@@ -9235,10 +9235,30 @@ function satStopLoop(){
   if(s.raf){ cancelAnimationFrame(s.raf); s.raf = null; }
 }
 
+// Kreslit polohy družic 60×/s nemá SMYSL: družice na nízké dráze letí 7,5 km/s,
+// což je na obrazovce (šířka světa = 512·2^zoom px) tohle:
+//
+//   zoom 0   0,1 px/s      zoom 4   1,5 px/s
+//   zoom 2   0,4 px/s      zoom 6   6,1 px/s
+//
+// Při 60 Hz je jeden krok 0,001–0,1 px — tedy setiny pixelu. Appka kvůli tomu
+// ve 2D pokaždé postavila 16 tisíc GeoJSON prvků a nechala MapLibre celou tu
+// sadu znovu naindexovat a rozřezat na dlaždice, a na glóbusu si vynutila
+// překreslení celé mapy (i s terénem a stíny). Při 15 Hz je krok pořád pod
+// pixelem (do zoomu 6), takže na pohled nepoznatelné — a práce je 4× méně.
+// Plynulost posunu mapy to neovlivní: při pohybu kamerou si MapLibre překresluje
+// sám, tohle jen přestane překreslovat navíc kvůli družicím.
+const SAT_DRAW_MIN_MS = 66; // ≈15 Hz
 function satFrame(){
   const s = ensureSatState();
   if(!satEnabled() || !s.ready){ s.raf = null; return; }
   const map = state.map;
+  const now = Date.now();
+  if(s._lastDrawAt && now - s._lastDrawAt < SAT_DRAW_MIN_MS){
+    s.raf = requestAnimationFrame(satFrame);
+    return;
+  }
+  s._lastDrawAt = now;
   if(s.prevPos && s.nextPos && map){
     const span = Math.max(1, s.nextTickAt - s.prevTickAt);
     const mix = Math.max(0, Math.min(1, (Date.now() - s.prevTickAt) / span));
