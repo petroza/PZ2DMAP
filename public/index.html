@@ -773,7 +773,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="btn btn-sm btn-primary" id="savePresetBtn" data-i18n="+ Přidat preset">+ Přidat preset</button>
           <button type="button" class="btn btn-sm" id="updatePresetBtn" data-i18n="Uložit změny">Uložit změny</button>
         </div>
-        <p class="hint" data-i18n="hint_preset_manage">Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem a zároveň uloží celý panel na server — přidané i smazané presety uvidí všichni.</p>
+        <p class="hint" data-i18n="hint_preset_manage">Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. Přidání, smazání i ladění aktivního vlastního presetu se ukládá na server automaticky.</p>
       </div>
       <div class="section" id="politicalStylePanel" style="display:none">
         <h3 data-i18n="Politická mapa">Politická mapa</h3>
@@ -2041,7 +2041,7 @@ const I18N = {
   'Obnovit': {cs:'Obnovit',sk:'Obnoviť',bg:'Възстанови',hr:'Vrati',ro:'Restaurează'},
   'Zahodit': {cs:'Zahodit',sk:'Zahodiť',bg:'Отхвърли',hr:'Odbaci',ro:'Renunță'},
   '+ Přidat zdroj': {cs:'+ Přidat zdroj',sk:'+ Pridať zdroj',bg:'+ Добави източник',hr:'+ Dodaj izvor',ro:'+ Adaugă sursă'},
-  'hint_preset_manage': {cs:'Klik na dlaždici preset použije. Pravým tlačítkem na dlaždici ho přejmenuješ, zduplikuješ nebo smažeš. „Uložit změny" přepíše aktivní preset aktuálním vzhledem a zároveň uloží celý panel na server — přidané i smazané presety uvidí všichni.',sk:'Klik na dlaždicu preset použije. Pravým tlačidlom ho premenuješ, zduplikuješ alebo zmažeš. „Uložiť zmeny" prepíše aktívny preset aktuálnym vzhľadom.',bg:'Клик върху плочка прилага пресета. С десен бутон го преименуваш, дублираш или изтриваш. „Запази промените" презаписва активния пресет с текущия вид.',hr:'Klik na pločicu primjenjuje preset. Desnom tipkom ga preimenuješ, dupliciraš ili izbrišeš. „Spremi promjene" prepisuje aktivni preset trenutnim izgledom.',ro:'Click pe o placă aplică presetul. Click dreapta îl redenumește, duplică sau șterge. „Salvează modificările" suprascrie presetul activ cu aspectul curent.'},
+  'hint_preset_manage': {cs:'Klik na dlaždici preset použije. Přidání, smazání i ladění aktivního vlastního presetu se ukládá na server automaticky.',sk:'Klik na dlaždicu preset použije. Pridanie, vymazanie aj ladenie aktívneho vlastného presetu sa automaticky uloží na server.',bg:'Клик върху плочка прилага пресета. Добавянето, изтриването и настройването на активния потребителски preset се записват автоматично.',hr:'Klik na pločicu primjenjuje preset. Dodavanje, brisanje i podešavanje aktivnog prilagođenog preseta automatski se spremaju.',ro:'Click pe o placă aplică presetul. Adăugarea, ștergerea și reglarea presetării personalizate active se salvează automat.'},
   'hint_tile_sources': {cs:'Rastrové dlaždice ve formátu {z}/{x}/{y}. Přidaný zdroj se objeví v Základních stylech.',sk:'Rastrové dlaždice vo formáte {z}/{x}/{y}. Pridaný zdroj sa objaví v Základných štýloch.',bg:'Растерни плочки във формат {z}/{x}/{y}. Добавеният източник се появява в Основни стилове.',hr:'Rasterske pločice u formatu {z}/{x}/{y}. Dodani izvor pojavit će se u Osnovnim stilovima.',ro:'Plăci raster în format {z}/{x}/{y}. Sursa adăugată apare în Stiluri de bază.'},
   'hint_camera_keyframes': {cs:'Najeď mapou na 1. záběr a dej „Přidat klíč". Pak na 2., 3. … a přidej další. Kamera jimi po spuštění plynule prolétne v pořadí přidání, rovnoměrně rozložené po celé délce animace.',sk:'Nastav mapu na 1. záber a daj „Pridať kľúč". Potom na 2., 3. … a pridaj ďalší. Kamera nimi po spustení plynule preletí v poradí pridania, rovnomerne rozložené po celej dĺžke animácie.',bg:'Насочи картата към 1-ви кадър и натисни „Добави ключ". После към 2-ри, 3-ти … и добави още. При пускане камерата плавно преминава през тях в реда на добавяне, равномерно по цялата дължина на анимацията.',hr:'Postavi kartu na 1. kadar i klikni „Dodaj ključ". Zatim na 2., 3. … i dodaj još. Kamera nakon pokretanja glatko proleti kroz njih redoslijedom dodavanja, ravnomjerno raspoređeno po cijelom trajanju animacije.',ro:'Adu harta la primul cadru și apasă „Adaugă cheie". Apoi la al 2-lea, al 3-lea … și adaugă altele. La pornire camera trece lin prin ele în ordinea adăugării, distribuite uniform pe toată durata animației.',en:'Point the map at frame 1 and click "Add keyframe". Then frame 2, 3 … and add more. On playback the camera flies smoothly through them in the order added, spread evenly across the whole animation.'},
   'hint_camera_anim': {cs:'Najeď mapou na první místo (posuň, přibliž, nakloň) a ulož „Nastavit start". Pak najeď na druhé místo a ulož „Nastavit cíl". Animace pak kameru plynule přeletí z místa na místo, nebo přiblíží/oddálí. Funguje i bez trasy — ideální pro zpravodajské přelety. Délku řídí „Délka animace" výše.',sk:'Nastav mapu na prvé miesto (posuň, priblíž, nakloň) a ulož „Nastaviť štart". Potom prejdi na druhé miesto a ulož „Nastaviť cieľ". Animácia potom kameru plynule preletí z miesta na miesto, alebo priblíži/oddiali. Funguje aj bez trasy — ideálne pre spravodajské prelety. Dĺžku riadi „Dĺžka animácie" vyššie.',bg:'Насочи картата към първото място (премести, приближи, наклони) и запази „Задай начало". После премини към второто място и запази „Задай цел". Анимацията плавно прелита камерата от място на място или приближава/отдалечава. Работи и без маршрут — идеално за новинарски прелети. Дължината се управлява от „Дължина на анимацията" по-горе.',hr:'Postavi kartu na prvo mjesto (pomakni, približi, nagni) i spremi „Postavi početak". Zatim prijeđi na drugo mjesto i spremi „Postavi cilj". Animacija zatim glatko preleti kameru s mjesta na mjesto ili približi/udalji. Radi i bez rute — idealno za novinarske prelete. Trajanjem upravlja „Trajanje animacije" iznad.',ro:'Adu harta la primul loc (deplasează, apropie, înclină) și salvează „Setează start". Apoi mergi la al doilea loc și salvează „Setează ținta". Animația apoi mută lin camera dintr-un loc în altul sau apropie/depărtează. Funcționează și fără traseu — ideal pentru survoluri de știri. Durata o controlează „Durata animației" de mai sus.',en:'Point the map at the first spot (pan, zoom, tilt) and save "Set start". Then move to the second spot and save "Set target". The animation then flies the camera smoothly from place to place, or zooms in/out. Works without a route too — ideal for news flyovers. Length is controlled by "Animation length" above.'},
@@ -2495,7 +2495,7 @@ const EN_OVERRIDES = {
   "Obnovit": "Restore",
   "Zahodit": "Discard",
   "+ Přidat zdroj": "+ Add source",
-  "hint_preset_manage": "Clicking a tile applies the preset. Right-click a tile to rename, duplicate or delete it. \"Save changes\" overwrites the active preset with the current look and also saves the whole panel to the server — presets you add or delete show up for everyone.",
+  "hint_preset_manage": "Clicking a tile applies the preset. Adding, deleting, or tuning the active custom preset is saved to the server automatically.",
   "hint_tile_sources": "Raster tiles in {z}/{x}/{y} format. The added source appears under Base styles.",
   "SYS IKONY": "SYSTEM ICONS",
   "hint_anim_system_icons": "Click to choose a built-in animation icon.",
@@ -3103,7 +3103,9 @@ function savePresetDB(db){
   const toStore = marker ? db.concat([marker]) : db;
   recordRemovedIds('presets', PRESET_DB_KEY, toStore);
   const ok = trySetLocal(PRESET_DB_KEY, JSON.stringify(toStore));
-  if(ok) scheduleEntityPush('presets', toStore);
+  // Preset changes are collaborative: publish additions, edits and tombstones
+  // on the next event-loop turn instead of waiting for the generic debounce.
+  if(ok) scheduleEntityPush('presets', toStore, 0);
   return ok;
 }
 function loadProjectDB(){
@@ -3692,6 +3694,37 @@ function dbUpdatePreset(){
     if(res.ok) setStatus(`${what}Celý panel uložen na server (${res.count} presetů) — vidí ho všichni.`);
     else setStatus(`${what}Uloženo lokálně, ale server neodpověděl — zkusí se znovu automaticky.`, 'error');
   });
+}
+
+const AUTO_PRESET_CONTROL_IDS = new Set([
+  'landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor',
+  'aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','boundaryColor',
+  'majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth',
+  'showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries',
+  'showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways',
+  'showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'
+]);
+let _autoPresetSaveTimer = null;
+function autoSaveActiveCustomPreset(delay=0){
+  const token = state.activePresetToken || '';
+  if(!token.startsWith('custom:')) return;
+  if(_autoPresetSaveTimer) clearTimeout(_autoPresetSaveTimer);
+  _autoPresetSaveTimer = setTimeout(() => {
+    _autoPresetSaveTimer = null;
+    const id = (state.activePresetToken || '').startsWith('custom:')
+      ? state.activePresetToken.slice(7) : '';
+    if(!id) return;
+    const {db, idx, entry} = findCustomPresetById(id);
+    if(!entry) return;
+    const snapshot = getCurrentStylePresetSnapshot();
+    db[idx].colors = snapshot.colors;
+    db[idx].ranges = snapshot.ranges;
+    db[idx].visibility = snapshot.visibility;
+    db[idx].updatedAt = Date.now();
+    savePresetDB(db);
+    renderPresetTiles();
+    setStatus(`Preset „${db[idx].name}“ automaticky uložen na server.`);
+  }, Math.max(0, delay));
 }
 function dbRenamePreset(){
   const id = getSelectedCustomPresetId(); if(!id){ setStatus(t('Vyber preset ze seznamu nebo klikni na dlaždici.')); return; }
@@ -15673,6 +15706,12 @@ function bindUI(){
   });
   $('savePresetBtn')?.addEventListener('click', dbSavePreset);
   $('updatePresetBtn')?.addEventListener('click', dbUpdatePreset);
+  document.querySelector('.tab-pane[data-pane="styly"]')?.addEventListener('input', e => {
+    if(AUTO_PRESET_CONTROL_IDS.has(e.target?.id)) autoSaveActiveCustomPreset(180);
+  });
+  document.querySelector('.tab-pane[data-pane="styly"]')?.addEventListener('change', e => {
+    if(AUTO_PRESET_CONTROL_IDS.has(e.target?.id)) autoSaveActiveCustomPreset(0);
+  });
   $('savedPresetSelect')?.addEventListener('change', ()=>{
     const id = $('savedPresetSelect').value;
     const {entry} = findCustomPresetById(id);
