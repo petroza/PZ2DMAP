@@ -6493,44 +6493,54 @@ function applyPreferredMapLabelLanguage(){
   });
 }
 
+// POZOR na map.getStyle(): ten SERIALIZUJE celý styl (u Liberty 3D přes 150
+// vrstev i s kompletním paint/layout), takže jedno projetí applyMapTweaks, kde
+// se matchLayers a setVisibilityByRegex volají 26×, ho postavilo 26×. Přitom
+// všichni volající z výsledku čtou jen `id` (a `type` na filtrování).
+// getLayersOrder() je veřejné API, vrací jen pole id, a s getLayer() vyjde
+// naměřeně ~1000× levněji. Jediný rozdíl: getLayersOrder() navíc obsahuje
+// vlastní WebGL vrstvy (družice) — ty se přeskakují, protože setPaint/setLayout
+// na ně stejně nepatří.
+function eachStyleLayer(cb){
+  const map = state.map;
+  if(!map?.getLayersOrder) return;
+  let order;
+  try{ order = map.getLayersOrder(); }catch(e){ return; }
+  for(const id of order){
+    let l;
+    try{ l = map.getLayer(id); }catch(e){ continue; }
+    if(!l || l.type === 'custom') continue;
+    cb(l, id);
+  }
+}
+
 function matchLayers(regex, type){
-  const style = state.map?.getStyle();
-  if(!style?.layers) return [];
-  return style.layers.filter(l => (!type || l.type === type) && regex.test((l.id||'').toLowerCase()));
+  const out = [];
+  eachStyleLayer((l, id) => {
+    if((!type || l.type === type) && regex.test((id||'').toLowerCase())) out.push(l);
+  });
+  return out;
 }
 
 function applyColorToLayers(layers, paintProp, value){
   layers.forEach(l => safeSetPaint(l.id, paintProp, value));
 }
 function rememberOriginalRoadPaints(){
-  const style = state.map?.getStyle();
-  if(!style?.layers) return;
-  style.layers.forEach(l => {
+  eachStyleLayer((l, rawId) => {
     if(l.type !== 'line') return;
-    const id = (l.id||'').toLowerCase();
-    if(!/road|street|highway|motorway|trunk|primary|major|minor/.test(id)) return;
-    if(!(l.id in state.originalRoadWidthPaints)){
-      try{
-        state.originalRoadWidthPaints[l.id] = state.map.getPaintProperty(l.id, 'line-width');
-      }catch(e){}
+    const id = (rawId||'').toLowerCase();
+    if(/road|street|highway|motorway|trunk|primary|major|minor/.test(id) && !(rawId in state.originalRoadWidthPaints)){
+      try{ state.originalRoadWidthPaints[rawId] = state.map.getPaintProperty(rawId, 'line-width'); }catch(e){}
     }
-  });
-  style.layers.forEach(l => {
-    if(l.type !== 'line') return;
-    const id = (l.id||'').toLowerCase();
-    if(!/boundary|admin/.test(id)) return;
-    if(!(l.id in state.originalBoundaryWidthPaints)){
-      try{
-        state.originalBoundaryWidthPaints[l.id] = state.map.getPaintProperty(l.id, 'line-width');
-      }catch(e){}
+    if(/boundary|admin/.test(id) && !(rawId in state.originalBoundaryWidthPaints)){
+      try{ state.originalBoundaryWidthPaints[rawId] = state.map.getPaintProperty(rawId, 'line-width'); }catch(e){}
     }
   });
 }
 function setVisibilityByRegex(regex, visible, types){
-  const style = state.map?.getStyle(); if(!style?.layers) return;
-  style.layers.forEach(l => {
-    const id = (l.id||'').toLowerCase();
-    if(regex.test(id) && (!types || types.includes(l.type))) safeSetLayout(l.id, 'visibility', visible ? 'visible' : 'none');
+  eachStyleLayer((l, rawId) => {
+    const id = (rawId||'').toLowerCase();
+    if(regex.test(id) && (!types || types.includes(l.type))) safeSetLayout(rawId, 'visibility', visible ? 'visible' : 'none');
   });
 }
 
@@ -8424,15 +8434,33 @@ async function satLoadFrequencies(){
     return map;
   }catch(e){ return null; }
 }
-// Kategorie se nezavolávají hned při startu (aby první zobrazení družic nečekalo
-// na dvě další síťová stažení navíc) — doběhnou na pozadí, jakmile je hlavní
-// katalog hotový, a výsledky se prostě dopíšou do stavu, jakmile dorazí.
-function satLoadCategoriesInBackground(){
+// Seznamy kategorií se stahují AŽ při prvním kliknutí na danou kategorii, ne
+// při zapnutí družic. Dřív se tahaly všechny tři skupiny TLE i frekvence
+// (dohromady 4 požadavky a ~275 kB JSONu k rozparsování) pokaždé, i když
+// uživatel filtr vůbec neotevřel — přesně ta práce navíc, která zdržuje
+// hlavní věc, na kterou se čeká: samotné zobrazení družic.
+function satEnsureCategoryData(cat){
   const s = ensureSatState();
-  if(!s.weatherIds) satLoadCategoryIds('weather').then(ids => { s.weatherIds = ids; if(s.category==='weather') satRefreshCategoryFilter(); });
-  if(!s.amateurIds) satLoadCategoryIds('amateur').then(ids => { s.amateurIds = ids; if(s.category==='amateur') satRefreshCategoryFilter(); });
-  if(!s.militaryIds) satLoadCategoryIds('military').then(ids => { s.militaryIds = ids; if(s.category==='military') satRefreshCategoryFilter(); });
-  if(!s.freqById) satLoadFrequencies().then(map => { s.freqById = map; if(s.category==='amateur') satRenderResults($('satSearch')?.value||''); });
+  const done = () => { if(s.category === cat) satRefreshCategoryFilter(); };
+  if(cat === 'weather' && !s.weatherIds && !s._loadingWeather){
+    s._loadingWeather = true;
+    satLoadCategoryIds('weather').then(ids => { s.weatherIds = ids; done(); });
+  }
+  if(cat === 'military' && !s.militaryIds && !s._loadingMilitary){
+    s._loadingMilitary = true;
+    satLoadCategoryIds('military').then(ids => { s.militaryIds = ids; done(); });
+  }
+  if(cat === 'amateur'){
+    if(!s.amateurIds && !s._loadingAmateur){
+      s._loadingAmateur = true;
+      satLoadCategoryIds('amateur').then(ids => { s.amateurIds = ids; done(); });
+    }
+    // Frekvence dávají smysl jen u radioamatérských — stahují se s nimi.
+    if(!s.freqById && !s._loadingFreq){
+      s._loadingFreq = true;
+      satLoadFrequencies().then(map => { s.freqById = map; done(); });
+    }
+  }
 }
 
 // Worker se skládá za běhu z textu — appka je jeden soubor, takže samostatný
@@ -9258,7 +9286,6 @@ async function satLoad(){
         s.names = d.names; s.ids = d.ids; s.periods = d.periods; s.ready = true; s.loading = false;
         satStatus(t('Družic:') + ' ' + d.count.toLocaleString('cs-CZ'));
         satStartLoop();
-        satLoadCategoriesInBackground();
         return;
       }
       if(d.type === 'pos'){
@@ -15301,8 +15328,13 @@ function bindUI(){
   $('satSearch')?.addEventListener('input', (e) => satRenderResults(e.target.value));
   $('satCategoryRow')?.addEventListener('click', (e) => {
     const b = e.target.closest('.sat-cat-btn'); if(!b) return;
-    ensureSatState().category = b.getAttribute('data-cat') || 'all';
+    const cat = b.getAttribute('data-cat') || 'all';
+    ensureSatState().category = cat;
     $('satCategoryRow').querySelectorAll('.sat-cat-btn').forEach(x => x.classList.toggle('active', x === b));
+    // Data pro kategorii se stahují až tady (viz satEnsureCategoryData) — do té
+    // doby se vypíše, co jde poznat rovnou z názvu, a seznam se doplní, jakmile
+    // stažení dojede.
+    satEnsureCategoryData(cat);
     satRefreshCategoryFilter();
   });
   $('satResults')?.addEventListener('click', (e) => {
