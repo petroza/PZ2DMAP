@@ -750,7 +750,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="preset-context-item danger" data-action="delete" data-i18n="× Smazat">× Smazat</button>
         </div>
       </div>
-      <div class="section" id="styleColorsSection">
+      <div class="section" id="styleColorsSection" style="display:none" aria-hidden="true">
         <h3 data-i18n="Vzhled podkladu">Vzhled podkladu</h3>
         <div class="color-row"><input id="landColor" type="color" value="#ece8dd"><label data-i18n="Pozadí / land">Pozadí / land</label></div>
         <div class="color-row"><input id="waterColor" type="color" value="#99b7d7"><label data-i18n="Voda">Voda</label></div>
@@ -802,6 +802,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
       </div>
 <div class="section">
         <h3 data-i18n="Viditelnost vrstev">Viditelnost vrstev</h3>
+        <label class="layer-visibility-row" style="margin-bottom:8px"><span style="width:18px"></span><input class="layer-color-input" type="color" data-sync-color="landColor" aria-label="Barva pozadí a pevniny"> Pozadí / pevnina</label>
         <label class="check layer-visibility-row"><input id="showBuildings" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="buildingColor" aria-label="Barva budov"> Budovy</label>
         <label class="check layer-visibility-row"><input id="showParks" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="parkColor" aria-label="Barva parků"> Parky a zeleň</label>
         <label class="check layer-visibility-row"><input id="showLandcover" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landcoverColor" aria-label="Barva půdy"> Půda (tráva, pole, lesy)</label>
@@ -10084,7 +10085,7 @@ function updateStylePanelVisibility(){
   const key = $('baseStyle')?.value || 'liberty';
   const hideAdvancedStyleUi = ['political','satellite','hybrid','osmStandard','openTopo','cyclOsm','cartoVoyager','esriTerrain','osmHot'].includes(key);
   const display = hideAdvancedStyleUi ? 'none' : '';
-  ['stylePresetSection','styleColorsSection','presetManageSection'].forEach(id => {
+  ['stylePresetSection','presetManageSection'].forEach(id => {
     const el = $(id);
     if(el) el.style.display = display;
   });
