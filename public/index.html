@@ -598,6 +598,14 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .nav-dot.a,.nav-dot.b{box-shadow:none}
 .lang-btn.active{box-shadow:none}
 .preset-card.multi-selected{background:var(--bg3);box-shadow:inset 0 0 0 2px #26d0c4 !important}
+.control-step{margin-top:10px;padding:12px;border:1px solid var(--border);background:var(--bg2)}
+.control-step:first-of-type{margin-top:0}
+.control-step-title{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:var(--tx1);font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase}
+.control-step-number{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px}
+.compact-details{margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
+.compact-details>summary{cursor:pointer;color:var(--tx2);font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;user-select:none}
+.compact-details[open]>summary{margin-bottom:10px;color:var(--tx1)}
+.control-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .status-bar,.map-actions .map-action-btn,.map-source-watermark,
 .floating-player .player-controls,.shortcuts-panel,.mobile-menu-btn,
 .nav-suggest,.export-progress{backdrop-filter:none}
@@ -826,41 +834,43 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <p class="hint" data-i18n="hint_sun_shadows">Slunce nasvítí stěny 3D budov a zároveň vrhá jejich stíny. Stíny se počítají z výšek budov, takže se objeví od přiblížení, kde má mapa 3D budovy (zhruba od zoomu 14). Nižší slunce = delší stíny. Vyrenderuje se i do videa.</p>
       </div>
       <div class="section" id="countryBordersOverlaySection">
-        <h3 data-i18n="Hranice států overlay">Hranice států overlay</h3>
-        <div class="small" style="margin-bottom:8px">Přesnější křivky berou detailnější zdroj GISCO 2024.</div>
-        <label class="check"><input id="showCountryBordersOverlay" type="checkbox"> Zobrazit hranice států nad mapou</label>
-        <div class="row">
-          <div><label data-i18n="Režim">Režim</label><select id="countryBorderMode"><option value="all" selected data-i18n="Všechny státy">Všechny státy</option><option value="selected" data-i18n="Jen vybraný stát">Jen vybraný stát</option></select></div>
-          <div><label data-i18n="Vybraný stát">Vybraný stát</label><select id="countryFocusSelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
+        <h3 data-i18n="Hranice států overlay">Hranice a barvy států</h3>
+        <div class="control-step">
+          <div class="control-step-title"><span class="control-step-number">1</span> Hranice států</div>
+          <label class="check"><input id="showCountryBordersOverlay" type="checkbox"> Zobrazit hranice států</label>
+          <details class="compact-details">
+            <summary>Vzhled a rozsah hranic</summary>
+            <div class="row">
+              <div><label data-i18n="Režim">Zobrazit</label><select id="countryBorderMode"><option value="all" selected data-i18n="Všechny státy">Všechny státy</option><option value="selected" data-i18n="Jen vybraný stát">Jen vybraný stát</option></select></div>
+              <div><label data-i18n="Vybraný stát">Vybraný stát</label><select id="countryFocusSelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
+            </div>
+            <div class="row">
+              <div class="color-row"><input id="countryBorderColor" type="color" value="#ffffff"><label data-i18n="Barva hranic">Barva</label></div>
+              <div><label>Tloušťka <span class="val" id="countryBorderWidthVal">2.5 px</span></label><input id="countryBorderWidth" type="range" min="0.5" max="10" step="0.1" value="2.5"></div>
+            </div>
+            <label>Průhlednost <span class="val" id="countryBorderOpacityVal">100%</span></label>
+            <input id="countryBorderOpacity" type="range" min="0" max="1" step="0.01" value="1">
+          </details>
         </div>
-        <div class="row">
-          <div class="color-row"><input id="countryBorderColor" type="color" value="#ffffff"><label data-i18n="Barva hranic">Barva hranic</label></div>
-          <div><label>Tloušťka <span class="val" id="countryBorderWidthVal">2.5 px</span></label><input id="countryBorderWidth" type="range" min="0.5" max="10" step="0.1" value="2.5"></div>
-        </div>
-        <label>Opacity <span class="val" id="countryBorderOpacityVal">100%</span></label>
-        <input id="countryBorderOpacity" type="range" min="0" max="1" step="0.01" value="1">
-        <div id="worldPoliticalSection" style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-        <h4 style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--tx2)" data-i18n="Státy světa">Státy světa</h4>
-        <div class="small" style="margin-bottom:8px">Pro čistou politickou mapu přepni podklad na „Politická“. Státy můžeš obarvovat klikem nebo výběrem ve formuláři.</div>
-        <label class="check"><input id="showPoliticalCountries" type="checkbox"> Zobrazit vybarvené státy</label>
-        <label class="check"><input id="paintPoliticalCountryOnClick" type="checkbox"> Barvit stát kliknutím do mapy</label>
-        <div class="row">
-          <div class="country-search-wrap"><label data-i18n="Vyhledat stát">Vyhledat stát</label><input id="politicalCountrySearch" type="text" placeholder="Piš název státu…" autocomplete="off"><div class="nav-suggest" id="politicalCountrySearchSuggest" role="listbox"></div></div>
-          <div><label data-i18n="Stát">Stát</label><select id="politicalCountrySelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
-        </div>
-        <div class="row">
-          <div class="color-row"><input id="politicalCountryColor" type="color" value="#ff6b6b"><label data-i18n="Barva státu">Barva státu</label></div>
-          <div class="color-row"><input id="politicalCountryDefaultColor" type="color" value="#e7e2d8"><label data-i18n="Výchozí barva">Výchozí barva</label></div>
-        </div>
-        <div class="row">
-          <div class="small" style="display:flex;align-items:end">Klikem do mapy obarvíš právě vybraný stát. Když je zapnuté barvení krajů a klikneš v ČR do kraje, má kraj přednost.</div>
-          <div style="display:flex;align-items:end"><button type="button" class="btn btn-sm" id="zoomToCountryBtn" data-i18n="Přiblížit stát">Přiblížit stát</button></div>
-        </div>
-        <label>Opacity výplně <span class="val" id="politicalFillOpacityVal">92%</span></label>
-        <input id="politicalFillOpacity" type="range" min="0" max="1" step="0.01" value="0.92">
-        <div class="btns">
-          <button type="button" class="btn btn-sm btn-primary" id="applyPoliticalCountryColorBtn" data-i18n="Barvit stát">Barvit stát</button>
-        </div>
+        <div id="worldPoliticalSection" class="control-step">
+          <div class="control-step-title"><span class="control-step-number">2</span> Vybarvit stát</div>
+          <label data-i18n="Vyhledat stát">Najdi stát</label>
+          <div class="country-search-wrap"><input id="politicalCountrySearch" type="text" placeholder="Začni psát název…" autocomplete="off"><div class="nav-suggest" id="politicalCountrySearchSuggest" role="listbox"></div></div>
+          <label data-i18n="Stát">Nebo vyber ze seznamu</label>
+          <select id="politicalCountrySelect"><option value="" data-i18n="Načítám…">Načítám…</option></select>
+          <div class="color-row" style="margin-top:10px"><input id="politicalCountryColor" type="color" value="#ff6b6b"><label data-i18n="Barva státu">Barva státu</label></div>
+          <div class="control-actions">
+            <button type="button" class="btn btn-sm btn-primary" id="applyPoliticalCountryColorBtn" data-i18n="Barvit stát">Použít barvu</button>
+            <button type="button" class="btn btn-sm" id="zoomToCountryBtn" data-i18n="Přiblížit stát">Přiblížit stát</button>
+          </div>
+          <label class="check" style="margin-top:12px"><input id="showPoliticalCountries" type="checkbox"> Zobrazit vybarvené státy</label>
+          <label class="check"><input id="paintPoliticalCountryOnClick" type="checkbox"> Rychlé barvení kliknutím do mapy</label>
+          <details class="compact-details">
+            <summary>Další nastavení výplně</summary>
+            <div class="color-row"><input id="politicalCountryDefaultColor" type="color" value="#e7e2d8"><label data-i18n="Výchozí barva">Výchozí barva</label></div>
+            <label>Průhlednost výplně <span class="val" id="politicalFillOpacityVal">92%</span></label>
+            <input id="politicalFillOpacity" type="range" min="0" max="1" step="0.01" value="0.92">
+          </details>
         </div>
       </div>
       <div class="section" id="czPoliticalSection">
