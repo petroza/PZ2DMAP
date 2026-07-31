@@ -611,6 +611,10 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .layer-visibility-row .layer-color-input{width:22px;height:22px;min-width:22px;padding:2px;border:1px solid var(--border);background:var(--bg0);cursor:pointer}
 .layer-visibility-row .layer-color-input::-webkit-color-swatch-wrapper{padding:0}
 .layer-visibility-row .layer-color-input::-webkit-color-swatch{border:0}
+.layer-visibility-row{flex-wrap:wrap}
+.layer-width-popover{display:none;flex:0 0 100%;padding:7px 0 2px 48px;color:var(--tx3);font-size:9px}
+.layer-visibility-row.width-open .layer-width-popover{display:block}
+.layer-width-popover input[type=range]{margin:5px 0 0;width:100%}
 .status-bar,.map-actions .map-action-btn,.map-source-watermark,
 .floating-player .player-controls,.shortcuts-panel,.mobile-menu-btn,
 .nav-suggest,.export-progress{backdrop-filter:none}
@@ -799,30 +803,24 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label class="check layer-visibility-row"><input id="showLandcover" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landcoverColor" aria-label="Barva půdy"> Půda (tráva, pole, lesy)</label>
         <label class="check layer-visibility-row"><input id="showLanduse" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landuseColor" aria-label="Barva ploch"> Plochy (letiště, průmysl, obchody)</label>
         <label class="check layer-visibility-row"><input id="showAeroway" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="aerowayColor" aria-label="Barva letišť"> Letiště a letištní plochy</label>
-        <label class="check layer-visibility-row"><input id="showBoundaries" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="boundaryColor" aria-label="Barva hranic"> Hranice</label>
+        <label class="check layer-visibility-row"><input id="showBoundaries" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="boundaryColor" aria-label="Barva hranic"> Hranice<div class="layer-width-popover">Tloušťka <span class="val" id="boundaryWidthVal">1.2×</span><input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2"></div></label>
         <label class="check layer-visibility-row"><input id="showLabels" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="labelColor" aria-label="Barva názvů"> Názvy ulic a míst</label>
         <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="haloColor" aria-label="Barva štítků silnic"> Obdélníčky s čísly silnic</label>
-        <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva vedlejších silnic"> Vedlejší silnice</label>
-        <label class="check layer-visibility-row"><input id="showMajorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva hlavních silnic"> Hlavní silnice</label>
-        <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva dálnic"> Dálnice</label>
-        <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy</label>
-        <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy</label>
+        <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva vedlejších silnic"> Vedlejší silnice<div class="layer-width-popover">Tloušťka <span class="val" id="minorWidthVal">1.0×</span><input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0"></div></label>
+        <label class="check layer-visibility-row"><input id="showMajorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva hlavních silnic"> Hlavní silnice<div class="layer-width-popover">Tloušťka <span class="val" id="majorWidthVal">1.3×</span><input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3"></div></label>
+        <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva dálnic"> Dálnice<div class="layer-width-popover">Tloušťka <span class="val" id="motorwayWidthVal">1.0×</span><input id="motorwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="primaryWidthVal">1.0×</span><input id="primaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="secondaryWidthVal">1.0×</span><input id="secondaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="waterColor" aria-label="Barva vodních toků"> Řeky a vodní toky</label>
-        <label class="check layer-visibility-row"><input id="showRailways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="railwayColor" aria-label="Barva železnic"> Železnice</label>
-        <label class="check"><input id="showMetro" type="checkbox"> Metro (Praha)</label>
-        <label class="check layer-visibility-row"><input id="showTransit" type="checkbox"><input class="layer-color-input" type="color" data-sync-color="transitColor" aria-label="Barva MHD"> MHD – tramvaje a zastávky</label>
+        <label class="check layer-visibility-row"><input id="showRailways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="railwayColor" aria-label="Barva železnic"> Železnice<div class="layer-width-popover">Tloušťka <span class="val" id="railwayWidthVal">1.0×</span><input id="railwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showMetro" type="checkbox"><span class="layer-color-input" style="background:linear-gradient(135deg,#00a562 0 33%,#f5c400 33% 66%,#e30613 66%)" title="Metro používá barvy linek A/B/C"></span> Metro (Praha)<div class="layer-width-popover">Tloušťka <span class="val" id="metroWidthVal">1.0×</span><input id="metroWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showTransit" type="checkbox"><input class="layer-color-input" type="color" data-sync-color="transitColor" aria-label="Barva MHD"> MHD – tramvaje a zastávky<div class="layer-width-popover">Tloušťka <span class="val" id="transitWidthVal">1.0×</span><input id="transitWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <details class="compact-details">
           <summary>Velikost a průhlednost vrstev</summary>
-          <label data-i18n="Hlavní silnice (šířka)">Hlavní silnice <span class="val" id="majorWidthVal">1.3×</span></label>
-          <input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3">
-          <label data-i18n="Vedlejší silnice (šířka)">Vedlejší silnice <span class="val" id="minorWidthVal">1.0×</span></label>
-          <input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0">
           <label data-i18n="Budovy (opacity)">Průhlednost budov <span class="val" id="buildingOpacityVal">72%</span></label>
           <input id="buildingOpacity" type="range" min="0" max="1" step="0.01" value="0.72">
           <label data-i18n="Hranice (opacity)">Průhlednost hranic <span class="val" id="boundaryOpacityVal">100%</span></label>
           <input id="boundaryOpacity" type="range" min="0" max="1" step="0.01" value="1">
-          <label data-i18n="Hranice (šířka)">Šířka hranic <span class="val" id="boundaryWidthVal">1.2×</span></label>
-          <input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2">
         </details>
       </div>
       <div class="section" id="sunShadowSection">
@@ -2990,7 +2988,10 @@ function getCurrentStyleRanges(){
     minorWidth: $('minorWidth')?.value || '1.0',
     buildingOpacity: $('buildingOpacity')?.value || '0.72',
     boundaryOpacity: $('boundaryOpacity')?.value || '1',
-    boundaryWidth: $('boundaryWidth')?.value || '1.2'
+    boundaryWidth: $('boundaryWidth')?.value || '1.2',
+    motorwayWidth:$('motorwayWidth')?.value || '1', primaryWidth:$('primaryWidth')?.value || '1',
+    secondaryWidth:$('secondaryWidth')?.value || '1', railwayWidth:$('railwayWidth')?.value || '1',
+    metroWidth:$('metroWidth')?.value || '1', transitWidth:$('transitWidth')?.value || '1'
   };
 }
 function getCurrentStyleVisibility(){
@@ -3025,7 +3026,7 @@ function applyStylePresetSnapshot(snapshot={}){
   const colors = snapshot.colors || snapshot || {};
   applyColorSet(colors);
   const ranges = snapshot.ranges || {};
-  ['majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth'].forEach(id => {
+  ['majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth'].forEach(id => {
     if($(id) && ranges[id] != null) $(id).value = String(ranges[id]);
   });
   const visibility = snapshot.visibility || {};
@@ -3727,7 +3728,7 @@ function dbUpdatePreset(){
 const AUTO_PRESET_CONTROL_IDS = new Set([
   'landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor',
   'aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','boundaryColor','railwayColor','transitColor',
-  'majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth',
+  'majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth',
   'showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries',
   'showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways',
   'showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'
@@ -9846,6 +9847,18 @@ function applyMapTweaks(){
     try{ state.map.setPaintProperty(l.id, 'line-width', widthExpr); }catch(e){}
   });
   applyColorToLayers(matchLayers(/railway|rail|train/, 'line'), 'line-color', railwayColor);
+  const classWidth = (regex, scale) => matchLayers(regex, 'line').forEach(l => {
+    const base = state.originalRoadWidthPaints[l.id];
+    try{ state.map.setPaintProperty(l.id, 'line-width', base == null ? scale : scalePaintWidthExpression(base, scale)); }catch(e){}
+  });
+  classWidth(/motorway|trunk/, parseFloat($('motorwayWidth')?.value || '1'));
+  classWidth(/primary/, parseFloat($('primaryWidth')?.value || '1'));
+  classWidth(/secondary/, parseFloat($('secondaryWidth')?.value || '1'));
+  classWidth(/railway|rail|train/, parseFloat($('railwayWidth')?.value || '1'));
+  const metroWidth = parseFloat($('metroWidth')?.value || '1');
+  const transitWidth = parseFloat($('transitWidth')?.value || '1');
+  safeSetPaint('pz-metro-line','line-width',['interpolate',['linear'],['zoom'],6,1.2*metroWidth,9,2*metroWidth,12,3.4*metroWidth,16,6*metroWidth]);
+  safeSetPaint('pz-tram-line','line-width',['interpolate',['linear'],['zoom'],11,.8*transitWidth,14,1.8*transitWidth,17,3.4*transitWidth]);
   safeSetPaint('pz-tram-line', 'line-color', transitColor);
   safeSetPaint('pz-transit-stops', 'circle-color', transitColor);
 
@@ -10032,6 +10045,7 @@ function updateReadouts(){
   set('buildingOpacityVal', Math.round(parseFloat($('buildingOpacity')?.value || '0.72')*100)+'%');
   set('boundaryOpacityVal', Math.round(parseFloat($('boundaryOpacity')?.value || '1')*100)+'%');
   set('boundaryWidthVal', (parseFloat($('boundaryWidth')?.value || '1.2')).toFixed(1) + '×');
+  ['motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth'].forEach(id => set(id+'Val',(parseFloat($(id)?.value || '1')).toFixed(1)+'×'));
   set('routeWidthVal', ($('routeWidth')?.value || '4') + ' px');
   set('routeEndpointSizeVal', ($('routeEndpointSize')?.value || '28') + ' px');
   set('satDotSizeVal', ($('satDotSize')?.value || '2') + ' px');
@@ -15240,7 +15254,7 @@ function bindUI(){
       }
     }catch(_e){}
   });
-  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','transitColor','majorWidth','minorWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
+  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','transitColor','majorWidth','minorWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
   document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
@@ -15251,6 +15265,15 @@ function bindUI(){
       target.value = input.value;
       syncLayerColorInputs(input.dataset.syncColor);
       target.dispatchEvent(new Event('input', {bubbles:true}));
+    });
+  });
+  document.querySelectorAll('.layer-visibility-row .layer-color-input').forEach(swatch => {
+    swatch.addEventListener('click', e => {
+      e.stopPropagation();
+      const row = swatch.closest('.layer-visibility-row');
+      if(!row?.querySelector('.layer-width-popover')) return;
+      document.querySelectorAll('.layer-visibility-row.width-open').forEach(other => { if(other !== row) other.classList.remove('width-open'); });
+      row.classList.toggle('width-open');
     });
   });
   ['boundaryOpacity','boundaryWidth']
