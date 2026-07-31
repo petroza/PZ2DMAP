@@ -8179,11 +8179,13 @@ function applyRoadClassVisibility(){
   const major = on('showMajorRoads');
   const minor = on('showMinorRoads');
 
-  setVisibilityByRegex(/motorway/, major && on('showMotorways'), ['line']);
-  setVisibilityByRegex(/trunk_primary/, major && on('showPrimaryRoads'), ['line']);
-  setVisibilityByRegex(/secondary_tertiary/, minor && on('showSecondaryRoads'), ['line']);
-  setVisibilityByRegex(/waterway/, on('showWaterways'), ['line','symbol']);
-  setVisibilityByRegex(/major_rail/, on('showRailways'), ['line']);
+  // Style providers use different layer names. Match the semantic class rather
+  // than one MapTiler-specific id so toggles work after every basemap switch.
+  setVisibilityByRegex(/motorway|trunk/, major && on('showMotorways'), ['line']);
+  setVisibilityByRegex(/primary/, major && on('showPrimaryRoads'), ['line']);
+  setVisibilityByRegex(/secondary|tertiary/, minor && on('showSecondaryRoads'), ['line']);
+  setVisibilityByRegex(/waterway|river|stream|canal|ditch/, on('showWaterways'), ['line','symbol']);
+  setVisibilityByRegex(/railway|rail|train/, on('showRailways'), ['line','symbol']);
 
   ensureTransitLayers();
   const metro = !!$('showMetro')?.checked;
