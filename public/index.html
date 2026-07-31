@@ -46,7 +46,7 @@ html,body{height:100%;font-family:var(--font);font-size:13px;color:var(--tx1);ba
 .sidebar-content::-webkit-scrollbar{width:5px}
 .sidebar-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
-.tab-pane{display:none;padding:12px;animation:fadeIn .2s ease}
+.tab-pane{display:none;padding:12px 16px 12px 12px;animation:fadeIn .2s ease}
 .tab-pane.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 
@@ -60,13 +60,13 @@ html,body{height:100%;font-family:var(--font);font-size:13px;color:var(--tx1);ba
 .section.section-collapsible:not(.collapsed) .section-body{padding-bottom:13px}
 .section.section-collapsible>h3{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;margin-bottom:0;padding-bottom:12px}
 .section.section-collapsible>h3 .badge{margin-right:auto}
-.section-toggle{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--border);border-radius:999px;background:var(--bg0);color:var(--tx2);cursor:pointer;transition:.2s;flex-shrink:0}
+.section-toggle{margin-left:auto;margin-right:1px;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:1px solid var(--border);border-radius:999px;background:var(--bg0);color:var(--tx2);cursor:pointer;transition:.2s;flex-shrink:0}
 .section-toggle:hover{border-color:var(--accent);color:var(--accent);background:var(--bg2)}
 .section-toggle-chevron{width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);transition:transform .2s ease,margin-top .2s ease;margin-top:-2px}
 .section-collapsible:not(.collapsed) .section-toggle-chevron{transform:rotate(-135deg);margin-top:2px}
-.section-body{overflow:hidden;max-height:2200px;opacity:1;transition:max-height .24s ease,opacity .18s ease,padding-bottom .18s ease}
+.section-body{overflow:visible;max-height:none;opacity:1;transition:opacity .14s ease}
 .section.section-collapsible>.section-body{padding-bottom:13px}
-.section.collapsed .section-body{max-height:0;opacity:0;padding-bottom:0;pointer-events:none}
+.section.collapsed .section-body{display:none;opacity:0;padding-bottom:0;pointer-events:none}
 
 label{display:block;font-size:11px;font-weight:600;color:var(--tx2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
 select,input[type=text],input[type=number]{width:100%;padding:7px 11px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);color:var(--tx1);font-size:13px;font-family:var(--font);transition:.2s;outline:0}
