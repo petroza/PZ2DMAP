@@ -32,8 +32,8 @@ html,body{height:100%;font-family:var(--font);font-size:13px;color:var(--tx1);ba
 .brand-icon{width:34px;height:34px;background:var(--accent);border-radius:var(--radius);display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;box-shadow:0 2px 8px var(--accent-glow);position:relative}.brand-icon span{position:relative;top:-0.5px;line-height:1;display:block}
 .brand-title{font-size:14px;font-weight:700;color:var(--tx1);letter-spacing:.4px}
 
-.sidebar-tabs{display:flex;gap:3px;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg0);flex-shrink:0}
-.tab-btn{flex:1;padding:8px 0;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--tx3);background:0 0;border:none;border-radius:8px;cursor:pointer;transition:.2s}
+.sidebar-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg0);flex-shrink:0}
+.tab-btn{width:100%;min-width:0;padding:8px 2px;font-size:10px;font-weight:700;letter-spacing:.35px;text-align:center;text-transform:uppercase;color:var(--tx3);background:0 0;border:none;border-radius:8px;cursor:pointer;transition:.2s}
 .tab-btn:hover{color:var(--tx2);background:var(--bg2)}
 .tab-btn.active{color:#fff;background:var(--bg3)}
 .tab-btn[draggable="true"]{cursor:grab}
@@ -476,6 +476,7 @@ input[type=color]:hover{border-color:var(--accent)}
   select,input[type=text],input[type=number]{font-size:16px}
   .brand-search-row .btn{padding:8px 10px}
   .sidebar-tabs{
+    display:flex;
     overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
     scrollbar-width:none
   }
