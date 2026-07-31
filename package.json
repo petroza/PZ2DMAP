@@ -1,0 +1,6 @@
+{
+  "name": "tnmap-cf",
+  "private": true,
+  "type": "module",
+  "description": "TN mapa na Cloudflare Pages (statika + Functions: presety/projekty na D1, proxy ČHMÚ a OpenWeather)."
+}

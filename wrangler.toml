@@ -1,0 +1,13 @@
+name = "tnmap"
+compatibility_date = "2026-01-15"
+pages_build_output_dir = "public"
+
+# Sdílené presety a projekty (dřív map_data/*.json na Forpsi).
+[[d1_databases]]
+binding = "DB"
+database_name = "tnmap-db"
+database_id = "23869285-146f-4a51-9ed3-247c42e387e3"
+
+# Tajemství se NENASTAVUJÍ tady (šla by do gitu), ale příkazem:
+#   npx wrangler pages secret put API_TOKEN --project-name tnmap
+#   npx wrangler pages secret put OWM_KEY   --project-name tnmap
