@@ -607,6 +607,10 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .compact-details>summary{cursor:pointer;color:var(--tx2);font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;user-select:none}
 .compact-details[open]>summary{margin-bottom:10px;color:var(--tx1)}
 .control-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.layer-visibility-row{display:flex!important;align-items:center;gap:8px}
+.layer-visibility-row .layer-color-input{width:22px;height:22px;min-width:22px;padding:2px;border:1px solid var(--border);background:var(--bg0);cursor:pointer}
+.layer-visibility-row .layer-color-input::-webkit-color-swatch-wrapper{padding:0}
+.layer-visibility-row .layer-color-input::-webkit-color-swatch{border:0}
 .status-bar,.map-actions .map-action-btn,.map-source-watermark,
 .floating-player .player-controls,.shortcuts-panel,.mobile-menu-btn,
 .nav-suggest,.export-progress{backdrop-filter:none}
@@ -798,20 +802,20 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
       </div>
 <div class="section">
         <h3 data-i18n="Viditelnost vrstev">Viditelnost vrstev</h3>
-        <label class="check"><input id="showBuildings" type="checkbox" checked> Budovy</label>
-        <label class="check"><input id="showParks" type="checkbox" checked> Parky a zeleň</label>
-        <label class="check"><input id="showLandcover" type="checkbox" checked> Půda (tráva, pole, lesy)</label>
-        <label class="check"><input id="showLanduse" type="checkbox" checked> Plochy (letiště, průmysl, obchody)</label>
-        <label class="check"><input id="showAeroway" type="checkbox" checked> Letiště a letištní plochy</label>
-        <label class="check"><input id="showBoundaries" type="checkbox" checked> Hranice</label>
-        <label class="check"><input id="showLabels" type="checkbox" checked> Názvy ulic a míst</label>
-        <label class="check"><input id="showRoadShields" type="checkbox" checked> Obdélníčky s čísly silnic</label>
-        <label class="check"><input id="showMinorRoads" type="checkbox" checked> Vedlejší silnice</label>
-        <label class="check"><input id="showMajorRoads" type="checkbox" checked> Hlavní silnice</label>
-        <label class="check"><input id="showMotorways" type="checkbox" checked> Dálnice</label>
-        <label class="check"><input id="showPrimaryRoads" type="checkbox" checked> Silnice 1. třídy</label>
-        <label class="check"><input id="showSecondaryRoads" type="checkbox" checked> Silnice 2. třídy</label>
-        <label class="check"><input id="showWaterways" type="checkbox" checked> Řeky a vodní toky</label>
+        <label class="check layer-visibility-row"><input id="showBuildings" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="buildingColor" aria-label="Barva budov"> Budovy</label>
+        <label class="check layer-visibility-row"><input id="showParks" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="parkColor" aria-label="Barva parků"> Parky a zeleň</label>
+        <label class="check layer-visibility-row"><input id="showLandcover" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landcoverColor" aria-label="Barva půdy"> Půda (tráva, pole, lesy)</label>
+        <label class="check layer-visibility-row"><input id="showLanduse" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landuseColor" aria-label="Barva ploch"> Plochy (letiště, průmysl, obchody)</label>
+        <label class="check layer-visibility-row"><input id="showAeroway" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="aerowayColor" aria-label="Barva letišť"> Letiště a letištní plochy</label>
+        <label class="check layer-visibility-row"><input id="showBoundaries" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="boundaryColor" aria-label="Barva hranic"> Hranice</label>
+        <label class="check layer-visibility-row"><input id="showLabels" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="labelColor" aria-label="Barva názvů"> Názvy ulic a míst</label>
+        <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="haloColor" aria-label="Barva štítků silnic"> Obdélníčky s čísly silnic</label>
+        <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva vedlejších silnic"> Vedlejší silnice</label>
+        <label class="check layer-visibility-row"><input id="showMajorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva hlavních silnic"> Hlavní silnice</label>
+        <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva dálnic"> Dálnice</label>
+        <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy</label>
+        <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy</label>
+        <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="waterColor" aria-label="Barva vodních toků"> Řeky a vodní toky</label>
         <label class="check"><input id="showRailways" type="checkbox" checked> Železnice</label>
         <label class="check"><input id="showMetro" type="checkbox"> Metro (Praha)</label>
         <label class="check"><input id="showTransit" type="checkbox"> MHD – tramvaje a zastávky</label>
@@ -3032,6 +3036,14 @@ function applyStylePresetEntry(entry){
     visibility: entry.visibility || {}
   });
 }
+function syncLayerColorInputs(sourceId=''){
+  document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
+    const targetId = input.dataset.syncColor;
+    if(sourceId && targetId !== sourceId) return;
+    const target = $(targetId);
+    if(target?.value) input.value = target.value;
+  });
+}
 function applyColorSet(p){
   if(!p) return;
   $('landColor').value = p.land || '#ece8dd';
@@ -3046,6 +3058,7 @@ function applyColorSet(p){
   $('labelColor').value = p.label || '#2b3443';
   $('haloColor').value = p.halo || '#f7f2e7';
   if($('boundaryColor')) $('boundaryColor').value = p.boundary || '#6f7378';
+  syncLayerColorInputs();
   applyMapTweaks();
 }
 function normalizePresetEntry(entry, idx){
@@ -15215,6 +15228,16 @@ function bindUI(){
   ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','majorWidth','minorWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
+  document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
+    const target = $(input.dataset.syncColor);
+    if(target?.value) input.value = target.value;
+    input.addEventListener('input', () => {
+      if(!target) return;
+      target.value = input.value;
+      syncLayerColorInputs(input.dataset.syncColor);
+      target.dispatchEvent(new Event('input', {bubbles:true}));
+    });
+  });
   ['boundaryOpacity','boundaryWidth']
     .forEach(id => $(id)?.addEventListener('input', applyBoundaryTweaksDebounced));
   // Sun & shadows: the shadow geometry is derived from whatever buildings are in
