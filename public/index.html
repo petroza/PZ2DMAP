@@ -769,6 +769,9 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <div class="color-row"><input id="boundaryColor" type="color" value="#6f7378"><label data-i18n="Hranice států">Hranice států</label></div>
         <input id="railwayColor" type="color" value="#707780">
         <input id="transitColor" type="color" value="#8a5a2b">
+        <input id="motorwayColor" type="color" value="#ff3b4d">
+        <input id="primaryColor" type="color" value="#ff6b4a">
+        <input id="secondaryColor" type="color" value="#ffb000">
       </div>
       <div class="section" id="presetManageSection">
         <h3 data-i18n="Správa presetů">Správa presetů</h3>
@@ -808,9 +811,9 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="haloColor" aria-label="Barva štítků silnic"> Obdélníčky s čísly silnic</label>
         <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva vedlejších silnic"> Vedlejší silnice<div class="layer-width-popover">Tloušťka <span class="val" id="minorWidthVal">1.0×</span><input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0"></div></label>
         <label class="check layer-visibility-row"><input id="showMajorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva hlavních silnic"> Hlavní silnice<div class="layer-width-popover">Tloušťka <span class="val" id="majorWidthVal">1.3×</span><input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3"></div></label>
-        <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva dálnic"> Dálnice<div class="layer-width-popover">Tloušťka <span class="val" id="motorwayWidthVal">1.0×</span><input id="motorwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
-        <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="primaryWidthVal">1.0×</span><input id="primaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
-        <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="secondaryWidthVal">1.0×</span><input id="secondaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="motorwayColor" aria-label="Barva dálnic"> Dálnice<div class="layer-width-popover">Tloušťka <span class="val" id="motorwayWidthVal">1.0×</span><input id="motorwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="primaryColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="primaryWidthVal">1.0×</span><input id="primaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="secondaryColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="secondaryWidthVal">1.0×</span><input id="secondaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="waterColor" aria-label="Barva vodních toků"> Řeky a vodní toky</label>
         <label class="check layer-visibility-row"><input id="showRailways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="railwayColor" aria-label="Barva železnic"> Železnice<div class="layer-width-popover">Tloušťka <span class="val" id="railwayWidthVal">1.0×</span><input id="railwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <label class="check layer-visibility-row"><input id="showMetro" type="checkbox"><span class="layer-color-input" style="background:linear-gradient(135deg,#00a562 0 33%,#f5c400 33% 66%,#e30613 66%)" title="Metro používá barvy linek A/B/C"></span> Metro (Praha)<div class="layer-width-popover">Tloušťka <span class="val" id="metroWidthVal">1.0×</span><input id="metroWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
@@ -2979,7 +2982,8 @@ function getCurrentColorSet(){
     halo:$('haloColor')?.value || '#f7f2e7',
     boundary:$('boundaryColor')?.value || '#6f7378',
     railway:$('railwayColor')?.value || '#707780',
-    transit:$('transitColor')?.value || '#8a5a2b'
+    transit:$('transitColor')?.value || '#8a5a2b', motorway:$('motorwayColor')?.value || '#ff3b4d',
+    primary:$('primaryColor')?.value || '#ff6b4a', secondary:$('secondaryColor')?.value || '#ffb000'
   };
 }
 function getCurrentStyleRanges(){
@@ -3068,6 +3072,9 @@ function applyColorSet(p){
   if($('boundaryColor')) $('boundaryColor').value = p.boundary || '#6f7378';
   if($('railwayColor')) $('railwayColor').value = p.railway || '#707780';
   if($('transitColor')) $('transitColor').value = p.transit || '#8a5a2b';
+  if($('motorwayColor')) $('motorwayColor').value = p.motorway || p.roadMajor || '#ff3b4d';
+  if($('primaryColor')) $('primaryColor').value = p.primary || p.roadMajor || '#ff6b4a';
+  if($('secondaryColor')) $('secondaryColor').value = p.secondary || p.roadMinor || '#ffb000';
   syncLayerColorInputs();
   applyMapTweaks();
 }
@@ -3727,7 +3734,7 @@ function dbUpdatePreset(){
 
 const AUTO_PRESET_CONTROL_IDS = new Set([
   'landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor',
-  'aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','boundaryColor','railwayColor','transitColor',
+  'aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','boundaryColor','railwayColor','transitColor','motorwayColor','primaryColor','secondaryColor',
   'majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth',
   'showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries',
   'showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways',
@@ -9811,6 +9818,9 @@ function applyMapTweaks(){
   const boundaryColor = ($('boundaryColor')?.value || '#6f7378');
   const railwayColor = ($('railwayColor')?.value || '#707780');
   const transitColor = ($('transitColor')?.value || '#8a5a2b');
+  const motorwayColor = ($('motorwayColor')?.value || '#ff3b4d');
+  const primaryColor = ($('primaryColor')?.value || '#ff6b4a');
+  const secondaryColor = ($('secondaryColor')?.value || '#ffb000');
 
   applyColorToLayers(matchLayers(/background/, 'background'), 'background-color', land);
   applyColorToLayers(matchLayers(/water/, 'fill'), 'fill-color', water);
@@ -9854,6 +9864,9 @@ function applyMapTweaks(){
   classWidth(/motorway|trunk/, parseFloat($('motorwayWidth')?.value || '1'));
   classWidth(/primary/, parseFloat($('primaryWidth')?.value || '1'));
   classWidth(/secondary/, parseFloat($('secondaryWidth')?.value || '1'));
+  applyColorToLayers(matchLayers(/motorway|trunk/, 'line'), 'line-color', motorwayColor);
+  applyColorToLayers(matchLayers(/primary/, 'line'), 'line-color', primaryColor);
+  applyColorToLayers(matchLayers(/secondary/, 'line'), 'line-color', secondaryColor);
   classWidth(/railway|rail|train/, parseFloat($('railwayWidth')?.value || '1'));
   const metroWidth = parseFloat($('metroWidth')?.value || '1');
   const transitWidth = parseFloat($('transitWidth')?.value || '1');
@@ -15254,7 +15267,7 @@ function bindUI(){
       }
     }catch(_e){}
   });
-  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','transitColor','majorWidth','minorWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
+  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','transitColor','motorwayColor','primaryColor','secondaryColor','majorWidth','minorWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
   document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
