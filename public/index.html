@@ -750,8 +750,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <button type="button" class="preset-context-item danger" data-action="delete" data-i18n="× Smazat">× Smazat</button>
         </div>
       </div>
-      <div class="section" id="styleColorsSection" style="display:none" aria-hidden="true">
-        <h3 data-i18n="Vzhled podkladu">Vzhled podkladu</h3>
+      <div id="styleColorSources" style="display:none" aria-hidden="true">
         <div class="color-row"><input id="landColor" type="color" value="#ece8dd"><label data-i18n="Pozadí / land">Pozadí / land</label></div>
         <div class="color-row"><input id="waterColor" type="color" value="#99b7d7"><label data-i18n="Voda">Voda</label></div>
         <div class="color-row"><input id="buildingColor" type="color" value="#d9d2c3"><label data-i18n="Budovy">Budovy</label></div>
@@ -764,16 +763,6 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <div class="color-row"><input id="labelColor" type="color" value="#2b3443"><label data-i18n="Text">Text</label></div>
         <div class="color-row"><input id="haloColor" type="color" value="#f7f2e7"><label data-i18n="Halo textu">Halo textu</label></div>
         <div class="color-row"><input id="boundaryColor" type="color" value="#6f7378"><label data-i18n="Hranice států">Hranice států</label></div>
-        <label data-i18n="Hlavní silnice (šířka)" style="margin-top:10px">Hlavní silnice <span class="val" id="majorWidthVal">1.3×</span></label>
-        <input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3">
-        <label data-i18n="Vedlejší silnice (šířka)">Vedlejší silnice <span class="val" id="minorWidthVal">1.0×</span></label>
-        <input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0">
-        <label data-i18n="Budovy (opacity)">Budovy <span class="val" id="buildingOpacityVal">72%</span></label>
-        <input id="buildingOpacity" type="range" min="0" max="1" step="0.01" value="0.72">
-        <label data-i18n="Hranice (opacity)">Hranice průhlednost <span class="val" id="boundaryOpacityVal">100%</span></label>
-        <input id="boundaryOpacity" type="range" min="0" max="1" step="0.01" value="1">
-        <label data-i18n="Hranice (šířka)">Hranice šířka <span class="val" id="boundaryWidthVal">1.2×</span></label>
-        <input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2">
       </div>
       <div class="section" id="presetManageSection">
         <h3 data-i18n="Správa presetů">Správa presetů</h3>
@@ -820,6 +809,19 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label class="check"><input id="showRailways" type="checkbox" checked> Železnice</label>
         <label class="check"><input id="showMetro" type="checkbox"> Metro (Praha)</label>
         <label class="check"><input id="showTransit" type="checkbox"> MHD – tramvaje a zastávky</label>
+        <details class="compact-details">
+          <summary>Velikost a průhlednost vrstev</summary>
+          <label data-i18n="Hlavní silnice (šířka)">Hlavní silnice <span class="val" id="majorWidthVal">1.3×</span></label>
+          <input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3">
+          <label data-i18n="Vedlejší silnice (šířka)">Vedlejší silnice <span class="val" id="minorWidthVal">1.0×</span></label>
+          <input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0">
+          <label data-i18n="Budovy (opacity)">Průhlednost budov <span class="val" id="buildingOpacityVal">72%</span></label>
+          <input id="buildingOpacity" type="range" min="0" max="1" step="0.01" value="0.72">
+          <label data-i18n="Hranice (opacity)">Průhlednost hranic <span class="val" id="boundaryOpacityVal">100%</span></label>
+          <input id="boundaryOpacity" type="range" min="0" max="1" step="0.01" value="1">
+          <label data-i18n="Hranice (šířka)">Šířka hranic <span class="val" id="boundaryWidthVal">1.2×</span></label>
+          <input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2">
+        </details>
       </div>
       <div class="section" id="sunShadowSection">
         <h3 data-i18n="Slunce a stíny">Slunce a stíny</h3>
