@@ -23,7 +23,7 @@ const STALE_SECONDS = 7 * 24 * 3600; // jak dlouho ji držíme jako záchranu p�
 const GROUPS = new Set([
   'active', 'stations', 'visual', 'starlink', 'oneweb', 'gps-ops', 'galileo',
   'glo-ops', 'beidou', 'weather', 'noaa', 'goes', 'resource', 'science',
-  'geo', 'intelsat', 'iridium-NEXT', 'last-30-days',
+  'geo', 'intelsat', 'iridium-NEXT', 'last-30-days', 'amateur', 'military',
 ]);
 
 const text = (body, status, seconds, note) =>

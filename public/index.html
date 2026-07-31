@@ -102,6 +102,11 @@ input[type=color]:hover{border-color:var(--accent)}
 .preset-card.multi-selected{border-color:#26d0c4!important;box-shadow:0 0 0 2px rgba(38,208,196,.72),0 0 18px rgba(38,208,196,.18);background:linear-gradient(135deg,rgba(38,208,196,.16),var(--bg3));color:#fff}
 /* The preset the app opens with — a corner star, so it reads even on the active tile. */
 /* Výsledky hledání družic — krátký rolovací seznam, ať nevytlačí zbytek panelu. */
+.sat-cat-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.sat-cat-btn{padding:3px 8px;background:var(--bg0);border:1px solid var(--border);border-radius:999px;color:var(--tx2);font-family:var(--font);font-size:10.5px;font-weight:600;cursor:pointer;transition:.15s}
+.sat-cat-btn:hover{border-color:var(--accent)}
+.sat-cat-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.sat-result .freq{font-weight:500;color:var(--tx2);white-space:pre-line}
 .sat-results{max-height:190px;overflow-y:auto;margin-top:6px;display:flex;flex-direction:column;gap:3px}
 .sat-results:empty{margin-top:0}
 .sat-result{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:5px 8px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);color:var(--tx1);font-family:var(--font);font-size:11.5px;font-weight:600;text-align:left;cursor:pointer;transition:.15s}
@@ -665,8 +670,8 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
   </div>
   <div class="sidebar-tabs">
     <button type="button" class="tab-btn active" data-tab="styly" data-i18n="Styl">Styl</button>
-    <button type="button" class="tab-btn" data-tab="trasa" data-i18n="Trasa">Trasa</button>
     <button type="button" class="tab-btn" data-tab="scena" data-i18n="Scéna">Scéna</button>
+    <button type="button" class="tab-btn" data-tab="trasa" data-i18n="Trasa">Trasa</button>
     <button type="button" class="tab-btn" data-tab="animace" data-i18n="Animace">Animace</button>
     <button type="button" class="tab-btn" data-tab="projekt" data-i18n="Projekt">Projekt</button>
     <button type="button" class="tab-btn" data-tab="export" data-i18n="Export">Export</button>
@@ -706,6 +711,14 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <div id="satStatus" class="small" style="margin:6px 0 8px;color:var(--tx2)"></div>
           <label data-i18n="Hledat družici">Hledat družici</label>
           <input id="satSearch" type="text" autocomplete="off" placeholder="ISS, STARLINK, NOAA, 25544…">
+          <div id="satCategoryRow" class="sat-cat-row">
+            <button type="button" class="sat-cat-btn active" data-cat="all" data-i18n="Vše">Vše</button>
+            <button type="button" class="sat-cat-btn" data-cat="starlink">Starlink</button>
+            <button type="button" class="sat-cat-btn" data-cat="weather" data-i18n="Počasí">Počasí</button>
+            <button type="button" class="sat-cat-btn" data-cat="military" data-i18n="Vojenské">Vojenské</button>
+            <button type="button" class="sat-cat-btn" data-cat="amateur" data-i18n="Radioamatérské (HAM)">Radioamatérské (HAM)</button>
+          </div>
+          <div id="satCategoryHint" class="small" style="display:none;color:var(--tx3);margin:2px 0 6px"></div>
           <div id="satResults" class="sat-results"></div>
           <div id="satSelected" class="sat-selected" style="display:none"></div>
           <label class="check" style="margin-top:10px"><input id="satLabels" type="checkbox"> <span data-i18n="Popisky u jasných družic">Popisky u jasných družic</span></label>
@@ -1338,8 +1351,9 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         </select>
         <div class="export-settings">
           <div><label data-i18n="Rozlišení">Rozlišení</label><select id="exportResolution">
+            <option value="custom" selected>Vlastní rozlišení…</option>
             <optgroup label="Na šířku (landscape)" data-i18n-label="Na šířku">
-              <option value="1920x1080" selected>1920×1080 (16:9)</option>
+              <option value="1920x1080">1920×1080 (16:9)</option>
               <option value="3840x2160">3840×2160 (4K)</option>
               <option value="7680x4320">7680×4320 (8K)</option>
               <option value="1280x720">1280×720 (HD)</option>
@@ -1358,15 +1372,20 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           </select></div>
           <div><label data-i18n="FPS">FPS</label><select id="exportFps"><option value="25" selected>25</option><option value="30">30</option><option value="50">50</option><option value="60">60</option></select></div>
         </div>
+        <div class="row" id="exportCustomResolution" style="margin-top:8px">
+          <div><label>Vlastní šířka (px)</label><input id="exportCustomWidth" type="number" min="64" max="8192" step="2" value="1920" inputmode="numeric"></div>
+          <div><label>Vlastní výška (px)</label><input id="exportCustomHeight" type="number" min="64" max="8192" step="2" value="1080" inputmode="numeric"></div>
+        </div>
+        <p class="hint" id="exportCustomResolutionHint" style="margin-top:5px">Ruční rozměr 64–8192 px. Liché hodnoty se kvůli videokodeku automaticky zaokrouhlí dolů na sudé.</p>
         <div class="row">
           <div><label data-i18n="Formát videa">Formát videa</label><select id="exportVideoFormat"><option value="mp4" selected data-i18n="MP4 / H.264">MP4 / H.264</option><option value="webm" data-i18n="WebM (rychlé)">WebM (rychlé)</option><option value="mov444" data-i18n="MOV 4444 (PNG + FFmpeg)">MOV 4444 (PNG + FFmpeg)</option></select></div>
           <div class="small" style="display:flex;align-items:end" data-i18n="hint_export_video_format">Když browser neumí MP4 přímo, appka stáhne PNG sekvenci + FFmpeg skript.</div>
         </div>
         <label class="check"><input id="showExportFrame" type="checkbox" checked> Zobrazit výřez exportu videa v mapě</label>
-        <label class="check"><input id="exportTransparent" type="checkbox"> Průhledné pozadí (bez mapy)</label>
-        <label class="check"><input id="exportLiveView" type="checkbox"> <span data-i18n="export_liveview">Export podle živého náhledu (celá scéna na glóbu)</span></label>
-        <p class="hint" data-i18n="hint_export_visibility">Render běží přímo v prohlížeči. Během exportu nech okno viditelné a neminimalizuj ho — skryté okno prohlížeč uspí a render se zastaví. Obrazovka se po dobu renderu sama nevypne.</p>
-        <p class="hint" data-i18n="hint_export_transparent">Vyexportuje jen trasu, objekty a popisky s alfa kanálem — ideální jako overlay vrstva do After Effects. Funguje pro PNG a PNG sekvenci; „Export video" v tomto režimu vyrobí balíček PNG + skript na MOV ProRes 4444 (s průhledností).</p>
+        <label class="check" style="display:none"><input id="exportTransparent" type="checkbox"> Průhledné pozadí (bez mapy)</label>
+        <label class="check" style="display:none"><input id="exportLiveView" type="checkbox"> <span data-i18n="export_liveview">Export podle živého náhledu (celá scéna na glóbu)</span></label>
+        <p class="hint" style="display:none" data-i18n="hint_export_visibility">Render běží přímo v prohlížeči. Během exportu nech okno viditelné a neminimalizuj ho — skryté okno prohlížeč uspí a render se zastaví. Obrazovka se po dobu renderu sama nevypne.</p>
+        <p class="hint" style="display:none" data-i18n="hint_export_transparent">Vyexportuje jen trasu, objekty a popisky s alfa kanálem — ideální jako overlay vrstva do After Effects. Funguje pro PNG a PNG sekvenci; „Export video" v tomto režimu vyrobí balíček PNG + skript na MOV ProRes 4444 (s průhledností).</p>
       </div>
       <div class="section">
         <h3 data-i18n="Akce">Akce</h3>
@@ -2526,6 +2545,13 @@ if (typeof I18N === 'undefined') { window.I18N = {}; }
 if (typeof EN_OVERRIDES === 'undefined') { window.EN_OVERRIDES = {}; }
 
 const $ = id => document.getElementById(id);
+
+// Družice jsou scénická vrstva, ne nastavení vzhledu podkladu.
+// Přesun proběhne ještě před inicializací ovládacích prvků, takže
+// všechny existující listenery i ukládání projektů zůstanou beze změny.
+const satelliteSceneSection = $('satSection');
+const scenePane = document.querySelector('.tab-pane[data-pane="scena"]');
+if(satelliteSceneSection && scenePane) scenePane.appendChild(satelliteSceneSection);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 const emptyFC = () => ({type:'FeatureCollection',features:[]});
 // Stable shared empty FC + line-string builder. Used by the route line coalescing
@@ -2602,6 +2628,55 @@ const LIBERTY_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 // Záložní zrcadlo řeší samotná /api/dem Function na straně serveru.
 const LIBERTY_HILLSHADE_DEM_TILES = ['/api/dem?z={z}&x={x}&y={y}'];
 
+// Web-Mercator rasters end at 85.0511° latitude. In globe projection MapLibre
+// closes the remaining polar hole by stretching the last raster row into a fan,
+// which is especially visible in Esri World Imagery. Cover only the tile-less
+// ocean cap; all real land in the Arctic lies south of this latitude.
+function satelliteNorthPolarCapSource(latitude){
+  // Jeden polygon přes hranici ±180° MapLibre na glóbusu trianguluje přes
+  // celý svět a vytvoří další vějíř. Proto je čepička složená
+  // z krátkých, lokálních výsečí. Jejich horní hrana v 89,999°
+  // je vizuálně jediný bod, ale geometrie zůstá platná i u datové hranice.
+  const wedges = [];
+  for(let lon = -180; lon < 180; lon += 5){
+    const next = lon + 5;
+    wedges.push([[[lon, latitude], [next, latitude], [next, 89.999], [lon, 89.999], [lon, latitude]]]);
+  }
+  return {
+    type:'geojson',
+    data:{type:'Feature', properties:{}, geometry:{type:'MultiPolygon', coordinates:wedges}}
+  };
+}
+
+// Místo jednobarevného kruhu se původní raster retušuje několika pásmy.
+// Na vnějším okraji zůstává vidět textura oceánu, paprsky se postupně
+// utlumí a plné krytí začíná až v malém okolí samotného pólu.
+const SATELLITE_NORTH_POLAR_BANDS = [
+  {lat:84.80, color:'#246f7f', opacity:0.18},
+  {lat:85.25, color:'#1e697a', opacity:0.24},
+  {lat:85.75, color:'#196475', opacity:0.32},
+  {lat:86.30, color:'#155e70', opacity:0.42},
+  {lat:86.90, color:'#11586a', opacity:0.58},
+  {lat:87.60, color:'#0e5265', opacity:1.00}
+];
+const SATELLITE_NORTH_POLAR_CAP_SOURCES = Object.fromEntries(
+  SATELLITE_NORTH_POLAR_BANDS.map((band, i) => [`satelliteNorthPolarCap${i}`, satelliteNorthPolarCapSource(band.lat)])
+);
+const SATELLITE_NORTH_POLAR_CAP_LAYERS = SATELLITE_NORTH_POLAR_BANDS.map((band, i) => ({
+  id:`satellite-north-polar-cap-${i}`,
+  // Plošné fill vrstvy MapLibre při glóbové projekci "drapuje" a může
+  // je přeskládat pod raster. Extruze vysoká jen jeden metr se vizuálně
+  // chová jako povrch, ale zůstane spolehlivě nad satelitními dlaždicemi.
+  type:'fill-extrusion',
+  source:`satelliteNorthPolarCap${i}`,
+  paint:{
+    'fill-extrusion-color':band.color,
+    'fill-extrusion-opacity':band.opacity,
+    'fill-extrusion-height':1,
+    'fill-extrusion-base':1
+  }
+}));
+
 const STYLES = {
   liberty:LIBERTY_STYLE_URL,
   libertyHillshade:LIBERTY_STYLE_URL,
@@ -2618,7 +2693,9 @@ const STYLES = {
         maxzoom:18,
         attribution:'Tiles © Esri'}
     },
-    layers:[{id:'satellite-base',type:'raster',source:'esri',paint:{'raster-resampling':'linear'}}]
+    layers:[
+      {id:'satellite-base',type:'raster',source:'esri',paint:{'raster-resampling':'linear'}}
+    ]
   },
   hybrid:{
     version:8,
@@ -4607,7 +4684,10 @@ function initInteractivePixelRatio(){
   const m = state.map;
   if(!m || typeof m.setPixelRatio !== 'function') return;
   const full = () => (window.devicePixelRatio || 1);
-  if(full() <= 1) return;                 // nemá co snižovat
+  // Optimalizace musí fungovat i na 100% Windows displeji (DPR 1). Právě tam
+  // dřív podmínka vrátila funkci bez efektu. 0,75 je při pohybu stále dobře
+  // čitelné, ale GPU kreslí jen 56 % pixelů; na HiDPI stačí poměr 1:1.
+  const interactive = () => Math.min(1, Math.max(0.75, full() * 0.5));
   // Přeškálování canvasu (setPixelRatio) samo o sobě něco stojí — realokace
   // GPU framebufferu. Naměřené INP 1440 ms po nasazení tohoto triku ukázalo, že
   // dělat to na KAŽDÉM začátku interakce (i tam, kde terén neběží a žádné
@@ -4617,7 +4697,7 @@ function initInteractivePixelRatio(){
   const drop = () => {
     if(lowered || state._exporting || !terrain3dEnabled()) return;
     lowered = true;
-    try{ m.setPixelRatio(1); }catch(e){ lowered = false; }
+    try{ m.setPixelRatio(interactive()); }catch(e){ lowered = false; }
   };
   const restore = () => {
     if(!lowered || state._exporting) return;
@@ -4676,6 +4756,147 @@ function makeStyleCheckLenient(m){
 }
 
 function isGlobeProjectionOn(){ return !!$('globeProjection')?.checked; }
+
+// Web-Mercator raster končí na 85,0511°. Na glóbusu MapLibre jeho poslední
+// řádek roztáhne k pólu do paprsků. Běžná GeoJSON výplň nepomůže,
+// protože podléhá stejnému projekčnímu limitu. Tato malá custom vrstva
+// kreslí měkkou retuš přímo v obrazovém prostoru: pod družicemi, nad
+// rastrem, bez ostrého kruhového okraje.
+const SATELLITE_POLAR_RETOUCH_LAYER = 'satellite-polar-retouch-screen';
+function createSatellitePolarRetouchLayer(mapObj){
+  return {
+    id:SATELLITE_POLAR_RETOUCH_LAYER,
+    type:'custom',
+    renderingMode:'2d',
+    onAdd(_map, gl){
+      const webgl2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
+      const vertexSource = webgl2 ? `#version 300 es
+        precision highp float;
+        in vec2 a_pos; in vec2 a_uv; out vec2 v_uv;
+        void main(){ v_uv=a_uv; gl_Position=vec4(a_pos,0.0,1.0); }`
+        : `precision highp float; attribute vec2 a_pos; attribute vec2 a_uv; varying vec2 v_uv;
+        void main(){ v_uv=a_uv; gl_Position=vec4(a_pos,0.0,1.0); }`;
+      const fragmentBody = `
+        precision mediump float;
+        uniform sampler2D u_screen;
+        uniform vec2 u_resolution;
+        uniform vec2 u_center;
+        uniform float u_radius;
+        VARYING vec2 v_uv;
+        vec3 sampleAt(vec2 dir,float ring){
+          vec2 px=u_center+dir*u_radius*ring;
+          return TEXTURE(u_screen,px/u_resolution).rgb;
+        }
+        void main(){
+          float d=length(v_uv);
+          vec2 dir=d>.015?v_uv/d:vec2(1.0,0.0);
+          const float q=.70710678;
+          vec3 mean=(
+            sampleAt(vec2(1.,0.),1.04)+sampleAt(vec2(q,q),1.04)+
+            sampleAt(vec2(0.,1.),1.04)+sampleAt(vec2(-q,q),1.04)+
+            sampleAt(vec2(-1.,0.),1.04)+sampleAt(vec2(-q,-q),1.04)+
+            sampleAt(vec2(0.,-1.),1.04)+sampleAt(vec2(q,-q),1.04)
+          )*.125;
+          vec2 tangent=vec2(-dir.y,dir.x);
+          vec3 local=(sampleAt(dir,1.02)+sampleAt(normalize(dir+tangent*.24),1.04)+
+                      sampleAt(normalize(dir-tangent*.24),1.04))*.3333333;
+          vec3 repaired=mix(mean,local,smoothstep(.18,.72,d));
+          float a=1.0-smoothstep(.82,1.0,d);
+          OUTPUT(vec4(repaired*a,a));
+        }`;
+      const fragmentSource = webgl2
+        ? `#version 300 es\nprecision mediump float;\nin vec2 v_uv; out vec4 outColor;\n${fragmentBody.replace('precision mediump float;','').replace('VARYING vec2 v_uv;','').replaceAll('TEXTURE','texture').replace('OUTPUT','outColor=')}`
+        : fragmentBody.replace('VARYING','varying').replaceAll('TEXTURE','texture2D').replace('OUTPUT','gl_FragColor=');
+      const compile = (type, source) => {
+        const shader=gl.createShader(type); gl.shaderSource(shader,source); gl.compileShader(shader);
+        if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader)||'Polar retouch shader failed');
+        return shader;
+      };
+      const program=gl.createProgram();
+      gl.attachShader(program,compile(gl.VERTEX_SHADER,vertexSource));
+      gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fragmentSource));
+      gl.linkProgram(program);
+      if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program)||'Polar retouch link failed');
+      this.program=program;
+      this.buffer=gl.createBuffer();
+      this.aPos=gl.getAttribLocation(program,'a_pos');
+      this.aUv=gl.getAttribLocation(program,'a_uv');
+      this.uScreen=gl.getUniformLocation(program,'u_screen');
+      this.uResolution=gl.getUniformLocation(program,'u_resolution');
+      this.uCenter=gl.getUniformLocation(program,'u_center');
+      this.uRadius=gl.getUniformLocation(program,'u_radius');
+      this.screenTexture=gl.createTexture();
+      this.textureWidth=0; this.textureHeight=0;
+    },
+    render(gl){
+      if(!this.program || !this.buffer || mapObj.getCenter().lat < 48) return;
+      const canvas=mapObj.getCanvas();
+      const w=canvas.clientWidth, h=canvas.clientHeight;
+      if(!(w>0 && h>0)) return;
+      const pole=[];
+      for(let lon=-180; lon<180; lon+=45){ const p=mapObj.project([lon,89.999]); if(Number.isFinite(p.x)&&Number.isFinite(p.y)) pole.push(p); }
+      if(!pole.length) return;
+      const cx=pole.reduce((s,p)=>s+p.x,0)/pole.length;
+      const cy=pole.reduce((s,p)=>s+p.y,0)/pole.length;
+      if(cx < -w*.4 || cx > w*1.4 || cy < -h*.4 || cy > h*1.4) return;
+      const distances=[];
+      for(let lon=-180; lon<180; lon+=10){
+        const p=mapObj.project([lon,84.72]);
+        const d=Math.hypot(p.x-cx,p.y-cy);
+        if(Number.isFinite(d) && d>2 && d<Math.max(w,h)*.8) distances.push(d);
+      }
+      if(!distances.length) return;
+      distances.sort((a,b)=>a-b);
+      const radius=Math.min(distances[Math.floor(distances.length*.82)]*1.08, Math.min(w,h)*.42);
+      if(radius<3) return;
+      const x0=(cx-radius)/w*2-1, x1=(cx+radius)/w*2-1;
+      const y0=1-(cy-radius)/h*2, y1=1-(cy+radius)/h*2;
+      const vertices=new Float32Array([
+        x0,y0,-1,-1, x1,y0,1,-1, x0,y1,-1,1,
+        x0,y1,-1,1, x1,y0,1,-1, x1,y1,1,1
+      ]);
+      const dw=gl.drawingBufferWidth, dh=gl.drawingBufferHeight;
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D,this.screenTexture);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+      if(this.textureWidth!==dw || this.textureHeight!==dh){
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,dw,dh,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+        this.textureWidth=dw; this.textureHeight=dh;
+      }
+      gl.copyTexSubImage2D(gl.TEXTURE_2D,0,0,0,0,0,dw,dh);
+      gl.useProgram(this.program);
+      gl.uniform1i(this.uScreen,0);
+      gl.uniform2f(this.uResolution,dw,dh);
+      gl.uniform2f(this.uCenter,cx*dw/w,(h-cy)*dh/h);
+      gl.uniform1f(this.uRadius,radius*dw/w);
+      gl.bindBuffer(gl.ARRAY_BUFFER,this.buffer);
+      gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.DYNAMIC_DRAW);
+      gl.enableVertexAttribArray(this.aPos); gl.vertexAttribPointer(this.aPos,2,gl.FLOAT,false,16,0);
+      gl.enableVertexAttribArray(this.aUv); gl.vertexAttribPointer(this.aUv,2,gl.FLOAT,false,16,8);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);
+      gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
+      gl.drawArrays(gl.TRIANGLES,0,6);
+    },
+    onRemove(_map,gl){
+      try{ if(this.buffer) gl.deleteBuffer(this.buffer); if(this.screenTexture) gl.deleteTexture(this.screenTexture); if(this.program) gl.deleteProgram(this.program); }catch(_e){}
+      this.buffer=null; this.screenTexture=null; this.program=null;
+    }
+  };
+}
+function ensureSatellitePolarRetouch(mapObj=state.map){
+  if(!mapObj || !mapObj.getStyle?.()) return;
+  const key=$('baseStyle')?.value || '';
+  const wanted=isGlobeProjectionOn() && (key==='satellite' || key==='hybrid');
+  try{
+    if(!wanted){ if(mapObj.getLayer(SATELLITE_POLAR_RETOUCH_LAYER)) mapObj.removeLayer(SATELLITE_POLAR_RETOUCH_LAYER); return; }
+    if(mapObj.getLayer(SATELLITE_POLAR_RETOUCH_LAYER)) return;
+    const before=(typeof SAT_3D_LAYER!=='undefined' && mapObj.getLayer(SAT_3D_LAYER)) ? SAT_3D_LAYER : undefined;
+    mapObj.addLayer(createSatellitePolarRetouchLayer(mapObj),before);
+  }catch(e){ console.warn('Polar retouch failed',e); }
+}
 function applyGlobeProjection(mapObj = state.map){
   // MapLibre v5: projection is a style property, so a style reload resets it
   // and we have to re-apply after every 'style.load'.
@@ -4763,6 +4984,10 @@ function initMap(){
   // the same way but independent of the sun toggle.
   state.map.on('moveend', () => { if(aoEnabled()){ state._aoViewSig = null; scheduleAORefresh(); } });
   state.map.on('idle', refreshAOOnIdle);
+  // Terén blízko pólu na glóbusu (viz applyTerrain3d/terrainPoleSafeFactor):
+  // převýšení se dotlumí, jak se pól dostává do záběru, takže se to musí
+  // přepočítat po každém usazení kamery, ne jen při zapnutí terénu.
+  state.map.on('moveend', () => { if(terrain3dEnabled() && isGlobeProjectionOn()) applyTerrain3d(); });
   // Náhled projektu se obnovuje až po usazení mapy (ne při táhnutí) a jen když se
   // pohled opravdu změnil — díky tomu je při ukládání projektu vždy po ruce, ale
   // plynulost posunu to nestojí nic.
@@ -5777,11 +6002,45 @@ function isSceneDistanceMapInteractive(){
 }
 function sceneDistanceLineCoords(item){
   if(!item?.a || !item?.b) return [];
-  return makeGreatCircle(item.a, item.b, 96);
+  // U drah míjejících pól se zeměpisná délka mění o desítky stupňů
+  // na velmi krátkém úseku. Hustší vzorkování zabrání tomu, aby MapLibre
+  // jediný dlouhý segment na glóbusu zobrazilo jako smyčku nebo ostrý zub.
+  return makeGreatCircle(item.a, item.b, isGlobeProjectionOn() ? 512 : 160);
+}
+function sceneDistanceLineParts(item){
+  const points = sceneDistanceLineCoords(item);
+  if(points.length < 2) return points.length ? [points] : [];
+  const wrapLng = lon => {
+    let out=((Number(lon)+180)%360+360)%360-180;
+    // Na konci starého dílu potřebujeme zachovat +180, ne jej změnit na -180.
+    if(Math.abs(out+180)<1e-9 && Number(lon)>0) out=180;
+    return out;
+  };
+  const parts=[];
+  let current=[[wrapLng(points[0][0]),points[0][1]]];
+  for(let i=1;i<points.length;i++){
+    const prev=points[i-1], next=points[i];
+    const prevZone=Math.floor((prev[0]+180)/360);
+    const nextZone=Math.floor((next[0]+180)/360);
+    if(prevZone!==nextZone){
+      const increasing=next[0]>prev[0];
+      const boundary=increasing ? 180+360*prevZone : -180+360*prevZone;
+      const span=next[0]-prev[0];
+      const t=Math.abs(span)>1e-12 ? (boundary-prev[0])/span : 0;
+      const lat=prev[1]+(next[1]-prev[1])*Math.max(0,Math.min(1,t));
+      current.push([increasing?180:-180,lat]);
+      if(current.length>1) parts.push(current);
+      current=[[increasing?-180:180,lat]];
+    }
+    current.push([wrapLng(next[0]),next[1]]);
+  }
+  if(current.length>1) parts.push(current);
+  return parts;
 }
 function sceneDistanceMidpoint(item){
   const line = sceneDistanceLineCoords(item);
-  return line[Math.floor(line.length / 2)] || item?.b || item?.a || [0,0];
+  const point=line[Math.floor(line.length / 2)] || item?.b || item?.a || [0,0];
+  return [((Number(point[0])+180)%360+360)%360-180, point[1]];
 }
 function formatSceneDistance(meters, unit='km'){
   const m = Math.max(0, Number(meters) || 0);
@@ -5980,7 +6239,14 @@ function redrawSceneDistances(){
     if(!item?.a || !item?.b) return;
     const selected = item.id === state.selectedSceneDistanceId;
     const props = {id:item.id, color:item.color || '#ffd400', width:Number(item.width || 3), selected};
-    lines.push({type:'Feature', geometry:{type:'LineString', coordinates:sceneDistanceLineCoords(item)}, properties:props});
+    const parts=sceneDistanceLineParts(item);
+    if(parts.length) lines.push({
+      type:'Feature',
+      geometry:parts.length===1
+        ? {type:'LineString',coordinates:parts[0]}
+        : {type:'MultiLineString',coordinates:parts},
+      properties:props
+    });
     pts.push({type:'Feature', geometry:{type:'Point', coordinates:item.a}, properties:{...props, point:'A'}});
     pts.push({type:'Feature', geometry:{type:'Point', coordinates:item.b}, properties:{...props, point:'B'}});
   });
@@ -7874,7 +8140,9 @@ const TERRAIN_DEM_SOURCE_ID = 'pz-terrain-dem';
 // Stínovaný reliéf (podklad Liberty 3D) používá TA SAMÁ výšková data. Když běžel
 // terén současně, stahovaly a dekódovaly se úplně stejné dlaždice DVAKRÁT. Když už
 // jeden zdroj v mapě je, terén si ho půjčí místo zakládání druhého.
-const TERRAIN_DEM_MAXZOOM = 11;
+// z10 (~150 m/pixel) je pro televizní/režijní reliéf dostatečné. Oproti z11
+// se při detailním pohledu dekóduje a drží až 4× méně DEM dlaždic.
+const TERRAIN_DEM_MAXZOOM = 10;
 function pickTerrainDemSource(map){
   if(map.getSource('liberty-hillshade-dem')) return 'liberty-hillshade-dem';
   return TERRAIN_DEM_SOURCE_ID;
@@ -7884,6 +8152,28 @@ function terrain3dEnabled(){ return !!$('terrain3dOn')?.checked; }
 function terrainExaggeration(){
   const v = parseFloat($('terrainExaggeration')?.value ?? '1');
   return Number.isFinite(v) ? Math.max(0.1, Math.min(6, v)) : 1;
+}
+// Terén (map.setTerrain) drapuje běžná Web Mercator výšková data na skutečnou
+// kouli glóbusu. Mercator je u pólů matematicky nedefinovaný (celý řádek
+// pixelů tam odpovídá jednomu bodu) — MapLibre si tam sám dokresluje "pólovou
+// čepičku", ale u naší verze (5.24, oprava přišla až v majoru 6, na který
+// nejde bezpečně přejít — vlastní WebGL vrstva družic používá neveřejné
+// interní API, co se v 6.x mohlo změnit a navíc 6.x přestal existovat jako
+// jeden UMD soubor) se tam pořád objevuje vějíř zdegenerovaných trojúhelníků.
+// Řešení na naší straně: jak se pól dostává do záběru, převýšení terénu se
+// plynule stáhne k nule (=terén tam zplihne, ale nezůstane rozbitý) — mimo
+// polární oblasti se ho tohle nijak nedotkne.
+const TERRAIN_POLE_FADE_START = 80; // stupně zeměpisné šířky, odsud se začíná tlumit
+const TERRAIN_POLE_FADE_END = 87;   // odsud je převýšení nulové
+function terrainPoleSafeFactor(map){
+  if(!isGlobeProjectionOn()) return 1; // v mercatoru se na pól stejně nedá dostat
+  try{
+    const b = map.getBounds();
+    const nearest = Math.max(b.getNorth(), -b.getSouth());
+    if(nearest <= TERRAIN_POLE_FADE_START) return 1;
+    if(nearest >= TERRAIN_POLE_FADE_END) return 0;
+    return 1 - (nearest - TERRAIN_POLE_FADE_START) / (TERRAIN_POLE_FADE_END - TERRAIN_POLE_FADE_START);
+  }catch(e){ return 1; }
 }
 
 function applyTerrain3d(map = state.map){
@@ -7917,7 +8207,7 @@ function applyTerrain3d(map = state.map){
   // (přepočet sítě, zahození rozpracovaných dlaždic) — při posouvání mapy se to
   // sčítalo do trhání. Když už je nastavené přesně to, co chceme, nesaháme na to.
   const demSource = pickTerrainDemSource(map);
-  const exag = terrainExaggeration();
+  const exag = terrainExaggeration() * terrainPoleSafeFactor(map);
   const cur = map.getTerrain?.();
   if(cur && cur.source === demSource && Math.abs((cur.exaggeration ?? 1) - exag) < 1e-6) return;
   try{ map.setTerrain({source: demSource, exaggeration: exag}); }
@@ -7961,6 +8251,14 @@ const SAT_TRACK_3D_LAYER = 'pz-sat-track-3d';
 const SAT_TICK_MS = 1000;
 const SAT_MAX_RESULTS = 40;
 const SAT_3D_LAYER = 'pz-sat-3d';
+// Při běžném nasazení používáme stejný origin. Lokální náhled otevřený
+// přímo jako file:// ale žádné /api nemá a blob worker z něj neumí odvodit
+// cestu ke knihovně. Ve file režimu proto čteme oba veřejné zdroje z produkce.
+const SAT_FILE_PREVIEW = location.protocol === 'file:';
+const SAT_TLE_API = SAT_FILE_PREVIEW ? 'https://tnmap.pages.dev/api/tle' : '/api/tle';
+const SATELLITE_JS_URL = SAT_FILE_PREVIEW
+  ? 'https://tnmap.pages.dev/assets/vendor/satellite.min.js'
+  : new URL('/assets/vendor/satellite.min.js', location.href).href;
 
 // Barvy podle režimu dráhy — na první pohled odliší nízké družice od geostacionárních.
 const SAT_COLOR = ['step', ['get', 'alt'],
@@ -7976,12 +8274,12 @@ const SAT_COLOR_RGB = alt => alt < 2000 ? [0.302,0.651,1.0] : alt < 25000 ? [0.2
 // dráha je pořád nejdál — ale stlačí rozsah do něčeho, co se vejde na obrazovku.
 // Nastav SAT_ALT_SCALE výš/níž, ať jsou body dál/blíž povrchu.
 const SAT_GLOBE_RADIUS_M = 6371008.8; // musí sedět s GLOBE_RADIUS ve shaderu (viz satMake3dLayer)
-// MercatorCoordinate.fromLngLat diverguje k nekonečnu u pólů (mercator y roste
-// bez omezení, jak lat -> ±90°) — u polárních drah (typicky vysoce eliptické
-// vědecké mise jako IMAGE, sklon ~90°) se tak pár vzorků dráhy poblíž pólu
-// dostane na extrémní/nepřesnou hodnotu a čára se "zlomí"/zdeformuje. Standardní
-// mercator limit (±85,05°, stejný jako MapLibre používá i jinde) tomu zabrání.
-function satClampLat(lat){ return Math.max(-85.05, Math.min(85.05, lat)); }
+// Vlastní globe shader přijímá MercatorCoordinate, ale na rozdíl od rastrových
+// dlaždic musí zachovat i skutečné polohy nad 85,05°. Ořez na hranici dlaždic
+// skládal polární dráhu na umělou kružnici a spojnice pak řezaly napříč pólem.
+// Chráníme jen matematickou singularitu přesně v ±90°; 89,999° je pro
+// MercatorCoordinate stále konečná hodnota a na glóbusu vizuálně splývá s pólem.
+function satGlobeSafeLat(lat){ return Math.max(-89.999, Math.min(89.999, lat)); }
 // Bezpečný strop na poměru vůči poloměru Země — nad ním se bod na bližším
 // přiblížení dostává za kameru a GPU ho vykreslí na náhodné místo (viz
 // oprava "haló" bugu 2026-07-31). Odmocninová křivka bez stropu dávala GEO
@@ -8009,9 +8307,71 @@ function ensureSatState(){
   if(!state.sat) state.sat = {
     worker:null, timer:null, raf:null, names:[], ids:[], periods:[],
     prevPos:null, nextPos:null, tickAt:0, selected:null,
-    loading:false, ready:false, layer3d:null
+    loading:false, ready:false, layer3d:null,
+    category:'all', weatherIds:null, amateurIds:null, militaryIds:null, freqById:null
   };
   return state.sat;
+}
+
+// Kategorie ve vyhledávání družic. Starlink jde poznat spolehlivě podle názvu
+// (bez extra požadavku); počasí a radioamatérské řeší autoritativní seznam
+// katalogových čísel z konkrétní skupiny CelesTraku (fetch na pozadí po
+// startu). "Vojenské" žádnou takovou skupinu nemá (vojenské dráhy nejsou
+// veřejně kategorizované) — jde jen o odhad podle typických názvů, ne o
+// spolehlivý zdroj, proto je v UI označený jako přibližný.
+const SAT_MILITARY_RE = /^(USA[ -]|COSMOS[ -]|MILSTAR|WGS[ -]|AEHF|SBIRS|MUOS|NROL|SKYNET|YAOGAN|SHIJIAN|TJS[ -]|GAOFEN|GSSAP|ORS[ -])/i;
+function satCategoryMatch(cat, idx){
+  const s = ensureSatState();
+  if(cat === 'all') return true;
+  const name = s.names[idx] || '';
+  const id = s.ids[idx];
+  if(cat === 'starlink') return /^STARLINK-/i.test(name);
+  if(cat === 'weather') return !!(s.weatherIds && s.weatherIds.has(id));
+  if(cat === 'amateur') return !!(s.amateurIds && s.amateurIds.has(id));
+  // CelesTrak udržuje vlastní kurátorovanou skupinu Military. Názvový regex
+  // zůstává jako doplněk pro veřejně označené obranné objekty, které
+  // v malé skupině nejsou; nové názvy typu PRAETORIAN SDA ale určují NORAD ID.
+  if(cat === 'military') return !!(s.militaryIds && s.militaryIds.has(id)) || SAT_MILITARY_RE.test(name);
+  return true;
+}
+// Vytáhne katalogová čísla (NORAD ID) z TLE textu — řádek 1 každého záznamu
+// má formát "1 NNNNNU ...", číslo je na pozicích 3–7.
+function satParseNoradIds(tleText){
+  const ids = new Set();
+  const re = /^1 (\d{5})/gm;
+  let m;
+  while((m = re.exec(tleText))) ids.add(parseInt(m[1], 10));
+  return ids;
+}
+async function satLoadCategoryIds(group){
+  try{
+    const r = await fetch(`${SAT_TLE_API}?group=${encodeURIComponent(group)}`, {cache:'default'});
+    if(!r.ok) return new Set();
+    return satParseNoradIds(await r.text());
+  }catch(e){ return new Set(); }
+}
+async function satLoadFrequencies(){
+  try{
+    const r = await fetch('/api/satnogs', {cache:'default'});
+    if(!r.ok) return null;
+    const list = await r.json();
+    const map = new Map();
+    list.forEach(t => {
+      if(!map.has(t.id)) map.set(t.id, []);
+      map.get(t.id).push(t);
+    });
+    return map;
+  }catch(e){ return null; }
+}
+// Kategorie se nezavolávají hned při startu (aby první zobrazení družic nečekalo
+// na dvě další síťová stažení navíc) — doběhnou na pozadí, jakmile je hlavní
+// katalog hotový, a výsledky se prostě dopíšou do stavu, jakmile dorazí.
+function satLoadCategoriesInBackground(){
+  const s = ensureSatState();
+  if(!s.weatherIds) satLoadCategoryIds('weather').then(ids => { s.weatherIds = ids; if(s.category==='weather') satRefreshCategoryFilter(); });
+  if(!s.amateurIds) satLoadCategoryIds('amateur').then(ids => { s.amateurIds = ids; if(s.category==='amateur') satRefreshCategoryFilter(); });
+  if(!s.militaryIds) satLoadCategoryIds('military').then(ids => { s.militaryIds = ids; if(s.category==='military') satRefreshCategoryFilter(); });
+  if(!s.freqById) satLoadFrequencies().then(map => { s.freqById = map; if(s.category==='amateur') satRenderResults($('satSearch')?.value||''); });
 }
 
 // Worker se skládá za běhu z textu — appka je jeden soubor, takže samostatný
@@ -8019,7 +8379,7 @@ function ensureSatState(){
 // importScripts ze stejného původu.
 function satWorkerSource(){
   return `
-importScripts(location.origin + '/assets/vendor/satellite.min.js');
+importScripts(${JSON.stringify(SATELLITE_JS_URL)});
 var recs = [], names = [], ids = [], periods = [];
 self.onmessage = function(e){
   var d = e.data;
@@ -8292,11 +8652,19 @@ void main(){
       const arr = this._scratch;
       let n = 0;
       for(let i = 0; i < count; i++){
+        if(!satCategoryMatch(ensureSatState().category || 'all', i)) continue;
         const o = i * 3;
         const plon = prevPos[o], nlon = nextPos[o];
         if(Number.isNaN(plon) || Number.isNaN(nlon)) continue;
-        const mp = maplibregl.MercatorCoordinate.fromLngLat([plon, satClampLat(prevPos[o+1])], 0);
-        const mn = maplibregl.MercatorCoordinate.fromLngLat([nlon, satClampLat(nextPos[o+1])], 0);
+        // Interpolace probíhá ještě v mercator souřadnicích. Při přechodu
+        // +179° -> -179° proto rozbalíme další délku na +181°, aby bod
+        // urazil krátké 2° přes antimeridián a ne 358° přes celý glóbus.
+        let nlonContinuous = nlon;
+        const lonDelta = nlon - plon;
+        if(lonDelta > 180) nlonContinuous -= 360;
+        else if(lonDelta < -180) nlonContinuous += 360;
+        const mp = maplibregl.MercatorCoordinate.fromLngLat([plon, satGlobeSafeLat(prevPos[o+1])], 0);
+        const mn = maplibregl.MercatorCoordinate.fromLngLat([nlonContinuous, satGlobeSafeLat(nextPos[o+1])], 0);
         const oo = n * FLOATS_PER_PT;
         arr[oo] = mp.x; arr[oo+1] = mp.y;
         arr[oo+2] = mn.x; arr[oo+3] = mn.y;
@@ -8603,7 +8971,7 @@ void main(){
       (segments||[]).forEach(seg => {
         const start = o;
         seg.forEach(p => {
-          const mp = maplibregl.MercatorCoordinate.fromLngLat([p[0], satClampLat(p[1])], 0);
+          const mp = maplibregl.MercatorCoordinate.fromLngLat([p[0], satGlobeSafeLat(p[1])], 0);
           arr[o*3] = mp.x; arr[o*3+1] = mp.y; arr[o*3+2] = satVisualAltitudeM(p[2] || 0);
           o++;
         });
@@ -8678,7 +9046,9 @@ function satApplyDotSize(){
 
 function satBuildFeatures(pos){
   const feats = [];
+  const category = ensureSatState().category || 'all';
   for(let i = 0, n = pos.length / 3; i < n; i++){
+    if(!satCategoryMatch(category, i)) continue;
     const o = i*3, lon = pos[o];
     if(Number.isNaN(lon)) continue;
     feats.push({type:'Feature', id:i,
@@ -8746,8 +9116,10 @@ function satDrawTrack(points){
   try{
     src.setData({type:'FeatureCollection', features: segments.map(c => ({type:'Feature', properties:{}, geometry:{type:'LineString', coordinates: c.map(p => [p[0], p[1]])}}))});
   }catch(e){}
-  // Na glóbusu se dráha kreslí ve skutečné (zvednuté) výšce vlastní WebGL vrstvou.
-  try{ track3d?.setData(segments); }catch(e){}
+  // Na glóbusu není antimeridián okraj: +180° a -180° jsou sousední
+  // body na téže kouli. Souvislou 3D dráhu proto nedělíme; rozdělení zůstává
+  // jen pro GeoJSON čáru na ploché mapě.
+  try{ track3d?.setData([points]); }catch(e){}
   satSetVisibility();
 }
 
@@ -8813,7 +9185,7 @@ async function satLoad(){
   s.loading = true;
   satStatus(t('Stahuji dráhové elementy…'));
   try{
-    const res = await fetch('/api/tle', {cache:'default'});
+    const res = await fetch(SAT_TLE_API, {cache:'default'});
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const txt = await res.text();
     satStatus(t('Počítám polohy…'));
@@ -8825,6 +9197,7 @@ async function satLoad(){
         s.names = d.names; s.ids = d.ids; s.periods = d.periods; s.ready = true; s.loading = false;
         satStatus(t('Družic:') + ' ' + d.count.toLocaleString('cs-CZ'));
         satStartLoop();
+        satLoadCategoriesInBackground();
         return;
       }
       if(d.type === 'pos'){
@@ -8853,22 +9226,76 @@ async function satLoad(){
   }
 }
 
+function satFreqLines(id){
+  const s = ensureSatState();
+  const list = s.freqById && s.freqById.get(id);
+  if(!list || !list.length) return '';
+  return list.slice(0, 3).map(t => {
+    const parts = [];
+    if(t.down) parts.push('↓' + (t.down/1e6).toFixed(3) + ' MHz');
+    if(t.up) parts.push('↑' + (t.up/1e6).toFixed(3) + ' MHz');
+    if(!parts.length) return null;
+    return parts.join(' ') + (t.mode ? ' (' + t.mode + ')' : '');
+  }).filter(Boolean).join('\n');
+}
+function satRefreshCategoryFilter(){
+  const s = ensureSatState();
+  const category = s.category || 'all';
+  // Vybraná družice z jiné kategorie by jinak zůstala jako červený bod a
+  // dráha nad vyfiltrovanou mapou. Při přepnutí ji proto korektně zrušíme.
+  if(s.selected != null && !satCategoryMatch(category, s.selected)){
+    s.selected = null;
+    s.track = null;
+    satDrawTrack(null);
+    try{ state.map?.getSource(SAT_SEL_SOURCE)?.setData({type:'FeatureCollection',features:[]}); }catch(_e){}
+    const box=$('satSelected'); if(box) box.style.display='none';
+  }
+  if(s.nextPos && state.map){
+    if(satUse3d()){
+      const layer3d=state.map.getLayer(SAT_3D_LAYER)?.implementation;
+      if(layer3d?.setDataFromTyped && s.prevPos) layer3d.setDataFromTyped(s.prevPos,s.nextPos,s.nextPos.length/3,s.selected);
+    }else{
+      try{ state.map.getSource(SAT_SOURCE)?.setData(satBuildFeatures(s.nextPos)); }catch(_e){}
+    }
+  }
+  satRenderResults($('satSearch')?.value || '');
+  satSetVisibility();
+  state.map?.triggerRepaint?.();
+}
 function satRenderResults(query){
   const s = ensureSatState();
   const box = $('satResults'); if(!box) return;
   const q = (query || '').trim().toLowerCase();
-  if(!q || !s.ready){ box.innerHTML = ''; return; }
+  const cat = s.category || 'all';
+  if(!s.ready){ box.innerHTML = ''; return; }
+  // Prázdné hledání ukazuje výpis celé kategorie (jinak by filtr bez textu
+  // nedělal nic vidět); mimo "Vše" bez zadaného textu je vyžadovaná aspoň
+  // aktivní kategorie, ať appka nezačne skenovat 16 tisíc družic zbytečně.
+  if(!q && cat === 'all'){ box.innerHTML = ''; return; }
   const num = /^\d+$/.test(q) ? parseInt(q, 10) : null;
   const hits = [];
   for(let i = 0; i < s.names.length && hits.length < SAT_MAX_RESULTS; i++){
-    if(num != null ? s.ids[i] === num : s.names[i].toLowerCase().includes(q)) hits.push(i);
+    if(!satCategoryMatch(cat, i)) continue;
+    const textMatch = !q || (num != null ? s.ids[i] === num : s.names[i].toLowerCase().includes(q));
+    if(textMatch) hits.push(i);
+  }
+  const hint = $('satCategoryHint');
+  if(hint){
+    if(cat === 'military' && !s.militaryIds){ hint.style.display = ''; hint.textContent = t('Načítám veřejný katalog vojenských družic…'); }
+    else if(cat === 'military'){ hint.style.display = ''; hint.textContent = t('Veřejná skupina CelesTrak Military doplněná odhadem podle názvu; utajované objekty bez zveřejněné dráhy nelze zobrazit.'); }
+    else if(cat === 'weather' && !s.weatherIds){ hint.style.display = ''; hint.textContent = t('Načítám seznam meteorologických družic…'); }
+    else if(cat === 'amateur' && (!s.amateurIds || !s.freqById)){ hint.style.display = ''; hint.textContent = t('Načítám seznam a frekvence radioamatérských družic…'); }
+    else hint.style.display = 'none';
   }
   if(!hits.length){ box.innerHTML = `<div class="small" style="padding:6px 2px;color:var(--tx3)">${escapeHtml(t('Nic nenalezeno.'))}</div>`; return; }
   box.innerHTML = hits.map(i => {
     const pos = s.nextPos;
     const alt = pos && !Number.isNaN(pos[i*3]) ? Math.round(pos[i*3+2]) + ' km' : '';
+    const freq = cat === 'amateur' ? satFreqLines(s.ids[i]) : '';
     return `<button type="button" class="sat-result" data-idx="${i}">${escapeHtml(s.names[i])}`
-      + `<span class="small">NORAD ${s.ids[i]||'?'}${alt ? ' · ' + alt : ''}</span></button>`;
+      + `<span class="small">NORAD ${s.ids[i]||'?'}${alt ? ' · ' + alt : ''}</span>`
+      + (freq ? `<span class="small freq">${escapeHtml(freq)}</span>` : '')
+      + `</button>`;
   }).join('');
 }
 
@@ -9383,23 +9810,15 @@ function applyMapTweaks(){
   applySunLight();
   scheduleShadowRefresh(60);
   scheduleAORefresh(60);
-  // Slunce, stíny i AO potřebují 3D budovy, které má jen podklad Liberty 3D. Mimo
-  // něj proto zamkni CELOU sekci — dřív zůstávaly sluneční posuvníky aktivní, i když
-  // neměly co nasvítit, což vypadalo jako rozbitá funkce.
+  // Slunce, stíny i AO potřebují 3D budovy, které má jen podklad Liberty 3D.
+  // U ostatních podkladů sekci úplně schovej — neaktivní ovladače ani vysvětlující
+  // prázdný panel nemají v běžném pracovním menu zabírat místo.
   const sunSection = $('sunShadowSection');
   if(sunSection){
-    sunSection.style.opacity = isLibertyStyle ? '' : '0.45';
+    sunSection.style.display = isLibertyStyle ? '' : 'none';
+    sunSection.style.opacity = '';
     sunSection.querySelectorAll('input, select, button').forEach(el => { el.disabled = !isLibertyStyle; });
-    let note = $('sunShadowLockNote');
-    if(!note){
-      note = document.createElement('p');
-      note.id = 'sunShadowLockNote';
-      note.className = 'hint';
-      note.style.color = 'var(--yellow)';
-      sunSection.querySelector('h3')?.insertAdjacentElement('afterend', note);
-    }
-    note.textContent = 'Funguje jen s podkladem „Liberty 3D" — ten má 3D budovy, na kterých stíny vznikají.';
-    note.style.display = isLibertyStyle ? 'none' : '';
+    $('sunShadowLockNote')?.remove();
   }
 
   if(state.countriesGeojson || state.countryBorderLinesGeojson || state.czRegionsGeojson){
@@ -12680,16 +13099,24 @@ function getMapFreeAreaLeft(){
   return 0;
 }
 
+function setCustomExportResolutionFromValue(value){
+  const [w,h]=String(value || '').split('x').map(v=>parseInt(v,10));
+  if(Number.isFinite(w) && $('exportCustomWidth')) $('exportCustomWidth').value=String(w);
+  if(Number.isFinite(h) && $('exportCustomHeight')) $('exportCustomHeight').value=String(h);
+}
+function updateCustomExportResolutionVisibility(){
+  const custom=($('exportResolution')?.value || '')==='custom';
+  if($('exportCustomResolution')) $('exportCustomResolution').style.display=custom ? '' : 'none';
+  if($('exportCustomResolutionHint')) $('exportCustomResolutionHint').style.display=custom ? '' : 'none';
+}
+
 function updateExportFrame(){
   const frame = $('exportFrame');
   const mapEl = $('map');
   if(!frame || !mapEl) return;
   const visible = $('showExportFrame')?.checked !== false;
   if(!visible){ frame.classList.add('hidden'); return; }
-  const val = $('exportResolution')?.value || '1920x1080';
-  const parts = val.split('x');
-  const outW = Math.max(1, parseInt(parts[0] || '1920',10));
-  const outH = Math.max(1, parseInt(parts[1] || '1080',10));
+  const {w:outW,h:outH}=getExportSize();
   const orient = outW > outH ? '⬌' : outW === outH ? '◻' : '⬍';
   frame.setAttribute('data-label', `${orient} ${outW}×${outH}`);
   const rect = mapEl.getBoundingClientRect();
@@ -12716,11 +13143,17 @@ function updateExportFrame(){
 }
 
 function getExportSize(){
-  const val = $('exportResolution')?.value || '1920x1080';
+  const batchValue=state._batchExportResolution || '';
+  const custom=!batchValue && (($('exportResolution')?.value || '')==='custom');
+  const val=batchValue || (custom
+    ? `${$('exportCustomWidth')?.value || '1920'}x${$('exportCustomHeight')?.value || '1080'}`
+    : ($('exportResolution')?.value || '1920x1080'));
   let [w,h] = val.split('x').map(v => Math.max(1, parseInt(v || '0', 10)));
+  w=Math.min(8192,Math.max(64,w || 1920));
+  h=Math.min(8192,Math.max(64,h || 1080));
   // H.264 4:2:0 requires even dimensions — round down so the encoder config never
   // silently fails on an odd value. No-op for all current (even) presets.
-  w = (w || 1920) & ~1; h = (h || 1080) & ~1;
+  w = w & ~1; h = h & ~1;
   return {w: Math.max(2, w), h: Math.max(2, h)};
 }
 
@@ -14221,6 +14654,7 @@ async function exportBatchFormats(){
   let done = 0;
   for(let i=0;i<picks.length;i++){
     const f = picks[i];
+    state._batchExportResolution = f.res;
     if(resSel) resSel.value = f.res;
     if(fpsSel) fpsSel.value = f.fps;
     try{ updateExportFrame(); }catch(_e){}
@@ -14233,6 +14667,7 @@ async function exportBatchFormats(){
     catch(e){ console.warn('batch item failed', f, e); }
     if(produced === null || state.exportCancelRequested){ setStatus(t('Batch export zrušen.')); break; }
   }
+  state._batchExportResolution = null;
   state._exportNameSuffix = null;
   if(resSel) resSel.value = origRes;
   if(fpsSel) fpsSel.value = origFps;
@@ -14752,6 +15187,12 @@ function bindUI(){
   $('satDotSize')?.addEventListener('input', () => { satApplyDotSize(); updateReadouts(); });
   $('satLabels')?.addEventListener('change', satSetVisibility);
   $('satSearch')?.addEventListener('input', (e) => satRenderResults(e.target.value));
+  $('satCategoryRow')?.addEventListener('click', (e) => {
+    const b = e.target.closest('.sat-cat-btn'); if(!b) return;
+    ensureSatState().category = b.getAttribute('data-cat') || 'all';
+    $('satCategoryRow').querySelectorAll('.sat-cat-btn').forEach(x => x.classList.toggle('active', x === b));
+    satRefreshCategoryFilter();
+  });
   $('satResults')?.addEventListener('click', (e) => {
     const b = e.target.closest('.sat-result'); if(!b) return;
     satSelect(parseInt(b.dataset.idx, 10));
@@ -14766,7 +15207,13 @@ function bindUI(){
     }
     setStatus(on ? t('3D terén zapnut — nakloň mapu, ať reliéf vynikne.') : t('3D terén vypnut.'));
   });
-  $('terrainExaggeration')?.addEventListener('input', () => { applyTerrain3d(); updateReadouts(); });
+  $('terrainExaggeration')?.addEventListener('input', () => {
+    // setTerrain znovu staví výškovou síť. Při rychlém tažení slideru
+    // proto aplikujeme jen poslední hodnotu z krátké série pohybů.
+    clearTimeout(state._terrainExaggerationTimer);
+    state._terrainExaggerationTimer=setTimeout(() => applyTerrain3d(),90);
+    updateReadouts();
+  });
   $('sunShadowsOn')?.addEventListener('change', () => { state._shadowViewSig = null; applySunLight(); refreshBuildingShadows(); updateReadouts(); });
   ['sunAzimuth','sunElevation','shadowOpacity','shadowSoftness'].forEach(id => {
     $(id)?.addEventListener('input', () => { state._shadowViewSig = null; applySunLight(); scheduleShadowRefresh(120); updateReadouts(); });
@@ -14836,17 +15283,32 @@ function bindUI(){
   // Quick export preset — sets resolution + FPS in one go.
   $('exportPreset')?.addEventListener('change', e => {
     const v = e.target.value;
-    if(!v) return;
-    const [res, fps] = v.split('|');
-    if($('exportResolution') && res){ $('exportResolution').value = res; }
-    if($('exportFps') && fps){ $('exportFps').value = fps; }
+    if(v){
+      const [res, fps] = v.split('|');
+      if($('exportResolution') && res){ $('exportResolution').value = res; setCustomExportResolutionFromValue(res); }
+      if($('exportFps') && fps){ $('exportFps').value = fps; }
+      setStatus(t('Export preset nastaven.'));
+    } else if($('exportResolution')){
+      $('exportResolution').value='custom';
+    }
+    updateCustomExportResolutionVisibility();
     updateExportFrame();
-    setStatus(t('Export preset nastaven.'));
   });
   // If the user manually tweaks resolution/FPS, drop the preset label back to custom.
   const resetExportPreset = ()=>{ if($('exportPreset')) $('exportPreset').value = ''; };
-  $('exportResolution')?.addEventListener('change', resetExportPreset);
+  $('exportResolution')?.addEventListener('change', e => {
+    if(e.target.value!=='custom') setCustomExportResolutionFromValue(e.target.value);
+    resetExportPreset();
+    updateCustomExportResolutionVisibility();
+    updateExportFrame();
+  });
   $('exportFps')?.addEventListener('change', resetExportPreset);
+  ['exportCustomWidth','exportCustomHeight'].forEach(id => $(id)?.addEventListener('input', () => {
+    resetExportPreset();
+    updateCustomExportResolutionVisibility();
+    updateExportFrame();
+  }));
+  updateCustomExportResolutionVisibility();
   window.addEventListener('resize', updateExportFrame);
   document.addEventListener('keydown', e => {
     const tag = (e.target?.tagName || '').toLowerCase();
