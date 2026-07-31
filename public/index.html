@@ -763,6 +763,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <div class="color-row"><input id="labelColor" type="color" value="#2b3443"><label data-i18n="Text">Text</label></div>
         <div class="color-row"><input id="haloColor" type="color" value="#f7f2e7"><label data-i18n="Halo textu">Halo textu</label></div>
         <div class="color-row"><input id="boundaryColor" type="color" value="#6f7378"><label data-i18n="Hranice států">Hranice států</label></div>
+        <input id="railwayColor" type="color" value="#707780">
       </div>
       <div class="section" id="presetManageSection">
         <h3 data-i18n="Správa presetů">Správa presetů</h3>
@@ -806,7 +807,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy</label>
         <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy</label>
         <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="waterColor" aria-label="Barva vodních toků"> Řeky a vodní toky</label>
-        <label class="check"><input id="showRailways" type="checkbox" checked> Železnice</label>
+        <label class="check layer-visibility-row"><input id="showRailways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="railwayColor" aria-label="Barva železnic"> Železnice</label>
         <label class="check"><input id="showMetro" type="checkbox"> Metro (Praha)</label>
         <label class="check"><input id="showTransit" type="checkbox"> MHD – tramvaje a zastávky</label>
         <details class="compact-details">
@@ -2977,7 +2978,8 @@ function getCurrentColorSet(){
     roadMinor:$('roadMinorColor')?.value || '#f3efe6',
     label:$('labelColor')?.value || '#2b3443',
     halo:$('haloColor')?.value || '#f7f2e7',
-    boundary:$('boundaryColor')?.value || '#6f7378'
+    boundary:$('boundaryColor')?.value || '#6f7378',
+    railway:$('railwayColor')?.value || '#707780'
   };
 }
 function getCurrentStyleRanges(){
@@ -3061,6 +3063,7 @@ function applyColorSet(p){
   $('labelColor').value = p.label || '#2b3443';
   $('haloColor').value = p.halo || '#f7f2e7';
   if($('boundaryColor')) $('boundaryColor').value = p.boundary || '#6f7378';
+  if($('railwayColor')) $('railwayColor').value = p.railway || '#707780';
   syncLayerColorInputs();
   applyMapTweaks();
 }
@@ -3720,7 +3723,7 @@ function dbUpdatePreset(){
 
 const AUTO_PRESET_CONTROL_IDS = new Set([
   'landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor',
-  'aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','boundaryColor',
+  'aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','boundaryColor','railwayColor',
   'majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth',
   'showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries',
   'showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways',
@@ -9801,6 +9804,7 @@ function applyMapTweaks(){
   const boundaryOpacity = parseFloat($('boundaryOpacity')?.value || '1');
   const boundaryWidth = parseFloat($('boundaryWidth')?.value || '1.2');
   const boundaryColor = ($('boundaryColor')?.value || '#6f7378');
+  const railwayColor = ($('railwayColor')?.value || '#707780');
 
   applyColorToLayers(matchLayers(/background/, 'background'), 'background-color', land);
   applyColorToLayers(matchLayers(/water/, 'fill'), 'fill-color', water);
@@ -9836,6 +9840,7 @@ function applyMapTweaks(){
     const widthExpr = baseWidth == null ? (isMajor ? 1.4 * majorWidth : 1.0 * minorWidth) : scalePaintWidthExpression(baseWidth, isMajor ? majorWidth : minorWidth);
     try{ state.map.setPaintProperty(l.id, 'line-width', widthExpr); }catch(e){}
   });
+  applyColorToLayers(matchLayers(/railway|rail|train/, 'line'), 'line-color', railwayColor);
 
   const labelLayers = matchLayers(/label|place|name|poi|airport|aerodrome/, 'symbol');
   labelLayers.forEach(l => {
@@ -15228,7 +15233,7 @@ function bindUI(){
       }
     }catch(_e){}
   });
-  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','majorWidth','minorWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
+  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','majorWidth','minorWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
   document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
