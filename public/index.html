@@ -15276,6 +15276,14 @@ function bindUI(){
       row.classList.toggle('width-open');
     });
   });
+  document.addEventListener('click', e => {
+    if(e.target.closest('.layer-visibility-row.width-open')) return;
+    document.querySelectorAll('.layer-visibility-row.width-open').forEach(row => row.classList.remove('width-open'));
+  });
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'Escape') return;
+    document.querySelectorAll('.layer-visibility-row.width-open').forEach(row => row.classList.remove('width-open'));
+  });
   ['boundaryOpacity','boundaryWidth']
     .forEach(id => $(id)?.addEventListener('input', applyBoundaryTweaksDebounced));
   // Sun & shadows: the shadow geometry is derived from whatever buildings are in
