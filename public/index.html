@@ -744,6 +744,21 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         </div>
         <p class="hint" data-i18n="hint_sat">Živé polohy všech aktivních družic (přes 16 000) počítané z dráhových elementů CelesTraku. Bod je místo, nad kterým družice právě je; barva značí výšku dráhy — nízká (LEO), střední (MEO) a geostacionární. Vyhledávat jde podle názvu i katalogového čísla NORAD. Data se aktualizují několikrát denně, polohy každou sekundu.</p>
       </div>
+      <div class="section" id="planeSection">
+        <h3 data-i18n="Letadla v reálném čase">Letadla v reálném čase</h3>
+        <label class="check"><input id="planeOn" type="checkbox"> <span data-i18n="Zobrazit letadla">Zobrazit letadla</span></label>
+        <div id="planeControls" style="display:none">
+          <div id="planeStatus" class="small" style="margin:6px 0 8px;color:var(--tx2)"></div>
+          <label data-i18n="Hledat letadlo">Hledat letadlo (volací znak, registrace, typ)</label>
+          <input id="planeSearch" type="text" autocomplete="off" placeholder="OK1234, RYR, D-AIKE, A320…">
+          <div id="planeResults" class="sat-results"></div>
+          <div id="planeSelected" class="sat-selected" style="display:none"></div>
+          <label class="check" style="margin-top:10px"><input id="planeLabels" type="checkbox"> <span data-i18n="Popisky u letadel">Popisky u letadel</span></label>
+          <label data-i18n="Velikost ikony">Velikost ikony <span class="val" id="planeIconSizeVal">1×</span></label>
+          <input id="planeIconSize" type="range" min="0.5" max="2.5" step="0.1" value="1">
+        </div>
+        <p class="hint" data-i18n="hint_plane">Živé polohy letadel z celého světa (OpenSky Network, ADS-B/MLAT přijímače). Ikona ukazuje skutečný kurz letadla; barva výšku — na zemi, nízko, v hladině. Vyhledávat jde podle volacího znaku. Data se aktualizují každých pár sekund.</p>
+      </div>
       <div class="section" id="stylePresetSection">
         <h3 data-i18n="Presety ">Presety </h3>
         <div id="presetTileGrid" class="preset-grid preset-grid-numbered"></div>
@@ -10016,6 +10031,7 @@ function applyMapTweaks(){
   applyRoadClassVisibility();
   applyTerrain3d();
   applySatellites();
+  applyPlanes();
   applySunLight();
   scheduleShadowRefresh(60);
   scheduleAORefresh(60);
@@ -10178,6 +10194,7 @@ function updateReadouts(){
   set('routeWidthVal', ($('routeWidth')?.value || '4') + ' px');
   set('routeEndpointSizeVal', ($('routeEndpointSize')?.value || '28') + ' px');
   set('satDotSizeVal', ($('satDotSize')?.value || '2') + ' px');
+  set('planeIconSizeVal', (parseFloat($('planeIconSize')?.value || '1')).toFixed(1) + '×');
   set('terrainExaggerationVal', ($('terrainExaggeration')?.value || '1') + '×');
   set('sceneIconSizeVal', ($('sceneIconSize')?.value || '30') + ' px');
   set('sunAzimuthVal', ($('sunAzimuth')?.value || '135') + '°');
@@ -10271,6 +10288,306 @@ function reloadStyle(){
   });
   setTimeout(updateExportFrame, 60);
   setTimeout(wakePoliticalStyle, 30);
+}
+
+// ===========================================================================
+// Letadla v reálném čase (ADS-B/MLAT přes adsb.lol, proxováno /api/planes)
+//
+// Mnohem jednodušší než družice: výška letu (desítky tisíc stop) je proti
+// poloměru Země zanedbatelná, takže žádný vlastní WebGL shader s glóbusovým
+// zvednutím netřeba — obyčejná symbol vrstva (ikona + otočení podle kurzu)
+// stačí na plochu i na glóbus stejně. A protože je to normální vrstva stylu,
+// funguje na ni běžný `queryRenderedFeatures` klik — žádné GPU picking jako
+// u družic.
+//
+// Zdroj dat je jeden dotaz s velkým poloměrem (ne katalog jako u družic), takže
+// místo pevného indexu 0..N-1 (družice mají stálý katalog, letadlo se v datech
+// každý dotaz objeví/zmizí) se sleduje podle klíče (ICAO hex kód).
+// ===========================================================================
+const PLANE_SOURCE = 'pz-planes';
+const PLANE_LAYER = 'pz-planes-icons';
+const PLANE_SEL_SOURCE = 'pz-plane-sel';
+const PLANE_SEL_LAYER = 'pz-plane-sel';
+const PLANE_SEL_LABEL = 'pz-plane-sel-label';
+const PLANE_ICON_BASE = 'pz-plane-icon-';
+const PLANE_BAND_COLOR = { ground:'#8892a4', low:'#ffb347', cruise:'#59c2ff' };
+const PLANE_POLL_MS = 8000;   // sedí s FRESH_SECONDS v /api/planes — další dotaz stejně dostane jen novější data z cache
+const PLANE_DRAW_MIN_MS = 66; // ~15 Hz — stejné poučení jako u družic (viz satFrame), víc nemá cenu
+const PLANE_API = '/api/planes'; // OpenSky states/all — globální snímek, proxy filtruje/cachuje sama
+
+function ensurePlaneState(){
+  if(!state.planes) state.planes = {
+    timer:null, raf:null, byId:new Map(), ready:false, loading:false, selected:null,
+    _mixFactor:0, _prevAt:0, _nextAt:0, _lastDrawAt:0, iconsLoaded:false
+  };
+  return state.planes;
+}
+function planeEnabled(){ return !!$('planeOn')?.checked; }
+function planeIconSize(){ const v=parseFloat($('planeIconSize')?.value ?? '1'); return Number.isFinite(v) ? Math.max(0.3,Math.min(3,v)) : 1; }
+function planeLabelsOn(){ return !!$('planeLabels')?.checked; }
+function planeAltBand(p){
+  if(p.ground) return 'ground';
+  if(p.alt == null) return 'low';
+  return p.alt < 10000 ? 'low' : 'cruise';
+}
+function planeStatus(msg){ const el=$('planeStatus'); if(el) el.textContent = msg; }
+
+// Ikonu (assets/sys_plane.svg, černá silueta shora) je potřeba nabarvit podle
+// pásma výšky — 3 samostatné rastrové obrázky (ne SDF: silueta je plná plocha,
+// ne skutečné distance field, takže by SDF vypadalo hůř, ne líp). Musí se
+// naládovat znovu po každém 'style.load' — vlastní obrázky styl při přepnutí zahodí.
+function ensurePlaneIcons(map){
+  if(!map || map.hasImage(PLANE_ICON_BASE+'cruise')) return;
+  const img = new Image();
+  img.onload = () => {
+    Object.entries(PLANE_BAND_COLOR).forEach(([band, color]) => {
+      try{
+        const c = document.createElement('canvas'); c.width=64; c.height=64;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, 64, 64);
+        ctx.globalCompositeOperation = 'source-in';
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, 64, 64);
+        const id = PLANE_ICON_BASE + band;
+        if(map.hasImage(id)) map.removeImage(id);
+        map.addImage(id, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2});
+      }catch(e){}
+    });
+    if(state.map) state.map.triggerRepaint();
+  };
+  img.onerror = () => console.warn('Plane icon load failed');
+  img.src = 'assets/sys_plane.svg';
+}
+function planeIconSizeExpr(){
+  const m = planeIconSize();
+  return ['interpolate', ['linear'], ['zoom'], 1, 0.12*m, 5, 0.22*m, 9, 0.4*m, 13, 0.65*m];
+}
+function ensurePlaneLayers(map = state.map){
+  if(!map?.isStyleLoaded?.()) return;
+  ensurePlaneIcons(map);
+  const empty = {type:'FeatureCollection', features:[]};
+  [PLANE_SOURCE, PLANE_SEL_SOURCE].forEach(id => {
+    if(!map.getSource(id)){ try{ map.addSource(id, {type:'geojson', data:empty}); }catch(e){} }
+  });
+  if(!map.getLayer(PLANE_LAYER)){
+    try{
+      map.addLayer({
+        id: PLANE_LAYER, type:'symbol', source: PLANE_SOURCE,
+        layout:{
+          visibility:'none',
+          'icon-image': ['concat', PLANE_ICON_BASE, ['get','band']],
+          'icon-rotate': ['coalesce', ['get','track'], 0],
+          'icon-rotation-alignment':'map',
+          'icon-allow-overlap':true,
+          'icon-ignore-placement':true,
+          'icon-size': planeIconSizeExpr(),
+        },
+      });
+    }catch(e){}
+  }
+  if(!map.getLayer(PLANE_SEL_LAYER)){
+    try{
+      map.addLayer({
+        id: PLANE_SEL_LAYER, type:'circle', source: PLANE_SEL_SOURCE,
+        layout:{visibility:'none'},
+        paint:{'circle-radius':11, 'circle-color':'rgba(0,0,0,0)', 'circle-stroke-width':2, 'circle-stroke-color':'#e63946'}
+      });
+    }catch(e){}
+  }
+  if(!map.getLayer(PLANE_SEL_LABEL)){
+    try{
+      map.addLayer({
+        id: PLANE_SEL_LABEL, type:'symbol', source: PLANE_SEL_SOURCE,
+        layout:{visibility:'none', 'text-field':['get','label'], 'text-size':12,
+                'text-offset':[0,1.4], 'text-anchor':'top', 'text-allow-overlap':true},
+        paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':2}
+      });
+    }catch(e){}
+  }
+  map.off('click', PLANE_LAYER, planeOnMapClick);
+  map.on('click', PLANE_LAYER, planeOnMapClick);
+  map.off('mouseenter', PLANE_LAYER, planeOnMapEnter);
+  map.on('mouseenter', PLANE_LAYER, planeOnMapEnter);
+  map.off('mouseleave', PLANE_LAYER, planeOnMapLeave);
+  map.on('mouseleave', PLANE_LAYER, planeOnMapLeave);
+}
+function planeOnMapEnter(){ state.map.getCanvas().style.cursor = 'pointer'; }
+function planeOnMapLeave(){ state.map.getCanvas().style.cursor = ''; }
+function planeOnMapClick(e){
+  const f = e.features && e.features[0];
+  const id = f && f.properties && f.properties.id;
+  if(id) planeSelect(id);
+}
+function planeSetVisibility(){
+  const on = planeEnabled();
+  safeSetLayout(PLANE_LAYER, 'visibility', on ? 'visible' : 'none');
+  const s = ensurePlaneState();
+  const showSel = on && !!s.selected;
+  safeSetLayout(PLANE_SEL_LAYER, 'visibility', showSel ? 'visible' : 'none');
+  safeSetLayout(PLANE_SEL_LABEL, 'visibility', (showSel && planeLabelsOn()) ? 'visible' : 'none');
+  const ctl = $('planeControls'); if(ctl) ctl.style.display = on ? '' : 'none';
+  if(state.map) state.map.triggerRepaint();
+}
+function planeApplyIconSize(){ safeSetLayout(PLANE_LAYER, 'icon-size', planeIconSizeExpr()); }
+
+function planeDescribe(p){
+  return p.call || p.reg || p.id;
+}
+function planeFeature(p, id, lon, lat){
+  return {
+    type:'Feature', id: id,
+    properties:{ id, band: planeAltBand(p), track: p.track },
+    geometry:{type:'Point', coordinates:[lon, lat]}
+  };
+}
+function planeRenderResults(query){
+  const s = ensurePlaneState();
+  const box = $('planeResults'); if(!box) return;
+  const q = (query || '').trim().toLowerCase();
+  if(!q || !s.ready){ box.innerHTML = ''; return; }
+  const hits = [];
+  for(const [id, p] of s.byId){
+    if(hits.length >= 40) break;
+    const hay = [p.call, p.reg, p.type, id].filter(Boolean).join(' ').toLowerCase();
+    if(hay.includes(q)) hits.push([id, p]);
+  }
+  if(!hits.length){ box.innerHTML = `<div class="small" style="padding:6px 2px;color:var(--tx3)">${escapeHtml(t('Nic nenalezeno.'))}</div>`; return; }
+  box.innerHTML = hits.map(([id, p]) => {
+    const alt = p.ground ? t('na zemi') : (p.alt != null ? Math.round(p.alt).toLocaleString('cs-CZ') + ' ft' : '?');
+    return `<button type="button" class="sat-result" data-id="${escapeHtml(id)}">${escapeHtml(planeDescribe(p))}`
+      + `<span class="small">${escapeHtml(p.type || '?')}${p.reg ? ' · '+escapeHtml(p.reg) : ''} · ${alt}</span></button>`;
+  }).join('');
+}
+function planeSelect(id){
+  const s = ensurePlaneState();
+  if(!s.byId.has(id)) return;
+  s.selected = id;
+  planeSetVisibility();
+  planeRefreshSelected();
+  if(s.byId.get(id)){
+    const p = s.byId.get(id);
+    try{ state.map.easeTo({center:[p.nextLon, p.nextLat], zoom: Math.max(state.map.getZoom(), 6), duration:700}); }catch(e){}
+  }
+}
+function planeRefreshSelected(){
+  const s = ensurePlaneState();
+  const map = state.map;
+  if(!map?.getSource?.(PLANE_SEL_SOURCE)) return;
+  if(s.selected == null || !s.byId.has(s.selected)){
+    try{ map.getSource(PLANE_SEL_SOURCE).setData({type:'FeatureCollection', features:[]}); }catch(e){}
+    const box=$('planeSelected'); if(box) box.style.display='none';
+    return;
+  }
+  const p = s.byId.get(s.selected);
+  const lon = p.curLon != null ? p.curLon : p.nextLon, lat = p.curLat != null ? p.curLat : p.nextLat;
+  const label = planeDescribe(p);
+  try{
+    map.getSource(PLANE_SEL_SOURCE).setData({type:'FeatureCollection', features:[{
+      type:'Feature', properties:{label}, geometry:{type:'Point', coordinates:[lon, lat]}
+    }]});
+  }catch(e){}
+  const box = $('planeSelected');
+  if(box){
+    box.style.display = '';
+    const alt = p.ground ? t('na zemi') : (p.alt != null ? Math.round(p.alt).toLocaleString('cs-CZ') + ' ft' : '?');
+    const gs = p.gs != null ? Math.round(p.gs) + ' kt' : '?';
+    box.innerHTML = `<b>${escapeHtml(label)}</b><br><span class="small">${escapeHtml(p.type||'?')}${p.reg?' · '+escapeHtml(p.reg):''}<br>`
+      + `${alt} · ${gs}${p.track!=null?' · '+Math.round(p.track)+'°':''}<br>${lat.toFixed(2)}°, ${lon.toFixed(2)}°</span>`;
+  }
+}
+
+// Tik (jednou za PLANE_POLL_MS) natáhne nová data z proxy a slije je s tím, co
+// appka už zná — podle ICAO hex klíče, ne indexu (na rozdíl od družic tu není
+// stálý katalog, letadlo se může kdykoli objevit/zmizet z dosahu).
+async function planeTick(){
+  const s = ensurePlaneState();
+  if(!planeEnabled() || s.loading) return;
+  s.loading = true;
+  try{
+    const r = await fetch(PLANE_API, {cache:'default'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    if(d.notConfigured){
+      planeStatus(t('Zdroj letadel zatím není nastavený (chybí přihlašovací údaje OpenSky).'));
+      s.ready = true; s.loading = false;
+      return;
+    }
+    const now = Date.now();
+    const seen = new Set();
+    (d.items || []).forEach(p => {
+      seen.add(p.id);
+      const cur = s.byId.get(p.id);
+      if(cur){
+        cur.prevLon = cur.curLon != null ? cur.curLon : cur.nextLon;
+        cur.prevLat = cur.curLat != null ? cur.curLat : cur.nextLat;
+      } else {
+        s.byId.set(p.id, {prevLon:p.lon, prevLat:p.lat});
+      }
+      const rec = s.byId.get(p.id);
+      Object.assign(rec, p, {nextLon:p.lon, nextLat:p.lat});
+    });
+    // Letadlo, co zmizelo z dosahu/odpovědi, se rovnou odebere — je to živý
+    // snímek, ne katalog, takže netřeba držet "poslední známou" polohu.
+    for(const id of [...s.byId.keys()]) if(!seen.has(id)) s.byId.delete(id);
+    s._prevAt = s._nextAt || now; s._nextAt = now;
+    s.ready = true;
+    planeStatus(t('Letadel:') + ' ' + s.byId.size.toLocaleString('cs-CZ'));
+    if(s.selected && !s.byId.has(s.selected)) s.selected = null;
+    planeRenderResults($('planeSearch')?.value || '');
+    if(!planeSetVisibility._donePost){ planeSetVisibility(); planeSetVisibility._donePost = true; }
+  }catch(e){
+    planeStatus(t('Data letadel se nepodařilo načíst.'));
+    console.warn('plane tick failed', e);
+  }finally{
+    s.loading = false;
+  }
+}
+function planeFrame(){
+  const s = ensurePlaneState();
+  if(!planeEnabled()){ s.raf = null; return; }
+  const now = Date.now();
+  if(now - s._lastDrawAt >= PLANE_DRAW_MIN_MS){
+    s._lastDrawAt = now;
+    const span = Math.max(1, s._nextAt - s._prevAt);
+    const mix = Math.max(0, Math.min(1, (now - s._nextAt + PLANE_POLL_MS) / (PLANE_POLL_MS)));
+    // mix jde od 0 (hned po tiku, na prevLon/prevLat) k 1 (těsně před dalším tikem).
+    const feats = [];
+    for(const [id, p] of s.byId){
+      if(p.prevLon == null || p.nextLon == null){ p.curLon = p.nextLon; p.curLat = p.nextLat; continue; }
+      const lon = Math.abs(p.nextLon - p.prevLon) > 90 ? p.nextLon : p.prevLon + (p.nextLon - p.prevLon) * mix;
+      const lat = p.prevLat + (p.nextLat - p.prevLat) * mix;
+      p.curLon = lon; p.curLat = lat;
+      feats.push(planeFeature(p, id, lon, lat));
+    }
+    const src = state.map?.getSource?.(PLANE_SOURCE);
+    if(src){ try{ src.setData({type:'FeatureCollection', features:feats}); }catch(e){} }
+    if(s.selected) planeRefreshSelected();
+  }
+  s.raf = requestAnimationFrame(planeFrame);
+}
+function planeStartLoop(){
+  const s = ensurePlaneState();
+  if(s.timer) clearInterval(s.timer);
+  s.timer = setInterval(planeTick, PLANE_POLL_MS);
+  planeTick();
+  if(!s.raf) s.raf = requestAnimationFrame(planeFrame);
+}
+function planeStopLoop(){
+  const s = ensurePlaneState();
+  if(s.timer){ clearInterval(s.timer); s.timer = null; }
+  if(s.raf){ cancelAnimationFrame(s.raf); s.raf = null; }
+}
+function applyPlanes(){
+  const map = state.map;
+  if(!map?.isStyleLoaded?.()) return;
+  ensurePlaneLayers(map);
+  planeSetVisibility();
+  planeApplyIconSize();
+  if(planeEnabled()){
+    if(!ensurePlaneState().timer) planeStartLoop();
+  } else {
+    planeStopLoop();
+  }
 }
 
 // ===== SETTINGS PANEL (gear at the bottom of the sidebar) =====
@@ -15438,6 +15755,17 @@ function bindUI(){
   $('satResults')?.addEventListener('click', (e) => {
     const b = e.target.closest('.sat-result'); if(!b) return;
     satSelect(parseInt(b.dataset.idx, 10));
+  });
+  $('planeOn')?.addEventListener('change', () => {
+    applyPlanes();
+    setStatus(planeEnabled() ? t('Letadla zapnuta.') : t('Letadla vypnuta.'));
+  });
+  $('planeIconSize')?.addEventListener('input', () => { planeApplyIconSize(); updateReadouts(); });
+  $('planeLabels')?.addEventListener('change', planeSetVisibility);
+  $('planeSearch')?.addEventListener('input', (e) => planeRenderResults(e.target.value));
+  $('planeResults')?.addEventListener('click', (e) => {
+    const b = e.target.closest('.sat-result'); if(!b) return;
+    planeSelect(b.dataset.id);
   });
   $('terrain3dOn')?.addEventListener('change', () => {
     applyTerrain3d();
