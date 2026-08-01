@@ -2925,33 +2925,62 @@ const CZ_REGION_REFERENCE_BY_NORM = (() => {
 function randomPresetIcon(){
   return PRESET_ICON_POOL[Math.floor(Math.random() * PRESET_ICON_POOL.length)];
 }
-function loadHiddenBuiltinPresets(){
+// Smazání a přejmenování ZABUDOVANÝCH dlaždic bývalo jen v localStorage, tedy
+// v jednom prohlížeči a na jedné adrese — kolegům se nepropsalo vůbec a na
+// náhledové adrese (jiný origin) se vše vrátilo. Teď to jde stejnou cestou jako
+// sdílené presety: jako skrytý záznam uvnitř seznamu presetů, který server slučuje
+// podle updatedAt. Staré klíče v localStorage se čtou už jen jako záloha pro
+// jednorázovou migraci (viz migrateBuiltinPrefsIfNeeded).
+function readBuiltinPrefsRecord(){
+  const rec = readRawPresetDB().find(i => i && i.id === PZ_BUILTIN_PREFS_ID);
+  return (rec && typeof rec === 'object') ? rec : null;
+}
+function legacyHiddenBuiltinPresets(){
   try{
     const raw = JSON.parse(localStorage.getItem(HIDDEN_BUILTIN_PRESET_KEY) || '[]');
     if(Array.isArray(raw)) return raw.filter(key => BUILTIN_PRESET_ORDER.includes(key));
   }catch(e){}
   return [];
 }
-function saveHiddenBuiltinPresets(keys){
-  localStorage.setItem(HIDDEN_BUILTIN_PRESET_KEY, JSON.stringify(Array.from(new Set(keys)).filter(key => BUILTIN_PRESET_ORDER.includes(key))));
-}
-function loadBuiltinPresetNameOverrides(){
+function legacyBuiltinPresetNameOverrides(){
   try{
     const raw = JSON.parse(localStorage.getItem(BUILTIN_PRESET_NAME_OVERRIDES_KEY) || '{}');
     if(raw && typeof raw === 'object' && !Array.isArray(raw)) return raw;
   }catch(e){}
   return {};
 }
-function saveBuiltinPresetNameOverrides(map){
-  const clean = {};
-  Object.entries(map || {}).forEach(([key, val]) => {
-    if(BUILTIN_PRESET_ORDER.includes(key)){
-      const name = String(val || '').trim();
-      if(name) clean[key] = name;
-    }
-  });
-  localStorage.setItem(BUILTIN_PRESET_NAME_OVERRIDES_KEY, JSON.stringify(clean));
+function loadHiddenBuiltinPresets(){
+  const rec = readBuiltinPrefsRecord();
+  if(rec && Array.isArray(rec.hidden)) return rec.hidden.filter(key => BUILTIN_PRESET_ORDER.includes(key));
+  return legacyHiddenBuiltinPresets();
 }
+function loadBuiltinPresetNameOverrides(){
+  const rec = readBuiltinPrefsRecord();
+  if(rec && rec.names && typeof rec.names === 'object' && !Array.isArray(rec.names)) return rec.names;
+  return legacyBuiltinPresetNameOverrides();
+}
+// Jeden zápis pro obojí — meta záznam se ukládá vcelku, ať se dvě rychle po sobě
+// jdoucí změny (skrytí + přejmenování) nepřepíšou navzájem.
+function writeBuiltinPrefs({hidden, names}){
+  const nextHidden = Array.from(new Set(hidden != null ? hidden : (loadHiddenBuiltinPresets() || [])))
+    .filter(key => BUILTIN_PRESET_ORDER.includes(key));
+  const srcNames = names != null ? names : (loadBuiltinPresetNameOverrides() || {});
+  const nextNames = {};
+  Object.entries(srcNames).forEach(([key, val]) => {
+    if(!BUILTIN_PRESET_ORDER.includes(key)) return;
+    const name = String(val || '').trim();
+    if(name) nextNames[key] = name;
+  });
+  const raw = readRawPresetDB().filter(i => !(i && i.id === PZ_BUILTIN_PREFS_ID));
+  raw.push({id: PZ_BUILTIN_PREFS_ID, hidden: nextHidden, names: nextNames, updatedAt: Date.now()});
+  trySetLocal(PRESET_DB_KEY, JSON.stringify(raw));
+  // Zálohu v localStorage držíme dál — appka pak funguje i bez serveru.
+  try{ localStorage.setItem(HIDDEN_BUILTIN_PRESET_KEY, JSON.stringify(nextHidden)); }catch(e){}
+  try{ localStorage.setItem(BUILTIN_PRESET_NAME_OVERRIDES_KEY, JSON.stringify(nextNames)); }catch(e){}
+  scheduleEntityPush('presets', raw, 0);
+}
+function saveHiddenBuiltinPresets(keys){ writeBuiltinPrefs({hidden: keys}); }
+function saveBuiltinPresetNameOverrides(map){ writeBuiltinPrefs({names: map}); }
 function getBuiltinPresetLabel(key){
   const overrides = loadBuiltinPresetNameOverrides();
   return overrides[key] || BUILTIN_PRESET_LABELS[key] || key;
@@ -3099,6 +3128,12 @@ function normalizePresetEntry(entry, idx){
 // out of loadPresetDB() (and re-attached by savePresetDB) so no caller ever sees it
 // as a preset — it must never show up as a tile or in the dropdown.
 const PZ_DEFAULT_PRESET_ID = '__pz_default_preset__';
+// Druhý skrytý záznam: skryté a přejmenované ZABUDOVANÉ dlaždice (viz
+// writeBuiltinPrefs). Oba tyhle záznamy se v seznamu presetů vezou s sebou,
+// ale nikdy se nesmí objevit jako dlaždice ani v rozbalovacím seznamu.
+const PZ_BUILTIN_PREFS_ID = '__pz_builtin_prefs__';
+const PZ_META_PRESET_IDS = [PZ_DEFAULT_PRESET_ID, PZ_BUILTIN_PREFS_ID];
+function isPresetMetaRecord(item){ return !!(item && PZ_META_PRESET_IDS.includes(item.id)); }
 function readRawPresetDB(){
   try{
     const raw = JSON.parse(localStorage.getItem(PRESET_DB_KEY) || '[]');
@@ -3119,7 +3154,7 @@ function setDefaultPresetToken(token){
 function loadPresetDB(){
   try{
     const raw = JSON.parse(localStorage.getItem(PRESET_DB_KEY) || '[]');
-    if(Array.isArray(raw)) return raw.filter(i => !(i && i.id === PZ_DEFAULT_PRESET_ID)).map(normalizePresetEntry);
+    if(Array.isArray(raw)) return raw.filter(i => !isPresetMetaRecord(i)).map(normalizePresetEntry);
   }catch(e){}
   try{
     const legacy = JSON.parse(localStorage.getItem('map60_presets') || '{}');
@@ -3132,12 +3167,13 @@ function loadPresetDB(){
   return [];
 }
 function savePresetDB(db){
-  // Carry the hidden default-preset record through: callers hand us the filtered
-  // list from loadPresetDB(), so writing it verbatim would silently drop the choice.
-  // Re-attach it BEFORE recordRemovedIds, or the marker would look deleted and get
-  // tombstoned — which would then wipe the shared default off the server.
-  const marker = readRawPresetDB().find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
-  const toStore = marker ? db.concat([marker]) : db;
+  // Carry the hidden meta records through (sdílený výchozí preset + skryté a
+  // přejmenované zabudované dlaždice): volající nám předává filtrovaný seznam
+  // z loadPresetDB(), takže zapsat ho doslova by je tiše zahodilo. Připojit je
+  // musíme PŘED recordRemovedIds, jinak by vypadaly jako smazané, dostaly
+  // tombstone a smazalo by je to i ostatním na serveru.
+  const meta = readRawPresetDB().filter(isPresetMetaRecord);
+  const toStore = meta.length ? db.concat(meta) : db;
   recordRemovedIds('presets', PRESET_DB_KEY, toStore);
   const ok = trySetLocal(PRESET_DB_KEY, JSON.stringify(toStore));
   // Preset changes are collaborative: publish additions, edits and tombstones
@@ -3275,21 +3311,42 @@ function mergeServerIntoLocal(serverItems, localItems){
   });
   return Array.from(byId.values());
 }
+// Jednorázový přenos starého lokálního nastavení dlaždic na server. Spouští se až
+// PO prvním úspěšném stažení, a jen když server žádné takové nastavení ještě nemá —
+// jinak by prohlížeč se zastaralou kopií přepsal to, co mezitím nastavil kolega.
+let _builtinPrefsMigrated = false;
+function migrateBuiltinPrefsIfNeeded(serverRaw){
+  if(_builtinPrefsMigrated) return;
+  _builtinPrefsMigrated = true;
+  if((serverRaw || []).some(i => i && i.id === PZ_BUILTIN_PREFS_ID)) return; // server už nastavení má
+  const hidden = legacyHiddenBuiltinPresets();
+  const names = legacyBuiltinPresetNameOverrides();
+  if(!hidden.length && !Object.keys(names).length) return;                    // není co migrovat
+  writeBuiltinPrefs({hidden, names});
+}
 async function syncPresetDBFromServer(){
   try{
     const tombs = loadTombstones('presets');
     const serverRaw = (await fetchEntityFromServer('presets')).filter(item => !tombs.includes(item?.id));
-    // Pull the hidden default-preset record out before normalising: run through
-    // normalizePresetEntry it would turn into a bogus tile, and it must survive the
-    // merge so the shared default isn't lost on the next write.
-    const serverMarker = serverRaw.find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
-    const localMarker = readRawPresetDB().find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
-    const marker = (!localMarker || (Number(serverMarker?.updatedAt) || 0) >= (Number(localMarker?.updatedAt) || 0))
-      ? (serverMarker || localMarker) : localMarker;
-    const server = serverRaw.filter(i => !(i && i.id === PZ_DEFAULT_PRESET_ID)).map(normalizePresetEntry);
+    // Skryté meta záznamy (sdílený výchozí preset, skryté/přejmenované zabudované
+    // dlaždice) je nutné vytáhnout PŘED normalizací — normalizePresetEntry by z nich
+    // udělal nesmyslné dlaždice — a slít je zvlášť podle updatedAt, ať se při dalším
+    // zápisu neztratí.
+    const localRaw = readRawPresetDB();
+    const meta = PZ_META_PRESET_IDS.map(id => {
+      const s = serverRaw.find(i => i && i.id === id);
+      const l = localRaw.find(i => i && i.id === id);
+      if(!l) return s || null;
+      if(!s) return l;
+      return (Number(s.updatedAt) || 0) >= (Number(l.updatedAt) || 0) ? s : l;
+    }).filter(Boolean);
+    const server = serverRaw.filter(i => !isPresetMetaRecord(i)).map(normalizePresetEntry);
     const local = loadPresetDB().map(normalizePresetEntry).filter(item => !tombs.includes(item?.id));
     const merged = mergeServerIntoLocal(server, local);
-    localStorage.setItem(PRESET_DB_KEY, JSON.stringify(marker ? merged.concat([marker]) : merged));
+    localStorage.setItem(PRESET_DB_KEY, JSON.stringify(meta.length ? merged.concat(meta) : merged));
+    // Server o skrytých/přejmenovaných dlaždicích ještě neví, ale tenhle prohlížeč
+    // si je pamatuje ze starých časů → jednorázově je publikuj, ať je mají všichni.
+    migrateBuiltinPrefsIfNeeded(serverRaw);
     refreshPresetSelect();
     renderPresetTiles();
     applyDefaultPresetOnStartup();   // the shared default only arrives with this pull
