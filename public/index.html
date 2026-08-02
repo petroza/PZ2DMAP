@@ -10360,30 +10360,64 @@ const PLANE_ALT_COLOR_EXPR = ['interpolate', ['linear'], ['coalesce', ['get','al
 ];
 function planeStatus(msg){ const el=$('planeStatus'); if(el) el.textContent = msg; }
 
-// Ikonu (assets/sys_plane.svg, černá silueta shora) stačí jedna verze coby SDF
-// (alfa maska) — barva se pak dá měnit za běhu přes 'icon-color' (viz
-// PLANE_ALT_COLOR_EXPR), takže není potřeba předem vyrábět barevné varianty pro
-// každé pásmo výšky. Musí se nahrát znovu po každém 'style.load' — vlastní
-// obrázky styl při přepnutí zahodí.
-const PLANE_ICON_ID = PLANE_ICON_BASE + 'sdf';
+// Tvar ikony podle typu letadla (viz planeShapeFor) — pět původních siluet
+// (žádná není převzatá odjinud, kreslené od nuly kvůli licenci), každá nahraná
+// jako jedna SDF (alfa maska) verze, ať barva jde měnit za běhu přes
+// 'icon-color' (viz PLANE_ALT_COLOR_EXPR) bez nutnosti předpřipravovat barevné
+// varianty pro každé pásmo výšky. Musí se nahrát znovu po každém 'style.load'
+// — vlastní obrázky styl při přepnutí zahodí.
+const PLANE_SHAPES = {
+  small:   'assets/sys_plane_small.svg',
+  medium:  'assets/sys_plane.svg',
+  large:   'assets/sys_plane_large.svg',
+  glider:  'assets/sys_plane_glider.svg',
+  heli:    'assets/sys_heli.svg',
+};
+function planeIconId(shape){ return PLANE_ICON_BASE + shape; }
 function ensurePlaneIcons(map){
-  if(!map || map.hasImage(PLANE_ICON_ID)) return;
-  const img = new Image();
-  img.onload = () => {
-    try{
-      const c = document.createElement('canvas'); c.width=64; c.height=64;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0, 64, 64);
-      ctx.globalCompositeOperation = 'source-in';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, 64, 64);
-      if(map.hasImage(PLANE_ICON_ID)) map.removeImage(PLANE_ICON_ID);
-      map.addImage(PLANE_ICON_ID, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2, sdf:true});
-      if(state.map) state.map.triggerRepaint();
-    }catch(e){}
-  };
-  img.onerror = () => console.warn('Plane icon load failed');
-  img.src = 'assets/sys_plane.svg';
+  if(!map) return;
+  Object.entries(PLANE_SHAPES).forEach(([shape, src]) => {
+    const id = planeIconId(shape);
+    if(map.hasImage(id)) return;
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const c = document.createElement('canvas'); c.width=64; c.height=64;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, 64, 64);
+        ctx.globalCompositeOperation = 'source-in';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 64, 64);
+        if(map.hasImage(id)) map.removeImage(id);
+        map.addImage(id, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2, sdf:true});
+        if(state.map) state.map.triggerRepaint();
+      }catch(e){}
+    };
+    img.onerror = () => console.warn('Plane icon load failed: ' + src);
+    img.src = src;
+  });
+}
+// Rozřazení letadla do jedné z pěti siluet — nejdřív podle ADS-B emitter
+// category (A7=vrtulník, B1/B4=kluzák/ultralehké, A1=lehké, A4-A6=těžké/rychlé),
+// když category chybí (starší data / mimo dosah), odhad z ICAO typu letadla.
+const PLANE_HELI_TYPES = /^(EC\d|AS\d|A1\d\d|B0?[0-9]|B4\d\d|H1[0-9][0-9]|R22|R44|R66|S76|S92|SW4|MD5|MD9|CH47|UH1|UH60|AW\d|EH10)/i;
+const PLANE_GLIDER_TYPES = /^(GLID|ASK|ASW|DG\d|LS\d|PIK|VENT|DISC|JS1|ULAC)/i;
+const PLANE_LARGE_TYPES = /^(A3[0-9]{2}|A38\d|B7[0-9]{2}|B74\d|IL9\d|MD1\d)/i;
+const PLANE_SMALL_TYPES = /^(C1\d\d|C2\d\d|PA\d\d|DA[24]0|DA6\d|SR2\d|BE[23]\d|RV\d|M20|TB\d\d|P28|SOCA)/i;
+function planeShapeFor(p){
+  const cat = (p.cat || '').toUpperCase();
+  if(cat === 'A7') return 'heli';
+  if(cat === 'B1' || cat === 'B4' || cat === 'B2') return 'glider';
+  if(cat === 'A4' || cat === 'A5' || cat === 'A6') return 'large';
+  if(cat === 'A1') return 'small';
+  if(cat === 'A2' || cat === 'A3') return 'medium';
+  const type = (p.type || '').toUpperCase();
+  if(!type) return 'medium';
+  if(PLANE_HELI_TYPES.test(type)) return 'heli';
+  if(PLANE_GLIDER_TYPES.test(type)) return 'glider';
+  if(PLANE_LARGE_TYPES.test(type)) return 'large';
+  if(PLANE_SMALL_TYPES.test(type)) return 'small';
+  return 'medium';
 }
 function planeIconSizeExpr(){
   const m = planeIconSize();
@@ -10402,7 +10436,12 @@ function ensurePlaneLayers(map = state.map){
         id: PLANE_LAYER, type:'symbol', source: PLANE_SOURCE,
         layout:{
           visibility:'none',
-          'icon-image': PLANE_ICON_ID,
+          'icon-image': ['match', ['coalesce', ['get','shape'], 'medium'],
+            'small',  planeIconId('small'),
+            'large',  planeIconId('large'),
+            'glider', planeIconId('glider'),
+            'heli',   planeIconId('heli'),
+            planeIconId('medium')],
           'icon-rotate': ['coalesce', ['get','track'], 0],
           'icon-rotation-alignment':'map',
           'icon-allow-overlap':true,
@@ -10507,7 +10546,7 @@ function planeDescribe(p){
 function planeFeature(p, id, lon, lat){
   return {
     type:'Feature', id: id,
-    properties:{ id, alt: p.ground ? 0 : p.alt, track: p.track },
+    properties:{ id, alt: p.ground ? 0 : p.alt, track: p.track, shape: planeShapeFor(p) },
     geometry:{type:'Point', coordinates:[lon, lat]}
   };
 }

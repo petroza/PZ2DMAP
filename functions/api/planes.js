@@ -28,6 +28,7 @@ function slim(list) {
       call: (a.flight || '').trim() || null,
       reg: a.r || null,
       type: a.t || null,
+      cat: a.category || null,
       lat: a.lat,
       lon: a.lon,
       alt: typeof a.alt_baro === 'number' ? a.alt_baro : (typeof a.alt_geom === 'number' ? a.alt_geom : null),
