@@ -10566,8 +10566,14 @@ function planeFrame(){
   if(now - s._lastDrawAt >= PLANE_DRAW_MIN_MS){
     s._lastDrawAt = now;
     const span = Math.max(1, s._nextAt - s._prevAt);
-    const mix = Math.max(0, Math.min(1, (now - s._nextAt + PLANE_POLL_MS) / (PLANE_POLL_MS)));
-    // mix jde od 0 (hned po tiku, na prevLon/prevLat) k 1 (těsně před dalším tikem).
+    // mix=1 hned po tiku (přesně na nextPos, čerstvá data), dál roste ke 2 těsně
+    // před dalším tikem — nad 1 se poloha EXTRAPOLUJE dopředu stejnou rychlostí/
+    // směrem, jakým se letadlo pohnulo mezi posledními dvěma tiky ("dead
+    // reckoning", stejná technika jako u FlightRadar24 a spol. mezi příjmy ADS-B).
+    // PŮVODNÍ CHYBA: strop byl oříznutý na 1, takže se letadlo po každém tiku
+    // zastavilo přesně na nextPos a stálo tam celých ~8 s do dalšího tiku —
+    // vypadalo to jako "teleport a zamrznutí", ne plynulý let.
+    const mix = Math.max(0, Math.min(2, (now - s._prevAt) / span));
     const feats = [];
     for(const [id, p] of s.byId){
       if(p.prevLon == null || p.nextLon == null){ p.curLon = p.nextLon; p.curLat = p.nextLat; continue; }
@@ -10829,7 +10835,10 @@ function shipFrame(){
   const now = Date.now();
   if(now - s._lastDrawAt >= SHIP_DRAW_MIN_MS){
     s._lastDrawAt = now;
-    const mix = Math.max(0, Math.min(1, (now - s._nextAt + SHIP_POLL_MS) / SHIP_POLL_MS));
+    // Stejná oprava jako u letadel (viz planeFrame) — extrapolace dopředu
+    // (mix roste přes 1 až ke 2) místo zamrznutí na nextPos mezi tiky.
+    const span = Math.max(1, s._nextAt - s._prevAt);
+    const mix = Math.max(0, Math.min(2, (now - s._prevAt) / span));
     const feats = [];
     for(const [id, p] of s.byId){
       if(p.prevLon == null || p.nextLon == null){ p.curLon = p.nextLon; p.curLat = p.nextLat; continue; }
