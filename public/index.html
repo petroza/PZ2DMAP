@@ -754,8 +754,8 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <div id="planeResults" class="sat-results"></div>
           <div id="planeSelected" class="sat-selected" style="display:none"></div>
           <label class="check" style="margin-top:10px"><input id="planeLabels" type="checkbox"> <span data-i18n="Popisky u letadel">Popisky u letadel</span></label>
-          <label data-i18n="Velikost ikony">Velikost ikony <span class="val" id="planeIconSizeVal">1×</span></label>
-          <input id="planeIconSize" type="range" min="0.5" max="2.5" step="0.1" value="1">
+          <label data-i18n="Velikost ikony">Velikost ikony <span class="val" id="planeIconSizeVal">1.6×</span></label>
+          <input id="planeIconSize" type="range" min="0.5" max="2.5" step="0.1" value="1.6">
         </div>
         <p class="hint" data-i18n="hint_plane">Živé polohy letadel z ADS-B/MLAT přijímačů (airplanes.live, komunitní síť) v okruhu ~460 km od Prahy — ČR a okolní země. Ikona ukazuje skutečný kurz letadla; barva výšku — na zemi, nízko, v hladině. Vyhledávat jde podle volacího znaku, registrace i typu. Data se aktualizují každých pár sekund.</p>
       </div>
@@ -2599,6 +2599,12 @@ const $ = id => document.getElementById(id);
 const satelliteSceneSection = $('satSection');
 const scenePane = document.querySelector('.tab-pane[data-pane="scena"]');
 if(satelliteSceneSection && scenePane) scenePane.appendChild(satelliteSceneSection);
+// Letadla a lodě jsou stejně jako družice scénická živá vrstva, ne nastavení
+// vzhledu podkladu — přesunuty na konec SCÉNA, za družice.
+const planeSceneSection = $('planeSection');
+if(planeSceneSection && scenePane) scenePane.appendChild(planeSceneSection);
+const shipSceneSection = $('shipSection');
+if(shipSceneSection && scenePane) scenePane.appendChild(shipSceneSection);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 const emptyFC = () => ({type:'FeatureCollection',features:[]});
 // Stable shared empty FC + line-string builder. Used by the route line coalescing
@@ -10344,7 +10350,7 @@ function ensurePlaneState(){
   return state.planes;
 }
 function planeEnabled(){ return !!$('planeOn')?.checked; }
-function planeIconSize(){ const v=parseFloat($('planeIconSize')?.value ?? '1'); return Number.isFinite(v) ? Math.max(0.3,Math.min(3,v)) : 1; }
+function planeIconSize(){ const v=parseFloat($('planeIconSize')?.value ?? '1.6'); return Number.isFinite(v) ? Math.max(0.3,Math.min(3,v)) : 1.6; }
 function planeLabelsOn(){ return !!$('planeLabels')?.checked; }
 // Plynulá barevná škála podle výšky (stejná myšlenka jako u OpenSky/tar1090
 // map.opensky-network.org — červená u země, přes žlutou/zelenou, po fialovou
@@ -10661,14 +10667,18 @@ function planeFrame(){
   if(now - s._lastDrawAt >= PLANE_DRAW_MIN_MS){
     s._lastDrawAt = now;
     const span = Math.max(1, s._nextAt - s._prevAt);
-    // mix=1 hned po tiku (přesně na nextPos, čerstvá data), dál roste ke 2 těsně
-    // před dalším tikem — nad 1 se poloha EXTRAPOLUJE dopředu stejnou rychlostí/
-    // směrem, jakým se letadlo pohnulo mezi posledními dvěma tiky ("dead
-    // reckoning", stejná technika jako u FlightRadar24 a spol. mezi příjmy ADS-B).
-    // PŮVODNÍ CHYBA: strop byl oříznutý na 1, takže se letadlo po každém tiku
-    // zastavilo přesně na nextPos a stálo tam celých ~8 s do dalšího tiku —
-    // vypadalo to jako "teleport a zamrznutí", ne plynulý let.
-    const mix = Math.max(0, Math.min(2, (now - s._prevAt) / span));
+    // mix roste plynule od 0 (hned po tiku, na prevPos) k 1 (těsně před dalším
+    // tikem, na nextPos) — vzdálenost mezi dvěma SKUTEČNÝMI hlášeními polohy.
+    // PŮVODNÍ CHYBA (oprava): strop byl špatně spočítaný a mix zůstával pořád
+    // na 1, takže se letadlo po tiku zastavilo a stálo ~8 s ("teleport a
+    // zamrznutí"). Krátce se zkoušelo pouštět mix i NAD 1 (extrapolace dopředu
+    // stejnou rychlostí, "dead reckoning") pro plynulost při zpožděném dalším
+    // tiku, ale to se ukázalo jako chyba samo o sobě: když se skutečná další
+    // poloha ukázala blíž (letadlo zpomalilo/zatočilo), extrapolovaný bod byl
+    // před ní a nový úsek dráhy musel jít zpátky — vypadalo to, že letadlo
+    // couvá. Mix se proto ořezává přesně na 1, žádná extrapolace za poslední
+    // skutečně přijatou polohu.
+    const mix = Math.max(0, Math.min(1, (now - s._prevAt) / span));
     const feats = [];
     for(const [id, p] of s.byId){
       if(p.prevLon == null || p.nextLon == null){ p.curLon = p.nextLon; p.curLat = p.nextLat; continue; }
@@ -10930,10 +10940,11 @@ function shipFrame(){
   const now = Date.now();
   if(now - s._lastDrawAt >= SHIP_DRAW_MIN_MS){
     s._lastDrawAt = now;
-    // Stejná oprava jako u letadel (viz planeFrame) — extrapolace dopředu
-    // (mix roste přes 1 až ke 2) místo zamrznutí na nextPos mezi tiky.
+    // Stejná logika jako u letadel (viz planeFrame) — mix 0→1 mezi dvěma
+    // skutečnými hlášeními polohy, bez extrapolace za poslední přijatý bod
+    // (ta způsobovala vizuální "couvání" lodi při zatočení/zpomalení).
     const span = Math.max(1, s._nextAt - s._prevAt);
-    const mix = Math.max(0, Math.min(2, (now - s._prevAt) / span));
+    const mix = Math.max(0, Math.min(1, (now - s._prevAt) / span));
     const feats = [];
     for(const [id, p] of s.byId){
       if(p.prevLon == null || p.nextLon == null){ p.curLon = p.nextLon; p.curLat = p.nextLat; continue; }
