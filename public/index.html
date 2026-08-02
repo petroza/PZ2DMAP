@@ -2858,12 +2858,15 @@ const PRESETS = {
   modSoft17:{land:'#f4f9fd',water:'#dfecf9',building:'#e9f1fa',park:'#eaf8f2',landcover:'#f3f8fb',landuse:'#ecf3f9',aeroway:'#f7fcfe',roadMajor:'#ffffff',roadMinor:'#fbfdff',label:'#295b80',halo:'#ffffff',boundary:'#677a8a'},
   modSoft18:{land:'#edf5fa',water:'#c1d6ea',building:'#d4e4f1',park:'#d6ecdf',landcover:'#e1eef6',landuse:'#d5e1f0',aeroway:'#eff6fb',roadMajor:'#ffffff',roadMinor:'#f5f9fc',label:'#1d486e',halo:'#ffffff',boundary:'#566879'},
   modSoft19:{land:'#e4eef7',water:'#adc3e0',building:'#c7d8e9',park:'#c7e2d6',landcover:'#d9e6f2',landuse:'#cadeeb',aeroway:'#e8f2f9',roadMajor:'#ffffff',roadMinor:'#f1f6fb',label:'#163c61',halo:'#ffffff',boundary:'#4f6071'},
-  modSoft20:{land:'#f0f7fb',water:'#c9d9ef',building:'#d8e4f2',park:'#d3eddf',landcover:'#e5eff8',landuse:'#dae6f3',aeroway:'#f2f8fd',roadMajor:'#ffffff',roadMinor:'#f6fbfe',label:'#204a71',halo:'#ffffff',boundary:'#57697b'}
+  modSoft20:{land:'#f0f7fb',water:'#c9d9ef',building:'#d8e4f2',park:'#d3eddf',landcover:'#e5eff8',landuse:'#dae6f3',aeroway:'#f2f8fd',roadMajor:'#ffffff',roadMinor:'#f6fbfe',label:'#204a71',halo:'#ffffff',boundary:'#57697b'},
+  // Matched by eye against flightradar24.com: warm muted-olive land, dusty
+  // teal-gray water, white roads on cream casing — leteckým sledovačům povědomá barevnost.
+  flightradar:{land:'#e5e2d3',water:'#aecbc9',building:'#d8d1bd',park:'#c1cc99',landcover:'#cbcfab',landuse:'#d2ccb6',aeroway:'#d9d4c1',roadMajor:'#ffffff',roadMinor:'#efeadb',label:'#39392e',halo:'#f6f3e6',boundary:'#867e64'}
 };
 
-const BUILTIN_PRESET_ORDER = ['mapycz','mapycomTuristicka','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
+const BUILTIN_PRESET_ORDER = ['mapycz','mapycomTuristicka','flightradar','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
 const BUILTIN_PRESET_LABELS = {
-  mapycz:'Mapy.cz clean', mapycomTuristicka:'Mapy.com turistická', waze:'Waze světlá', uber:'Uber dark', ct24:'ČT24', tnNovaClean:'TN Nova clean',
+  mapycz:'Mapy.cz clean', mapycomTuristicka:'Mapy.com turistická', flightradar:'FlightRadar24', waze:'Waze světlá', uber:'Uber dark', ct24:'ČT24', tnNovaClean:'TN Nova clean',
   modSoft1:'Modrá Jemná 1', modSoft7:'Modrá Jemná 7', modSoft11:'Modrá Jemná 11', modSoft16:'Modrá Jemná 16', modSoft20:'Modrá Jemná 20',
   novaBlue:'TV Modrá', novaTerrain:'TV Reliéf',
   ua:'UA', dark:'Tmavá', slate:'Slate', paper:'Paper', news:'News', sunset:'Sunset',
