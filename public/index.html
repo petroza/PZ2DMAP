@@ -10326,8 +10326,9 @@ const PLANE_LAYER = 'pz-planes-icons';
 const PLANE_SEL_SOURCE = 'pz-plane-sel';
 const PLANE_SEL_LAYER = 'pz-plane-sel';
 const PLANE_SEL_LABEL = 'pz-plane-sel-label';
+const PLANE_TRACK_SOURCE = 'pz-plane-track';
+const PLANE_TRACK_LAYER = 'pz-plane-track-line';
 const PLANE_ICON_BASE = 'pz-plane-icon-';
-const PLANE_BAND_COLOR = { ground:'#8892a4', low:'#ffb347', cruise:'#59c2ff' };
 const PLANE_POLL_MS = 8000;   // sedí s FRESH_SECONDS v /api/planes — další dotaz stejně dostane jen novější data z cache
 const PLANE_DRAW_MIN_MS = 66; // ~15 Hz — stejné poučení jako u družic (viz satFrame), víc nemá cenu
 const PLANE_API = '/api/planes'; // OpenSky states/all — globální snímek, proxy filtruje/cachuje sama
@@ -10335,42 +10336,51 @@ const PLANE_API = '/api/planes'; // OpenSky states/all — globální snímek, p
 function ensurePlaneState(){
   if(!state.planes) state.planes = {
     timer:null, raf:null, byId:new Map(), ready:false, loading:false, selected:null,
-    _mixFactor:0, _prevAt:0, _nextAt:0, _lastDrawAt:0, iconsLoaded:false
+    _mixFactor:0, _prevAt:0, _nextAt:0, _lastDrawAt:0, iconsLoaded:false, trackFetchedFor:null, trackPoints:[]
   };
   return state.planes;
 }
 function planeEnabled(){ return !!$('planeOn')?.checked; }
 function planeIconSize(){ const v=parseFloat($('planeIconSize')?.value ?? '1'); return Number.isFinite(v) ? Math.max(0.3,Math.min(3,v)) : 1; }
 function planeLabelsOn(){ return !!$('planeLabels')?.checked; }
-function planeAltBand(p){
-  if(p.ground) return 'ground';
-  if(p.alt == null) return 'low';
-  return p.alt < 10000 ? 'low' : 'cruise';
-}
+// Plynulá barevná škála podle výšky (stejná myšlenka jako u OpenSky/tar1090
+// map.opensky-network.org — červená u země, přes žlutou/zelenou, po fialovou
+// nad ~35 000 ft), použitá jak na ikonách (viz PLANE_ICON_COLOR_EXPR), tak na
+// dráze letu (viz planeTrackFeatures). MapLibre expression, ne JS funkce, ať
+// se dá přímo použít i pro 'icon-color'/'line-color'.
+const PLANE_ALT_COLOR_EXPR = ['interpolate', ['linear'], ['coalesce', ['get','alt'], 0],
+  0,     '#d32f2f',
+  1000,  '#f57c00',
+  4000,  '#fbc02d',
+  8000,  '#7cb342',
+  16000, '#26a69a',
+  24000, '#1e88e5',
+  32000, '#5e35b1',
+  40000, '#ab47bc',
+];
 function planeStatus(msg){ const el=$('planeStatus'); if(el) el.textContent = msg; }
 
-// Ikonu (assets/sys_plane.svg, černá silueta shora) je potřeba nabarvit podle
-// pásma výšky — 3 samostatné rastrové obrázky (ne SDF: silueta je plná plocha,
-// ne skutečné distance field, takže by SDF vypadalo hůř, ne líp). Musí se
-// naládovat znovu po každém 'style.load' — vlastní obrázky styl při přepnutí zahodí.
+// Ikonu (assets/sys_plane.svg, černá silueta shora) stačí jedna verze coby SDF
+// (alfa maska) — barva se pak dá měnit za běhu přes 'icon-color' (viz
+// PLANE_ALT_COLOR_EXPR), takže není potřeba předem vyrábět barevné varianty pro
+// každé pásmo výšky. Musí se nahrát znovu po každém 'style.load' — vlastní
+// obrázky styl při přepnutí zahodí.
+const PLANE_ICON_ID = PLANE_ICON_BASE + 'sdf';
 function ensurePlaneIcons(map){
-  if(!map || map.hasImage(PLANE_ICON_BASE+'cruise')) return;
+  if(!map || map.hasImage(PLANE_ICON_ID)) return;
   const img = new Image();
   img.onload = () => {
-    Object.entries(PLANE_BAND_COLOR).forEach(([band, color]) => {
-      try{
-        const c = document.createElement('canvas'); c.width=64; c.height=64;
-        const ctx = c.getContext('2d');
-        ctx.drawImage(img, 0, 0, 64, 64);
-        ctx.globalCompositeOperation = 'source-in';
-        ctx.fillStyle = color;
-        ctx.fillRect(0, 0, 64, 64);
-        const id = PLANE_ICON_BASE + band;
-        if(map.hasImage(id)) map.removeImage(id);
-        map.addImage(id, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2});
-      }catch(e){}
-    });
-    if(state.map) state.map.triggerRepaint();
+    try{
+      const c = document.createElement('canvas'); c.width=64; c.height=64;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, 64, 64);
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 64, 64);
+      if(map.hasImage(PLANE_ICON_ID)) map.removeImage(PLANE_ICON_ID);
+      map.addImage(PLANE_ICON_ID, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2, sdf:true});
+      if(state.map) state.map.triggerRepaint();
+    }catch(e){}
   };
   img.onerror = () => console.warn('Plane icon load failed');
   img.src = 'assets/sys_plane.svg';
@@ -10392,13 +10402,28 @@ function ensurePlaneLayers(map = state.map){
         id: PLANE_LAYER, type:'symbol', source: PLANE_SOURCE,
         layout:{
           visibility:'none',
-          'icon-image': ['concat', PLANE_ICON_BASE, ['get','band']],
+          'icon-image': PLANE_ICON_ID,
           'icon-rotate': ['coalesce', ['get','track'], 0],
           'icon-rotation-alignment':'map',
           'icon-allow-overlap':true,
           'icon-ignore-placement':true,
           'icon-size': planeIconSizeExpr(),
         },
+        paint:{ 'icon-color': PLANE_ALT_COLOR_EXPR },
+      });
+    }catch(e){}
+  }
+  if(!map.getSource(PLANE_TRACK_SOURCE)){ try{ map.addSource(PLANE_TRACK_SOURCE, {type:'geojson', data:empty}); }catch(e){} }
+  if(!map.getLayer(PLANE_TRACK_LAYER)){
+    try{
+      map.addLayer({
+        id: PLANE_TRACK_LAYER, type:'line', source: PLANE_TRACK_SOURCE,
+        layout:{visibility:'none', 'line-cap':'round', 'line-join':'round'},
+        // Dráha je nakreslená jako řetěz krátkých úseků (ne jedna čára), každý
+        // obarvený podle SKUTEČNÉ výšky v tom úseku — ne podle poměru vzdálenosti
+        // jako MapLibre umí přes line-gradient (to by u letu s proměnlivým
+        // stoupáním/klesáním nesedělo se skutečnou výškou v jednotlivých místech).
+        paint:{'line-color': PLANE_ALT_COLOR_EXPR, 'line-width':2.5, 'line-opacity':0.9}
       });
     }catch(e){}
   }
@@ -10441,9 +10466,38 @@ function planeSetVisibility(){
   const s = ensurePlaneState();
   const showSel = on && !!s.selected;
   safeSetLayout(PLANE_SEL_LAYER, 'visibility', showSel ? 'visible' : 'none');
-  safeSetLayout(PLANE_SEL_LABEL, 'visibility', (showSel && planeLabelsOn()) ? 'visible' : 'none');
+  // Volací znak vybraného letadla se ukazuje VŽDY (kliknutí je jasný projev
+  // zájmu) — "Popisky u letadel" má smysl až jako budoucí přepínač popisků
+  // pro VŠECHNA letadla najednou, ne pro to jedno vybrané.
+  safeSetLayout(PLANE_SEL_LABEL, 'visibility', showSel ? 'visible' : 'none');
+  safeSetLayout(PLANE_TRACK_LAYER, 'visibility', (showSel && s.trackPoints && s.trackPoints.length > 1) ? 'visible' : 'none');
   const ctl = $('planeControls'); if(ctl) ctl.style.display = on ? '' : 'none';
   if(state.map) state.map.triggerRepaint();
+}
+// Dráha letu — rozdělená na krátké úseky (2 body = 1 segment), každý s
+// vlastní vlastností `alt` (průměr obou konců), ať line-color může sledovat
+// skutečnou výšku podél letu, ne jen průměr celé trasy.
+function planeTrackFeatures(points){
+  const feats = [];
+  for(let i = 1; i < points.length; i++){
+    const a = points[i-1], b = points[i];
+    const alt = (a[2] != null && b[2] != null) ? (a[2]+b[2])/2 : (a[2] ?? b[2] ?? 0);
+    feats.push({type:'Feature', properties:{alt}, geometry:{type:'LineString', coordinates:[[a[0],a[1]],[b[0],b[1]]]}});
+  }
+  return {type:'FeatureCollection', features:feats};
+}
+async function planeLoadTrack(id){
+  const s = ensurePlaneState();
+  s.trackFetchedFor = id;
+  try{
+    const r = await fetch('/api/plane-trace?hex=' + encodeURIComponent(id), {cache:'default'});
+    const d = await r.json();
+    if(s.selected !== id || s.trackFetchedFor !== id) return; // mezitím vybráno jiné letadlo
+    s.trackPoints = Array.isArray(d.points) ? d.points : [];
+    const src = state.map?.getSource?.(PLANE_TRACK_SOURCE);
+    if(src){ try{ src.setData(planeTrackFeatures(s.trackPoints)); }catch(e){} }
+    planeSetVisibility();
+  }catch(e){ console.warn('plane track load failed', e); }
 }
 function planeApplyIconSize(){ safeSetLayout(PLANE_LAYER, 'icon-size', planeIconSizeExpr()); }
 
@@ -10453,7 +10507,7 @@ function planeDescribe(p){
 function planeFeature(p, id, lon, lat){
   return {
     type:'Feature', id: id,
-    properties:{ id, band: planeAltBand(p), track: p.track },
+    properties:{ id, alt: p.ground ? 0 : p.alt, track: p.track },
     geometry:{type:'Point', coordinates:[lon, lat]}
   };
 }
@@ -10479,8 +10533,12 @@ function planeSelect(id){
   const s = ensurePlaneState();
   if(!s.byId.has(id)) return;
   s.selected = id;
+  s.trackPoints = [];
+  const trackSrc = state.map?.getSource?.(PLANE_TRACK_SOURCE);
+  if(trackSrc){ try{ trackSrc.setData({type:'FeatureCollection', features:[]}); }catch(e){} }
   planeSetVisibility();
   planeRefreshSelected();
+  planeLoadTrack(id);
   if(s.byId.get(id)){
     const p = s.byId.get(id);
     try{ state.map.easeTo({center:[p.nextLon, p.nextLat], zoom: Math.max(state.map.getZoom(), 6), duration:700}); }catch(e){}
