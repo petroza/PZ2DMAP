@@ -10852,11 +10852,14 @@ function applyPlanes(){
 // ===========================================================================
 const SHIP_SOURCE = 'pz-ships';
 const SHIP_LAYER = 'pz-ships-icons';
+const SHIP_SHADOW_LAYER = 'pz-ships-icons-shadow';
 const SHIP_SEL_SOURCE = 'pz-ship-sel';
 const SHIP_SEL_LAYER = 'pz-ship-sel';
 const SHIP_SEL_LABEL = 'pz-ship-sel-tag';
-const SHIP_ICON_ID = 'pz-ship-icon';
-const SHIP_COLOR = '#3ddc97';
+const SHIP_LABEL_ALL = 'pz-ships-labels-all';
+const SHIP_TRACK_SOURCE = 'pz-ship-track';
+const SHIP_TRACK_LAYER = 'pz-ship-track-line';
+const SHIP_ICON_BASE = 'pz-ship-icon-';
 const SHIP_POLL_MS = 8000;
 const SHIP_DRAW_MIN_MS = 66; // stejné poučení jako u družic/letadel — víc než ~15 Hz nemá k vidění cenu
 const SHIP_API = '/api/ships';
@@ -10864,7 +10867,7 @@ const SHIP_API = '/api/ships';
 function ensureShipState(){
   if(!state.ships) state.ships = {
     timer:null, raf:null, byId:new Map(), ready:false, loading:false, selected:null,
-    _prevAt:0, _nextAt:0, _lastDrawAt:0
+    _prevAt:0, _nextAt:0, _lastDrawAt:0, trackPoints:[]
   };
   return state.ships;
 }
@@ -10873,49 +10876,86 @@ function shipIconSize(){ const v=parseFloat($('shipIconSize')?.value ?? '1'); re
 function shipLabelsOn(){ return !!$('shipLabels')?.checked; }
 function shipStatus(msg){ const el=$('shipStatus'); if(el) el.textContent = msg; }
 
-function ensureShipIcon(map){
-  if(!map || map.hasImage(SHIP_ICON_ID)) return;
-  const img = new Image();
-  img.onload = () => {
-    try{
-      const c = document.createElement('canvas'); c.width=64; c.height=64;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0, 64, 64);
-      ctx.globalCompositeOperation = 'source-in';
-      ctx.fillStyle = SHIP_COLOR;
-      ctx.fillRect(0, 0, 64, 64);
-      if(map.hasImage(SHIP_ICON_ID)) map.removeImage(SHIP_ICON_ID);
-      map.addImage(SHIP_ICON_ID, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2});
-      if(state.map) state.map.triggerRepaint();
-    }catch(e){}
-  };
-  img.onerror = () => console.warn('Ship icon load failed');
-  img.src = 'assets/sys_ship.svg';
+const SHIP_SHAPES = {
+  cargo:'assets/sys_ship_cargo.svg?v=1', tanker:'assets/sys_ship_tanker.svg?v=1',
+  passenger:'assets/sys_ship_passenger.svg?v=1', small:'assets/sys_ship_small.svg?v=1',
+  vessel:'assets/sys_ship.svg?v=1'
+};
+function shipIconId(shape){ return SHIP_ICON_BASE + shape; }
+function shipShapeFor(s){
+  const type = Number(s.type);
+  if(type >= 60 && type < 70) return 'passenger';
+  if(type >= 70 && type < 80) return 'cargo';
+  if(type >= 80 && type < 90) return 'tanker';
+  if(type === 36 || type === 37 || type === 50 || type === 52 || type === 53) return 'small';
+  return 'vessel';
 }
+function ensureShipIcons(map){
+  if(!map) return;
+  Object.entries(SHIP_SHAPES).forEach(([shape, src]) => {
+    const id = shipIconId(shape); if(map.hasImage(id)) return;
+    const img = new Image();
+    img.onload = () => {
+      try{
+        const c=document.createElement('canvas'); c.width=64; c.height=64;
+        const ctx=c.getContext('2d');
+        const iw=img.naturalWidth||img.width||1, ih=img.naturalHeight||img.height||1;
+        const scale=Math.min(64/iw,64/ih), dw=iw*scale, dh=ih*scale;
+        ctx.drawImage(img,(64-dw)/2,(64-dh)/2,dw,dh);
+        ctx.globalCompositeOperation='source-in'; ctx.fillStyle='#fff'; ctx.fillRect(0,0,64,64);
+        if(!map.hasImage(id)) map.addImage(id,ctx.getImageData(0,0,64,64),{pixelRatio:2,sdf:true});
+        map.triggerRepaint();
+      }catch(e){}
+    };
+    img.onerror=()=>console.warn('Ship icon load failed: '+src);
+    img.src=src;
+  });
+}
+const SHIP_ICON_MATCH_EXPR=['match',['coalesce',['get','shape'],'vessel'],
+  'cargo',shipIconId('cargo'),'tanker',shipIconId('tanker'),
+  'passenger',shipIconId('passenger'),'small',shipIconId('small'),shipIconId('vessel')];
+const SHIP_COLOR_EXPR=['case',['boolean',['get','selected'],false],'#ef3340','#22c7d9'];
 function shipIconSizeExpr(){
   const m = shipIconSize();
   return ['interpolate', ['linear'], ['zoom'], 3, 0.10*m, 8, 0.22*m, 12, 0.45*m, 16, 0.8*m];
 }
+function shipShadowSizeExpr(){
+  const m = shipIconSize()*1.04;
+  return ['interpolate', ['linear'], ['zoom'], 3, 0.10*m, 8, 0.22*m, 12, 0.45*m, 16, 0.8*m];
+}
 function ensureShipLayers(map = state.map){
   if(!map?.isStyleLoaded?.()) return;
-  ensureShipIcon(map);
+  ensureShipIcons(map);
   const empty = {type:'FeatureCollection', features:[]};
-  [SHIP_SOURCE, SHIP_SEL_SOURCE].forEach(id => {
+  [SHIP_SOURCE, SHIP_SEL_SOURCE, SHIP_TRACK_SOURCE].forEach(id => {
     if(!map.getSource(id)){ try{ map.addSource(id, {type:'geojson', data:empty}); }catch(e){} }
   });
+  if(!map.getLayer(SHIP_TRACK_LAYER)){
+    try{ map.addLayer({id:SHIP_TRACK_LAYER,type:'line',source:SHIP_TRACK_SOURCE,
+      layout:{visibility:'none','line-cap':'round','line-join':'round'},
+      paint:{'line-color':'#22c7d9','line-width':2.5,'line-opacity':0.9}}); }catch(e){}
+  }
+  if(!map.getLayer(SHIP_SHADOW_LAYER)){
+    try{ map.addLayer({id:SHIP_SHADOW_LAYER,type:'symbol',source:SHIP_SOURCE,
+      layout:{visibility:'none','icon-image':SHIP_ICON_MATCH_EXPR,
+        'icon-rotate':['coalesce',['get','dir'],0],'icon-rotation-alignment':'map',
+        'icon-allow-overlap':true,'icon-ignore-placement':true,'icon-size':shipShadowSizeExpr()},
+      paint:{'icon-color':'#111820','icon-opacity':0.34,'icon-translate':[1,2],'icon-translate-anchor':'viewport'}}); }catch(e){}
+  }
   if(!map.getLayer(SHIP_LAYER)){
     try{
       map.addLayer({
         id: SHIP_LAYER, type:'symbol', source: SHIP_SOURCE,
         layout:{
           visibility:'none',
-          'icon-image': SHIP_ICON_ID,
+          'icon-image': SHIP_ICON_MATCH_EXPR,
           'icon-rotate': ['coalesce', ['get','dir'], 0],
           'icon-rotation-alignment':'map',
           'icon-allow-overlap':true,
           'icon-ignore-placement':true,
           'icon-size': shipIconSizeExpr(),
         },
+        paint:{'icon-color':SHIP_COLOR_EXPR,'icon-halo-color':'rgba(8,18,22,.9)','icon-halo-width':0.8,'icon-halo-blur':0.1},
       });
     }catch(e){}
   }
@@ -10924,7 +10964,7 @@ function ensureShipLayers(map = state.map){
       map.addLayer({
         id: SHIP_SEL_LAYER, type:'circle', source: SHIP_SEL_SOURCE,
         layout:{visibility:'none'},
-        paint:{'circle-radius':11, 'circle-color':'rgba(0,0,0,0)', 'circle-stroke-width':2, 'circle-stroke-color':'#e63946'}
+        paint:{'circle-radius':0,'circle-opacity':0,'circle-stroke-width':0}
       });
     }catch(e){}
   }
@@ -10940,6 +10980,12 @@ function ensureShipLayers(map = state.map){
         paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':2}
       });
     }catch(e){}
+  }
+  if(!map.getLayer(SHIP_LABEL_ALL)){
+    try{ map.addLayer({id:SHIP_LABEL_ALL,type:'symbol',source:SHIP_SOURCE,
+      layout:{visibility:'none','text-field':['get','label'],'text-size':11,'text-font':['Noto Sans Bold'],
+        'text-offset':[0,1.2],'text-anchor':'top','text-allow-overlap':true,'text-ignore-placement':true},
+      paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':1.5}}); }catch(e){}
   }
   map.off('click', SHIP_LAYER, shipOnMapClick);
   map.on('click', SHIP_LAYER, shipOnMapClick);
@@ -10958,17 +11004,29 @@ function shipOnMapClick(e){
 function shipSetVisibility(){
   const on = shipEnabled();
   safeSetLayout(SHIP_LAYER, 'visibility', on ? 'visible' : 'none');
+  safeSetLayout(SHIP_SHADOW_LAYER, 'visibility', on ? 'visible' : 'none');
   const s = ensureShipState();
   const showSel = on && !!s.selected;
   safeSetLayout(SHIP_SEL_LAYER, 'visibility', showSel ? 'visible' : 'none');
-  safeSetLayout(SHIP_SEL_LABEL, 'visibility', (showSel && shipLabelsOn()) ? 'visible' : 'none');
+  safeSetLayout(SHIP_SEL_LABEL, 'visibility', showSel ? 'visible' : 'none');
+  safeSetLayout(SHIP_LABEL_ALL, 'visibility', (on && shipLabelsOn()) ? 'visible' : 'none');
+  safeSetLayout(SHIP_TRACK_LAYER, 'visibility', (showSel && s.trackPoints.length > 1) ? 'visible' : 'none');
   const ctl = $('shipControls'); if(ctl) ctl.style.display = on ? '' : 'none';
   if(state.map) state.map.triggerRepaint();
 }
-function shipApplyIconSize(){ safeSetLayout(SHIP_LAYER, 'icon-size', shipIconSizeExpr()); }
+function shipApplyIconSize(){
+  safeSetLayout(SHIP_LAYER, 'icon-size', shipIconSizeExpr());
+  safeSetLayout(SHIP_SHADOW_LAYER, 'icon-size', shipShadowSizeExpr());
+}
 function shipDescribe(s){ return s.name || ('MMSI ' + s.mmsi); }
+function shipTypeLabel(s){
+  const shape=shipShapeFor(s);
+  return {cargo:'Nákladní loď',tanker:'Tanker',passenger:'Osobní loď',small:'Malé plavidlo',vessel:'Plavidlo'}[shape];
+}
 function shipFeature(s, id, lon, lat){
-  return { type:'Feature', id, properties:{ id, dir: s.heading != null ? s.heading : s.cog }, geometry:{type:'Point', coordinates:[lon, lat]} };
+  return { type:'Feature', id, properties:{ id, dir:s.heading!=null?s.heading:s.cog,
+    shape:shipShapeFor(s), type:s.type??0, selected:ensureShipState().selected===id,
+    label:shipDescribe(s) }, geometry:{type:'Point', coordinates:[lon, lat]} };
 }
 function shipRenderResults(query){
   const s = ensureShipState();
@@ -10978,24 +11036,35 @@ function shipRenderResults(query){
   const hits = [];
   for(const [id, p] of s.byId){
     if(hits.length >= 40) break;
-    const hay = [p.name, p.mmsi].filter(Boolean).join(' ').toLowerCase();
+    const hay = [p.name,p.mmsi,p.callSign,p.destination,shipTypeLabel(p)].filter(Boolean).join(' ').toLowerCase();
     if(hay.includes(q)) hits.push([id, p]);
   }
   if(!hits.length){ box.innerHTML = `<div class="small" style="padding:6px 2px;color:var(--tx3)">${escapeHtml(t('Nic nenalezeno.'))}</div>`; return; }
   box.innerHTML = hits.map(([id, p]) => {
     const sog = p.sog != null ? Math.round(p.sog) + ' kt' : '?';
     return `<button type="button" class="sat-result" data-id="${escapeHtml(id)}">${escapeHtml(shipDescribe(p))}`
-      + `<span class="small">MMSI ${escapeHtml(p.mmsi)} · ${sog}</span></button>`;
+      + `<span class="small">${escapeHtml(shipTypeLabel(p))} · MMSI ${escapeHtml(p.mmsi)} · ${sog}</span></button>`;
   }).join('');
 }
 function shipSelect(id){
   const s = ensureShipState();
   if(!s.byId.has(id)) return;
   s.selected = id;
+  const p = s.byId.get(id);
+  s.trackPoints = [[p.nextLon,p.nextLat]];
+  shipUpdateTrack();
   shipSetVisibility();
   shipRefreshSelected();
-  const p = s.byId.get(id);
   try{ state.map.easeTo({center:[p.nextLon, p.nextLat], zoom: Math.max(state.map.getZoom(), 8), duration:700}); }catch(e){}
+}
+function shipUpdateTrack(){
+  const s=ensureShipState(), src=state.map?.getSource?.(SHIP_TRACK_SOURCE);
+  if(!src) return;
+  const coords=s.trackPoints.slice();
+  const data=coords.length>1
+    ? {type:'FeatureCollection',features:[{type:'Feature',properties:{},geometry:{type:'LineString',coordinates:coords}}]}
+    : {type:'FeatureCollection',features:[]};
+  try{ src.setData(data); }catch(e){}
 }
 function shipRefreshSelected(){
   const s = ensureShipState();
@@ -11019,8 +11088,9 @@ function shipRefreshSelected(){
     box.style.display = '';
     const sog = p.sog != null ? Math.round(p.sog) + ' kt' : '?';
     const cog = p.cog != null ? Math.round(p.cog)+'°' : '?';
-    box.innerHTML = `<b>${escapeHtml(label)}</b><br><span class="small">MMSI ${escapeHtml(p.mmsi)}<br>`
-      + `${sog} · kurz ${cog}<br>${lat.toFixed(2)}°, ${lon.toFixed(2)}°</span>`;
+    box.innerHTML = `<b>${escapeHtml(label)}</b><br><span class="small">${escapeHtml(shipTypeLabel(p))} · MMSI ${escapeHtml(p.mmsi)}`
+      + `${p.callSign?' · '+escapeHtml(p.callSign):''}<br>${sog} · kurz ${cog}`
+      + `${p.destination?'<br>Cíl: '+escapeHtml(p.destination):''}<br>${lat.toFixed(2)}°, ${lon.toFixed(2)}°</span>`;
   }
 }
 async function shipTick(){
@@ -11036,6 +11106,7 @@ async function shipTick(){
       s.ready = true; s.loading = false;
       return;
     }
+    if(d.error && !(d.items || []).length) throw new Error(d.error);
     const now = Date.now();
     const seen = new Set();
     (d.items || []).forEach(p => {
@@ -11054,7 +11125,17 @@ async function shipTick(){
     s._prevAt = s._nextAt || now; s._nextAt = now;
     s.ready = true;
     shipStatus(t('Lodí:') + ' ' + s.byId.size.toLocaleString('cs-CZ'));
-    if(s.selected && !s.byId.has(s.selected)) s.selected = null;
+    if(s.selected && !s.byId.has(s.selected)){
+      s.selected = null; s.trackPoints = []; shipUpdateTrack();
+    }else if(s.selected){
+      const p=s.byId.get(s.selected), last=s.trackPoints[s.trackPoints.length-1];
+      if(p && (!last || Math.abs(last[0]-p.lon)>0.00005 || Math.abs(last[1]-p.lat)>0.00005)){
+        s.trackPoints.push([p.lon,p.lat]);
+        if(s.trackPoints.length>180) s.trackPoints.splice(0,s.trackPoints.length-180);
+        shipUpdateTrack();
+      }
+    }
+    shipSetVisibility();
     shipRenderResults($('shipSearch')?.value || '');
   }catch(e){
     shipStatus(t('Data lodí se nepodařilo načíst.'));
