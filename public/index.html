@@ -10876,10 +10876,13 @@ function shipIconSize(){ const v=parseFloat($('shipIconSize')?.value ?? '1'); re
 function shipLabelsOn(){ return !!$('shipLabels')?.checked; }
 function shipStatus(msg){ const el=$('shipStatus'); if(el) el.textContent = msg; }
 
+// Na mapě používáme pro všechny typy jeden jednoduchý směrový klín. Typ lodi
+// zůstává dostupný ve vyhledávání a detailu; mapa je díky tomu přehledná i při
+// tisících současně zobrazených plavidel.
 const SHIP_SHAPES = {
-  cargo:'assets/sys_ship_cargo.svg?v=1', tanker:'assets/sys_ship_tanker.svg?v=1',
-  passenger:'assets/sys_ship_passenger.svg?v=1', small:'assets/sys_ship_small.svg?v=1',
-  vessel:'assets/sys_ship.svg?v=1'
+  cargo:'assets/sys_ship_arrow.svg?v=1', tanker:'assets/sys_ship_arrow.svg?v=1',
+  passenger:'assets/sys_ship_arrow.svg?v=1', small:'assets/sys_ship_arrow.svg?v=1',
+  vessel:'assets/sys_ship_arrow.svg?v=1'
 };
 function shipIconId(shape){ return SHIP_ICON_BASE + shape; }
 function shipShapeFor(s){
@@ -10917,11 +10920,11 @@ const SHIP_ICON_MATCH_EXPR=['match',['coalesce',['get','shape'],'vessel'],
 const SHIP_COLOR_EXPR=['case',['boolean',['get','selected'],false],'#ef3340','#22c7d9'];
 function shipIconSizeExpr(){
   const m = shipIconSize();
-  return ['interpolate', ['linear'], ['zoom'], 3, 0.10*m, 8, 0.22*m, 12, 0.45*m, 16, 0.8*m];
+  return ['interpolate', ['linear'], ['zoom'], 3, 0.16*m, 8, 0.34*m, 12, 0.62*m, 16, 1.0*m];
 }
 function shipShadowSizeExpr(){
   const m = shipIconSize()*1.04;
-  return ['interpolate', ['linear'], ['zoom'], 3, 0.10*m, 8, 0.22*m, 12, 0.45*m, 16, 0.8*m];
+  return ['interpolate', ['linear'], ['zoom'], 3, 0.16*m, 8, 0.34*m, 12, 0.62*m, 16, 1.0*m];
 }
 function ensureShipLayers(map = state.map){
   if(!map?.isStyleLoaded?.()) return;
