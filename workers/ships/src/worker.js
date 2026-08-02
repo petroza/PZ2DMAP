@@ -4,7 +4,8 @@ const RECONNECT_MIN_MS=5000, STALE_SHIP_MS=20*60*1000, ALARM_INTERVAL_MS=15000;
 export class ShipsSocket {
   constructor(state,env){
     this.state=state; this.env=env; this.ships=new Map(); this.ws=null;
-    this.lastConnectAttempt=0; this.lastMessageAt=0; this.connectError=null;
+    this.lastConnectAttempt=0; this.lastMessageAt=0; this.openedAt=0; this.subscriptionSent=false;
+    this.messageTypes={}; this.lastShape=null; this.connectError=null;
   }
   async ensureAlarm(){
     if(await this.state.storage.getAlarm()==null) await this.state.storage.setAlarm(Date.now()+ALARM_INTERVAL_MS);
@@ -18,20 +19,34 @@ export class ShipsSocket {
       // Cloudflare podporuje odchozí spojení standardním WebSocket klientem.
       // Starší varianta přes fetch(wss://...) končila chybou ještě před handshake.
       const ws=new WebSocket(AIS_WS_URL);
+      ws.binaryType='arraybuffer';
       this.ws=ws; this.connectError=null;
       ws.addEventListener('message',ev=>this.onMessage(ev));
       ws.addEventListener('close',()=>{if(this.ws===ws)this.ws=null;});
       ws.addEventListener('error',()=>{if(this.ws===ws)this.ws=null;});
-      ws.addEventListener('open',()=>ws.send(JSON.stringify({APIKey:this.env.AISSTREAM_KEY,
-        BoundingBoxes:[[[-90,-180],[90,180]]],
-        FilterMessageTypes:['PositionReport','StandardClassBPositionReport','ExtendedClassBPositionReport','StaticDataReport','ShipStaticData']})));
+      ws.addEventListener('open',()=>{
+        this.openedAt=Date.now();
+        ws.send(JSON.stringify({APIKey:this.env.AISSTREAM_KEY,BoundingBoxes:[[[-90,-180],[90,180]]],
+          FilterMessageTypes:['PositionReport','StandardClassBPositionReport','ExtendedClassBPositionReport','StaticDataReport','ShipStaticData']}));
+        this.subscriptionSent=true;
+      });
     }catch(e){this.connectError=String(e);this.ws=null;}
   }
-  onMessage(ev){
+  async onMessage(ev){
     this.lastMessageAt=Date.now();
-    let d; try{d=JSON.parse(ev.data);}catch(e){return;}
-    if(d.error){this.connectError=String(d.error);return;}
-    const meta=d.MetaData||{}, payload=(d.Message&&d.Message[d.MessageType])||{};
+    let raw=ev.data;
+    try{
+      if(raw instanceof ArrayBuffer) raw=new TextDecoder().decode(raw);
+      else if(ArrayBuffer.isView(raw)) raw=new TextDecoder().decode(raw);
+      else if(raw && typeof raw.text==='function') raw=await raw.text();
+    }catch(e){return;}
+    let d; try{d=JSON.parse(raw);}catch(e){return;}
+    if(d.error){this.connectError=String(d.error);try{this.ws?.close(1000,'subscription error');}catch(e){}return;}
+    const msgType=d.MessageType||d.messageType||'unknown';
+    this.messageTypes[msgType]=(this.messageTypes[msgType]||0)+1;
+    const meta=d.MetaData||d.Metadata||d.metadata||{};
+    const payload=(d.Message&&d.Message[msgType])||(d.message&&d.message[msgType])||{};
+    this.lastShape={top:Object.keys(d).slice(0,12),meta:Object.keys(meta).slice(0,18),payload:Object.keys(payload).slice(0,24)};
     const reportA=payload.ReportA||{}, reportB=payload.ReportB||{};
     const mmsi=meta.MMSI??payload.UserID??reportA.UserID??reportB.UserID;
     if(mmsi==null)return;
@@ -61,7 +76,9 @@ export class ShipsSocket {
   }
   async fetch(){
     await this.ensureAlarm(); if(!this.ws&&!this.connectError)this.connect(); this.pruneStale();
-    return new Response(JSON.stringify({t:Date.now(),connected:!!this.ws,error:this.ws?null:this.connectError,
+    return new Response(JSON.stringify({t:Date.now(),connected:this.ws?.readyState===1,readyState:this.ws?.readyState??null,
+      openedAt:this.openedAt,lastMessageAt:this.lastMessageAt,subscriptionSent:this.subscriptionSent,error:this.connectError,
+      messageTypes:this.messageTypes,lastShape:this.lastShape,
       items:[...this.ships.values()].filter(s=>typeof s.lat==='number'&&typeof s.lon==='number')}),
       {headers:{'Content-Type':'application/json; charset=utf-8'}});
   }
