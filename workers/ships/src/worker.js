@@ -14,20 +14,23 @@ export class ShipsSocket {
     if(this.ws){ try{this.ws.close();}catch(e){} this.ws=null; }
     const now=Date.now(); if(now-this.lastConnectAttempt<RECONNECT_MIN_MS) return;
     this.lastConnectAttempt=now;
-    fetch(AIS_WS_URL,{headers:{Upgrade:'websocket'}}).then(r=>{
-      const ws=r.webSocket;
-      if(!ws){ this.connectError='aisstream.io neposkytl websocket (HTTP '+r.status+')'; return; }
-      ws.accept(); this.ws=ws; this.connectError=null;
+    try{
+      // Cloudflare podporuje odchozí spojení standardním WebSocket klientem.
+      // Starší varianta přes fetch(wss://...) končila chybou ještě před handshake.
+      const ws=new WebSocket(AIS_WS_URL);
+      this.ws=ws; this.connectError=null;
       ws.addEventListener('message',ev=>this.onMessage(ev));
       ws.addEventListener('close',()=>{if(this.ws===ws)this.ws=null;});
       ws.addEventListener('error',()=>{if(this.ws===ws)this.ws=null;});
-      ws.send(JSON.stringify({APIKey:this.env.AISSTREAM_KEY,BoundingBoxes:[[[-90,-180],[90,180]]],
-        FilterMessageTypes:['PositionReport','StandardClassBPositionReport','ExtendedClassBPositionReport','StaticDataReport','ShipStaticData']}));
-    }).catch(e=>{this.connectError=String(e);this.ws=null;});
+      ws.addEventListener('open',()=>ws.send(JSON.stringify({APIKey:this.env.AISSTREAM_KEY,
+        BoundingBoxes:[[[-90,-180],[90,180]]],
+        FilterMessageTypes:['PositionReport','StandardClassBPositionReport','ExtendedClassBPositionReport','StaticDataReport','ShipStaticData']})));
+    }catch(e){this.connectError=String(e);this.ws=null;}
   }
   onMessage(ev){
     this.lastMessageAt=Date.now();
     let d; try{d=JSON.parse(ev.data);}catch(e){return;}
+    if(d.error){this.connectError=String(d.error);return;}
     const meta=d.MetaData||{}, payload=(d.Message&&d.Message[d.MessageType])||{};
     const reportA=payload.ReportA||{}, reportB=payload.ReportB||{};
     const mmsi=meta.MMSI??payload.UserID??reportA.UserID??reportB.UserID;
