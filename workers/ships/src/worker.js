@@ -1,5 +1,9 @@
 const AIS_WS_URL='wss://stream.aisstream.io/v0/stream';
 const RECONNECT_MIN_MS=5000, STALE_SHIP_MS=20*60*1000, ALARM_INTERVAL_MS=15000;
+// Bezplatná Pages proxy má omezený CPU čas pro JSON parse/stringify. Při
+// celosvětovém provozu může AIS zásobník narůst nad 35 tisíc plavidel, proto
+// ven posíláme nejvýše 15 tisíc nejčerstvějších poloh.
+const MAX_PUBLIC_SHIPS=15000;
 
 export class ShipsSocket {
   constructor(state,env){
@@ -71,8 +75,11 @@ export class ShipsSocket {
   }
   async fetch(){
     await this.ensureAlarm(); if(!this.ws&&!this.connectError)this.connect(); this.pruneStale();
+    const items=[...this.ships.values()]
+      .filter(s=>typeof s.lat==='number'&&typeof s.lon==='number')
+      .sort((a,b)=>b.t-a.t).slice(0,MAX_PUBLIC_SHIPS);
     return new Response(JSON.stringify({t:Date.now(),connected:this.ws?.readyState===1,error:this.connectError,
-      items:[...this.ships.values()].filter(s=>typeof s.lat==='number'&&typeof s.lon==='number')}),
+      items}),
       {headers:{'Content-Type':'application/json; charset=utf-8'}});
   }
 }
