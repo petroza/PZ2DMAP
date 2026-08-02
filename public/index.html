@@ -757,7 +757,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <label data-i18n="Velikost ikony">Velikost ikony <span class="val" id="planeIconSizeVal">1×</span></label>
           <input id="planeIconSize" type="range" min="0.5" max="2.5" step="0.1" value="1">
         </div>
-        <p class="hint" data-i18n="hint_plane">Živé polohy letadel z celého světa (OpenSky Network, ADS-B/MLAT přijímače). Ikona ukazuje skutečný kurz letadla; barva výšku — na zemi, nízko, v hladině. Vyhledávat jde podle volacího znaku. Data se aktualizují každých pár sekund.</p>
+        <p class="hint" data-i18n="hint_plane">Živé polohy letadel z ADS-B/MLAT přijímačů (airplanes.live, komunitní síť) v okruhu ~460 km od Prahy — ČR a okolní země. Ikona ukazuje skutečný kurz letadla; barva výšku — na zemi, nízko, v hladině. Vyhledávat jde podle volacího znaku, registrace i typu. Data se aktualizují každých pár sekund.</p>
       </div>
       <div class="section" id="shipSection">
         <h3 data-i18n="Lodní doprava v reálném čase">Lodní doprava v reálném čase</h3>
@@ -10524,11 +10524,6 @@ async function planeTick(){
     const r = await fetch(PLANE_API, {cache:'default'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const d = await r.json();
-    if(d.notConfigured){
-      planeStatus(t('Zdroj letadel zatím není nastavený (chybí přihlašovací údaje OpenSky).'));
-      s.ready = true; s.loading = false;
-      return;
-    }
     const now = Date.now();
     const seen = new Set();
     (d.items || []).forEach(p => {
