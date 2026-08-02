@@ -10394,7 +10394,7 @@ function planeShadowIconId(shape){ return PLANE_ICON_BASE + shape + '-shadow'; }
 // hraně plátna a stín by měl ostrý okraj místo měkkého přechodu. Poměr
 // plátno/obsah (SHADOW_CANVAS/64) se pak musí vykompenzovat v icon-size
 // (viz planeShadowSizeExpr), jinak by stín vycházel menší než ostré ikony.
-const SHADOW_CANVAS = 96, SHADOW_PAD = 16, SHADOW_BLUR_PX = 4;
+const SHADOW_CANVAS = 104, SHADOW_PAD = 20, SHADOW_BLUR_PX = 5;
 function ensurePlaneIcons(map){
   if(!map) return;
   Object.entries(PLANE_SHAPES).forEach(([shape, src]) => {
@@ -10423,10 +10423,19 @@ function ensurePlaneIcons(map){
           // odsazením → pouze rozmazaná černá alfa, žádné SDF (stín se
           // nepřebarvuje za běhu, je pořád černý, jen s nastavitelnou
           // průhledností přes icon-opacity).
+          // `c` je kvůli SDF záměrně bílá silueta. Nejdřív z ní proto
+          // vytvořit skutečně ČERNOU masku; pouhé rozmazání `c` by vyrobilo
+          // bílý stín, který na světlých mapách prakticky není vidět.
+          const mask = document.createElement('canvas'); mask.width = 64; mask.height = 64;
+          const mctx = mask.getContext('2d');
+          mctx.drawImage(c, 0, 0);
+          mctx.globalCompositeOperation = 'source-in';
+          mctx.fillStyle = '#000000';
+          mctx.fillRect(0, 0, 64, 64);
           const sc = document.createElement('canvas'); sc.width = SHADOW_CANVAS; sc.height = SHADOW_CANVAS;
           const sctx = sc.getContext('2d');
           sctx.filter = `blur(${SHADOW_BLUR_PX}px)`;
-          sctx.drawImage(c, SHADOW_PAD, SHADOW_PAD, 64, 64);
+          sctx.drawImage(mask, SHADOW_PAD, SHADOW_PAD, 64, 64);
           sctx.filter = 'none';
           map.addImage(shadowId, sctx.getImageData(0, 0, SHADOW_CANVAS, SHADOW_CANVAS), {pixelRatio:2, sdf:false});
         }
@@ -10506,7 +10515,7 @@ function ensurePlaneLayers(map = state.map){
         // Ikona je předrozmazaná (canvas blur, viz ensurePlaneIcons) a napevno
         // černá — sdf:false, takže icon-color by se ignorovalo, síla stínu se
         // řídí jen icon-opacity.
-        paint:{ 'icon-opacity':0.42, 'icon-translate':[2,4], 'icon-translate-anchor':'viewport' },
+        paint:{ 'icon-opacity':0.52, 'icon-translate':[3,5], 'icon-translate-anchor':'viewport' },
       });
     }catch(e){}
   }
