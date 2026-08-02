@@ -294,9 +294,9 @@ input[type=color]:hover{border-color:var(--accent)}
 .endpoint-shape .t-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .route-dot.dot-wp{background:var(--yellow);width:22px;height:22px;font-size:10px;border-width:1.5px}
 
-.animated-marker{position:absolute;pointer-events:none;display:flex;align-items:center;justify-content:center;transform-origin:center center;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+.animated-marker{position:absolute;pointer-events:none;display:flex;align-items:center;justify-content:center;transform-origin:center center;filter:drop-shadow(0 2px 2px rgba(0,0,0,.48)) drop-shadow(0 6px 8px rgba(0,0,0,.34))}
 .animated-marker svg,.animated-marker img{display:block}
-.animated-marker.inverted{filter:invert(1) hue-rotate(180deg)}
+.animated-marker.inverted{filter:invert(1) hue-rotate(180deg) drop-shadow(0 2px 2px rgba(255,255,255,.28)) drop-shadow(0 6px 8px rgba(0,0,0,.38))}
 .export-frame{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:40;border:2px solid rgba(255,212,0,.95);box-shadow:0 0 0 9999px rgba(0,0,0,.12),0 0 0 1px rgba(10,15,22,.8) inset;pointer-events:none;border-radius:2px}
 .export-frame::before{content:attr(data-label);position:absolute;left:0;top:-24px;background:rgba(11,14,20,.92);border:1px solid var(--border);color:var(--tx1);font-size:11px;padding:4px 8px;border-radius:999px;white-space:nowrap}
 .export-frame.hidden{display:none}
@@ -10506,7 +10506,7 @@ function ensurePlaneLayers(map = state.map){
         // Ikona je předrozmazaná (canvas blur, viz ensurePlaneIcons) a napevno
         // černá — sdf:false, takže icon-color by se ignorovalo, síla stínu se
         // řídí jen icon-opacity.
-        paint:{ 'icon-opacity':0.35, 'icon-translate':[2,3], 'icon-translate-anchor':'viewport' },
+        paint:{ 'icon-opacity':0.42, 'icon-translate':[2,4], 'icon-translate-anchor':'viewport' },
       });
     }catch(e){}
   }
@@ -10523,7 +10523,14 @@ function ensurePlaneLayers(map = state.map){
           'icon-ignore-placement':true,
           'icon-size': planeIconSizeExpr(),
         },
-        paint:{ 'icon-color': PLANE_ALT_COLOR_EXPR },
+        paint:{
+          'icon-color': PLANE_ALT_COLOR_EXPR,
+          // Jemný světlý lem oddělí siluetu od tmavých částí satelitní mapy;
+          // vlastní měkký vržený stín zůstává v samostatné vrstvě pod ikonou.
+          'icon-halo-color':'rgba(255,255,255,.42)',
+          'icon-halo-width':0.8,
+          'icon-halo-blur':0.35
+        },
       });
     }catch(e){}
   }
