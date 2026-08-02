@@ -2887,6 +2887,7 @@ const BUILTIN_PRESET_STYLE_OVERRIDES = {
   // Tourist maps lean on terrain and water rather than traffic, so rivers/rail stay on,
   // roads are drawn a touch thinner and buildings sit back.
   mapycomTuristicka:{ranges:{majorWidth:'1.15',minorWidth:'0.9',buildingOpacity:'0.55',boundaryOpacity:'1',boundaryWidth:'1.4'},visibility:{showBoundaries:true,showWaterways:true,showRailways:true,showLandcover:true,showParks:true}},
+  flightradar:{ranges:{majorWidth:'1.05',minorWidth:'0.75',buildingOpacity:'0.42',boundaryOpacity:'1',boundaryWidth:'1.8'},visibility:{showBoundaries:true,showLandcover:true,showParks:true,showWaterways:true,showRailways:false}},
   waze:{ranges:{majorWidth:'1.45',minorWidth:'1.05',buildingOpacity:'0.70',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
   uber:{ranges:{majorWidth:'1.5',minorWidth:'1.05',buildingOpacity:'0.68',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
   ct24:{ranges:{majorWidth:'1.3',minorWidth:'1.0',buildingOpacity:'0.72',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
@@ -10372,6 +10373,12 @@ const PLANE_ALT_COLOR_EXPR = ['interpolate', ['linear'], ['coalesce', ['get','al
   32000, '#5e35b1',
   40000, '#ab47bc',
 ];
+// Přehledný režim jako u leteckých radarů: všechna běžná letadla jsou žlutá,
+// právě vybrané letadlo se v téže vrstvě přebarví červeně.
+const PLANE_ICON_COLOR_EXPR = ['case',
+  ['boolean', ['get','selected'], false], '#ef3340',
+  '#ffd400'
+];
 function planeStatus(msg){ const el=$('planeStatus'); if(el) el.textContent = msg; }
 
 // Tvar ikony podle typu letadla (viz planeShapeFor) — pět původních siluet
@@ -10533,7 +10540,7 @@ function ensurePlaneLayers(map = state.map){
           'icon-size': planeIconSizeExpr(),
         },
         paint:{
-          'icon-color': PLANE_ALT_COLOR_EXPR,
+          'icon-color': PLANE_ICON_COLOR_EXPR,
           // Jemný světlý lem oddělí siluetu od tmavých částí satelitní mapy;
           // vlastní měkký vržený stín zůstává v samostatné vrstvě pod ikonou.
           'icon-halo-color':'rgba(255,255,255,.42)',
@@ -10562,7 +10569,9 @@ function ensurePlaneLayers(map = state.map){
       map.addLayer({
         id: PLANE_SEL_LAYER, type:'circle', source: PLANE_SEL_SOURCE,
         layout:{visibility:'none'},
-        paint:{'circle-radius':11, 'circle-color':'rgba(0,0,0,0)', 'circle-stroke-width':2, 'circle-stroke-color':'#e63946'}
+        // Výběr už signalizuje přímo červená silueta letadla. Pomocný bod
+        // zůstává jen jako kotva popisku a nesmí ikonu překrývat kroužkem.
+        paint:{'circle-radius':0, 'circle-opacity':0, 'circle-stroke-width':0}
       });
     }catch(e){}
   }
@@ -10663,9 +10672,10 @@ function planeDescribe(p){
   return p.call || p.reg || p.id;
 }
 function planeFeature(p, id, lon, lat){
+  const selected = ensurePlaneState().selected === id;
   return {
     type:'Feature', id: id,
-    properties:{ id, alt: p.ground ? 0 : p.alt, track: p.track, shape: planeShapeFor(p), label: planeDescribe(p) },
+    properties:{ id, alt: p.ground ? 0 : p.alt, track: p.track, shape: planeShapeFor(p), label: planeDescribe(p), selected },
     geometry:{type:'Point', coordinates:[lon, lat]}
   };
 }
