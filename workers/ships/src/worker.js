@@ -4,8 +4,7 @@ const RECONNECT_MIN_MS=5000, STALE_SHIP_MS=20*60*1000, ALARM_INTERVAL_MS=15000;
 export class ShipsSocket {
   constructor(state,env){
     this.state=state; this.env=env; this.ships=new Map(); this.ws=null;
-    this.lastConnectAttempt=0; this.lastMessageAt=0; this.openedAt=0; this.subscriptionSent=false;
-    this.messageTypes={}; this.lastShape=null; this.connectError=null;
+    this.lastConnectAttempt=0; this.lastMessageAt=0; this.connectError=null;
   }
   async ensureAlarm(){
     if(await this.state.storage.getAlarm()==null) await this.state.storage.setAlarm(Date.now()+ALARM_INTERVAL_MS);
@@ -25,10 +24,8 @@ export class ShipsSocket {
       ws.addEventListener('close',()=>{if(this.ws===ws)this.ws=null;});
       ws.addEventListener('error',()=>{if(this.ws===ws)this.ws=null;});
       ws.addEventListener('open',()=>{
-        this.openedAt=Date.now();
         ws.send(JSON.stringify({APIKey:this.env.AISSTREAM_KEY,BoundingBoxes:[[[-90,-180],[90,180]]],
           FilterMessageTypes:['PositionReport','StandardClassBPositionReport','ExtendedClassBPositionReport','StaticDataReport','ShipStaticData']}));
-        this.subscriptionSent=true;
       });
     }catch(e){this.connectError=String(e);this.ws=null;}
   }
@@ -43,10 +40,8 @@ export class ShipsSocket {
     let d; try{d=JSON.parse(raw);}catch(e){return;}
     if(d.error){this.connectError=String(d.error);try{this.ws?.close(1000,'subscription error');}catch(e){}return;}
     const msgType=d.MessageType||d.messageType||'unknown';
-    this.messageTypes[msgType]=(this.messageTypes[msgType]||0)+1;
     const meta=d.MetaData||d.Metadata||d.metadata||{};
     const payload=(d.Message&&d.Message[msgType])||(d.message&&d.message[msgType])||{};
-    this.lastShape={top:Object.keys(d).slice(0,12),meta:Object.keys(meta).slice(0,18),payload:Object.keys(payload).slice(0,24)};
     const reportA=payload.ReportA||{}, reportB=payload.ReportB||{};
     const mmsi=meta.MMSI??payload.UserID??reportA.UserID??reportB.UserID;
     if(mmsi==null)return;
@@ -76,9 +71,7 @@ export class ShipsSocket {
   }
   async fetch(){
     await this.ensureAlarm(); if(!this.ws&&!this.connectError)this.connect(); this.pruneStale();
-    return new Response(JSON.stringify({t:Date.now(),connected:this.ws?.readyState===1,readyState:this.ws?.readyState??null,
-      openedAt:this.openedAt,lastMessageAt:this.lastMessageAt,subscriptionSent:this.subscriptionSent,error:this.connectError,
-      messageTypes:this.messageTypes,lastShape:this.lastShape,
+    return new Response(JSON.stringify({t:Date.now(),connected:this.ws?.readyState===1,error:this.connectError,
       items:[...this.ships.values()].filter(s=>typeof s.lat==='number'&&typeof s.lon==='number')}),
       {headers:{'Content-Type':'application/json; charset=utf-8'}});
   }
