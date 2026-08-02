@@ -2867,7 +2867,7 @@ const PRESETS = {
   modSoft20:{land:'#f0f7fb',water:'#c9d9ef',building:'#d8e4f2',park:'#d3eddf',landcover:'#e5eff8',landuse:'#dae6f3',aeroway:'#f2f8fd',roadMajor:'#ffffff',roadMinor:'#f6fbfe',label:'#204a71',halo:'#ffffff',boundary:'#57697b'},
   // Matched by eye against flightradar24.com: warm muted-olive land, dusty
   // teal-gray water, white roads on cream casing — leteckým sledovačům povědomá barevnost.
-  flightradar:{land:'#e5e2d3',water:'#aecbc9',building:'#d8d1bd',park:'#c1cc99',landcover:'#cbcfab',landuse:'#d2ccb6',aeroway:'#d9d4c1',roadMajor:'#ffffff',roadMinor:'#efeadb',label:'#39392e',halo:'#f6f3e6',boundary:'#867e64'}
+  flightradar:{land:'#879987',water:'#779b9c',building:'#90988e',park:'#78977b',landcover:'#819b83',landuse:'#8d9788',aeroway:'#90958a',roadMajor:'#647182',roadMinor:'#849087',motorway:'#566a82',primary:'#68778a',secondary:'#7b8584',railway:'#69736c',label:'#23282b',halo:'#aab6aa',boundary:'#202828'}
 };
 
 const BUILTIN_PRESET_ORDER = ['mapycz','mapycomTuristicka','flightradar','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
@@ -10401,7 +10401,7 @@ function planeShadowIconId(shape){ return PLANE_ICON_BASE + shape + '-shadow'; }
 // hraně plátna a stín by měl ostrý okraj místo měkkého přechodu. Poměr
 // plátno/obsah (SHADOW_CANVAS/64) se pak musí vykompenzovat v icon-size
 // (viz planeShadowSizeExpr), jinak by stín vycházel menší než ostré ikony.
-const SHADOW_CANVAS = 104, SHADOW_PAD = 20, SHADOW_BLUR_PX = 5;
+const SHADOW_CANVAS = 72, SHADOW_PAD = 4, SHADOW_BLUR_PX = 2;
 function ensurePlaneIcons(map){
   if(!map) return;
   Object.entries(PLANE_SHAPES).forEach(([shape, src]) => {
@@ -10481,10 +10481,10 @@ function planeIconSizeExpr(){
 }
 // Stínová ikona má kolem obrysu odsazení kvůli rozostření (viz SHADOW_PAD u
 // ensurePlaneIcons), takže samotný obrys je menší vůči celému plátnu než u
-// ostré ikony — SHADOW_CANVAS/64 dorovnává velikost zpátky a *1.15 dělá stín
-// jen mírně větší než ostrou ikonu nahoře.
+// ostré ikony — SHADOW_CANVAS/64 dorovnává velikost zpátky a *1.02 nechává
+// jen velmi jemný přesah, podobný lemu na leteckých radarech.
 function planeShadowSizeExpr(){
-  const m = planeIconSize() * 1.15 * (SHADOW_CANVAS / 64);
+  const m = planeIconSize() * 1.02 * (SHADOW_CANVAS / 64);
   return ['interpolate', ['linear'], ['zoom'], 1, 0.12*m, 5, 0.22*m, 9, 0.4*m, 13, 0.65*m];
 }
 const PLANE_ICON_MATCH_EXPR = ['match', ['coalesce', ['get','shape'], 'medium'],
@@ -10522,7 +10522,7 @@ function ensurePlaneLayers(map = state.map){
         // Ikona je předrozmazaná (canvas blur, viz ensurePlaneIcons) a napevno
         // černá — sdf:false, takže icon-color by se ignorovalo, síla stínu se
         // řídí jen icon-opacity.
-        paint:{ 'icon-opacity':0.52, 'icon-translate':[3,5], 'icon-translate-anchor':'viewport' },
+        paint:{ 'icon-opacity':0.18, 'icon-translate':[1,2], 'icon-translate-anchor':'viewport' },
       });
     }catch(e){}
   }
@@ -10543,9 +10543,9 @@ function ensurePlaneLayers(map = state.map){
           'icon-color': PLANE_ICON_COLOR_EXPR,
           // Jemný světlý lem oddělí siluetu od tmavých částí satelitní mapy;
           // vlastní měkký vržený stín zůstává v samostatné vrstvě pod ikonou.
-          'icon-halo-color':'rgba(255,255,255,.42)',
-          'icon-halo-width':0.8,
-          'icon-halo-blur':0.35
+          'icon-halo-color':'rgba(20,24,20,.95)',
+          'icon-halo-width':1.0,
+          'icon-halo-blur':0.12
         },
       });
     }catch(e){}
@@ -10828,6 +10828,12 @@ function planeStopLoop(){
 function applyPlanes(){
   const map = state.map;
   if(!map?.isStyleLoaded?.()) return;
+  // Živá letecká mapa má vlastní tlumený podklad. Použije se při prvním
+  // zapnutí letadel; uživatel si potom může ručně zvolit jiný preset.
+  if(planeEnabled() && state.activePresetToken !== 'builtin:flightradar' && !state._planeRadarLookApplied){
+    state._planeRadarLookApplied = true;
+    applyPreset('flightradar');
+  }
   ensurePlaneLayers(map);
   planeSetVisibility();
   planeApplyIconSize();
