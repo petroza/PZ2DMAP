@@ -8432,7 +8432,7 @@ const SAT_SOURCE = 'pz-sat';
 const SAT_LAYER = 'pz-sat-dots';
 const SAT_SEL_SOURCE = 'pz-sat-sel';
 const SAT_SEL_LAYER = 'pz-sat-sel';
-const SAT_SEL_LABEL = 'pz-sat-sel-label';
+const SAT_SEL_LABEL = 'pz-sat-sel-tag';
 const SAT_TRACK_SOURCE = 'pz-sat-track';
 const SAT_TRACK_LAYER = 'pz-sat-track-line';
 const SAT_TRACK_3D_LAYER = 'pz-sat-track-3d';
@@ -8690,7 +8690,10 @@ function ensureSatLayers(map = state.map){
     try{
       map.addLayer({
         id:SAT_SEL_LABEL, type:'symbol', source:SAT_SEL_SOURCE,
+        // Bez explicitního text-font se popisek tiše nevykreslí (viz stejná
+        // poznámka u PLANE_SEL_LABEL).
         layout:{visibility:'none', 'text-field':['get','label'], 'text-size':13,
+                'text-font':['Noto Sans Bold'],
                 'text-offset':[0,-1.5], 'text-anchor':'bottom', 'text-allow-overlap':true},
         paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':2}
       });
@@ -10332,9 +10335,11 @@ function reloadStyle(){
 // ===========================================================================
 const PLANE_SOURCE = 'pz-planes';
 const PLANE_LAYER = 'pz-planes-icons';
+const PLANE_SHADOW_LAYER = 'pz-planes-icons-shadow';
 const PLANE_SEL_SOURCE = 'pz-plane-sel';
 const PLANE_SEL_LAYER = 'pz-plane-sel';
-const PLANE_SEL_LABEL = 'pz-plane-sel-label';
+const PLANE_SEL_LABEL = 'pz-plane-sel-tag';
+const PLANE_LABEL_ALL = 'pz-planes-tag-all';
 const PLANE_TRACK_SOURCE = 'pz-plane-track';
 const PLANE_TRACK_LAYER = 'pz-plane-track-line';
 const PLANE_ICON_BASE = 'pz-plane-icon-';
@@ -10383,11 +10388,19 @@ const PLANE_SHAPES = {
   heli:    'assets/sys_heli.svg',
 };
 function planeIconId(shape){ return PLANE_ICON_BASE + shape; }
+function planeShadowIconId(shape){ return PLANE_ICON_BASE + shape + '-shadow'; }
+// Stínové plátno má kolem obrysu odsazení (SHADOW_PAD), aby rozostření mělo
+// kam "utéct" — bez odsazení by canvas.filter blur useknul stín přesně na
+// hraně plátna a stín by měl ostrý okraj místo měkkého přechodu. Poměr
+// plátno/obsah (SHADOW_CANVAS/64) se pak musí vykompenzovat v icon-size
+// (viz planeShadowSizeExpr), jinak by stín vycházel menší než ostré ikony.
+const SHADOW_CANVAS = 96, SHADOW_PAD = 16, SHADOW_BLUR_PX = 4;
 function ensurePlaneIcons(map){
   if(!map) return;
   Object.entries(PLANE_SHAPES).forEach(([shape, src]) => {
     const id = planeIconId(shape);
-    if(map.hasImage(id)) return;
+    const shadowId = planeShadowIconId(shape);
+    if(map.hasImage(id) && map.hasImage(shadowId)) return;
     const img = new Image();
     img.onload = () => {
       try{
@@ -10402,8 +10415,21 @@ function ensurePlaneIcons(map){
         ctx.globalCompositeOperation = 'source-in';
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, 64, 64);
-        if(map.hasImage(id)) map.removeImage(id);
-        map.addImage(id, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2, sdf:true});
+        if(!map.hasImage(id)){
+          map.addImage(id, ctx.getImageData(0, 0, 64, 64), {pixelRatio:2, sdf:true});
+        }
+        if(!map.hasImage(shadowId)){
+          // Ostrá černá silueta (ctx výše) → rozmazat do většího plátna s
+          // odsazením → pouze rozmazaná černá alfa, žádné SDF (stín se
+          // nepřebarvuje za běhu, je pořád černý, jen s nastavitelnou
+          // průhledností přes icon-opacity).
+          const sc = document.createElement('canvas'); sc.width = SHADOW_CANVAS; sc.height = SHADOW_CANVAS;
+          const sctx = sc.getContext('2d');
+          sctx.filter = `blur(${SHADOW_BLUR_PX}px)`;
+          sctx.drawImage(c, SHADOW_PAD, SHADOW_PAD, 64, 64);
+          sctx.filter = 'none';
+          map.addImage(shadowId, sctx.getImageData(0, 0, SHADOW_CANVAS, SHADOW_CANVAS), {pixelRatio:2, sdf:false});
+        }
         if(state.map) state.map.triggerRepaint();
       }catch(e){}
     };
@@ -10437,6 +10463,26 @@ function planeIconSizeExpr(){
   const m = planeIconSize();
   return ['interpolate', ['linear'], ['zoom'], 1, 0.12*m, 5, 0.22*m, 9, 0.4*m, 13, 0.65*m];
 }
+// Stínová ikona má kolem obrysu odsazení kvůli rozostření (viz SHADOW_PAD u
+// ensurePlaneIcons), takže samotný obrys je menší vůči celému plátnu než u
+// ostré ikony — SHADOW_CANVAS/64 dorovnává velikost zpátky a *1.15 dělá stín
+// jen mírně větší než ostrou ikonu nahoře.
+function planeShadowSizeExpr(){
+  const m = planeIconSize() * 1.15 * (SHADOW_CANVAS / 64);
+  return ['interpolate', ['linear'], ['zoom'], 1, 0.12*m, 5, 0.22*m, 9, 0.4*m, 13, 0.65*m];
+}
+const PLANE_ICON_MATCH_EXPR = ['match', ['coalesce', ['get','shape'], 'medium'],
+  'small',  planeIconId('small'),
+  'large',  planeIconId('large'),
+  'glider', planeIconId('glider'),
+  'heli',   planeIconId('heli'),
+  planeIconId('medium')];
+const PLANE_SHADOW_MATCH_EXPR = ['match', ['coalesce', ['get','shape'], 'medium'],
+  'small',  planeShadowIconId('small'),
+  'large',  planeShadowIconId('large'),
+  'glider', planeShadowIconId('glider'),
+  'heli',   planeShadowIconId('heli'),
+  planeShadowIconId('medium')];
 function ensurePlaneLayers(map = state.map){
   if(!map?.isStyleLoaded?.()) return;
   ensurePlaneIcons(map);
@@ -10444,18 +10490,33 @@ function ensurePlaneLayers(map = state.map){
   [PLANE_SOURCE, PLANE_SEL_SOURCE].forEach(id => {
     if(!map.getSource(id)){ try{ map.addSource(id, {type:'geojson', data:empty}); }catch(e){} }
   });
+  if(!map.getLayer(PLANE_SHADOW_LAYER)){
+    try{
+      map.addLayer({
+        id: PLANE_SHADOW_LAYER, type:'symbol', source: PLANE_SOURCE,
+        layout:{
+          visibility:'none',
+          'icon-image': PLANE_SHADOW_MATCH_EXPR,
+          'icon-rotate': ['coalesce', ['get','track'], 0],
+          'icon-rotation-alignment':'map',
+          'icon-allow-overlap':true,
+          'icon-ignore-placement':true,
+          'icon-size': planeShadowSizeExpr(),
+        },
+        // Ikona je předrozmazaná (canvas blur, viz ensurePlaneIcons) a napevno
+        // černá — sdf:false, takže icon-color by se ignorovalo, síla stínu se
+        // řídí jen icon-opacity.
+        paint:{ 'icon-opacity':0.35, 'icon-translate':[2,3], 'icon-translate-anchor':'viewport' },
+      });
+    }catch(e){}
+  }
   if(!map.getLayer(PLANE_LAYER)){
     try{
       map.addLayer({
         id: PLANE_LAYER, type:'symbol', source: PLANE_SOURCE,
         layout:{
           visibility:'none',
-          'icon-image': ['match', ['coalesce', ['get','shape'], 'medium'],
-            'small',  planeIconId('small'),
-            'large',  planeIconId('large'),
-            'glider', planeIconId('glider'),
-            'heli',   planeIconId('heli'),
-            planeIconId('medium')],
+          'icon-image': PLANE_ICON_MATCH_EXPR,
           'icon-rotate': ['coalesce', ['get','track'], 0],
           'icon-rotation-alignment':'map',
           'icon-allow-overlap':true,
@@ -10493,9 +10554,32 @@ function ensurePlaneLayers(map = state.map){
     try{
       map.addLayer({
         id: PLANE_SEL_LABEL, type:'symbol', source: PLANE_SEL_SOURCE,
+        // text-font MUSÍ být nastavený explicitně — bez něj MapLibre zkusí
+        // výchozí font, který v glyphs sadě OpenFreeMap stylů (liberty/bright/
+        // positron, font "Noto Sans …") neexistuje, a popisek se tiše
+        // nevykreslí vůbec (žádná chyba v konzoli, prostě nic).
         layout:{visibility:'none', 'text-field':['get','label'], 'text-size':12,
+                'text-font':['Noto Sans Bold'],
                 'text-offset':[0,1.4], 'text-anchor':'top', 'text-allow-overlap':true},
         paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':2}
+      });
+    }catch(e){}
+  }
+  // "Popisky u letadel" — volací znaky VŠECH letadel najednou (na rozdíl od
+  // PLANE_SEL_LABEL, co ukazuje jen to vybrané). Samostatná vrstva ze stejného
+  // zdroje jako ikony, ať se dá nezávisle skrývat/zobrazovat.
+  if(!map.getLayer(PLANE_LABEL_ALL)){
+    try{
+      map.addLayer({
+        id: PLANE_LABEL_ALL, type:'symbol', source: PLANE_SOURCE,
+        // text-allow-overlap:true, protože jinak popisek prohraje kolizní test
+        // proti štítkům podkladové mapy (silnice/města) skoro všude a nezobrazí
+        // se vůbec — stejný princip jako u PLANE_SEL_LABEL.
+        layout:{visibility:'none', 'text-field':['get','label'], 'text-size':11,
+                'text-font':['Noto Sans Bold'],
+                'text-offset':[0,1.2], 'text-anchor':'top', 'text-allow-overlap':true,
+                'text-ignore-placement':true},
+        paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':1.5}
       });
     }catch(e){}
   }
@@ -10516,6 +10600,7 @@ function planeOnMapClick(e){
 function planeSetVisibility(){
   const on = planeEnabled();
   safeSetLayout(PLANE_LAYER, 'visibility', on ? 'visible' : 'none');
+  safeSetLayout(PLANE_SHADOW_LAYER, 'visibility', on ? 'visible' : 'none');
   const s = ensurePlaneState();
   const showSel = on && !!s.selected;
   safeSetLayout(PLANE_SEL_LAYER, 'visibility', showSel ? 'visible' : 'none');
@@ -10523,6 +10608,7 @@ function planeSetVisibility(){
   // zájmu) — "Popisky u letadel" má smysl až jako budoucí přepínač popisků
   // pro VŠECHNA letadla najednou, ne pro to jedno vybrané.
   safeSetLayout(PLANE_SEL_LABEL, 'visibility', showSel ? 'visible' : 'none');
+  safeSetLayout(PLANE_LABEL_ALL, 'visibility', (on && planeLabelsOn()) ? 'visible' : 'none');
   safeSetLayout(PLANE_TRACK_LAYER, 'visibility', (showSel && s.trackPoints && s.trackPoints.length > 1) ? 'visible' : 'none');
   const ctl = $('planeControls'); if(ctl) ctl.style.display = on ? '' : 'none';
   if(state.map) state.map.triggerRepaint();
@@ -10552,7 +10638,10 @@ async function planeLoadTrack(id){
     planeSetVisibility();
   }catch(e){ console.warn('plane track load failed', e); }
 }
-function planeApplyIconSize(){ safeSetLayout(PLANE_LAYER, 'icon-size', planeIconSizeExpr()); }
+function planeApplyIconSize(){
+  safeSetLayout(PLANE_LAYER, 'icon-size', planeIconSizeExpr());
+  safeSetLayout(PLANE_SHADOW_LAYER, 'icon-size', planeShadowSizeExpr());
+}
 
 function planeDescribe(p){
   return p.call || p.reg || p.id;
@@ -10560,7 +10649,7 @@ function planeDescribe(p){
 function planeFeature(p, id, lon, lat){
   return {
     type:'Feature', id: id,
-    properties:{ id, alt: p.ground ? 0 : p.alt, track: p.track, shape: planeShapeFor(p) },
+    properties:{ id, alt: p.ground ? 0 : p.alt, track: p.track, shape: planeShapeFor(p), label: planeDescribe(p) },
     geometry:{type:'Point', coordinates:[lon, lat]}
   };
 }
@@ -10733,7 +10822,7 @@ const SHIP_SOURCE = 'pz-ships';
 const SHIP_LAYER = 'pz-ships-icons';
 const SHIP_SEL_SOURCE = 'pz-ship-sel';
 const SHIP_SEL_LAYER = 'pz-ship-sel';
-const SHIP_SEL_LABEL = 'pz-ship-sel-label';
+const SHIP_SEL_LABEL = 'pz-ship-sel-tag';
 const SHIP_ICON_ID = 'pz-ship-icon';
 const SHIP_COLOR = '#3ddc97';
 const SHIP_POLL_MS = 8000;
@@ -10811,7 +10900,10 @@ function ensureShipLayers(map = state.map){
     try{
       map.addLayer({
         id: SHIP_SEL_LABEL, type:'symbol', source: SHIP_SEL_SOURCE,
+        // Bez explicitního text-font se popisek tiše nevykreslí (viz stejná
+        // poznámka u PLANE_SEL_LABEL).
         layout:{visibility:'none', 'text-field':['get','label'], 'text-size':12,
+                'text-font':['Noto Sans Bold'],
                 'text-offset':[0,1.4], 'text-anchor':'top', 'text-allow-overlap':true},
         paint:{'text-color':'#fff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':2}
       });
