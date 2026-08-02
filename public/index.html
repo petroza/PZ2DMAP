@@ -754,8 +754,8 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
           <div id="planeResults" class="sat-results"></div>
           <div id="planeSelected" class="sat-selected" style="display:none"></div>
           <label class="check" style="margin-top:10px"><input id="planeLabels" type="checkbox"> <span data-i18n="Popisky u letadel">Popisky u letadel</span></label>
-          <label data-i18n="Velikost ikony">Velikost ikony <span class="val" id="planeIconSizeVal">1.6×</span></label>
-          <input id="planeIconSize" type="range" min="0.5" max="2.5" step="0.1" value="1.6">
+          <label data-i18n="Velikost ikony">Velikost ikony <span class="val" id="planeIconSizeVal">2.5×</span></label>
+          <input id="planeIconSize" type="range" min="0.5" max="4" step="0.1" value="2.5">
         </div>
         <p class="hint" data-i18n="hint_plane">Živé polohy letadel z ADS-B/MLAT přijímačů (airplanes.live, komunitní síť) v okruhu ~460 km od Prahy — ČR a okolní země. Ikona ukazuje skutečný kurz letadla; barva výšku — na zemi, nízko, v hladině. Vyhledávat jde podle volacího znaku, registrace i typu. Data se aktualizují každých pár sekund.</p>
       </div>
@@ -10350,7 +10350,7 @@ function ensurePlaneState(){
   return state.planes;
 }
 function planeEnabled(){ return !!$('planeOn')?.checked; }
-function planeIconSize(){ const v=parseFloat($('planeIconSize')?.value ?? '1.6'); return Number.isFinite(v) ? Math.max(0.3,Math.min(3,v)) : 1.6; }
+function planeIconSize(){ const v=parseFloat($('planeIconSize')?.value ?? '2.5'); return Number.isFinite(v) ? Math.max(0.3,Math.min(4,v)) : 2.5; }
 function planeLabelsOn(){ return !!$('planeLabels')?.checked; }
 // Plynulá barevná škála podle výšky (stejná myšlenka jako u OpenSky/tar1090
 // map.opensky-network.org — červená u země, přes žlutou/zelenou, po fialovou
@@ -10376,10 +10376,10 @@ function planeStatus(msg){ const el=$('planeStatus'); if(el) el.textContent = ms
 // varianty pro každé pásmo výšky. Musí se nahrát znovu po každém 'style.load'
 // — vlastní obrázky styl při přepnutí zahodí.
 const PLANE_SHAPES = {
-  small:   'assets/sys_plane_small.svg',
-  medium:  'assets/sys_plane.svg',
-  large:   'assets/sys_plane_large.svg',
-  glider:  'assets/sys_plane_glider.svg',
+  small:   'assets/sys_plane_small.png',
+  medium:  'assets/sys_plane_medium.png',
+  large:   'assets/sys_plane_large.png',
+  glider:  'assets/sys_plane_sport.png',
   heli:    'assets/sys_heli.svg',
 };
 function planeIconId(shape){ return PLANE_ICON_BASE + shape; }
@@ -10393,7 +10393,12 @@ function ensurePlaneIcons(map){
       try{
         const c = document.createElement('canvas'); c.width=64; c.height=64;
         const ctx = c.getContext('2d');
-        ctx.drawImage(img, 0, 0, 64, 64);
+        // Vejít se do 64×64 se zachovaným poměrem stran a vystředěné (ne
+        // natáhnout na čtverec) — vrtulník je z portrétového SVG, ne čtvercový.
+        const iw = img.naturalWidth || img.width || 1, ih = img.naturalHeight || img.height || 1;
+        const s = Math.min(64 / iw, 64 / ih);
+        const dw = iw * s, dh = ih * s;
+        ctx.drawImage(img, (64 - dw) / 2, (64 - dh) / 2, dw, dh);
         ctx.globalCompositeOperation = 'source-in';
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, 64, 64);
