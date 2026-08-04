@@ -616,36 +616,6 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .layer-width-popover{display:none;flex:0 0 100%;padding:7px 0 2px 48px;color:var(--tx3);font-size:9px}
 .layer-visibility-row.width-open .layer-width-popover{display:block}
 .layer-width-popover input[type=range]{margin:5px 0 0;width:100%}
-/* RGBA picker vrstev.
-   Nativní <input type="color"> alfu neumí (ověřeno i v Chrome 148: atribut `alpha`
-   z novější HTML spec zatím není implementovaný a osmimístný hex se zkrátí na šest),
-   takže průhlednost na vrstvu nešla dát do systémového dialogu. Tenhle picker ho
-   proto nahrazuje: plocha odstínů + pruh barvy + pruh alfy + čísla R/G/B/A.
-   Sám nic nedrží — zapisuje do skrytého barevného inputu a do slideru průhlednosti,
-   které už čte applyMapTweaks i ukládání presetů/projektů. */
-.pz-swatch{appearance:none;-webkit-appearance:none;width:20px;height:20px;min-width:20px;padding:0;border:1px solid var(--border);border-radius:50%;cursor:pointer;position:relative;overflow:hidden;
-  /* šachovnice prosvítá pod poloprůhlednou barvou, aby byla alfa vidět i na vzorníku */
-  background-image:linear-gradient(45deg,#8a8a8a 25%,transparent 25%,transparent 75%,#8a8a8a 75%),linear-gradient(45deg,#8a8a8a 25%,transparent 25%,transparent 75%,#8a8a8a 75%);
-  background-size:8px 8px;background-position:0 0,4px 4px;background-color:#fff}
-.pz-swatch>span{position:absolute;inset:0;border-radius:50%}
-.pz-picker{position:fixed;z-index:400;width:236px;background:var(--bg1);border:1px solid var(--border-hi);border-radius:8px;padding:10px;box-shadow:0 14px 40px rgba(0,0,0,.6);display:none}
-.pz-picker.open{display:block}
-.pz-sv{position:relative;height:132px;border-radius:5px;cursor:crosshair;margin-bottom:9px}
-.pz-sv-knob,.pz-bar-knob{position:absolute;width:12px;height:12px;border:2px solid #fff;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.55);pointer-events:none;transform:translate(-50%,-50%)}
-.pz-bar{position:relative;height:12px;border-radius:6px;margin-bottom:9px;cursor:pointer}
-.pz-bar-hue{background:linear-gradient(90deg,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)}
-.pz-bar-alpha{background-image:linear-gradient(45deg,#8a8a8a 25%,transparent 25%,transparent 75%,#8a8a8a 75%),linear-gradient(45deg,#8a8a8a 25%,transparent 25%,transparent 75%,#8a8a8a 75%);background-size:8px 8px;background-position:0 0,4px 4px;background-color:#fff}
-.pz-bar-alpha>i{position:absolute;inset:0;border-radius:6px;display:block}
-.pz-bar-knob{top:50%}
-.pz-fields{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.pz-fields label{display:block;font-size:9px;text-align:center;color:var(--tx3);letter-spacing:.5px;margin-top:3px}
-.pz-fields input{width:100%;padding:4px 2px;text-align:center;background:var(--bg0);border:1px solid var(--border);color:var(--tx1);font:12px var(--mono);border-radius:4px}
-.pz-picker-top{display:flex;align-items:center;gap:7px;margin-bottom:9px}
-.pz-picker-eyedrop{flex:none;width:26px;height:26px;padding:0;background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--tx2);cursor:pointer;font-size:13px;line-height:1}
-.pz-picker-preview{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);
-  background-image:linear-gradient(45deg,#8a8a8a 25%,transparent 25%,transparent 75%,#8a8a8a 75%),linear-gradient(45deg,#8a8a8a 25%,transparent 25%,transparent 75%,#8a8a8a 75%);background-size:8px 8px;background-position:0 0,4px 4px;position:relative;overflow:hidden}
-.pz-picker-preview>span{position:absolute;inset:0}
-.pz-picker-hex{flex:1;min-width:0;padding:4px 6px;background:var(--bg0);border:1px solid var(--border);color:var(--tx1);font:12px var(--mono);border-radius:4px}
 .status-bar,.map-actions .map-action-btn,.map-source-watermark,
 .floating-player .player-controls,.shortcuts-panel,.mobile-menu-btn,
 .nav-suggest,.export-progress{backdrop-filter:none}
@@ -809,6 +779,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
       <div id="styleColorSources" style="display:none" aria-hidden="true">
         <div class="color-row"><input id="landColor" type="color" value="#ece8dd"><label data-i18n="Pozadí / land">Pozadí / land</label></div>
         <div class="color-row"><input id="waterColor" type="color" value="#99b7d7"><label data-i18n="Voda">Voda</label></div>
+        <div class="color-row"><input id="waterwayColor" type="color" value="#99b7d7"><label data-i18n="Řeky a vodní toky">Řeky a vodní toky</label></div>
         <div class="color-row"><input id="buildingColor" type="color" value="#d9d2c3"><label data-i18n="Budovy">Budovy</label></div>
         <div class="color-row"><input id="parkColor" type="color" value="#d8dfc7"><label data-i18n="Parky">Parky</label></div>
         <div class="color-row"><input id="landcoverColor" type="color" value="#c8cfb8"><label data-i18n="Půda / landcover">Půda / landcover</label></div>
@@ -852,24 +823,32 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
       </div>
 <div class="section">
         <h3 data-i18n="Viditelnost vrstev">Viditelnost vrstev</h3>
-        <label class="check layer-visibility-row"><input id="showLand" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="landColor" data-sync-alpha="landOpacity" aria-label="Barva pozadí a pevniny"><span></span></button> Pozadí / pevnina<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="landOpacityVal">100%</span><input id="landOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showBuildings" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="buildingColor" data-sync-alpha="buildingOpacity" aria-label="Barva budov"><span></span></button> Budovy<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="buildingOpacityVal">72%</span><input id="buildingOpacity" type="range" min="0" max="1" step="0.01" value="0.72"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showParks" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="parkColor" data-sync-alpha="parkOpacity" aria-label="Barva parků"><span></span></button> Parky a zeleň<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="parkOpacityVal">100%</span><input id="parkOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showLandcover" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="landcoverColor" data-sync-alpha="landcoverOpacity" aria-label="Barva půdy"><span></span></button> Půda (tráva, pole, lesy)<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="landcoverOpacityVal">100%</span><input id="landcoverOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showLanduse" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="landuseColor" data-sync-alpha="landuseOpacity" aria-label="Barva ploch"><span></span></button> Plochy (letiště, průmysl, obchody)<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="landuseOpacityVal">100%</span><input id="landuseOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showAeroway" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="aerowayColor" data-sync-alpha="aerowayOpacity" aria-label="Barva letišť"><span></span></button> Letiště a letištní plochy<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="aerowayOpacityVal">100%</span><input id="aerowayOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showBoundaries" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="boundaryColor" data-sync-alpha="boundaryOpacity" aria-label="Barva hranic"><span></span></button> Hranice<div class="layer-width-popover">Tloušťka <span class="val" id="boundaryWidthVal">1.2×</span><input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2"><span class="pz-alpha-state" hidden><span class="val" id="boundaryOpacityVal">100%</span><input id="boundaryOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showLabels" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="labelColor" data-sync-alpha="labelOpacity" aria-label="Barva názvů"><span></span></button> Názvy ulic a míst<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="labelOpacityVal">100%</span><input id="labelOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="haloColor" data-sync-alpha="haloOpacity" aria-label="Barva štítků silnic"><span></span></button> Obdélníčky s čísly silnic<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="haloOpacityVal">100%</span><input id="haloOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="roadMinorColor" data-sync-alpha="roadMinorOpacity" aria-label="Barva vedlejších silnic"><span></span></button> Vedlejší silnice<div class="layer-width-popover">Tloušťka <span class="val" id="minorWidthVal">1.0×</span><input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0"><span class="pz-alpha-state" hidden><span class="val" id="roadMinorOpacityVal">100%</span><input id="roadMinorOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showMajorRoads" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="roadMajorColor" data-sync-alpha="roadMajorOpacity" aria-label="Barva hlavních silnic"><span></span></button> Hlavní silnice<div class="layer-width-popover">Tloušťka <span class="val" id="majorWidthVal">1.3×</span><input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3"><span class="pz-alpha-state" hidden><span class="val" id="roadMajorOpacityVal">100%</span><input id="roadMajorOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="motorwayColor" data-sync-alpha="motorwayOpacity" aria-label="Barva dálnic"><span></span></button> Dálnice<div class="layer-width-popover">Tloušťka <span class="val" id="motorwayWidthVal">1.0×</span><input id="motorwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"><span class="pz-alpha-state" hidden><span class="val" id="motorwayOpacityVal">100%</span><input id="motorwayOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="primaryColor" data-sync-alpha="primaryOpacity" aria-label="Barva silnic první třídy"><span></span></button> Silnice 1. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="primaryWidthVal">1.0×</span><input id="primaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"><span class="pz-alpha-state" hidden><span class="val" id="primaryOpacityVal">100%</span><input id="primaryOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="secondaryColor" data-sync-alpha="secondaryOpacity" aria-label="Barva silnic druhé třídy"><span></span></button> Silnice 2. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="secondaryWidthVal">1.0×</span><input id="secondaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"><span class="pz-alpha-state" hidden><span class="val" id="secondaryOpacityVal">100%</span><input id="secondaryOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="waterColor" data-sync-alpha="waterOpacity" aria-label="Barva vodních toků"><span></span></button> Řeky a vodní toky<div class="layer-width-popover"><span class="pz-alpha-state" hidden><span class="val" id="waterOpacityVal">100%</span><input id="waterOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showRailways" type="checkbox" checked><button type="button" class="layer-color-input pz-swatch" data-sync-color="railwayColor" data-sync-alpha="railwayOpacity" aria-label="Barva železnic"><span></span></button> Železnice<div class="layer-width-popover">Tloušťka <span class="val" id="railwayWidthVal">1.0×</span><input id="railwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"><span class="pz-alpha-state" hidden><span class="val" id="railwayOpacityVal">100%</span><input id="railwayOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
-        <label class="check layer-visibility-row"><input id="showMetro" type="checkbox"><span class="layer-color-input" style="background:linear-gradient(135deg,#00a562 0 33%,#f5c400 33% 66%,#e30613 66%)" title="Metro používá barvy linek A/B/C"></span> Metro (Praha)<div class="layer-width-popover">Tloušťka <span class="val" id="metroWidthVal">1.0×</span><input id="metroWidth" type="range" min="0.2" max="4" step="0.1" value="1"><br>Průhlednost <span class="val" id="metroOpacityVal">100%</span><input id="metroOpacity" type="range" min="0" max="1" step="0.01" value="1"></div></label>
-        <label class="check layer-visibility-row"><input id="showTransit" type="checkbox"><button type="button" class="layer-color-input pz-swatch" data-sync-color="transitColor" data-sync-alpha="transitOpacity" aria-label="Barva MHD"><span></span></button> MHD – tramvaje a zastávky<div class="layer-width-popover">Tloušťka <span class="val" id="transitWidthVal">1.0×</span><input id="transitWidth" type="range" min="0.2" max="4" step="0.1" value="1"><span class="pz-alpha-state" hidden><span class="val" id="transitOpacityVal">100%</span><input id="transitOpacity" type="range" min="0" max="1" step="0.01" value="1"></span></div></label>
+        <label class="check layer-visibility-row"><input id="showLand" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landColor" aria-label="Barva pozadí a pevniny"> Pozadí / pevnina</label>
+        <label class="check layer-visibility-row"><input id="showBuildings" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="buildingColor" aria-label="Barva budov"> Budovy</label>
+        <label class="check layer-visibility-row"><input id="showParks" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="parkColor" aria-label="Barva parků"> Parky a zeleň</label>
+        <label class="check layer-visibility-row"><input id="showLandcover" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landcoverColor" aria-label="Barva půdy"> Půda (tráva, pole, lesy)</label>
+        <label class="check layer-visibility-row"><input id="showLanduse" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landuseColor" aria-label="Barva ploch"> Plochy (letiště, průmysl, obchody)</label>
+        <label class="check layer-visibility-row"><input id="showAeroway" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="aerowayColor" aria-label="Barva letišť"> Letiště a letištní plochy</label>
+        <label class="check layer-visibility-row"><input id="showBoundaries" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="boundaryColor" aria-label="Barva hranic"> Hranice<div class="layer-width-popover">Tloušťka <span class="val" id="boundaryWidthVal">1.2×</span><input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2"></div></label>
+        <label class="check layer-visibility-row"><input id="showLabels" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="labelColor" aria-label="Barva názvů"> Názvy ulic a míst</label>
+        <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="haloColor" aria-label="Barva štítků silnic"> Obdélníčky s čísly silnic</label>
+        <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva vedlejších silnic"> Vedlejší silnice<div class="layer-width-popover">Tloušťka <span class="val" id="minorWidthVal">1.0×</span><input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0"></div></label>
+        <label class="check layer-visibility-row"><input id="showMajorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva hlavních silnic"> Hlavní silnice<div class="layer-width-popover">Tloušťka <span class="val" id="majorWidthVal">1.3×</span><input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3"></div></label>
+        <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="motorwayColor" aria-label="Barva dálnic"> Dálnice<div class="layer-width-popover">Tloušťka <span class="val" id="motorwayWidthVal">1.0×</span><input id="motorwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="primaryColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="primaryWidthVal">1.0×</span><input id="primaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="secondaryColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="secondaryWidthVal">1.0×</span><input id="secondaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showWaterAreas" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="waterColor" aria-label="Barva vodních ploch"> Vodní plochy (jezera, moře)</label>
+        <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="waterwayColor" aria-label="Barva řek a vodních toků"> Řeky a vodní toky<div class="layer-width-popover">Tloušťka <span class="val" id="waterwayWidthVal">1.0×</span><input id="waterwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showRailways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="railwayColor" aria-label="Barva železnic"> Železnice<div class="layer-width-popover">Tloušťka <span class="val" id="railwayWidthVal">1.0×</span><input id="railwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showMetro" type="checkbox"><span class="layer-color-input" style="background:linear-gradient(135deg,#00a562 0 33%,#f5c400 33% 66%,#e30613 66%)" title="Metro používá barvy linek A/B/C"></span> Metro (Praha)<div class="layer-width-popover">Tloušťka <span class="val" id="metroWidthVal">1.0×</span><input id="metroWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <label class="check layer-visibility-row"><input id="showTransit" type="checkbox"><input class="layer-color-input" type="color" data-sync-color="transitColor" aria-label="Barva MHD"> MHD – tramvaje a zastávky<div class="layer-width-popover">Tloušťka <span class="val" id="transitWidthVal">1.0×</span><input id="transitWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
+        <details class="compact-details">
+          <summary>Velikost a průhlednost vrstev</summary>
+          <label data-i18n="Budovy (opacity)">Průhlednost budov <span class="val" id="buildingOpacityVal">72%</span></label>
+          <input id="buildingOpacity" type="range" min="0" max="1" step="0.01" value="0.72">
+          <label data-i18n="Hranice (opacity)">Průhlednost hranic <span class="val" id="boundaryOpacityVal">100%</span></label>
+          <input id="boundaryOpacity" type="range" min="0" max="1" step="0.01" value="1">
+        </details>
       </div>
       <div class="section" id="sunShadowSection">
         <h3 data-i18n="Slunce a stíny">Slunce a stíny</h3>
@@ -1767,6 +1746,8 @@ const I18N = {
   'hint_transit_zoom': {cs:'Metro se vykreslí v každém přiblížení, každá linka ve své barvě (A zelená, B žlutá, C červená). Tramvaje jsou v mapových datech až od většího přiblížení — na celou republiku se nevykreslí.',sk:'Metro a električky sú v mapových dátach až od väčšieho priblíženia — vo výreze celej republiky sa nevykreslia, priblíž na mesto.',bg:'Метрото и трамваите са в картните данни само при по-голямо приближение — при изглед на цялата държава не се изчертават, приближи към града.',hr:'Metro i tramvaji su u podacima karte tek od većeg približenja — u prikazu cijele države neće se iscrtati, približi na grad.',ro:'Metroul și tramvaiele apar în datele hărții doar la o apropiere mai mare — în cadrul întregii țări nu se desenează, apropie pe oraș.'},
   'hint_base_style_vs_preset': {cs:'Podklad = odkud se berou data mapy (silnice, budovy, satelit). Barvy podkladu pak přebarvíš Presety níž.',sk:'Podklad = odkiaľ sa berú dáta mapy (cesty, budovy, satelit). Farby podkladu potom prefarbíš Presetmi nižšie.',bg:'Основата = откъде идват данните на картата (пътища, сгради, сателит). Цветовете ѝ после променяш с пресетите по-долу.',hr:'Podloga = odakle dolaze podaci karte (ceste, zgrade, satelit). Boje podloge zatim mijenjaš presetima ispod.',ro:'Fundalul = de unde vin datele hărții (drumuri, clădiri, satelit). Culorile lui le schimbi apoi cu presetările de mai jos.'},
   'hint_preset_vs_base_style': {cs:'Preset = barvy a zapnuté vrstvy nad zvoleným podkladem. Podklad sám nemění — ten vybereš v Základních stylech.',sk:'Preset = farby a zapnuté vrstvy nad zvoleným podkladom. Podklad sám nemení — ten vyberieš v Základných štýloch.',bg:'Пресетът = цветове и включени слоеве върху избраната основа. Самата основа не се променя — нея избираш в Основни стилове.',hr:'Preset = boje i uključeni slojevi nad odabranom podlogom. Samu podlogu ne mijenja — nju biraš u Osnovnim stilovima.',ro:'Presetarea = culorile și straturile active peste fundalul ales. Fundalul în sine nu se schimbă — pe el îl alegi în Stiluri de bază.'},
+  'Vodní plochy (jezera, moře)': {cs:'Vodní plochy (jezera, moře)',sk:'Vodné plochy (jazerá, more)',bg:'Водни площи (езера, море)',hr:'Vodene površine (jezera, more)',ro:'Suprafețe de apă (lacuri, mare)',en:'Water areas (lakes, sea)'},
+  'Řeky a vodní toky': {cs:'Řeky a vodní toky',sk:'Rieky a vodné toky',bg:'Реки и водни течения',hr:'Rijeke i vodotoci',ro:'Râuri și cursuri de apă',en:'Rivers and waterways'},
   'Datové vrstvy': {cs:'Datové vrstvy',sk:'Dátové vrstvy',bg:'Данни слоеве',hr:'Podatkovni slojevi',ro:'Straturi de date',en:'Data layers'},
   'Družice na oběžné dráze': {cs:'Družice na oběžné dráze',sk:'Družice na obežnej dráhe',bg:'Спътници в орбита',hr:'Sateliti u orbiti',ro:'Sateliți pe orbită',en:'Satellites in orbit'},
   'Zobrazit družice': {cs:'Zobrazit družice',sk:'Zobraziť družice',bg:'Покажи спътниците',hr:'Prikaži satelite',ro:'Afișează sateliții',en:'Show satellites'},
@@ -3055,6 +3036,7 @@ function getCurrentColorSet(){
   return {
     land:$('landColor')?.value || '#ece8dd',
     water:$('waterColor')?.value || '#99b7d7',
+    waterway:$('waterwayColor')?.value || $('waterColor')?.value || '#99b7d7',
     building:$('buildingColor')?.value || '#d9d2c3',
     park:$('parkColor')?.value || '#d8dfc7',
     landcover:$('landcoverColor')?.value || '#c8cfb8',
@@ -3073,6 +3055,7 @@ function getCurrentColorSet(){
 function getCurrentStyleRanges(){
   return {
     majorWidth: $('majorWidth')?.value || '1.3',
+    waterwayWidth: $('waterwayWidth')?.value || '1',
     minorWidth: $('minorWidth')?.value || '1.0',
     buildingOpacity: $('buildingOpacity')?.value || '0.72',
     boundaryOpacity: $('boundaryOpacity')?.value || '1',
@@ -3080,13 +3063,13 @@ function getCurrentStyleRanges(){
     motorwayWidth:$('motorwayWidth')?.value || '1', primaryWidth:$('primaryWidth')?.value || '1',
     secondaryWidth:$('secondaryWidth')?.value || '1', railwayWidth:$('railwayWidth')?.value || '1',
     metroWidth:$('metroWidth')?.value || '1', transitWidth:$('transitWidth')?.value || '1'
-,
-    landOpacity:$('landOpacity')?.value || '1', parkOpacity:$('parkOpacity')?.value || '1', landcoverOpacity:$('landcoverOpacity')?.value || '1', landuseOpacity:$('landuseOpacity')?.value || '1', aerowayOpacity:$('aerowayOpacity')?.value || '1', waterOpacity:$('waterOpacity')?.value || '1', labelOpacity:$('labelOpacity')?.value || '1', haloOpacity:$('haloOpacity')?.value || '1', roadMinorOpacity:$('roadMinorOpacity')?.value || '1', roadMajorOpacity:$('roadMajorOpacity')?.value || '1', motorwayOpacity:$('motorwayOpacity')?.value || '1', primaryOpacity:$('primaryOpacity')?.value || '1', secondaryOpacity:$('secondaryOpacity')?.value || '1', railwayOpacity:$('railwayOpacity')?.value || '1', metroOpacity:$('metroOpacity')?.value || '1', transitOpacity:$('transitOpacity')?.value || '1'
+
   };
 }
 function getCurrentStyleVisibility(){
   return {
     showLand: !!$('showLand')?.checked,
+    showWaterAreas: !!$('showWaterAreas')?.checked,
     showBuildings: !!$('showBuildings')?.checked,
     showParks: !!$('showParks')?.checked,
     showLandcover: !!$('showLandcover')?.checked,
@@ -3113,17 +3096,30 @@ function getCurrentStylePresetSnapshot(){
     visibility: getCurrentStyleVisibility()
   };
 }
+// Viditelnost pozadí přišla až později, takže ji vestavěné ani starší uložené
+// presety neobsahují. Kdyby se u chybějícího klíče nechala současná hodnota (jak
+// to dělá zbytek restore logiky), preset by nevrátil svůj původní vzhled.
+// Čte se `defaultChecked`, aby výchozí stav existoval jen jednou — v markupu.
+const PZ_LATE_VISIBILITY_IDS = ['showLand','showWaterAreas'];
+function pzResetLateStyleKeys(ranges = {}, visibility = {}){
+  PZ_LATE_VISIBILITY_IDS.forEach(id => {
+    const el = $(id);
+    if(el && visibility[id] == null) el.checked = el.defaultChecked;
+  });
+}
+
 function applyStylePresetSnapshot(snapshot={}){
   const colors = snapshot.colors || snapshot || {};
   applyColorSet(colors);
   const ranges = snapshot.ranges || {};
-  ['majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','landOpacity','parkOpacity','landcoverOpacity','landuseOpacity','aerowayOpacity','waterOpacity','labelOpacity','haloOpacity','roadMinorOpacity','roadMajorOpacity','motorwayOpacity','primaryOpacity','secondaryOpacity','railwayOpacity','metroOpacity','transitOpacity'].forEach(id => {
+  ['majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','waterwayWidth'].forEach(id => {
     if($(id) && ranges[id] != null) $(id).value = String(ranges[id]);
   });
   const visibility = snapshot.visibility || {};
-  ['showLand','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'].forEach(id => {
+  ['showLand','showWaterAreas','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'].forEach(id => {
     if($(id) && visibility[id] != null) $(id).checked = !!visibility[id];
   });
+  pzResetLateStyleKeys(ranges, visibility);
   applyMapTweaks();
   updateReadouts();
 }
@@ -3135,240 +3131,20 @@ function applyStylePresetEntry(entry){
     visibility: entry.visibility || {}
   });
 }
-// ===========================================================================
-// RGBA picker vrstev
-//
-// Proč vlastní a ne systémový: <input type="color"> alfu neumí. Atribut `alpha`
-// z novější HTML spec není (ověřeno v Chrome 148) implementovaný a osmimístný hex
-// se zkrátí na šest, takže průhlednost jednotlivé vrstvy do systémového dialogu
-// dát nešlo.
-//
-// Picker sám NEDRŽÍ žádný stav. Zapisuje do dvojice, která už v appce existuje a
-// je zapojená do applyMapTweaks, presetů i projektů:
-//   data-sync-color -> skrytý <input type="color">   (barva)
-//   data-sync-alpha -> skrytý <input type="range">   (průhlednost 0–1)
-// Díky tomu se ukládání ani vykreslování nemuselo nijak měnit.
-// ===========================================================================
-let _pzPicker = null;
-let _pzPickerSwatch = null;
-let _pzPickerHsv = {h:0, s:0, v:1, a:1};
-
-function pzHexToRgb(hex){
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex||'').trim());
-  if(!m) return {r:255, g:255, b:255};
-  return {r:parseInt(m[1],16), g:parseInt(m[2],16), b:parseInt(m[3],16)};
-}
-function pzRgbToHex(r,g,b){
-  const h = v => Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');
-  return '#' + h(r) + h(g) + h(b);
-}
-function pzRgbToHsv(r,g,b){
-  r/=255; g/=255; b/=255;
-  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max-min;
-  let h = 0;
-  if(d){
-    if(max===r) h = ((g-b)/d) % 6;
-    else if(max===g) h = (b-r)/d + 2;
-    else h = (r-g)/d + 4;
-    h *= 60;
-    if(h < 0) h += 360;
-  }
-  return {h, s: max ? d/max : 0, v: max};
-}
-function pzHsvToRgb(h,s,v){
-  const c = v*s, hh = (h/60)%6, x = c*(1-Math.abs(hh%2-1));
-  let r=0,g=0,b=0;
-  if(hh<1){r=c;g=x;} else if(hh<2){r=x;g=c;} else if(hh<3){g=c;b=x;}
-  else if(hh<4){g=x;b=c;} else if(hh<5){r=x;b=c;} else {r=c;b=x;}
-  const m = v-c;
-  return {r:(r+m)*255, g:(g+m)*255, b:(b+m)*255};
-}
-
-function pzBuildPicker(){
-  if(_pzPicker) return _pzPicker;
-  const el = document.createElement('div');
-  el.className = 'pz-picker';
-  el.innerHTML =
-    '<div class="pz-picker-top">' +
-      '<button type="button" class="pz-picker-eyedrop" title="Nabrat barvu z obrazovky" aria-label="Kapátko">&#9096;</button>' +
-      '<span class="pz-picker-preview"><span></span></span>' +
-      '<input class="pz-picker-hex" type="text" spellcheck="false" aria-label="Hex barvy">' +
-    '</div>' +
-    '<div class="pz-sv"><span class="pz-sv-knob"></span></div>' +
-    '<div class="pz-bar pz-bar-hue"><span class="pz-bar-knob"></span></div>' +
-    '<div class="pz-bar pz-bar-alpha"><i></i><span class="pz-bar-knob"></span></div>' +
-    '<div class="pz-fields">' +
-      '<div><input type="number" min="0" max="255" step="1" data-ch="r"><label>R</label></div>' +
-      '<div><input type="number" min="0" max="255" step="1" data-ch="g"><label>G</label></div>' +
-      '<div><input type="number" min="0" max="255" step="1" data-ch="b"><label>B</label></div>' +
-      '<div><input type="number" min="0" max="100" step="1" data-ch="a"><label>A %</label></div>' +
-    '</div>';
-  document.body.appendChild(el);
-  _pzPicker = el;
-
-  const sv = el.querySelector('.pz-sv');
-  const hue = el.querySelector('.pz-bar-hue');
-  const alpha = el.querySelector('.pz-bar-alpha');
-
-  // Tažení po ploše/pruzích: pointer events zvládnou myš i dotyk jedním kódem,
-  // setPointerCapture drží tah i když kurzor vyjede mimo prvek.
-  const drag = (host, onMove) => {
-    const run = ev => {
-      const r = host.getBoundingClientRect();
-      onMove(
-        Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)),
-        Math.max(0, Math.min(1, (ev.clientY - r.top) / r.height))
-      );
-    };
-    host.addEventListener('pointerdown', ev => {
-      ev.preventDefault();
-      host.setPointerCapture(ev.pointerId);
-      run(ev);
-      const move = e => run(e);
-      const up = e => {
-        host.releasePointerCapture(ev.pointerId);
-        host.removeEventListener('pointermove', move);
-        host.removeEventListener('pointerup', up);
-      };
-      host.addEventListener('pointermove', move);
-      host.addEventListener('pointerup', up);
-    });
-  };
-  drag(sv, (x,y) => { _pzPickerHsv.s = x; _pzPickerHsv.v = 1-y; pzPickerCommit(); });
-  drag(hue, x => { _pzPickerHsv.h = x*360; pzPickerCommit(); });
-  drag(alpha, x => { _pzPickerHsv.a = x; pzPickerCommit(); });
-
-  el.querySelectorAll('.pz-fields input').forEach(inp => {
-    inp.addEventListener('input', () => {
-      const ch = inp.dataset.ch;
-      if(ch === 'a'){
-        _pzPickerHsv.a = Math.max(0, Math.min(1, (parseFloat(inp.value)||0)/100));
-      }else{
-        const cur = pzHsvToRgb(_pzPickerHsv.h, _pzPickerHsv.s, _pzPickerHsv.v);
-        const rgb = {r:Math.round(cur.r), g:Math.round(cur.g), b:Math.round(cur.b)};
-        rgb[ch] = Math.max(0, Math.min(255, parseFloat(inp.value)||0));
-        Object.assign(_pzPickerHsv, pzRgbToHsv(rgb.r, rgb.g, rgb.b));
-      }
-      pzPickerCommit(inp);
-    });
-  });
-  el.querySelector('.pz-picker-hex').addEventListener('input', ev => {
-    const v = ev.target.value.trim();
-    if(!/^#?[0-9a-f]{6}$/i.test(v)) return;   // rozepsaný hex neaplikuj
-    const {r,g,b} = pzHexToRgb(v);
-    Object.assign(_pzPickerHsv, pzRgbToHsv(r,g,b));
-    pzPickerCommit(ev.target);
-  });
-  el.querySelector('.pz-picker-eyedrop').addEventListener('click', async () => {
-    // EyeDropper je jen v části prohlížečů — když chybí, tlačítko to řekne
-    // a picker zůstane plně použitelný ručně.
-    if(typeof window.EyeDropper !== 'function'){
-      setStatus('Kapátko tenhle prohlížeč neumí — barvu zadej ručně.');
-      return;
-    }
-    try{
-      const res = await new window.EyeDropper().open();
-      const {r,g,b} = pzHexToRgb(res.sRGBHex);
-      Object.assign(_pzPickerHsv, pzRgbToHsv(r,g,b));
-      pzPickerCommit();
-    }catch(_e){}   // uživatel zrušil klávesou Esc
-  });
-  el.addEventListener('click', ev => ev.stopPropagation());
-  return el;
-}
-
-// Přepíše UI pickeru podle _pzPickerHsv a propíše hodnoty do skrytých inputů.
-// `skip` = prvek, který uživatel právě píše (nepřepisovat mu text pod rukama).
-function pzPickerCommit(skip){
-  const el = _pzPicker, sw = _pzPickerSwatch;
-  if(!el || !sw) return;
-  const {h,s,v,a} = _pzPickerHsv;
-  const rgb = pzHsvToRgb(h,s,v);
-  const r = Math.round(rgb.r), g = Math.round(rgb.g), b = Math.round(rgb.b);
-  const hex = pzRgbToHex(r,g,b);
-
-  el.querySelector('.pz-sv').style.background =
-    `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${h} 100% 50%))`;
-  el.querySelector('.pz-sv .pz-sv-knob').style.left = (s*100)+'%';
-  el.querySelector('.pz-sv .pz-sv-knob').style.top = ((1-v)*100)+'%';
-  el.querySelector('.pz-bar-hue .pz-bar-knob').style.left = (h/360*100)+'%';
-  el.querySelector('.pz-bar-alpha > i').style.background = `linear-gradient(90deg, ${hex}00, ${hex})`;
-  el.querySelector('.pz-bar-alpha .pz-bar-knob').style.left = (a*100)+'%';
-  el.querySelector('.pz-picker-preview > span').style.background = hexToRgba(hex, a);
-
-  const setIf = (sel, val) => { const n = el.querySelector(sel); if(n && n !== skip) n.value = val; };
-  setIf('[data-ch="r"]', r);
-  setIf('[data-ch="g"]', g);
-  setIf('[data-ch="b"]', b);
-  setIf('[data-ch="a"]', Math.round(a*100));
-  setIf('.pz-picker-hex', hex);
-
-  // Zápis do existujícího stavu appky (barva + průhlednost) a překreslení mapy.
-  const colorInput = $(sw.dataset.syncColor);
-  if(colorInput && colorInput.value !== hex){
-    colorInput.value = hex;
-    colorInput.dispatchEvent(new Event('input', {bubbles:true}));
-  }
-  const alphaInput = sw.dataset.syncAlpha ? $(sw.dataset.syncAlpha) : null;
-  if(alphaInput){
-    const next = String(Math.round(a*1000)/1000);
-    if(alphaInput.value !== next){
-      alphaInput.value = next;
-      alphaInput.dispatchEvent(new Event('input', {bubbles:true}));
-    }
-  }
-  syncLayerColorInputs(sw.dataset.syncColor);
-}
-
-function pzOpenColorPicker(swatch){
-  const el = pzBuildPicker();
-  if(_pzPickerSwatch === swatch && el.classList.contains('open')){
-    pzCloseColorPicker();
-    return;
-  }
-  _pzPickerSwatch = swatch;
-  const {r,g,b} = pzHexToRgb($(swatch.dataset.syncColor)?.value || '#ffffff');
-  const a = swatch.dataset.syncAlpha ? parseFloat($(swatch.dataset.syncAlpha)?.value ?? '1') : 1;
-  _pzPickerHsv = Object.assign(pzRgbToHsv(r,g,b), {a: isFinite(a) ? a : 1});
-
-  el.classList.add('open');
-  // Umísti k vzorníku, ale drž celý panel v okně (u spodních vrstev se otevře nahoru).
-  const rect = swatch.getBoundingClientRect();
-  const pw = el.offsetWidth || 236, ph = el.offsetHeight || 300;
-  let left = rect.right + 8;
-  if(left + pw > window.innerWidth - 8) left = Math.max(8, rect.left - pw - 8);
-  let top = rect.top - 6;
-  if(top + ph > window.innerHeight - 8) top = window.innerHeight - ph - 8;
-  // U vrstev na začátku seznamu vycházel záporný `top` a panelu se odřízl horní
-  // okraj — proto se ořezává i shora, ne jen zdola.
-  top = Math.max(8, top);
-  el.style.left = left + 'px';
-  el.style.top = top + 'px';
-  pzPickerCommit();
-}
-function pzCloseColorPicker(){
-  if(_pzPicker) _pzPicker.classList.remove('open');
-  _pzPickerSwatch = null;
-}
-
 function syncLayerColorInputs(sourceId=''){
-  document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(sw => {
-    const targetId = sw.dataset.syncColor;
+  document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
+    const targetId = input.dataset.syncColor;
     if(sourceId && targetId !== sourceId) return;
-    const hex = $(targetId)?.value;
-    if(!hex) return;
-    // Vzorník ukazuje i průhlednost — pod barvou prosvítá šachovnice z CSS.
-    const alphaId = sw.dataset.syncAlpha;
-    const a = alphaId ? parseFloat($(alphaId)?.value ?? '1') : 1;
-    const fill = sw.querySelector(':scope > span') || sw;
-    if(sw.tagName === 'INPUT') sw.value = hex;
-    else fill.style.background = hexToRgba(hex, isFinite(a) ? a : 1);
+    const target = $(targetId);
+    if(target?.value) input.value = target.value;
   });
 }
 function applyColorSet(p){
   if(!p) return;
   $('landColor').value = p.land || '#ece8dd';
   $('waterColor').value = p.water || '#99b7d7';
+  // Řeky mají vlastní barvu; když ji preset nenese, sdílí odstín s vodními plochami.
+  if($('waterwayColor')) $('waterwayColor').value = p.waterway || p.water || '#99b7d7';
   $('buildingColor').value = p.building || '#d9d2c3';
   $('parkColor').value = p.park || '#d8dfc7';
   $('landcoverColor').value = p.landcover || '#c8cfb8';
@@ -4072,8 +3848,8 @@ function dbUpdatePreset(){
 const AUTO_PRESET_CONTROL_IDS = new Set([
   'landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor',
   'aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','boundaryColor','railwayColor','transitColor','motorwayColor','primaryColor','secondaryColor',
-  'majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','landOpacity','parkOpacity','landcoverOpacity','landuseOpacity','aerowayOpacity','waterOpacity','labelOpacity','haloOpacity','roadMinorOpacity','roadMajorOpacity','motorwayOpacity','primaryOpacity','secondaryOpacity','railwayOpacity','metroOpacity','transitOpacity',
-  'showLand','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries',
+  'majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','waterwayWidth','waterwayColor',
+  'showLand','showWaterAreas','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries',
   'showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways',
   'showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'
 ]);
@@ -6734,15 +6510,6 @@ function layoutValueUnchanged(id, p, v){
     return cur !== undefined && JSON.stringify(cur) === JSON.stringify(v);
   }catch(e){ return false; }
 }
-// MapLibre barevné vlastnosti (fill-color, text-halo-color, …) přijímají i rgba()
-// CSS string jako literál — tím jde dát průhlednost i vrstvám, které nemají
-// vlastní `-opacity` paint property (typicky halo popisků).
-function hexToRgba(hex, alpha){
-  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(hex||'').trim());
-  if(!m) return hex;
-  const [r,g,b] = [m[1],m[2],m[3]].map(h => parseInt(h,16));
-  return `rgba(${r},${g},${b},${Math.max(0,Math.min(1,Number(alpha)??1))})`;
-}
 function safeSetPaint(id,p,v){ try{ if(state.map?.getLayer(id) && !paintValueUnchanged(id,p,v)) state.map.setPaintProperty(id,p,v); }catch(e){} }
 function safeSetLayout(id,p,v){ try{ if(state.map?.getLayer(id) && !layoutValueUnchanged(id,p,v)) state.map.setLayoutProperty(id,p,v); }catch(e){} }
 function safeSetFilter(id,v){ try{ if(state.map?.getLayer(id)) state.map.setFilter(id, v); }catch(e){} }
@@ -7765,12 +7532,14 @@ function applyBasicProjectSnapshot(snapshot){
   const visibility = snapshot.visibility || {};
   if($('globeProjection')){ $('globeProjection').checked = !!snapshot.globeProjection; applyGlobeProjection(); }
   applyColorSet(snapshot.colors || PRESETS.reset);
-  ['majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','landOpacity','parkOpacity','landcoverOpacity','landuseOpacity','aerowayOpacity','waterOpacity','labelOpacity','haloOpacity','roadMinorOpacity','roadMajorOpacity','motorwayOpacity','primaryOpacity','secondaryOpacity','railwayOpacity','metroOpacity','transitOpacity'].forEach(id => {
+  ['majorWidth','minorWidth','buildingOpacity','boundaryOpacity','boundaryWidth','waterwayWidth'].forEach(id => {
     if($(id) && ranges[id] != null) $(id).value = String(ranges[id]);
   });
-  ['showLand','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'].forEach(id => {
+  ['showLand','showWaterAreas','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'].forEach(id => {
     if($(id) && visibility[id] != null) $(id).checked = !!visibility[id];
   });
+  // Projekty uložené před přidáním průhlednosti vrstev je taky neobsahují.
+  pzResetLateStyleKeys(ranges, visibility);
 
   const route = snapshot.route || {};
   state.pointA = route.pointA || null;
@@ -8504,6 +8273,9 @@ function applyRoadClassVisibility(){
   setVisibilityByRegex(/motorway|trunk/, major && on('showMotorways'), ['line']);
   setVisibilityByRegex(/primary/, major && on('showPrimaryRoads'), ['line']);
   setVisibilityByRegex(/secondary|tertiary/, minor && on('showSecondaryRoads'), ['line']);
+  // Vodní PLOCHY (jezera, moře) jsou samostatná fill vrstva a dosud se nedaly
+  // vypnout vůbec — přepínač „Řeky a vodní toky" míří jen na linie.
+  setVisibilityByRegex(/water/, on('showWaterAreas'), ['fill']);
   setVisibilityByRegex(/waterway|river|stream|canal|ditch/, on('showWaterways'), ['line','symbol']);
   setVisibilityByRegex(/railway|rail|train/, on('showRailways'), ['line','symbol']);
 
@@ -10096,37 +9868,20 @@ function applyMapTweaks(){
   const motorwayColor = ($('motorwayColor')?.value || '#ff3b4d');
   const primaryColor = ($('primaryColor')?.value || '#ff6b4a');
   const secondaryColor = ($('secondaryColor')?.value || '#ffb000');
-  const landOpacity = parseFloat($('landOpacity')?.value ?? '1');
-  const parkOpacity = parseFloat($('parkOpacity')?.value ?? '1');
-  const landcoverOpacity = parseFloat($('landcoverOpacity')?.value ?? '1');
-  const landuseOpacity = parseFloat($('landuseOpacity')?.value ?? '1');
-  const aerowayOpacity = parseFloat($('aerowayOpacity')?.value ?? '1');
-  const waterOpacity = parseFloat($('waterOpacity')?.value ?? '1');
-  const labelOpacity = parseFloat($('labelOpacity')?.value ?? '1');
-  const haloOpacity = parseFloat($('haloOpacity')?.value ?? '1');
-  const roadMinorOpacity = parseFloat($('roadMinorOpacity')?.value ?? '1');
-  const roadMajorOpacity = parseFloat($('roadMajorOpacity')?.value ?? '1');
-  const motorwayOpacity = parseFloat($('motorwayOpacity')?.value ?? '1');
-  const primaryOpacity = parseFloat($('primaryOpacity')?.value ?? '1');
-  const secondaryOpacity = parseFloat($('secondaryOpacity')?.value ?? '1');
-  const railwayOpacity = parseFloat($('railwayOpacity')?.value ?? '1');
-  const metroOpacity = parseFloat($('metroOpacity')?.value ?? '1');
-  const transitOpacity = parseFloat($('transitOpacity')?.value ?? '1');
+  let classWidthLater = 1;
 
   applyColorToLayers(matchLayers(/background/, 'background'), 'background-color', land);
-  matchLayers(/background/, 'background').forEach(l => safeSetPaint(l.id, 'background-opacity', landOpacity));
   applyColorToLayers(matchLayers(/water/, 'fill'), 'fill-color', water);
-  applyColorToLayers(matchLayers(/water/, 'line'), 'line-color', water);
-  matchLayers(/water/, 'fill').forEach(l => safeSetPaint(l.id, 'fill-opacity', waterOpacity));
-  matchLayers(/water/, 'line').forEach(l => safeSetPaint(l.id, 'line-opacity', waterOpacity));
+  // Řeky a toky (linie) mají vlastní barvu; když ji preset nenese, drží se vody.
+  const waterway = $('waterwayColor')?.value || water;
+  applyColorToLayers(matchLayers(/water/, 'line'), 'line-color', waterway);
+  applyColorToLayers(matchLayers(/waterway|river|stream|canal|ditch/, 'line'), 'line-color', waterway);
+  // Tloušťka řek — stejným způsobem jako u ostatních liniových tříd.
+  classWidthLater = parseFloat($('waterwayWidth')?.value || '1');
   applyColorToLayers(matchLayers(/park|green|wood|forest|grass/, 'fill'), 'fill-color', park);
-  matchLayers(/park|green|wood|forest|grass/, 'fill').forEach(l => safeSetPaint(l.id, 'fill-opacity', parkOpacity));
   applyColorToLayers(matchLayers(/landcover/, 'fill'), 'fill-color', landcover);
-  matchLayers(/landcover/, 'fill').forEach(l => safeSetPaint(l.id, 'fill-opacity', landcoverOpacity));
   applyColorToLayers(matchLayers(/landuse/, 'fill'), 'fill-color', landuse);
-  matchLayers(/landuse/, 'fill').forEach(l => safeSetPaint(l.id, 'fill-opacity', landuseOpacity));
   applyColorToLayers(matchLayers(/aeroway/, 'fill'), 'fill-color', aeroway);
-  matchLayers(/aeroway/, 'fill').forEach(l => safeSetPaint(l.id, 'fill-opacity', aerowayOpacity));
   applyColorToLayers(matchLayers(/building/, 'fill'), 'fill-color', building);
   applyColorToLayers(matchLayers(/building/, 'fill-extrusion'), 'fill-extrusion-color', building);
   matchLayers(/building/, 'fill').forEach(l => safeSetPaint(l.id, 'fill-opacity', buildingOpacity));
@@ -10150,13 +9905,11 @@ function applyMapTweaks(){
     const id = (l.id||'').toLowerCase();
     const isMajor = /motorway|trunk|primary|major/.test(id);
     safeSetPaint(l.id, 'line-color', isMajor ? roadMajor : roadMinor);
-    safeSetPaint(l.id, 'line-opacity', isMajor ? roadMajorOpacity : roadMinorOpacity);
     const baseWidth = state.originalRoadWidthPaints[l.id];
     const widthExpr = baseWidth == null ? (isMajor ? 1.4 * majorWidth : 1.0 * minorWidth) : scalePaintWidthExpression(baseWidth, isMajor ? majorWidth : minorWidth);
     safeSetPaint(l.id, 'line-width', widthExpr);
   });
   applyColorToLayers(matchLayers(/railway|rail|train/, 'line'), 'line-color', railwayColor);
-  matchLayers(/railway|rail|train/, 'line').forEach(l => safeSetPaint(l.id, 'line-opacity', railwayOpacity));
   const classWidth = (regex, scale) => matchLayers(regex, 'line').forEach(l => {
     const base = state.originalRoadWidthPaints[l.id];
     safeSetPaint(l.id, 'line-width', base == null ? scale : scalePaintWidthExpression(base, scale));
@@ -10165,31 +9918,21 @@ function applyMapTweaks(){
   classWidth(/primary/, parseFloat($('primaryWidth')?.value || '1'));
   classWidth(/secondary/, parseFloat($('secondaryWidth')?.value || '1'));
   applyColorToLayers(matchLayers(/motorway|trunk/, 'line'), 'line-color', motorwayColor);
-  matchLayers(/motorway|trunk/, 'line').forEach(l => safeSetPaint(l.id, 'line-opacity', motorwayOpacity));
   applyColorToLayers(matchLayers(/primary/, 'line'), 'line-color', primaryColor);
-  matchLayers(/primary/, 'line').forEach(l => safeSetPaint(l.id, 'line-opacity', primaryOpacity));
   applyColorToLayers(matchLayers(/secondary/, 'line'), 'line-color', secondaryColor);
-  matchLayers(/secondary/, 'line').forEach(l => safeSetPaint(l.id, 'line-opacity', secondaryOpacity));
   classWidth(/railway|rail|train/, parseFloat($('railwayWidth')?.value || '1'));
+  classWidth(/waterway|river|stream|canal|ditch/, classWidthLater);
   const metroWidth = parseFloat($('metroWidth')?.value || '1');
   const transitWidth = parseFloat($('transitWidth')?.value || '1');
   safeSetPaint('pz-metro-line','line-width',['interpolate',['linear'],['zoom'],6,1.2*metroWidth,9,2*metroWidth,12,3.4*metroWidth,16,6*metroWidth]);
-  safeSetPaint('pz-metro-line', 'line-opacity', metroOpacity);
-  safeSetPaint('pz-metro-stops', 'circle-opacity', metroOpacity);
   safeSetPaint('pz-tram-line','line-width',['interpolate',['linear'],['zoom'],11,.8*transitWidth,14,1.8*transitWidth,17,3.4*transitWidth]);
   safeSetPaint('pz-tram-line', 'line-color', transitColor);
-  safeSetPaint('pz-tram-line', 'line-opacity', transitOpacity);
   safeSetPaint('pz-transit-stops', 'circle-color', transitColor);
-  safeSetPaint('pz-transit-stops', 'circle-opacity', transitOpacity);
 
   const labelLayers = matchLayers(/label|place|name|poi|airport|aerodrome/, 'symbol');
-  const haloWithAlpha = hexToRgba(halo, haloOpacity);
   labelLayers.forEach(l => {
     safeSetPaint(l.id, 'text-color', label);
-    safeSetPaint(l.id, 'text-opacity', labelOpacity);
-    // Halo (paint text-halo-color) nemá vlastní -opacity vlastnost — alfa se
-    // proto vkládá přímo do rgba() barvy.
-    safeSetPaint(l.id, 'text-halo-color', haloWithAlpha);
+    safeSetPaint(l.id, 'text-halo-color', halo);
     safeSetPaint(l.id, 'text-halo-width', 1.2);
   });
 
@@ -10368,26 +10111,11 @@ function updateReadouts(){
   const set = (id,val) => { if($(id)) $(id).textContent = val; };
   set('majorWidthVal', (parseFloat($('majorWidth')?.value || '1.3')).toFixed(1) + '×');
   set('minorWidthVal', (parseFloat($('minorWidth')?.value || '1.0')).toFixed(1) + '×');
+  set('waterwayWidthVal', (parseFloat($('waterwayWidth')?.value || '1')).toFixed(1) + '×');
   set('buildingOpacityVal', Math.round(parseFloat($('buildingOpacity')?.value || '0.72')*100)+'%');
-  set('landOpacityVal', Math.round(parseFloat($('landOpacity')?.value || '1')*100)+'%');
-  set('parkOpacityVal', Math.round(parseFloat($('parkOpacity')?.value || '1')*100)+'%');
-  set('landcoverOpacityVal', Math.round(parseFloat($('landcoverOpacity')?.value || '1')*100)+'%');
-  set('landuseOpacityVal', Math.round(parseFloat($('landuseOpacity')?.value || '1')*100)+'%');
-  set('aerowayOpacityVal', Math.round(parseFloat($('aerowayOpacity')?.value || '1')*100)+'%');
-  set('waterOpacityVal', Math.round(parseFloat($('waterOpacity')?.value || '1')*100)+'%');
-  set('labelOpacityVal', Math.round(parseFloat($('labelOpacity')?.value || '1')*100)+'%');
-  set('haloOpacityVal', Math.round(parseFloat($('haloOpacity')?.value || '1')*100)+'%');
-  set('roadMinorOpacityVal', Math.round(parseFloat($('roadMinorOpacity')?.value || '1')*100)+'%');
-  set('roadMajorOpacityVal', Math.round(parseFloat($('roadMajorOpacity')?.value || '1')*100)+'%');
-  set('motorwayOpacityVal', Math.round(parseFloat($('motorwayOpacity')?.value || '1')*100)+'%');
-  set('primaryOpacityVal', Math.round(parseFloat($('primaryOpacity')?.value || '1')*100)+'%');
-  set('secondaryOpacityVal', Math.round(parseFloat($('secondaryOpacity')?.value || '1')*100)+'%');
-  set('railwayOpacityVal', Math.round(parseFloat($('railwayOpacity')?.value || '1')*100)+'%');
-  set('metroOpacityVal', Math.round(parseFloat($('metroOpacity')?.value || '1')*100)+'%');
-  set('transitOpacityVal', Math.round(parseFloat($('transitOpacity')?.value || '1')*100)+'%');
   set('boundaryOpacityVal', Math.round(parseFloat($('boundaryOpacity')?.value || '1')*100)+'%');
   set('boundaryWidthVal', (parseFloat($('boundaryWidth')?.value || '1.2')).toFixed(1) + '×');
-  ['motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth'].forEach(id => set(id+'Val',(parseFloat($(id)?.value || '1')).toFixed(1)+'×'));
+  ['motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','waterwayWidth'].forEach(id => set(id+'Val',(parseFloat($(id)?.value || '1')).toFixed(1)+'×'));
   set('routeWidthVal', ($('routeWidth')?.value || '4') + ' px');
   set('routeEndpointSizeVal', ($('routeEndpointSize')?.value || '28') + ' px');
   set('satDotSizeVal', ($('satDotSize')?.value || '2') + ' px');
@@ -16473,39 +16201,36 @@ function bindUI(){
       }
     }catch(_e){}
   });
-  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','transitColor','motorwayColor','primaryColor','secondaryColor','majorWidth','minorWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','buildingOpacity','landOpacity','parkOpacity','landcoverOpacity','landuseOpacity','aerowayOpacity','waterOpacity','labelOpacity','haloOpacity','roadMinorOpacity','roadMajorOpacity','motorwayOpacity','primaryOpacity','secondaryOpacity','railwayOpacity','metroOpacity','transitOpacity','showLand','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
+  ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','transitColor','motorwayColor','primaryColor','secondaryColor','majorWidth','minorWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','buildingOpacity','waterwayWidth','waterwayColor','showLand','showWaterAreas','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
-  syncLayerColorInputs();
+  document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
+    const target = $(input.dataset.syncColor);
+    if(target?.value) input.value = target.value;
+    input.addEventListener('input', () => {
+      if(!target) return;
+      target.value = input.value;
+      syncLayerColorInputs(input.dataset.syncColor);
+      target.dispatchEvent(new Event('input', {bubbles:true}));
+    });
+  });
   document.querySelectorAll('.layer-visibility-row .layer-color-input').forEach(swatch => {
     swatch.addEventListener('click', e => {
       e.stopPropagation();
-      e.preventDefault();
       const row = swatch.closest('.layer-visibility-row');
-      // Vzorník s barvou → RGBA picker. Řádky bez barvy (metro má jen gradient
-      // linek A/B/C) nechávají původní chování: rozbalí popover s tloušťkou.
-      if(swatch.dataset.syncColor){
-        pzOpenColorPicker(swatch);
-        return;
-      }
       if(!row?.querySelector('.layer-width-popover')) return;
       document.querySelectorAll('.layer-visibility-row.width-open').forEach(other => { if(other !== row) other.classList.remove('width-open'); });
       row.classList.toggle('width-open');
     });
   });
   document.addEventListener('click', e => {
-    if(!e.target.closest('.pz-picker')) pzCloseColorPicker();
     if(e.target.closest('.layer-visibility-row.width-open')) return;
     document.querySelectorAll('.layer-visibility-row.width-open').forEach(row => row.classList.remove('width-open'));
   });
   document.addEventListener('keydown', e => {
     if(e.key !== 'Escape') return;
-    pzCloseColorPicker();
     document.querySelectorAll('.layer-visibility-row.width-open').forEach(row => row.classList.remove('width-open'));
   });
-  // Panel je position:fixed u vzorníku — při rolování sidebaru by zůstal viset jinde.
-  document.querySelector('.sidebar')?.addEventListener('scroll', pzCloseColorPicker, {passive:true});
-  window.addEventListener('resize', pzCloseColorPicker);
   ['boundaryOpacity','boundaryWidth']
     .forEach(id => $(id)?.addEventListener('input', applyBoundaryTweaksDebounced));
   // Sun & shadows: the shadow geometry is derived from whatever buildings are in
