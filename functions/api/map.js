@@ -23,6 +23,15 @@ async function ensureTable(db) {
     'CREATE TABLE IF NOT EXISTS items (entity TEXT NOT NULL, id TEXT NOT NULL, ' +
     'json TEXT NOT NULL, updated_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (entity, id))'
   );
+  // Náhrobky mazání. Bez nich se smazaná položka vracela: klient po odeslání zahodí
+  // svůj záznam o smazání, a jakákoli JINÁ otevřená záložka nebo počítač, který má
+  // v paměti ještě starý seznam, ji při svém dalším uložení pošle zpátky — a server
+  // ji poslušně založí znovu. Teď si pamatuje, KDY co bylo smazáno, a zápis staršího
+  // původu odmítne.
+  await db.exec(
+    'CREATE TABLE IF NOT EXISTS deletions (entity TEXT NOT NULL, id TEXT NOT NULL, ' +
+    'deleted_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (entity, id))'
+  );
 }
 
 export async function onRequest(context) {
@@ -86,16 +95,29 @@ export async function onRequest(context) {
       if (item.updatedAt == null) item.updatedAt = now;   // klientův updatedAt ctíme
       const ts = Number(item.updatedAt) || 0;
       // Novější (nebo stejně starý) zápis vyhrává — jinak zůstane uložená verze.
+      // Poslední podmínka drží smazané položky smazané: když někdo pošle položku,
+      // která je mezitím starší než její záznam o smazání, zápis se zahodí.
       stmts.push(
         env.DB.prepare(
-          'INSERT INTO items (entity, id, json, updated_at) VALUES (?, ?, ?, ?) ' +
+          // INSERT ... SELECT (ne VALUES) — jen tahle podoba umí WHERE, kterým se
+          // zápis zahodí, pokud pro tohle id existuje novější záznam o smazání.
+          'INSERT INTO items (entity, id, json, updated_at) ' +
+          'SELECT ?, ?, ?, ? WHERE NOT EXISTS (' +
+          '  SELECT 1 FROM deletions d WHERE d.entity = ? AND d.id = ? AND d.deleted_at > ?) ' +
           'ON CONFLICT(entity, id) DO UPDATE SET json = excluded.json, updated_at = excluded.updated_at ' +
           'WHERE excluded.updated_at >= items.updated_at'
-        ).bind(entity, id, JSON.stringify(item), ts)
+        ).bind(entity, id, JSON.stringify(item), ts, entity, id, ts)
       );
     }
     for (const id of deleted) {
       stmts.push(env.DB.prepare('DELETE FROM items WHERE entity = ? AND id = ?').bind(entity, id));
+      // Náhrobek si drží čas smazání, aby pozdější zápis staršího původu neprošel.
+      stmts.push(
+        env.DB.prepare(
+          'INSERT INTO deletions (entity, id, deleted_at) VALUES (?, ?, ?) ' +
+          'ON CONFLICT(entity, id) DO UPDATE SET deleted_at = excluded.deleted_at'
+        ).bind(entity, id, now)
+      );
     }
     if (stmts.length) await env.DB.batch(stmts);
 

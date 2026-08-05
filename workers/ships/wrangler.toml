@@ -1,0 +1,14 @@
+name = "pz-ships-tracker"
+main = "src/worker.js"
+compatibility_date = "2026-01-15"
+
+[[durable_objects.bindings]]
+name = "SHIPS"
+class_name = "ShipsSocket"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ShipsSocket"]
+
+# AISSTREAM_KEY se ukládá jen jako Cloudflare secret:
+# npx wrangler secret put AISSTREAM_KEY

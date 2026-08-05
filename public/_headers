@@ -1,0 +1,27 @@
+# Cachovací pravidla pro Cloudflare Pages.
+#
+# Bez tohohle souboru posílá Pages na VŠECHNO `max-age=0, must-revalidate`,
+# takže prohlížeč při každé návštěvě znovu ověřuje i knihovny, které se roky
+# nemění — MapLibre má přes 1 MB, k tomu JSZip, satellite.js a CSS. Ověření
+# sice vrátí 304 (nestahuje se znovu), ale je to síťová cesta navíc na každý
+# soubor, než se appka vůbec začne spouštět.
+#
+# Knihovny ve vendor/ jsou konkrétní zamčené verze (viz komentář u <script>
+# tagů) — když bude potřeba novější, mění se soubor i jeho jméno/verze, takže
+# je bezpečné říct prohlížeči, ať se na ně rok neptá.
+
+# POZOR: pravidla v _headers se SČÍTAJÍ, neplatí "první vyhrává". Kdyby tu bylo
+# i obecné /assets/*, dostaly by soubory ve vendor/ obě hlavičky slepené za sebe
+# ("max-age=31536000, immutable, max-age=604800") — proto je tu jen tohle jedno
+# pravidlo. Obrázky v /assets/ jsou dohromady ~43 kB, na těch nezáleží.
+/assets/vendor/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# index.html musí zůstat bez cache: appka je jeden soubor a každý deploy mění
+# jeho obsah beze změny jména. Kdyby se cachoval, uživatel by po nasazení
+# viděl starou verzi, dokud by nedal Ctrl+F5.
+/
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate

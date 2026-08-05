@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Vrtulník shora">
+  <!-- Silueta podle dodané ikony: rotorová ramena jsou pod trupem. -->
+  <g fill="#000">
+    <rect x="62" y="244" width="388" height="27" rx="13.5" transform="rotate(-45 256 257.5)"/>
+    <rect x="62" y="244" width="388" height="27" rx="13.5" transform="rotate(45 256 257.5)"/>
+    <path d="M256 0c-43 0-73 39-73 125v47c0 43 10 72 27 86h24v173l-78 52v29l82-36h45l81 36v-29l-78-52V258h16c22-17 35-48 35-86v-47C337 39 300 0 256 0Z"/>
+  </g>
+</svg>
