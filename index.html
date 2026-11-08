@@ -4544,7 +4544,13 @@ function getAccordionStorageKey(section, idx){
 }
 
 function isAccordionDefaultOpen(section, idx){
-  return false;
+  // Když appku někdo otevře poprvé, sbalené úplně všechno znamená stěnu nadpisů
+  // a nic, čeho by se chytil. První sekce v každé záložce je proto rozbalená —
+  // v každé kartě je hned vidět, co se v ní dělá. Uložená volba má přednost,
+  // takže kdo si to jednou sbalí, zůstane mu to sbalené.
+  const pane = section.closest('.tab-pane');
+  if(!pane) return false;
+  return pane.querySelector(':scope > .section') === section;
 }
 
 function setAccordionOpen(section, open, storageKey, persist=true){
