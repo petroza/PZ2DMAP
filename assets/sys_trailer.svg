@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- návěs shora -->
+  <path fill="#000" fill-rule="evenodd" d="M84 10 L172 10 Q178 10 178 16 L178 242 Q178 248 172 248 L84 248 Q78 248 78 242 L78 16 Q78 10 84 10 Z
+  M90 60 L166 60 L166 65 L90 65 Z M90 128 L166 128 L166 133 L90 133 Z M90 196 L166 196 L166 201 L90 201 Z"/>
+</svg>

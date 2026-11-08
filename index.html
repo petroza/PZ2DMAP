@@ -1226,7 +1226,6 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
             <span data-i18n="Auto">Auto</span>
           </button>
           <button type="button" class="sys-icon-btn" data-sys-icon="truck" title="Kamion"><img src="assets/sys_truck.svg" alt="" loading="lazy"><span>Kamion</span></button>
-          <button type="button" class="sys-icon-btn" data-sys-icon="moto" title="Motorka"><img src="assets/sys_moto.svg" alt="" loading="lazy"><span>Motorka</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="train" title="Vlak"><img src="assets/sys_train.svg" alt="" loading="lazy"><span>Vlak</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="boat" title="Loď"><img src="assets/sys_boat.svg" alt="" loading="lazy"><span>Loď</span></button>
         </div>
@@ -4201,14 +4200,14 @@ const SVG_ICONS = {
 const ANIM_SYSTEM_ICONS = {
   plane: 'assets/sys_plane.svg',
   car: 'assets/sys_car.png',
-  truck: 'assets/sys_truck.svg',
-  moto: 'assets/sys_moto.svg',
+  truck: 'assets/sys_tractor.svg',   // tahač; návěs za ním kreslí pzUpdateConsist
   train: 'assets/sys_train.svg',
   boat: 'assets/sys_boat.svg'
 };
 // Která ikonka patří ke kterému druhu dopravy — při přepnutí dopravy se
 // ikonka vymění sama (pokud grafik nenahrál vlastní obrázek).
-const PZ_MODE_ICON = {driving:'car', truck:'truck', moto:'moto', train:'train', boat:'boat',
+// Motorka záměrně nemá ikonku — na mapě jen bod jako u pěší trasy.
+const PZ_MODE_ICON = {driving:'car', truck:'truck', train:'train', boat:'boat',
   planeDirect:'plane', planeArc:'plane', planeCustom:'plane'};
 function pzMatchIconToMode(){
   const want = PZ_MODE_ICON[state.currentTransportMode];
@@ -4330,7 +4329,7 @@ function setActiveButton(groupSel, attr, value, activeClass='active'){
 
 function getCurrentMoverType(){
   const m = state.currentTransportMode;
-  return (m === 'driving' || m === 'truck' || m === 'moto') ? 'car'
+  return (m === 'driving' || m === 'truck') ? 'car'
     : m === 'train' ? 'train' : m === 'boat' ? 'boat'
     : state.currentTransportMode === 'cycle' ? 'bike'
     : state.currentTransportMode.startsWith('plane') ? 'plane'
@@ -13862,12 +13861,16 @@ function getFollowOffset(type){ return {car:0, bike:0, plane:0, dot:0, sysCar:0,
 //    i export videa (snímek po snímku) dávají přesně stejný úhel.
 // Okno je ±2 km, ale nejvýš ±3 % délky trasy (krátká městská trasa) a
 // nejméně ±0,4 % (dlouhý let — oblouk je hladký sám o sobě).
-function pzAutoHeading(coords, progress){
+function pzAutoHeading(coords, progress, opts){
   if(!coords || coords.length < 2) return 0;
   const total = lineLength(coords);
   if(!(total > 0)) return 0;
-  const look = Math.max(0.004, Math.min(0.03, 2 / total));
-  const N = 8;
+  // Loď: řeka meandruje s vlnovou délkou ~1 km — s oknem ±2 km by se ikona
+  // přetáčela ze zákrutu do zákrutu („klepe"). Loď proto drží kurz podle
+  // širšího úseku (±6 km) a vzorkuje hustěji.
+  const boat = opts?.boat ?? (state.currentTransportMode === 'boat');
+  const look = boat ? Math.max(0.012, Math.min(0.08, 6 / total)) : Math.max(0.004, Math.min(0.03, 2 / total));
+  const N = boat ? 32 : 16;
   let sx = 0, sy = 0;
   let prev = pointAtProgress(coords, Math.max(0, progress - look));
   for(let k = 1; k <= N; k++){
@@ -13895,6 +13898,86 @@ function finalAngle(progress){
   return getPathFollowBaseAngle(moverType) + pzAutoHeading(state.routeCoords, progress) + getFollowOffset(moverType) + manual;
 }
 
+
+/* ===== Souprava: vlak = lokomotiva + 2 vagony, kamion = tahač + návěs =====
+   Vedoucí kus je běžná animační ikonka (DOM marker). Vagony/návěs jsou symboly
+   v mapě — každý stojí na trase o kus dál za předchozím a natočí se podle své
+   přední a zadní nápravy, takže se souprava v zatáčce „láme" jako skutečná.
+   Vrstva je součást mapy, proto je i v exportu videa bez další práce. */
+const PZ_CONSIST = {
+  // gap = vzdálenost středů v násobcích velikosti ikonky, half = půl délky kusu
+  train: [{img:'assets/sys_wagon.svg', gap:0.98, half:0.46}, {img:'assets/sys_wagon.svg', gap:0.98, half:0.46}],
+  truck: [{img:'assets/sys_trailer.svg', gap:0.58, half:0.44}]
+};
+const _pzConsistImg = {};
+function pzConsistImage(src, inverted){
+  const key = src + (inverted ? '#inv' : '');
+  if(_pzConsistImg[key]) return _pzConsistImg[key];
+  const rec = {ready:false, data:null, id:'pzsoup-' + Object.keys(_pzConsistImg).length};
+  _pzConsistImg[key] = rec;
+  const im = new Image(); im.crossOrigin = 'anonymous';
+  im.onload = () => {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const ctx = c.getContext('2d'); if(inverted) ctx.filter = 'invert(1)';
+    ctx.drawImage(im, 0, 0, 256, 256);
+    rec.data = ctx.getImageData(0, 0, 256, 256); rec.ready = true;
+    try{ if(state._pzConsistLast != null) pzUpdateConsist(state._pzConsistLast); }catch(e){}
+  };
+  im.src = new URL(src, document.baseURI).href;
+  return rec;
+}
+function pzPointAtKm(coords, cum, total, d){
+  if(d >= total) return coords[coords.length-1];
+  if(d <= 0){
+    // před startem: prodloužit první úsek dozadu, ať se vagony nenahromadí v jednom bodě
+    const a = coords[0], b = pointAtProgress(coords, Math.min(1, 0.2 / Math.max(total, 0.2)));
+    const L = haversineKm(a, b) || 1e-9, k = d / L;
+    return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+  }
+  return pointAtProgress(coords, d / total);
+}
+function pzUpdateConsist(progress){
+  const m = state.map; if(!m || !m.isStyleLoaded?.()) return;
+  if(!m._pzConsistHook){
+    m._pzConsistHook = true;
+    m.on('zoom', () => { if(state.map === m && state._pzConsistLast != null) try{ pzUpdateConsist(state._pzConsistLast); }catch(e){} });
+  }
+  const spec = (progress != null && state.animSystemIcon) ? PZ_CONSIST[state.animSystemIcon] : null;
+  state._pzConsistLast = progress;
+  const coords = state.routeCoords || [];
+  const feats = [];
+  if(spec && coords.length > 1 && state.animatedMarkerEl){
+    const inverted = !!$('invertIcons')?.checked;
+    const size = parseFloat(state.animatedMarkerEl.style.width) || parseInt($('animIconSize')?.value || '34', 10);
+    const {cum, total} = cumulativeRouteLengths(coords);
+    const lead = pointAtProgress(coords, progress) || coords[0];
+    // km na CSS pixel v místě soupravy (MapLibre: dlaždice 512 px)
+    const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
+    let d = progress * total;
+    spec.forEach((u, i) => {
+      const rec = pzConsistImage(u.img, inverted);
+      if(!rec.ready) return;
+      if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
+      d -= u.gap * size * kmPerPx;
+      const half = u.half * size * kmPerPx;
+      const front = pzPointAtKm(coords, cum, total, d + half), back = pzPointAtKm(coords, cum, total, d - half);
+      const mid = pzPointAtKm(coords, cum, total, d);
+      const midLat = (front[1] + back[1]) / 2 * Math.PI / 180;
+      const rot = Math.atan2((front[0] - back[0]) * Math.cos(midLat), front[1] - back[1]) * 180 / Math.PI;
+      feats.push({type:'Feature', geometry:{type:'Point', coordinates:mid}, properties:{img:rec.id, rot, sz: size / 64, k:i}});
+    });
+  }
+  const data = {type:'FeatureCollection', features:feats};
+  const src = m.getSource('pz-souprava');
+  if(src){ src.setData(data); return; }
+  if(!feats.length) return;
+  m.addSource('pz-souprava', {type:'geojson', data});
+  m.addLayer({id:'pz-souprava', type:'symbol', source:'pz-souprava', layout:{
+    'icon-image':['get','img'], 'icon-size':['get','sz'], 'icon-rotate':['get','rot'],
+    'icon-rotation-alignment':'map', 'icon-pitch-alignment':'viewport',
+    'icon-allow-overlap':true, 'icon-ignore-placement':true, 'symbol-sort-key':['get','k']}});
+}
+
 function animMarkerInnerHTML(){
   return state.animIconData
     ? `<img alt="" src="${escapeHtml(state.animIconData)}" style="width:100%;height:100%;object-fit:contain">`
@@ -13910,7 +13993,7 @@ function createMarkerEl(type,size){
   return el;
 }
 
-function removeAnimMarker(){ if(state.animatedMarker){ state.animatedMarker.remove(); state.animatedMarker = null; state.animatedMarkerEl = null; state.markerCameraMode = null; } }
+function removeAnimMarker(){ try{ state.map?.getSource?.('pz-souprava')?.setData({type:'FeatureCollection', features:[]}); }catch(e){} if(state.animatedMarker){ state.animatedMarker.remove(); state.animatedMarker = null; state.animatedMarkerEl = null; state.markerCameraMode = null; } }
 
 function getCurrentAnimationProgress(){
   const delay = parseFloat($('animStart')?.value || '0');
@@ -14544,6 +14627,7 @@ function setAnimProgress(progress){
   } else {
     if(plane3dLayer.cur) plane3dLayer.cur.visible = false;
     if(animDot && point) ensureAnimMarker(mPoint, finalAngle(eased), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
+    try{ pzUpdateConsist(animDot && point ? eased : null); }catch(e){}
     // A GLB model pinned to the route follows the animation (position + heading).
     if(state.model3d?.followRoute && model3dHasModel() && mPoint){ state.model3d.lngLat = mPoint; state.model3d.rotationLive = (typeof routeAngle === 'function' ? pzAutoHeading(state.routeCoords, eased) : 0) + (state.model3d.rotationDeg || 0); state.map?.triggerRepaint?.(); }
   }

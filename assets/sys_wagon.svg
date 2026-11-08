@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- vagon shora (za lokomotivou) -->
+  <path fill="#000" fill-rule="evenodd" d="M96 8 L160 8 Q170 8 170 18 L170 238 Q170 248 160 248 L96 248 Q86 248 86 238 L86 18 Q86 8 96 8 Z
+  M100 40 L156 40 L156 48 L100 48 Z M100 96 L156 96 L156 104 L100 104 Z M100 152 L156 152 L156 160 L100 160 Z M100 208 L156 208 L156 216 L100 216 Z"/>
+</svg>
