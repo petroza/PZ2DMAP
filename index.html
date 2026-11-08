@@ -670,7 +670,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
   <div class="sidebar-brand">
     <div class="sidebar-brand-top">
       <div class="brand-meta">
-        <div class="brand-icon" id="brandLogo" role="button" tabindex="0" title="Zpět na základní styl (Bright)"><span>TN</span></div>
+        <div class="brand-icon" id="brandLogo" role="button" tabindex="0" title="Na začátek — podklad Bright, celé Česko v rámečku"><span>TN</span></div>
         <div class="brand-copy"><span class="brand-title">PZ MAP</span></div>
       </div>
       <div class="lang-switcher lang-switcher-inline" id="langSwitcherSlot"></div>
@@ -4371,22 +4371,25 @@ function setTab(name){
 // It deliberately does NOT touch the route, scene objects, project or map view.
 function resetAppToStart(){
   try{ setTab('styly'); }catch(_e){}
-  try{ $$('.sidebar .tab-pane .section.section-collapsible').forEach(s => setAccordionOpen(s, false, null, false)); }catch(_e){}
+  // Domů = stejný pohled jako při prvním otevření: první sekce každé záložky
+  // rozbalená, zbytek sbalený. Úplně sbalený panel nedával grafikovi nic, čeho
+  // by se chytil.
+  try{ $$('.sidebar .tab-pane .section.section-collapsible').forEach(s => setAccordionOpen(s, isAccordionDefaultOpen(s), null, false)); }catch(_e){}
   state.addingScenePerimeter = state.addingSceneDistance = state.addingSceneIcon = state.addingMapLabel = state.addingFlightPoint = state.addingModel3d = false;
   try{ if(state.measureMode && state.measureMode !== 'off') setMeasureMode(state.measureMode); }catch(_e){}
   try{ const sc = $('shortcutsPanel'); if(sc) sc.hidden = true; }catch(_e){}
   try{ closeNavSuggest('startInput'); closeNavSuggest('endInput'); }catch(_e){}
   try{ document.body.classList.remove('mobile-panel-open'); }catch(_e){}
   try{ document.querySelector('.sidebar')?.scrollTo({top:0, behavior:'smooth'}); }catch(_e){}
-  // The "home" reset also drops the basemap back to Positron, the chosen default
-  // base style. reloadStyle() rebuilds the map, so the Czech-Republic framing
+  // The "home" reset also drops the basemap back to Bright, the default base
+  // style (graphic designers asked for the TN logo to mean "back to Bright"). reloadStyle() rebuilds the map, so the Czech-Republic framing
   // below must wait for the new style to load — otherwise reloadStyle's own
   // camera restore would clobber it.
   let switchedStyle = false;
   try{
     const sel = $('baseStyle');
-    if(sel && sel.value !== 'positron'){
-      sel.value = 'positron';
+    if(sel && sel.value !== 'bright'){
+      sel.value = 'bright';
       if(typeof reloadStyle === 'function'){ reloadStyle(); switchedStyle = true; }
     }
   }catch(_e){}
@@ -16224,7 +16227,7 @@ function bindUI(){
     logo.style.cursor = 'pointer';
     logo.setAttribute('role', 'button');
     logo.setAttribute('tabindex', '0');
-    logo.title = 'Reset na začátek';
+    logo.title = 'Na začátek — podklad Bright, celé Česko v rámečku';
     logo.addEventListener('click', resetAppToStart);
     logo.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); resetAppToStart(); } });
   })();
@@ -18538,28 +18541,5 @@ document.addEventListener('keydown', e => {
 <!-- defer: only used by video/PNG-sequence export (a much later user action), so it
      must not sit on the load critical path. onerror preserves the CDN fallback. -->
 <script defer src="assets/vendor/jszip.min.js" onerror="(function(){var s=document.createElement('script');s.defer=true;s.src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';document.head.appendChild(s);})()"></script>
-<script>
-// Klik na logo TN vrátí základní styl na Bright (výchozí). Jde přes veřejné
-// window.TNMAP, se zálohou přímo na select, kdyby se API nestihlo vystavit.
-(function(){
-  'use strict';
-  function toBright(){
-    var api = window.TNMAP;
-    if(api && typeof api.setBaseStyle === 'function'){ api.setBaseStyle({style:'bright'}); return; }
-    var sel = document.getElementById('baseStyle');
-    if(sel){ sel.value = 'bright'; sel.dispatchEvent(new Event('change', {bubbles:true})); }
-  }
-  function bind(){
-    var el = document.getElementById('brandLogo');
-    if(!el) return;
-    el.addEventListener('click', toBright);
-    el.addEventListener('keydown', function(e){
-      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toBright(); }
-    });
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
-  else bind();
-})();
-</script>
 </body>
 </html>
