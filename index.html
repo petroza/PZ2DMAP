@@ -958,6 +958,10 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="16.5" r="3.2"/><circle cx="19" cy="16.5" r="3.2"/><path d="M5 16.5h5l3.5-5H8.5"/><path d="M13.5 11.5 16 6h2.5"/><path d="M19 16.5 16 6"/><path d="M10 11.5 8.5 9H6"/></svg></div>
             <span class="t-label">Motorka</span>
           </button>
+          <button type="button" class="transport-btn" data-mode="train" title="Vlak — trasa po železniční síti ČR">
+            <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14"/><circle cx="9" cy="13" r=".6" fill="currentColor"/><circle cx="15" cy="13" r=".6" fill="currentColor"/><path d="m8 16-2.5 5M16 16l2.5 5M7 19h10"/></svg></div>
+            <span class="t-label">Vlak</span>
+          </button>
           <button type="button" class="transport-btn" data-mode="foot">
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M13.5 8.5h-3c-.6 0-1 .4-1 1v4l-2.5 5"/><path d="M13.5 8.5l1 4.5-2.5 2.5V20"/><path d="M9.5 13.5l2.5 2"/><path d="M7 18.5l1.5-.5"/></svg></div>
             <span class="t-label" data-i18n="Pěšky">Pěšky</span>
@@ -13224,6 +13228,114 @@ function makeGreatCircle(start, end, steps=120){
   return pts;
 }
 
+
+/* ===== VLAK: trasa po železniční síti ČR =====
+   Veřejné routery umí jen silnice, takže síť je přibalená (assets/rail_cz.json,
+   z OSM, ~150 kB gzip) a hledá se v prohlížeči Dijkstrou. Načte se až při
+   první trase vlakem. Start a cíl se přichytí na nejbližší místo na trati. */
+let _pzRail = null, _pzRailLoading = null;
+async function pzLoadRail(){
+  if(_pzRail) return _pzRail;
+  if(_pzRailLoading) return _pzRailLoading;
+  _pzRailLoading = (async () => {
+    const res = await fetch(new URL('assets/rail_cz.json', document.baseURI));
+    if(!res.ok) throw new Error('Železniční síť se nepodařilo načíst (' + res.status + ').');
+    const d = await res.json(); const Q = d.q || 1e5;
+    const N = d.n.length / 2, nodes = new Array(N);
+    for(let i = 0; i < N; i++) nodes[i] = [d.n[2*i] / Q, d.n[2*i+1] / Q];
+    const adj = Array.from({length:N}, () => []);
+    const edges = d.e.map((e, idx) => {
+      const [a, b, len, flat] = e;
+      const pts = [nodes[a]]; let x = d.n[2*a], y = d.n[2*a+1];
+      for(let k = 0; k < flat.length; k += 2){ x += flat[k]; y += flat[k+1]; pts.push([x / Q, y / Q]); }
+      pts.push(nodes[b]);
+      const cum = [0]; for(let k = 1; k < pts.length; k++) cum.push(cum[k-1] + haversineKm(pts[k-1], pts[k]) * 1000);
+      adj[a].push(idx); adj[b].push(idx);
+      return {a, b, len: cum[cum.length-1] || len, pts, cum};
+    });
+    _pzRail = {nodes, edges, adj};
+    return _pzRail;
+  })();
+  try{ return await _pzRailLoading; } finally { _pzRailLoading = null; }
+}
+// Nejbližší bod na trati: hrana + poloha na ní (projekce na úsečku).
+function pzRailSnap(g, p){
+  const kx = Math.cos(p[1] * Math.PI / 180);
+  let best = null, bd = Infinity;
+  for(let ei = 0; ei < g.edges.length; ei++){
+    const pts = g.edges[ei].pts;
+    for(let k = 1; k < pts.length; k++){
+      const ax = (pts[k-1][0] - p[0]) * kx, ay = pts[k-1][1] - p[1];
+      const bx = (pts[k][0] - p[0]) * kx, by = pts[k][1] - p[1];
+      const dx = bx - ax, dy = by - ay, L2 = dx*dx + dy*dy;
+      const t = L2 ? Math.max(0, Math.min(1, -(ax*dx + ay*dy) / L2)) : 0;
+      const ex = ax + t*dx, ey = ay + t*dy, dd = ex*ex + ey*ey;
+      if(dd < bd){ bd = dd; best = {ei, k, t}; }
+    }
+  }
+  if(!best) return null;
+  const e = g.edges[best.ei], a = e.pts[best.k-1], b = e.pts[best.k];
+  const pt = [a[0] + (b[0]-a[0]) * best.t, a[1] + (b[1]-a[1]) * best.t];
+  const along = e.cum[best.k-1] + (e.cum[best.k] - e.cum[best.k-1]) * best.t;
+  return {ei: best.ei, k: best.k, pt, along, distKm: haversineKm(p, pt)};
+}
+// Část hrany od bodu přichycení k uzlu a (toA) nebo b.
+function pzEdgePart(e, s, toA){
+  return toA ? [s.pt, ...e.pts.slice(0, s.k).reverse()] : [s.pt, ...e.pts.slice(s.k)];
+}
+function pzRailLeg(g, from, to){
+  const sA = pzRailSnap(g, from), sB = pzRailSnap(g, to);
+  if(!sA || !sB) throw new Error('Trasu vlakem se nepodařilo najít.');
+  const eA = g.edges[sA.ei], eB = g.edges[sB.ei];
+  let directCost = Infinity, direct = null;
+  if(sA.ei === sB.ei){
+    directCost = Math.abs(sA.along - sB.along);
+    const lo = Math.min(sA.k, sB.k), hi = Math.max(sA.k, sB.k);
+    const mid = eA.pts.slice(lo, hi);
+    direct = sA.along <= sB.along ? [sA.pt, ...mid, sB.pt] : [sA.pt, ...mid.reverse(), sB.pt];
+    if(sA.k === sB.k) direct = [sA.pt, sB.pt];
+  }
+  // Dijkstra z obou konců startovní hrany
+  const N = g.nodes.length, dist = new Float64Array(N).fill(Infinity), prev = new Int32Array(N).fill(-1);
+  const heap = []; const push = (n, d) => { heap.push([d, n]); let i = heap.length - 1; while(i > 0){ const p = (i - 1) >> 1; if(heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if(heap.length){ heap[0] = last; let i = 0; for(;;){ const l = 2*i+1, r = l+1; let m = i; if(l < heap.length && heap[l][0] < heap[m][0]) m = l; if(r < heap.length && heap[r][0] < heap[m][0]) m = r; if(m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const seed = (n, d) => { if(d < dist[n]){ dist[n] = d; prev[n] = -2; push(n, d); } };
+  seed(eA.a, sA.along); seed(eA.b, eA.len - sA.along);
+  const goalA = eB.a, goalB = eB.b; let doneA = false, doneB = false;
+  while(heap.length){
+    const [d, n] = pop(); if(d > dist[n]) continue;
+    if(n === goalA) doneA = true; if(n === goalB) doneB = true;
+    if((doneA && doneB) || d > directCost) break;
+    for(const ei of g.adj[n]){
+      const e = g.edges[ei], m = e.a === n ? e.b : e.a, nd = d + e.len;
+      if(nd < dist[m]){ dist[m] = nd; prev[m] = ei; push(m, nd); }
+    }
+  }
+  const viaA = dist[goalA] + sB.along, viaB = dist[goalB] + (eB.len - sB.along);
+  const best = Math.min(viaA, viaB);
+  if(!(best < Infinity) && !direct) throw new Error('Mezi těmito místy nevede souvislá trať.');
+  if(direct && directCost <= best) return {coords: direct, km: directCost / 1000, snapKm: Math.max(sA.distKm, sB.distKm)};
+  const endNode = viaA <= viaB ? goalA : goalB;
+  // zpětně od cílového uzlu k počátečnímu
+  const chain = []; let n = endNode;
+  while(prev[n] >= 0){ const e = g.edges[prev[n]]; const fromN = e.a === n ? e.b : e.a; chain.push(e.a === fromN ? e.pts : e.pts.slice().reverse()); n = fromN; }
+  chain.reverse();
+  const out = pzEdgePart(eA, sA, n === eA.a);   // n = uzel, kde cesta vyšla
+  chain.forEach(seg => out.push(...seg.slice(1)));
+  const tail = pzEdgePart(eB, sB, endNode === eB.a).reverse();
+  out.push(...tail.slice(1));
+  return {coords: out, km: best / 1000, snapKm: Math.max(sA.distKm, sB.distKm)};
+}
+async function pzRailRoute(points){
+  const g = await pzLoadRail();
+  let all = [];
+  for(let i = 1; i < points.length; i++){
+    const leg = pzRailLeg(g, points[i-1], points[i]);
+    all.push(...(all.length ? leg.coords.slice(1) : leg.coords));
+  }
+  return all;
+}
+
 async function routeFromPoints(a,b,mode){
   const viaPoints = (state.manualViaPoints || []).map(pt => pt.lngLat);
   const allPoints = [a, ...viaPoints, b];
@@ -13245,6 +13357,7 @@ async function routeFromPoints(a,b,mode){
     return pts;
   }
   if(mode === 'planeCustom') return allPoints;
+  if(mode === 'train') return pzRailRoute(allPoints);
   const coordString = allPoints.map(pt => `${pt[0]},${pt[1]}`).join(';');
   let url = '';
   if(mode === 'cycle'){
@@ -13494,6 +13607,11 @@ async function findRoute(){
     $('endInput').value = bInfo.label || `${b[1].toFixed(5)}, ${b[0].toFixed(5)}`;
     restorePointMarkers();
     state.routeCoords = await routeFromPoints(a,b,state.currentTransportMode);
+    if(state.currentTransportMode === 'train' && state.routeCoords.length > 1){
+      // Body A/B na koleje, ať čára nezačíná uprostřed náměstí.
+      state.pointA = state.routeCoords[0].slice(); state.pointB = state.routeCoords[state.routeCoords.length-1].slice();
+      restorePointMarkers();
+    }
     redrawRoute();
     fitRoute();
     setStatus(t('Trasa nalezena.'));
@@ -18039,7 +18157,7 @@ document.addEventListener('keydown', e => {
   // =========================================================================
   const TOOL_STYLE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
   const TOOL_TABS = ['styly','trasa','scena','animace','projekt','export'];
-  const TOOL_MODES = ['driving','truck','moto','foot','cycle','planeDirect','planeArc','planeCustom'];
+  const TOOL_MODES = ['driving','truck','moto','train','foot','cycle','planeDirect','planeArc','planeCustom'];
 
   function toolOpenSection(sectionId, open = true){
     const sec = $(sectionId);
