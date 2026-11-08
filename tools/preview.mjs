@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 const ROOT = '/home/user/PZ2DMAP';
 const UP = 'https://tnmap.pages.dev';
-const TYPES = {'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css',
+const TYPES = {'.html':'text/html; charset=utf-8','.js':'text/javascript','.mjs':'text/javascript','.css':'text/css',
   '.json':'application/json','.png':'image/png','.svg':'image/svg+xml','.geojson':'application/json'};
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
