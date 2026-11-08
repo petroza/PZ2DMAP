@@ -1232,8 +1232,8 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
           <p class="hint" data-i18n="hint_anim_custom_icon">Nahraj PNG nebo SVG pro vlastní animační ikonku. Když ji smažeš, použije se bod.</p>
         </div>
 
-        <div style="margin-top:12px">
-          <label data-i18n="Ruční úhel ikonky">Ruční úhel ikonky <span class="val" id="animAngleVal">0°</span></label>
+        <div style="margin-top:12px;display:none" id="animAngleBlock">
+          <label>Kam míří vlastní obrázek <span class="val" id="animAngleVal">0°</span></label>
           <div class="anim-angle-grid">
             <button type="button" class="angle-dial" id="animAngleDial" aria-label="Natočit úhel">
               <svg viewBox="-50 -50 100 100" aria-hidden="true">
@@ -1247,9 +1247,10 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
             <div><input id="animManualAngle" type="range" min="-180" max="180" step="1" value="0"></div>
             <div><input id="animManualAngleNumber" type="number" min="-180" max="180" step="1" value="0"></div>
           </div>
-          <p class="hint" data-i18n="hint_anim_angle">V režimu Rovně nastavíš pevný úhel. V režimu Natočit tím doladíš natočení jako korekci k trase.</p>
+          <p class="hint">Ikona se natáčí po směru trasy sama. Tímhle jen řekneš, kam na tvém obrázku míří předek (0° = nahoru, 90° = doprava).</p>
         </div>
-        <div style="margin-top:12px">
+        <p class="hint" id="animAutoHeadingHint" style="margin-top:10px">Ikona se natáčí po směru jízdy / letu automaticky.</p>
+        <div style="margin-top:12px;display:none">
           <label data-i18n="Režim natočení">Režim natočení</label>
           <div class="rotation-mode-grid">
           <button type="button" class="rotation-mode-btn active" data-rotmode="fixed">
@@ -4404,6 +4405,7 @@ function renderAnimSystemIconSelection(){
 }
 
 function renderAnimIconPreview(){
+  try{ pzSyncAnimAngleBlock(); }catch(e){}
   const box = $('animCustomIconPreview');
   const wrap = $('animCustomIconPreviewWrap');
   if(!box) return;
@@ -4416,6 +4418,10 @@ function renderAnimIconPreview(){
   if(wrap) wrap.style.display = 'none';
 }
 
+function pzSyncAnimAngleBlock(){
+  const custom = !!state.animIconData && !state.animSystemIcon;
+  const blk = document.getElementById('animAngleBlock'); if(blk) blk.style.display = custom ? '' : 'none';
+}
 function setAnimSystemIcon(type, options={}){
   state.animSystemIcon = ANIM_SYSTEM_ICONS[type] ? type : null;
   state.animIconData = state.animSystemIcon ? ANIM_SYSTEM_ICONS[state.animSystemIcon] : null;
@@ -13652,12 +13658,45 @@ function smoothCamBearing(target, factor){
 function getFixedAngle(type){ return {car:0, bike:0, plane:0, dot:0, sysCar:0, sysPlane:0}[type] ?? 0; }
 function getPathFollowBaseAngle(type){ return {car:45, bike:0, plane:-45, dot:0, sysCar:0, sysPlane:0}[type] ?? 0; }
 function getFollowOffset(type){ return {car:0, bike:0, plane:0, dot:0, sysCar:0, sysPlane:0}[type] ?? 0; }
+// Automatické natočení ikony podle směru jízdy/letu — bez ručního úhlu a bez
+// přepínání režimu. Směr je vážený průměr směrů trasy v okně kolem aktuální
+// polohy (trojúhelníkové jádro), takže:
+//  - klikatá silnice ani hrany geometrie s ikonou necukají,
+//  - výsledek nezávisí na předchozím snímku → náhled, posun po časové ose
+//    i export videa (snímek po snímku) dávají přesně stejný úhel.
+// Okno je ±2 km, ale nejvýš ±3 % délky trasy (krátká městská trasa) a
+// nejméně ±0,4 % (dlouhý let — oblouk je hladký sám o sobě).
+function pzAutoHeading(coords, progress){
+  if(!coords || coords.length < 2) return 0;
+  const total = lineLength(coords);
+  if(!(total > 0)) return 0;
+  const look = Math.max(0.004, Math.min(0.03, 2 / total));
+  const N = 8;
+  let sx = 0, sy = 0;
+  let prev = pointAtProgress(coords, Math.max(0, progress - look));
+  for(let k = 1; k <= N; k++){
+    const p = Math.max(0, Math.min(1, progress - look + (2 * look * k / N)));
+    const cur = pointAtProgress(coords, p);
+    if(!cur || !prev) { prev = cur; continue; }
+    const midLat = ((prev[1] + cur[1]) / 2) * Math.PI / 180;
+    const dx = (cur[0] - prev[0]) * Math.cos(midLat), dy = cur[1] - prev[1];
+    const len = Math.hypot(dx, dy);
+    if(len > 1e-12){
+      const w = 1 - Math.abs((k - 0.5) / N * 2 - 1) * 0.75;   // střed okna váží nejvíc
+      sx += dx / len * w; sy += dy / len * w;
+    }
+    prev = cur;
+  }
+  if(Math.abs(sx) < 1e-9 && Math.abs(sy) < 1e-9) return routeAngle(coords, progress);
+  return Math.atan2(sx, sy) * 180 / Math.PI;
+}
 function finalAngle(progress){
   const moverType = getCurrentAnimationIconType();
-  const manual = getManualAnimAngle();
-  if(state.currentRotMode !== 'smooth') return getFixedAngle(moverType) + manual;
-  const bearing = routeAngle(state.routeCoords, progress) + getFollowOffset(moverType);
-  return getPathFollowBaseAngle(moverType) + smoothAngle(bearing) + manual;
+  if(moverType === 'dot' && !state.animIconData) return 0;          // bod se netočí
+  // Ruční korekce jen pro vlastní nahraný obrázek — jeho „předek" může mířit kamkoli.
+  const custom = !!state.animIconData && !state.animSystemIcon;
+  const manual = custom ? getManualAnimAngle() : 0;
+  return getPathFollowBaseAngle(moverType) + pzAutoHeading(state.routeCoords, progress) + getFollowOffset(moverType) + manual;
 }
 
 function animMarkerInnerHTML(){
@@ -13746,7 +13785,6 @@ function ensureAnimMarker(point, angle, liftPx=0){
 // rotation off, or lagging the route's smoothed heading by even a little).
 function cameraFacingDisplayAngle(cameraFacing, angle){
   if(!cameraFacing) return angle;
-  if(state.currentRotMode !== 'smooth') return getFixedAngle(getCurrentAnimationIconType()) + getManualAnimAngle();
   return angle - (state.map?.getBearing?.() || 0);
 }
 
@@ -14311,7 +14349,7 @@ function setAnimProgress(progress){
     if(plane3dLayer.cur) plane3dLayer.cur.visible = false;
     if(animDot && point) ensureAnimMarker(mPoint, finalAngle(eased), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
     // A GLB model pinned to the route follows the animation (position + heading).
-    if(state.model3d?.followRoute && model3dHasModel() && mPoint){ state.model3d.lngLat = mPoint; state.model3d.rotationLive = (typeof routeAngle === 'function' ? routeAngle(state.routeCoords, eased) : 0) + (state.model3d.rotationDeg || 0); state.map?.triggerRepaint?.(); }
+    if(state.model3d?.followRoute && model3dHasModel() && mPoint){ state.model3d.lngLat = mPoint; state.model3d.rotationLive = (typeof routeAngle === 'function' ? pzAutoHeading(state.routeCoords, eased) : 0) + (state.model3d.rotationDeg || 0); state.map?.triggerRepaint?.(); }
   }
   if(followCamera && point && !cameraDriven){
     const camOpts = {center:point, pitch:cameraPitch};
@@ -18921,7 +18959,7 @@ function pzColorFromName(v){
       // Vzdálenost vracíme rovnou, ať asistent umí odpovědět i na „kolik je to
       // vzdušnou linkou" — dřív trasu nakreslil, ale číslo neřekl.
       let km = null;
-      try{ const L = lineLength(state.routeCoords); if(isFinite(L)) km = Math.round(L / 1000); }catch(e){}
+      try{ const L = lineLength(state.routeCoords); if(isFinite(L)) km = L >= 10 ? Math.round(L) : Math.round(L * 10) / 10; }catch(e){}   // lineLength je v km
       const res = {ok:true, from:a.display_name, to:b.display_name, mode: state.currentTransportMode, points:n, framed};
       if(km != null) res.distanceKm = km;
       return res;
