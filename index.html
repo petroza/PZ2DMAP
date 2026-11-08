@@ -13053,9 +13053,21 @@ async function routeFromPoints(a,b,mode){
   } else {
     url = `https://router.project-osrm.org/route/v1/car/${coordString}?overview=full&geometries=geojson`;
   }
-  let res;
-  try{ res = await fetch(url, { signal: fetchTimeoutSignal(15000) }); }
-  catch(e){ throw new Error('Směrovací služba neodpovídá (časový limit) — zkus to znovu.'); }
+  // router.project-osrm.org je veřejné demo („not for production use"), které
+  // při zátěži omezuje požadavky — a odmítnutá odpověď často nemá ani CORS
+  // hlavičku, takže v prohlížeči vypadá jako výpadek sítě. Pro auto proto při
+  // jakémkoli selhání zkusíme druhý veřejný server se stejným API.
+  const fallbacks = (mode === 'cycle' || mode === 'foot') ? [] :
+    [`https://routing.openstreetmap.de/routed-car/route/v1/driving/${coordString}?overview=full&geometries=geojson`];
+  let res, lastErr = null;
+  for(const u of [url, ...fallbacks]){
+    try{
+      res = await fetch(u, { signal: fetchTimeoutSignal(15000) });
+      if(res.ok) break;
+      lastErr = res;
+    }catch(e){ res = null; lastErr = e; }
+  }
+  if(!res){ throw new Error('Směrovací služba neodpovídá — zkus to znovu.'); }
   // Distinguish a busy/throttled routing server (429/503) from a genuine no-route,
   // so the user knows to retry rather than assuming the route is impossible.
   if(!res.ok){
