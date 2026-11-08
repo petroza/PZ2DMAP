@@ -17854,6 +17854,67 @@ document.addEventListener('keydown', e => {
     };
   }
 
+// České názvy barev („červená", „tmavě modrá") i #hex -> #rrggbb. Dřív to
+// uměl jen setColors; šipky, perimetr a vzdálenost dostávaly slovo „červená"
+// a kreslily se černě.
+// Obálka (bbox) skupiny polygonů pro fitBounds. Státy přes 180. poledník
+// (Rusko, USA s Aljaškou, Fidži) by jinak daly obálku přes celou planetu —
+// když je rozpětí větší než 180°, západní délky posuneme o +360.
+function pzFeaturesBBox(features){
+  const lons = [], lats = [];
+  const walk = c => { if(typeof c[0] === 'number'){ lons.push(c[0]); lats.push(c[1]); } else c.forEach(walk); };
+  (features || []).forEach(f => { try{ walk(f.geometry.coordinates); }catch(e){} });
+  if(!lons.length) return null;
+  let w = Math.min(...lons), e = Math.max(...lons);
+  if(e - w > 180){ const sh = lons.map(x => x < 0 ? x + 360 : x); w = Math.min(...sh); e = Math.max(...sh); }
+  return [[w, Math.max(-85, Math.min(...lats))], [e, Math.min(85, Math.max(...lats))]];
+}
+
+function pzColorFromName(v){
+    // Diakritiku zahazujeme, ať „žlutá" == „zluta".
+    const dia = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const NAMES = {
+      cervena:'#e63946', red:'#e63946',
+      modra:'#2f81f7', blue:'#2f81f7',
+      zelena:'#3cbf60', green:'#3cbf60',
+      zluta:'#ffd400', yellow:'#ffd400',
+      oranzova:'#e6863c', orange:'#e6863c',
+      bila:'#ffffff', white:'#ffffff',
+      cerna:'#111111', black:'#111111',
+      seda:'#8b94a6', gray:'#8b94a6', grey:'#8b94a6',
+      hneda:'#8b5a2b', brown:'#8b5a2b',
+      fialova:'#8b5cf6', purple:'#8b5cf6',
+      ruzova:'#ec4899', pink:'#ec4899',
+      tyrkysova:'#26d0c4', cyan:'#26d0c4', turquoise:'#26d0c4'
+    };
+    // „tmavě/světle X" řešíme posunem jasu, ať nemusíme vypisovat všechny kombinace.
+    const shade = (hex, f) => {
+      const n = parseInt(hex.slice(1), 16);
+      const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v =>
+        Math.max(0, Math.min(255, Math.round(f < 1 ? v * f : v + (255 - v) * (f - 1)))));
+      return '#' + ch.map(v => v.toString(16).padStart(2, '0')).join('');
+    };
+    return (v => {
+      const s = String(v == null ? '' : v).trim();
+      if(/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase();
+      if(/^#[0-9a-f]{3}$/i.test(s)) return ('#' + s[1]+s[1] + s[2]+s[2] + s[3]+s[3]).toLowerCase();
+      let key = dia(s).replace(/\s+/g, ' ').trim();
+      // Redakce barvy skloňuje: „červeně", „červenou šipku", „modrý kruh".
+      // Porovnáváme proto i kmen bez koncovky (cervena/cervene/cervenou -> cerven).
+      const stem = w => w.replace(/(ou|ymi|ych|em|ym|a|e|y|i|o)$/, '');
+      const STEMS = {};
+      Object.keys(NAMES).forEach(k => { if(!STEMS[stem(k)]) STEMS[stem(k)] = NAMES[k]; });
+      const look = w => NAMES[w] || STEMS[stem(w)] || null;
+      if(look(key)) return look(key);
+      const m = key.match(/^(tmave|tmavo|svetle|svetlo|dark|light)\s*(.+)$/);
+      if(m){
+        const base = look(m[2].trim());
+        if(base) return shade(base, /^(tmave|tmavo|dark)$/.test(m[1]) ? 0.55 : 1.45);
+      }
+      return null;
+    })(v);
+}
+
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
     version: 1,
@@ -18005,7 +18066,7 @@ document.addEventListener('keydown', e => {
     // ---- politická mapa: vybarvení krajů a států ----------------------------
     // Volební a regionální grafika. Text od redaktora („Středočeský kraj", „Německo")
     // páruje s položkami selectu bez ohledu na diakritiku a skloňování.
-    async colorPolitical({region, country, color, clear} = {}){
+    async colorPolitical({region, country, color, clear, fit} = {}){
       if(!clear){
         // Seznamy států a krajů se plní z dat, která se stahují až na vyžádání.
         state.geoDataRequested = true;
@@ -18082,6 +18143,18 @@ document.addEventListener('keydown', e => {
         res.painted.push({country: opt.textContent.trim(), id: opt.value, color: $('politicalCountryColor')?.value});
       }
       if(!res.painted.length) return {ok:false, error:'Zadej region (kraj) nebo country (stát), případně clear:true.'};
+      // Obarvený stát musí být v záběru — „obarvi Ukrajinu" a pohled zůstal na
+      // Česku, takže grafik barvu vůbec neviděl. Rámujeme všechno, co je teď
+      // obarvené (ne jen poslední stát), aby šlo zadání skládat postupně.
+      if(fit !== false){
+        try{
+          const ids = new Set([...Object.keys(state.countryColorMap || {}), ...Object.keys(state.czRegionColorMap || {})]);
+          const feats = [...(state.countriesGeojson?.features || []), ...(state.czRegionsGeojson?.features || [])]
+            .filter(f => ids.has(f.properties?.__appId));
+          const bb = pzFeaturesBBox(feats);
+          if(bb){ state.screenPan = {x:0, y:0}; state.map.fitBounds(bb, {padding: getFitPadding(), duration: 900}); }
+        }catch(e){}
+      }
       return res;
     },
 
@@ -18094,9 +18167,15 @@ document.addEventListener('keydown', e => {
       try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.'}; }
       try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.'}; }
       const tail = {lng:+a.lon, lat:+a.lat}, head = {lng:+b.lon, lat:+b.lat};
-      const item = createSceneArrow(tail, head, {color: color || undefined, width: width});
+      const item = createSceneArrow(tail, head, {color: pzColorFromName(color) || undefined, width: width});
       if(!item) return {ok:false, error:'Šipku se nepodařilo vytvořit.'};
-      if(fit !== false) window.TNMAP._fitTwo([tail.lng, tail.lat], [head.lng, head.lat]);
+      // Rámujeme všechny šipky ve scéně, ne jen poslední — při „postup na
+      // Charkov a na Kupjansk" jinak první šipka vyjela z exportního rámečku.
+      if(fit !== false){
+        const pts = (state.sceneArrows || []).flatMap(x => [x.tail, x.head]);
+        const bb = pzFeaturesBBox([{geometry:{coordinates: pts.length ? pts : [[tail.lng, tail.lat], [head.lng, head.lat]]}}]);
+        if(bb) window.TNMAP._fitTwo(bb[0], bb[1]);
+      }
       return {ok:true, from:a.display_name, to:b.display_name,
               tail:{lat:tail.lat, lng:tail.lng}, head:{lat:head.lat, lng:head.lng}};
     },
@@ -18109,7 +18188,7 @@ document.addEventListener('keydown', e => {
       try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.'}; }
       try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.'}; }
       const p = {lng:+a.lon, lat:+a.lat}, q = {lng:+b.lon, lat:+b.lat};
-      const item = createSceneDistance(p, q, {color: color || undefined,
+      const item = createSceneDistance(p, q, {color: pzColorFromName(color) || undefined,
                      unit: (unit === 'm' ? 'm' : undefined)});
       if(!item) return {ok:false, error:'Měření se nepodařilo vytvořit.'};
       let km = null;
@@ -18162,42 +18241,8 @@ document.addEventListener('keydown', e => {
         distance:'sceneDistanceColor', czRegion:'czRegionColor',
         country:'politicalCountryColor'
       };
-      // Diakritiku zahazujeme, ať „žlutá" == „zluta".
       const dia = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-      const NAMES = {
-        cervena:'#e63946', red:'#e63946',
-        modra:'#2f81f7', blue:'#2f81f7',
-        zelena:'#3cbf60', green:'#3cbf60',
-        zluta:'#ffd400', yellow:'#ffd400',
-        oranzova:'#e6863c', orange:'#e6863c',
-        bila:'#ffffff', white:'#ffffff',
-        cerna:'#111111', black:'#111111',
-        seda:'#8b94a6', gray:'#8b94a6', grey:'#8b94a6',
-        hneda:'#8b5a2b', brown:'#8b5a2b',
-        fialova:'#8b5cf6', purple:'#8b5cf6',
-        ruzova:'#ec4899', pink:'#ec4899',
-        tyrkysova:'#26d0c4', cyan:'#26d0c4', turquoise:'#26d0c4'
-      };
-      // „tmavě/světle X" řešíme posunem jasu, ať nemusíme vypisovat všechny kombinace.
-      const shade = (hex, f) => {
-        const n = parseInt(hex.slice(1), 16);
-        const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v =>
-          Math.max(0, Math.min(255, Math.round(f < 1 ? v * f : v + (255 - v) * (f - 1)))));
-        return '#' + ch.map(v => v.toString(16).padStart(2, '0')).join('');
-      };
-      const norm = v => {
-        const s = String(v == null ? '' : v).trim();
-        if(/^#[0-9a-f]{6}$/i.test(s)) return s.toLowerCase();
-        if(/^#[0-9a-f]{3}$/i.test(s)) return ('#' + s[1]+s[1] + s[2]+s[2] + s[3]+s[3]).toLowerCase();
-        let key = dia(s).replace(/\s+/g, ' ').trim();
-        if(NAMES[key]) return NAMES[key];
-        const m = key.match(/^(tmave|tmavo|svetle|svetlo|dark|light)\s*(.+)$/);
-        if(m){
-          const base = NAMES[m[2].trim()];
-          if(base) return shade(base, /^(tmave|tmavo|dark)$/.test(m[1]) ? 0.55 : 1.45);
-        }
-        return null;
-      };
+      const norm = pzColorFromName;
       const changed = {}, unknown = [], badColor = [];
       Object.keys(spec || {}).forEach(k => {
         const id = MAP[k];
@@ -18245,7 +18290,7 @@ document.addEventListener('keydown', e => {
       // Nad ~1000 km má smysl psát km, jinak metry — ať label nekřičí „2000000 m".
       const unit = radius >= 10000 ? 'km' : 'm';
       const item = createScenePerimeterAt({lng:center[0], lat:center[1]},
-                    {radiusMeters:radius, unit, color: color || undefined});
+                    {radiusMeters:radius, unit, color: pzColorFromName(color) || undefined});
       if(!item) return {ok:false, error:'Perimetr se nepodařilo vytvořit.'};
       // Doramuj, ať je celá kružnice v záběru (jinak redaktor vidí jen kus oblouku).
       if(fit !== false){
