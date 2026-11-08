@@ -13260,7 +13260,8 @@ async function pzLoadNet(path, what){
       // k = cenový koeficient (vedlejší trať > 1): router dá přednost hlavní trati
       return {a, b, len: L, k: kf || 1, cost: L * (kf || 1), pts, cum};
     });
-    _pzNets[path] = {nodes, edges, adj};
+    const stations = (d.s || []).map(r => ({lon: r[0] / Q, lat: r[1] / Q, name: r[2], main: !!r[3]}));
+    _pzNets[path] = {nodes, edges, adj, stations};
     return _pzNets[path];
   })();
   try{ return await _pzNetsLoading[path]; } finally { delete _pzNetsLoading[path]; }
@@ -13332,6 +13333,32 @@ function pzRailLeg(g, from, to){
   const tail = pzEdgePart(eB, sB, endNode === eB.a).reverse();
   out.push(...tail.slice(1));
   return {coords: out, km: lineLength(out), snapKm: Math.max(sA.distKm, sB.distKm)};
+}
+// Vlak „z Prahy" má začít na hlavním nádraží, ne na kolejích nejblíž středu
+// města. Pořadí: „<město> hl. n." / „hlavní nádraží" → stanice pojmenovaná po
+// městě → nejbližší skutečná stanice (ne zastávka) do 7 km. Bod z kliknutí do
+// mapy (bez jména) se nemění.
+function pzPickStation(g, point, label){
+  if(!g?.stations?.length || !point) return null;
+  const raw = String(label || '').split(',')[0].trim();
+  if(!raw || parseLatLng(raw)) return null;
+  const norm = t => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  const city = norm(raw);
+  let best = null;
+  for(const st of g.stations){
+    const km = haversineKm(point, [st.lon, st.lat]);
+    if(km > 7) continue;
+    const n = norm(st.name);
+    let rank;
+    if(n === city + ' hl. n.' || n === city + ' hl.n.' || n === city + ' hlavni nadrazi') rank = 0;
+    else if(n === city) rank = 1;
+    else if(n.startsWith(city + ' ') && st.main) rank = 2;
+    else if(n === city.replace(/-/g, ' ') || n.replace(/-/g, ' ') === city.replace(/-/g, ' ')) rank = 1;
+    else rank = st.main ? 3 : 4;
+    const score = rank * 100 + km;
+    if(!best || score < best.score) best = {score, st, rank};
+  }
+  return best && best.rank <= 3 ? best.st : null;
 }
 async function pzRailRoute(points, g){
   g = g || await pzLoadRail();
@@ -13614,7 +13641,17 @@ async function findRoute(){
     $('startInput').value = aInfo.label || `${a[1].toFixed(5)}, ${a[0].toFixed(5)}`;
     $('endInput').value = bInfo.label || `${b[1].toFixed(5)}, ${b[0].toFixed(5)}`;
     restorePointMarkers();
-    state.routeCoords = await routeFromPoints(a,b,state.currentTransportMode);
+    let ra = a, rb = b, stA = null, stB = null;
+    if(state.currentTransportMode === 'train'){
+      try{
+        const g = await pzLoadRail();
+        stA = pzPickStation(g, a, aInfo.label); stB = pzPickStation(g, b, bInfo.label);
+        if(stA) ra = [stA.lon, stA.lat];
+        if(stB) rb = [stB.lon, stB.lat];
+      }catch(e){}
+    }
+    state.routeCoords = await routeFromPoints(ra,rb,state.currentTransportMode);
+    if(stA || stB) state.pzTrainStations = [stA?.name || null, stB?.name || null]; else state.pzTrainStations = null;
     if((state.currentTransportMode === 'train' || state.currentTransportMode === 'boat') && state.routeCoords.length > 1){
       // Body A/B na koleje, ať čára nezačíná uprostřed náměstí.
       state.pointA = state.routeCoords[0].slice(); state.pointB = state.routeCoords[state.routeCoords.length-1].slice();
@@ -13622,7 +13659,7 @@ async function findRoute(){
     }
     redrawRoute();
     fitRoute();
-    setStatus(t('Trasa nalezena.'));
+    setStatus(state.pzTrainStations ? (t('Trasa nalezena.') + ' ' + (state.pzTrainStations[0] || '…') + ' → ' + (state.pzTrainStations[1] || '…')) : t('Trasa nalezena.'));
   } catch (e){
     console.error(e);
     // Surface a transient routing-server problem distinctly from a real no-route,
@@ -19117,6 +19154,7 @@ function pzColorFromName(v){
       try{ const L = lineLength(state.routeCoords); if(isFinite(L)) km = L >= 10 ? Math.round(L) : Math.round(L * 10) / 10; }catch(e){}   // lineLength je v km
       const res = {ok:true, from:a.display_name, to:b.display_name, mode: state.currentTransportMode, points:n, framed};
       if(km != null) res.distanceKm = km;
+      if(state.currentTransportMode === 'train' && state.pzTrainStations) res.stations = state.pzTrainStations;
       return res;
     },
     clearRoute(){ try{ clearRoute(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; },

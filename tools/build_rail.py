@@ -8,7 +8,7 @@ import json, sys, glob, math
 from collections import Counter
 from collections import defaultdict
 
-src_dir, out_path = sys.argv[1], sys.argv[2]
+src_dir, out_path = sys.argv[1], sys.argv[2]   # [3] = volitelně stanice (Overpass railway=station|halt)
 TOL_M = 18.0            # Douglas-Peucker — pod pixel na regionálním zoomu
 MIN_COMPONENT_KM = 12   # ostrůvky (vlečky, muzejní tratě) pryč
 
@@ -229,7 +229,14 @@ for i in keep:
     npts += len(pts)
     k = round(ecost[i] / elen[i], 2) if elen[i] > 0 else 1
     out_e.append([a, b, int(round(elen[i])), flat] + ([k] if k != 1 else []))
-json.dump({'v': 1, 'q': 1e5, 'n': nodes, 'e': out_e,
+stations = []
+if len(sys.argv) > 3:
+    for el in json.load(open(sys.argv[3])).get('elements', []):
+        t = el.get('tags', {}); nm = t.get('name')
+        if not nm or 'lat' not in el: continue
+        stations.append([q(el['lon']), q(el['lat']), nm, 1 if t.get('railway') == 'station' else 0])
+    print('stanic', len(stations), file=sys.stderr)
+json.dump({'v': 1, 'q': 1e5, 'n': nodes, 'e': out_e, 's': stations,
            'attribution': '© OpenStreetMap contributors, ODbL'}, open(out_path, 'w'), separators=(',', ':'))
 import os
 print('uzlů', len(nodes)//2, 'hran', len(out_e), 'bodů', npts, 'velikost', os.path.getsize(out_path), file=sys.stderr)
