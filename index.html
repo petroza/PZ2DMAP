@@ -5564,7 +5564,9 @@ function makeSceneEditHandleMarker(label, lngLat, className, title, onDrag, onEn
   el.className = 'scene-edit-handle ' + (className || '');
   el.textContent = label;
   el.title = title || label;
-  ['mousedown','touchstart','click','dblclick'].forEach(type => {
+  // mousedown/touchstart NESMÍ zastavit: MapLibre spouští tažení markeru
+  // z mousedown na mapě — se stopPropagation šly body T/H chytit, ale ne posunout.
+  ['click','dblclick'].forEach(type => {
     el.addEventListener(type, ev => { ev.stopPropagation(); }, {passive:false});
   });
   const marker = new maplibregl.Marker({element:el, draggable:true, anchor:'center'})
@@ -6049,6 +6051,7 @@ function ensureSceneArrowSources(m){
   if(!m.getLayer('scene-arrows-fill')) m.addLayer({id:'scene-arrows-fill', type:'fill', source:'scene-arrows',
     filter:['==',['get','kind'],'fill'],
     paint:{'fill-color':['coalesce',['get','color'],'#e22d2d'],'fill-opacity':['coalesce',['get','op'],1]}});
+  try{ pzBindArrowBodyDrag(m); }catch(e){}
 }
 function getSceneArrowById(id){ return state.sceneArrows.find(a => a.id === id) || null; }
 function sceneArrowDefaultColor(){ return $('sceneArrowColor')?.value || '#e22d2d'; }
@@ -6127,6 +6130,10 @@ function refreshSceneArrowHandles(){
   const headMk = makeSceneEditHandleMarker('H', a.head, 'arrow-handle', t('Hrot šipky'),
     (ll)=>{ a.head = ll; setSceneArrowData(); }, ()=>{ scheduleSceneLayerRedraw('arrow-head'); });
   state.sceneArrowMarkers = [tailMk, headMk].filter(Boolean);
+  // Úchyty šipky si spravuje šipka sama. makeSceneEditHandleMarker je přidává i do
+  // sceneEditMarkers, které plánované překreslení po každém tažení maže — úchyty
+  // pak po prvním posunu zmizely a šipka „nešla upravit".
+  state.sceneEditMarkers = (state.sceneEditMarkers || []).filter(mk => !state.sceneArrowMarkers.includes(mk));
 }
 function syncSceneArrowInputs(a){
   if(!a) return;
@@ -6208,6 +6215,52 @@ function clearSceneArrows(silent=false){
   redrawSceneArrows();
   renderSceneArrowList();
   if(!silent) setStatus(t('Šipky smazány.'));
+}
+
+// Tažení celé šipky: chyť šipku v mapě a posuň ji (konce T/H se táhnou zvlášť).
+function pzBindArrowBodyDrag(m){
+  if(!m || m._pzArrowDrag) return;
+  m._pzArrowDrag = true;
+  let drag = null;
+  const move = ev => {
+    if(!drag) return;
+    const a = getSceneArrowById(drag.id); if(!a) return;
+    const dx = ev.lngLat.lng - drag.start[0], dy = ev.lngLat.lat - drag.start[1];
+    a.tail = [drag.tail[0] + dx, drag.tail[1] + dy];
+    a.head = [drag.head[0] + dx, drag.head[1] + dy];
+    drag.moved = true;
+    setSceneArrowDataThrottled();
+  };
+  const end = () => {
+    if(!drag) return;
+    const moved = drag.moved; drag = null;
+    m.off('mousemove', move); m.off('touchmove', move);
+    try{ m.dragPan.enable(); m.dragRotate.enable(); }catch(e){}
+    m.getCanvas().style.cursor = '';
+    state.draggingViaPoint = false;
+    redrawSceneArrows();
+    if(moved){ scheduleSceneLayerRedraw('arrow-move'); setStatus(t('Šipka posunuta.')); }
+    setTimeout(() => { state.ignoreNextMapClick = false; }, 120);
+  };
+  const start = ev => {
+    if(state.addingSceneArrow || state.measureMode !== 'off' || state.draggingScenePerimeter) return;
+    if(ev.originalEvent?.target?.closest?.('.scene-edit-handle')) return;   // úchyt T/H se táhne sám
+    const f = pickSceneArrowFeatureAt(ev.point); if(!f) return;
+    const a = getSceneArrowById(f.properties.id); if(!a) return;
+    if(state.selectedSceneArrowId !== a.id) selectSceneArrow(a.id);
+    drag = {id:a.id, start:[ev.lngLat.lng, ev.lngLat.lat], tail:a.tail.slice(), head:a.head.slice(), moved:false};
+    state.draggingViaPoint = true; state.ignoreNextMapClick = true;
+    try{ ev.preventDefault?.(); m.dragPan.disable(); m.dragRotate.disable(); }catch(e){}
+    m.getCanvas().style.cursor = 'grabbing';
+    m.on('mousemove', move); m.on('touchmove', move);
+    m.once('mouseup', end); m.once('touchend', end);
+    window.addEventListener('mouseup', end, {once:true});
+  };
+  ['scene-arrows-fill','scene-arrows-casing'].forEach(id => {
+    m.on('mousedown', id, start); m.on('touchstart', id, start);
+    m.on('mouseenter', id, () => { if(!state.addingSceneArrow && !drag) m.getCanvas().style.cursor = 'grab'; });
+    m.on('mouseleave', id, () => { if(!drag) m.getCanvas().style.cursor = ''; });
+  });
 }
 function isSceneArrowMapInteractive(){ return (state.sceneArrows || []).length > 0; }
 function pickSceneArrowFeatureAt(point){
