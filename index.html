@@ -13683,6 +13683,7 @@ function restoreAnimationState(elapsed, wasPlaying){
 }
 
 async function findRoute(){
+  state._pzLastRouteOk = false;
   try{ tnBump('routes', 1); }catch(_e){}
   // Dismiss any open autocomplete dropdown — covers all entry points (the
   // "Najít trasu" button, Enter in a field, programmatic calls).
@@ -13715,6 +13716,7 @@ async function findRoute(){
     }
     redrawRoute();
     fitRoute();
+    state._pzLastRouteOk = true;
     setStatus(state.pzTrainStations ? (t('Trasa nalezena.') + ' ' + (state.pzTrainStations[0] || '…') + ' → ' + (state.pzTrainStations[1] || '…')) : t('Trasa nalezena.'));
   } catch (e){
     console.error(e);
@@ -19283,6 +19285,9 @@ function pzColorFromName(v){
       if($('startInput')) $('startInput').value = a.display_name || String(from);
       if($('endInput'))   $('endInput').value   = b.display_name || String(to);
       try{ await findRoute(); }catch(e){ return {ok:false, error:String(e)}; }
+      // findRoute chybu jen ukáže ve stavovém řádku — bez téhle kontroly by asistent
+      // hlásil ✓ a na mapě by zůstala PŘEDCHOZÍ trasa.
+      if(!state._pzLastRouteOk) return {ok:false, error:($('statusBar')?.textContent || 'Trasu se nepodařilo najít.').trim()};
       const n = (state.routeCoords||[]).length;
       if(!n) return {ok:false, error:'Trasu se nepodařilo najít.'};
       // Doramuj sám: model si na to nevzpomene spolehlivě, a trasa bez správného
