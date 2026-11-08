@@ -657,6 +657,14 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .scene-icon-marker,.lang-btn img{border-radius:0}
 @media (min-width:981px){ .sidebar{border-radius:0} }
 
+
+/* Vybraná položka seznamu — musí být vidět na první pohled (vzdálenosti,
+   šipky, ikony, popisky, obvody, uzavírky). */
+.wp-item[class*="-row"],#sceneArrowList .wp-item,#pzClosureList .wp-item{cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s}
+.wp-item[class*="-row"]:hover,#sceneArrowList .wp-item:hover,#pzClosureList .wp-item:hover{border-color:var(--tx3)}
+.wp-item.active,.wp-item.active:hover{border-color:var(--accent);background:rgba(230,57,70,.17);box-shadow:inset 4px 0 0 var(--accent);color:var(--tx1)}
+.wp-item.active .wp-badge{background:var(--accent);color:#fff}
+.wp-item.active > .small:first-child,.wp-item.active div[style*="font-weight:700"]{color:var(--tx1);font-weight:700;opacity:1}
 </style>
 <style id="pz-compact-sections">
 /* Kompaktnější panel: grafici mají v jednom sloupci desítky sekcí a mezi
@@ -18123,13 +18131,13 @@ function pzRenderClosureList(){
   box.innerHTML = list.length ? '' : '<div class="small" style="opacity:.6;padding:4px 2px">Žádné uzavírky.</div>';
   list.forEach(c => {
     const row = document.createElement('div');
-    row.className = 'wp-item';
+    row.className = 'wp-item' + (c === state.pzSelectedClosure ? ' active' : '');
     row.innerHTML = `<span class="small">${escapeHtml(c.title || 'Uzavírka')}</span>`;
     const del = document.createElement('button');
     del.className = 'btn-remove'; del.type = 'button'; del.textContent = '×'; del.title = 'Smazat';
     del.addEventListener('click', ev => { ev.stopPropagation(); state.pzClosures = pzClosures().filter(x => x !== c); pzRedrawClosures(); });
     row.appendChild(del);
-    row.addEventListener('click', () => pzFitClosures([c]));
+    row.addEventListener('click', () => { state.pzSelectedClosure = c; pzRenderClosureList(); pzFitClosures([c]); });
     box.appendChild(row);
   });
 }
