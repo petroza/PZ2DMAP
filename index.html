@@ -16304,6 +16304,9 @@ function setupWeatherUI(){
 
 function bindUI(){
   setupWeatherUI();
+  // Až po vyhodnocení celého skriptu: PZ_ICON_SET je const definovaná níž než
+  // volání bindUI() a přístup k ní dřív by skončil v temporal dead zone.
+  setTimeout(() => { try{ pzBuildIconPalette(); }catch(e){ console.warn('icon palette', e); } }, 0);
   // Brand logo = "home" reset: collapse all sections, back to the first tab.
   (() => {
     const logo = document.querySelector('.brand-icon');
@@ -17857,6 +17860,73 @@ document.addEventListener('keydown', e => {
 // České názvy barev („červená", „tmavě modrá") i #hex -> #rrggbb. Dřív to
 // uměl jen setColors; šipky, perimetr a vzdálenost dostávaly slovo „červená"
 // a kreslily se černě.
+// Vestavěné ikony pro zpravodajskou grafiku. Dřív šla ikonka do scény jen
+// po nahrání vlastního obrázku, takže nejběžnější zadání („místo události",
+// „výbuch v Kyjevě") vždycky začínalo hledáním souboru. Jednotný styl:
+// barevný kruh s bílým okrajem a bílým symbolem, čitelný i ve 24 px.
+const PZ_ICON_BADGE = (fill, glyph) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28.5" fill="${fill}" stroke="#fff" stroke-width="5"/>${glyph}</svg>`;
+const PZ_ICON_SET = {
+  pin:       {label:'Místo',     svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 3C20.4 3 11 12.2 11 23.6 11 39 32 61 32 61s21-22 21-37.4C53 12.2 43.6 3 32 3z" fill="#e63946" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><circle cx="32" cy="23.5" r="8" fill="#fff"/></svg>`},
+  vybuch:    {label:'Výbuch',    svg:PZ_ICON_BADGE('#e8590c', `<path fill="#fff" d="M32 12l4.2 10.6 9.6-6.2-3.4 11 11.4 1.6-9.6 6.4 7.2 9-11.4-1.4 .6 11.4L32 46.2l-8.6 8.2.6-11.4-11.4 1.4 7.2-9-9.6-6.4 11.4-1.6-3.4-11 9.6 6.2z"/>`)},
+  pozar:     {label:'Požár',     svg:PZ_ICON_BADGE('#d62828', `<path fill="#fff" d="M32 12c2.4 7.4 11.6 11.2 11.6 22.4a11.6 11.6 0 0 1-23.2 0c0-5.8 3.2-9.4 5.6-13.6 1 4 2.8 6.2 5 6.6-1.4-6 0-10.8 1-15.4z"/>`)},
+  nehoda:    {label:'Nehoda',    svg:PZ_ICON_BADGE('#f59f00', `<path fill="#fff" d="M18 36l4-10.5c.6-1.6 2.1-2.5 3.8-2.5h12.4c1.7 0 3.2.9 3.8 2.5L46 36v9.5c0 .8-.7 1.5-1.5 1.5h-3c-.8 0-1.5-.7-1.5-1.5V43H24v2.5c0 .8-.7 1.5-1.5 1.5h-3c-.8 0-1.5-.7-1.5-1.5zm6.4-8.5L22 34h20l-2.4-6.5zM23 41a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm18 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path fill="#fff" d="M45.5 10.5l1.2 3.3 3.4-.9-1.6 3.1 3 1.9-3.5.4.2 3.5-2.7-2.2-2.6 2.3.1-3.5-3.5-.5 3-1.8-1.5-3.2 3.4 1z"/>`)},
+  policie:   {label:'Policie',   svg:PZ_ICON_BADGE('#1c4fd8', `<path fill="#fff" d="M32 12l15 5.5v10.8c0 10.3-6.4 18.7-15 21.7-8.6-3-15-11.4-15-21.7V17.5z"/><path fill="#1c4fd8" d="M32 22l2.6 5.4 5.9.8-4.3 4.1 1 5.9L32 35.4l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/>`)},
+  zachranka: {label:'Záchranka', svg:PZ_ICON_BADGE('#2b9348', `<path fill="#fff" d="M27 15h10v12h12v10H37v12H27V37H15V27h12z"/>`)},
+  povoden:   {label:'Povodeň',   svg:PZ_ICON_BADGE('#1d7fd8', `<path fill="none" stroke="#fff" stroke-width="4.4" stroke-linecap="round" d="M15 27c4.3-4 8.6-4 12.8 0s8.6 4 12.8 0 6-2.7 8.4-1.2M15 37c4.3-4 8.6-4 12.8 0s8.6 4 12.8 0 6-2.7 8.4-1.2M15 47c4.3-4 8.6-4 12.8 0s8.6 4 12.8 0"/>`)},
+  letadlo:   {label:'Letadlo',   svg:PZ_ICON_BADGE('#243447', `<path fill="#fff" d="M30 13.5c0-1.4 1-2.5 2-2.5s2 1.1 2 2.5V27l14 8.5v4l-14-4.3v8.3l4 3v3.5l-6-1.8-6 1.8V46l4-3v-8.3L16 39.5v-4L30 27z"/>`)},
+  vlak:      {label:'Vlak',      svg:PZ_ICON_BADGE('#495057', `<path fill="#fff" d="M22 15h20c2.8 0 5 2.2 5 5v18c0 2.6-2 4.7-4.5 5L46 48h-4l-3-4.5H25L22 48h-4l3.5-5C19 42.7 17 40.6 17 38V20c0-2.8 2.2-5 5-5zm-.5 6v9h21v-9zM24 39a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm16 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>`)},
+  varovani:  {label:'Varování',  svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 5L61 56H3z" fill="#ffc300" stroke="#fff" stroke-width="5" stroke-linejoin="round"/><path fill="#1b1b1b" d="M29.2 22h5.6l-.8 18h-4zM32 43.5a3.2 3.2 0 1 1 0 6.4 3.2 3.2 0 0 1 0-6.4z"/></svg>`}
+};
+const PZ_ICON_ALIASES = {
+  pin:'pin', misto:'pin', spendlik:'pin', bod:'pin', udalost:'pin', znacka:'pin',
+  vybuch:'vybuch', exploze:'vybuch', utok:'vybuch', bombardovani:'vybuch', raketa:'vybuch', dron:'vybuch',
+  pozar:'pozar', ohen:'pozar', hori:'pozar',
+  nehoda:'nehoda', bouracka:'nehoda', havarie:'nehoda', auto:'nehoda',
+  policie:'policie', policista:'policie', zasah:'policie',
+  zachranka:'zachranka', sanitka:'zachranka', zzs:'zachranka', nemocnice:'zachranka', zraneni:'zachranka',
+  povoden:'povoden', zaplava:'povoden', voda:'povoden', zaplavy:'povoden',
+  letadlo:'letadlo', letiste:'letadlo', let:'letadlo',
+  vlak:'vlak', zeleznice:'vlak', nadrazi:'vlak', srazka_vlaku:'vlak',
+  varovani:'varovani', pozor:'varovani', vystraha:'varovani', nebezpeci:'varovani'
+};
+function pzIconKind(name){
+  const k = String(name || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  if(PZ_ICON_SET[k]) return k;
+  if(PZ_ICON_ALIASES[k]) return PZ_ICON_ALIASES[k];
+  const first = k.split(/[\s_-]+/).find(w => PZ_ICON_ALIASES[w] || PZ_ICON_SET[w]);
+  return first ? (PZ_ICON_SET[first] ? first : PZ_ICON_ALIASES[first]) : null;
+}
+function pzIconDataUrl(kind){
+  const it = PZ_ICON_SET[kind]; if(!it) return null;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(it.svg);
+}
+function pzBuildIconPalette(){
+  const sec = $('sceneIconSection'); if(!sec || $('pzIconPalette')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'pzIconPalette';
+  wrap.innerHTML = '<label style="display:block;margin-bottom:6px">Vestavěné ikony</label>';
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px';
+  Object.entries(PZ_ICON_SET).forEach(([kind, it]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn btn-sm pz-icon-pick'; b.dataset.kind = kind; b.title = it.label;
+    b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;font-size:10px;line-height:1.1';
+    b.innerHTML = `<img src="${pzIconDataUrl(kind)}" alt="" style="width:26px;height:26px">${it.label}`;
+    b.addEventListener('click', () => {
+      state.sceneIconData = pzIconDataUrl(kind);
+      const pv = $('sceneIconPreview'); if(pv) pv.innerHTML = `<img src="${state.sceneIconData}" alt="">`;
+      grid.querySelectorAll('.pz-icon-pick').forEach(x => x.classList.toggle('btn-primary', x === b));
+      setStatus('Ikona „' + it.label + '" vybraná — klikni do mapy, nebo použij „Klikni do mapy".');
+    });
+    grid.appendChild(b);
+  });
+  wrap.appendChild(grid);
+  const h3 = sec.querySelector(':scope > .section-body') || sec;
+  const firstRow = h3.querySelector('.row');
+  if(firstRow) firstRow.parentNode.insertBefore(wrap, firstRow); else h3.appendChild(wrap);
+}
+
 // Obálka (bbox) skupiny polygonů pro fitBounds. Státy přes 180. poledník
 // (Rusko, USA s Aljaškou, Fidži) by jinak daly obálku přes celou planetu —
 // když je rozpětí větší než 180°, západní délky posuneme o +360.
@@ -17995,16 +18065,20 @@ function pzColorFromName(v){
     // ---- ikonka ve scéně ----------------------------------------------------
     // Obrázek ikonky nahrává uživatel (je to jeho soubor), ale jakmile je v appce,
     // umístit ji na jmenované místo už umíme — stejný princip jako u GLB modelu.
-    async placeIcon({place, size} = {}){
-      if(!state.sceneIconData){
-        try{ toolOpenSection('sceneIconSection', true); }catch(e){}
-        return {ok:false, error:'Není nahraná žádná ikonka. Otevřel jsem sekci ikonek — ' +
-                                'obrázek nahraj ručně, pak ho umístím kam řekneš.'};
+    async placeIcon({place, size, kind} = {}){
+      // kind = vestavěná ikona (výbuch, požár, policie…). Bez kind se použije
+      // vybraná/nahraná ikonka, a když žádná není, špendlík místa události.
+      let data = null;
+      if(kind){
+        const k = pzIconKind(kind);
+        if(!k) return {ok:false, error:'Ikonu „' + kind + '" neznám. Mám: ' + Object.values(PZ_ICON_SET).map(x=>x.label).join(', ') + '.'};
+        data = pzIconDataUrl(k);
       }
+      data = data || state.sceneIconData || pzIconDataUrl('pin');
       if(!place) return {ok:false, error:'Chybí place (kam ikonku umístit).'};
       let g; try{ g = await geocode(String(place)); }
       catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
-      const item = createSceneIconAt({lng:+g.lon, lat:+g.lat}, {size: size});
+      const item = createSceneIconAt({lng:+g.lon, lat:+g.lat}, {size: size, data});
       if(!item) return {ok:false, error:'Ikonku se nepodařilo umístit.'};
       return {ok:true, place: g.display_name, size: item.size,
               center:{lat:+g.lat, lng:+g.lon}};

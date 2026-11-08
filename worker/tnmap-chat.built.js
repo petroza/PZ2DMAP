@@ -11,13 +11,14 @@ var ALLOWED = [
   "https://appcreate.cloud",
   "https://www.appcrate.cloud",
   "https://appcrate.cloud",
+  "https://tnmap.pages.dev",
   "https://tnmap.petrzavorka.workers.dev"
 ];
-// Verze workeru mají preview URL <hash>-tnmap.<subdoména>.workers.dev, takže je
-// potřeba pustit i je — jinak se nová verze mapy nedá odladit vedle produkce.
+var ALLOWED_PATTERN = /^https:\/\/[a-z0-9-]+\.tnmap\.pages\.dev$/;
+// Verze workeru mají preview URL <hash>-tnmap.<subdoména>.workers.dev.
 var ALLOWED_RE = /^https:\/\/([a-z0-9-]+\.)?(tnmap|map3d)\.petrzavorka\.workers\.dev$/;
 function corsHeaders(origin) {
-  const ok = origin && (ALLOWED.includes(origin) || ALLOWED_RE.test(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin));
+  const ok = origin && (ALLOWED.includes(origin) || ALLOWED_PATTERN.test(origin) || ALLOWED_RE.test(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin));
   return {
     "Access-Control-Allow-Origin": ok ? origin : ALLOWED[0],
     "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -36,13 +37,20 @@ gotoPlace {query}                  \u2013 odlet\xED na m\xEDsto (m\u011Bsto, uli
 show3D {query?, pitch?, zoom?}     \u2013 KOMBO: odlet\xED na m\xEDsto, p\u0159epne na Liberty 3D a naklon\xED kameru. Pro "uka\u017E 3D X", "3D pohled na X".
 setCamera {zoom?, pitch?, bearing?} \u2013 jen kamera. pitch 0=shora, 60-85=hodn\u011B naklonit. bearing = oto\u010Den\xED (0=sever).
 setBaseStyle {style}               \u2013 podklad. Povolen\xE9: liberty (3D budovy, v\xFDchoz\xED), bright, positron (sv\u011Btl\xFD), satellite, hybrid, osmStandard, openTopo, cyclOsm, esriTerrain, political.
-placeIcon {place, size?}            \u2013 um\xEDst\xED U\u017D NAHRANOU ikonku sc\xE9ny na m\xEDsto. Obr\xE1zek ikonky
-                                     nahr\xE1t neum\xED\u0161 \u2014 kdy\u017E \u017E\xE1dn\xE1 nen\xED, n\xE1stroj to \u0159ekne a otev\u0159e sekci.
+placeIcon {place, kind?, size?}     \u2013 UM\xCDST\xCD IKONU na m\xEDsto. kind = vestav\u011bn\xE1 ikona: pin (m\xEDsto ud\xE1losti),
+                                     vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak,
+                                     varovani. "v\xFDbuch v Kyjev\u011b" -> {"place":"Kyjev","kind":"vybuch"};
+                                     "ozna\u010d m\xEDsto nehody u Brna" -> {"place":"Brno","kind":"nehoda"}.
+                                     Bez kind pou\u017eije vybranou/nahranou ikonku, jinak \u0161pendl\xEDk.
 addLabel {place, text?, size?, side?} \u2013 P\u0158ID\xC1 POPISEK do mapy na dan\xE9 m\xEDsto. Bez "text" pou\u017Eije
                                      n\xE1zev m\xEDsta. "p\u0159idej popisek Let\u0148any" -> {"place":"Let\u0148any"}.
-setWeather {vrstva:true/false, opacity?} \u2013 zapne/vypne vrstvy po\u010Das\xED. Kl\xED\u010De: radar (radar sr\xE1\u017Eek),
-                                     precip, clouds, temp, wind, pressure, owmClouds, opacity 20-100.
+setWeather {vrstva:true/false, opacity?} \u2013 zapne/vypne vrstvy po\u010Das\xED. Kl\xED\u010De JEN:
+                                     radar (\u017Eiv\xFD radar sr\xE1\u017Eek, RainViewer),
+                                     clouds (satelitn\xED obla\u010Dnost, NASA GIBS),
+                                     opacity 20-100 (kryt\xED obou vrstev).
                                      "zapni radar sr\xE1\u017Eek" -> {"radar":true}.
+                                     Teplotu, tlak ani v\xEDtr aplikace nem\xE1 \u2014 nevym\xFD\u0161lej je,
+                                     \u0159ekni na rovinu, \u017Ee takovou vrstvu neum\xED.
 drawArrow {from, to, color?, width?} \u2013 VYKRESL\xCD \u0160IPKU z m\xEDsta do m\xEDsta (postup vojsk, migrace,
                                      sm\u011Br \xFAderu). "\u0161ipka z Prahy na Brno" -> {"from":"Praha","to":"Brno"}.
                                      \u0160ipka NEN\xCD trasa \u2014 nikdy na to nepou\u017E\xEDvej routeBetween!
@@ -123,7 +131,7 @@ DOSTUPN\xC9 N\xC1STROJE (jm\xE9no + parametry):
 ${TOOLS}
 
 AKTU\xC1LN\xCD STAV MAPY:
-${JSON.stringify(mapState || {}, null, 1)}
+${JSON.stringify(mapState || {})}
 
 PRAVIDLA:
 1. Odpov\u011Bz V\u017DDY jen jedn\xEDm JSON objektem, bez markdownu, bez \`\`\`:
@@ -153,7 +161,7 @@ PRAVIDLA:
 6f. UM\xCD\u0160 p\u0159\xEDmo: perimetr (drawPerimeter), \u0161ipku (drawArrow), m\u011B\u0159en\xED vzd\xE1lenosti
    (measureDistance), um\xEDst\u011Bn\xED u\u017E nahran\xE9ho GLB (placeModel3d) a vybarven\xED politick\xE9
    mapy (colorPolitical). \u0160ipka z A do B NEN\xCD routeBetween \u2014 pou\u017Eij drawArrow!
-   Um\xED\u0161 i popisky (addLabel), po\u010Das\xED (setWeather) a um\xEDst\u011Bn\xED u\u017E nahran\xE9 ikonky (placeIcon).
+   Um\xED\u0161 i popisky (addLabel), po\u010Das\xED (setWeather) a ikony na m\xEDsto (placeIcon s kind: vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani, pin).
    Vlastn\xED OBR\xC1ZEK ikonky ani .glb soubor nahr\xE1t neum\xED\u0161 \u2014 to je u\u017Eivatel\u016Fv soubor; tyhle
    n\xE1stroje ti samy \u0159eknou, kdy\u017E nic nahran\xE9ho nen\xED, a otev\u0159ou spr\xE1vnou sekci.
 6c. Re\u017Eimy trasy jsou JEN: driving, foot, cycle, planeDirect, planeArc, planeCustom.
@@ -187,7 +195,14 @@ PRAVIDLA:
    mapLabelSection, po\u010Das\xED \u2192 weatherLayersSection, presety \u2192 stylePresetSection,
    barvy \u2192 styleColorsSection, kamera \u2192 cameraAnimSection, zast\xE1vky \u2192 waypointSection,
    trasa A\u2192B \u2192 navigationABSection). Jen pro celou oblast pou\u017Eij openTab
-   (export \u2192 export, projekt \u2192 projekt, animace \u2192 animace).`;
+   (export \u2192 export, projekt \u2192 projekt, animace \u2192 animace).
+P\u0158\xCDKLADY (p\u0159esn\u011B takto):
+"p\u0159epni na satelit" -> {"say":"P\u0159ep\xEDn\xE1m na satelit.","calls":[{"tool":"setBaseStyle","args":{"style":"satellite"},"label":"Satelit"}],"done":true}
+"trasa z Prahy do Brna" -> {"say":"Kresl\xEDm trasu Praha\u2013Brno.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Brno"},"label":"Trasa"},{"tool":"fitRoute","args":{},"label":"Doramov\xE1n\xED"}],"done":true}
+"uka\u017E 3D Let\u0148any" -> {"say":"Let\xEDm na Let\u0148any ve 3D.","calls":[{"tool":"show3D","args":{"query":"Let\u0148any"},"label":"3D Let\u0148any"}],"done":true}
+"kolik je to z Prahy do V\xEDdn\u011B vzdu\u0161nou \u010Darou" -> {"say":"M\u011B\u0159\xEDm.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"V\xEDde\u0148"},"label":"Vzd\xE1lenost"}],"done":false}
+N\xE1zvy m\xEDst d\xE1vej V\u017DDY v 1. p\xE1du (Prahy -> Praha, do Brna -> Brno, z Ostravy -> Ostrava).
+Kdy\u017E u\u017Eivatel \u0159ekne p\u0159\xEDkaz, PROVE\u010E ho hned \u2014 neptej se na dopln\u011Bn\xED, pokud nen\xED opravdu nutn\xE9.`;
 }
 __name(systemPrompt, "systemPrompt");
 function extractPlan(text) {
@@ -261,7 +276,7 @@ var worker_default = {
     } catch (_) {
       return json({ error: "Neplatn\xFD JSON." }, 400, origin);
     }
-    const history = Array.isArray(body.messages) ? body.messages.slice(-10) : [];
+    const history = Array.isArray(body.messages) ? body.messages.slice(-8) : [];
     if (!history.length) return json({ say: "Napi\u0161 mi, co m\xE1 mapa ud\u011Blat.", calls: [], done: true }, 200, origin);
     const messages = [{ role: "system", content: systemPrompt(body.mapState) }];
     for (const m of history) {
@@ -276,7 +291,9 @@ var worker_default = {
       });
     }
     try {
-      const out = await env.AI.run(MODEL, { messages, max_tokens: 1200, temperature: 0.2 });
+      // Strop se platí jen za skutečně vygenerované tokeny, krátkou odpověď
+      // nezdraží; 450 ale ořízne delší plán uprostřed JSONu.
+      const out = await env.AI.run(MODEL, { messages, max_tokens: 900, temperature: 0.2 });
       const r = out && (out.response ?? out.result ?? out.output_text);
       let plan = null;
       if (r && typeof r === "object") plan = r;
