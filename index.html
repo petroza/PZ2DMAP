@@ -29,7 +29,7 @@ html,body{height:100%;font-family:var(--font);font-size:13px;color:var(--tx1);ba
 /* ===== SIDEBAR ===== */
 .sidebar{width:var(--sidebar);min-width:var(--sidebar);height:100vh;height:100dvh;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;box-shadow:4px 0 24px rgba(0,0,0,.35)}
 .sidebar-brand{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--bg2),var(--bg1))}.sidebar-brand-top{display:flex;align-items:center;gap:12px;width:100%;min-width:0}.brand-meta{display:flex;align-items:center;gap:12px;flex:0 0 auto;min-width:0}.brand-copy{min-width:0}.brand-search-wrap{flex:1;min-width:0;position:relative}.brand-search-row{display:flex;align-items:center;gap:6px}.brand-search-row input{flex:1;min-width:0;height:34px}.brand-search-row .btn{padding:7px 10px}.brand-search-row #clearPlaceSearchBtn{padding-inline:9px}.brand-search-wrap .place-search-results{position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:180;max-height:280px;margin-top:0;padding-right:0}.anim-custom-actions--compact{justify-content:flex-start;align-items:flex-start}.anim-custom-actions--compact .icon-preview-box{width:42px;height:42px}.file-input-hidden{position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none}.btn-file-red{background:var(--accent);border-color:var(--accent);color:#fff}.btn-file-red:hover{background:var(--accent-hi);border-color:var(--accent-hi)}.icon-preview-stack{display:flex;align-items:flex-start;gap:8px}.icon-clear-btn{width:24px;height:24px;padding:0;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;background:rgba(230,57,70,.14);border-color:rgba(230,57,70,.28);color:#fff}.icon-clear-btn:hover{background:rgba(230,57,70,.24);border-color:var(--accent)}
-.brand-icon{width:34px;height:34px;background:var(--accent);border-radius:var(--radius);display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;box-shadow:0 2px 8px var(--accent-glow);position:relative}.brand-icon span{position:relative;top:-0.5px;line-height:1;display:block}
+.brand-icon{width:34px;height:34px;background:var(--accent);border-radius:var(--radius);display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;box-shadow:0 2px 8px var(--accent-glow);position:relative}.brand-icon span{position:relative;top:-0.5px;line-height:1;display:block}#brandLogo{cursor:pointer;transition:transform .12s,box-shadow .12s}#brandLogo:hover{transform:translateY(-1px);box-shadow:0 4px 14px var(--accent-glow)}#brandLogo:active{transform:translateY(0) scale(.96)}#brandLogo:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
 .brand-title{font-size:14px;font-weight:700;color:var(--tx1);letter-spacing:.4px}
 
 .sidebar-tabs{display:flex;gap:3px;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg0);flex-shrink:0}
@@ -640,7 +640,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
   <div class="sidebar-brand">
     <div class="sidebar-brand-top">
       <div class="brand-meta">
-        <div class="brand-icon"><span>TN</span></div>
+        <div class="brand-icon" id="brandLogo" role="button" tabindex="0" title="Zpět na základní styl (Bright)"><span>TN</span></div>
         <div class="brand-copy"><span class="brand-title">PZ MAP</span></div>
       </div>
       <div class="lang-switcher lang-switcher-inline" id="langSwitcherSlot"></div>
@@ -15691,5 +15691,29 @@ document.addEventListener('keydown', e => {
 <!-- defer: only used by video/PNG-sequence export (a much later user action), so it
      must not sit on the load critical path. onerror preserves the CDN fallback. -->
 <script defer src="assets/vendor/jszip.min.js" onerror="(function(){var s=document.createElement('script');s.defer=true;s.src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';document.head.appendChild(s);})()"></script>
+<script>
+// Klik na logo TN vrátí základní styl na Bright. Jde přes veřejné window.TNMAP,
+// které je definované až na konci hlavního skriptu, proto to čeká na načtení.
+(function(){
+  'use strict';
+  function toBright(){
+    var api = window.TNMAP;
+    if(api && typeof api.setBaseStyle === 'function'){ api.setBaseStyle({style:'bright'}); return; }
+    // Záloha, kdyby se API nestihlo vystavit.
+    var sel = document.getElementById('baseStyle');
+    if(sel){ sel.value = 'bright'; sel.dispatchEvent(new Event('change', {bubbles:true})); }
+  }
+  function bind(){
+    var el = document.getElementById('brandLogo');
+    if(!el) return;
+    el.addEventListener('click', toBright);
+    el.addEventListener('keydown', function(e){
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toBright(); }
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
+})();
+</script>
 </body>
 </html>
