@@ -106,8 +106,14 @@ setShadows {on?, ao?, strength?}   \u2013 POZOR, dv\u011B R\u016EZN\xC9 v\u011Bc
                                      ao = ambientn\xED okluze / AO ("ambientn\xED okluze", "AO", "zast\xEDn\u011Bn\xED",
                                           "hloubka budov") \u2014 NIKDY nepou\u017E\xEDvej "on" pro AO!
                                      strength = s\xEDla AO 0-100. P\u0159\xEDklad: "zapni AO" -> {"ao":true}.
-setTransportMode {mode}            \u2013 re\u017Eim trasy: driving (auto), foot (p\u011B\u0161ky), cycle (kolo), planeDirect, planeArc, planeCustom.
+setTransportMode {mode}            \u2013 re\u017Eim trasy: driving (auto), truck (kamion), moto (motorka), train (vlak po \u017Eeleznici \u010CR), boat (lo\u010F po \u0159ece), foot (p\u011B\u0161ky), cycle (kolo), planeDirect, planeArc, planeCustom.
 routeBetween {from, to, mode?}     \u2013 NAJDE A VYKRESL\xCD trasu mezi dv\u011Bma m\xEDsty. Pro "trasa z A do B", "cesta autem z A do B".
+roadClosure {from, to, via?, detourVia?, label?} \u2013 UZAV\xCDRKA SILNICE/D\xC1LNICE: zv\xFDrazn\xED uzav\u0159en\xFD \xFAsek po silnici z from do to
+                                     (via = OBEC le\u017E\xEDc\xED na uzav\u0159en\xE9m \xFAseku, kdy\u017E je v\xEDc cest; detourVia = obec, p\u0159es kterou vede obj\xED\u017E\u010Fka).
+                                     Pro "uzav\xEDrka D1 mezi Humpolcem a V\u011Btrn\xFDm Jen\xEDkovem", "zav\u0159en\xE1 silnice z A do B".
+metroClosure {line?, station?, from?, to?, label?} \u2013 UZAV\xCDRKA METRA v Praze: jedna stanice (station) nebo \xFAsek (from + to), linka A/B/C.
+                                     Pro "v\xFDluka metra C Florenc\u2013Ka\u010Derov", "zav\u0159en\xFD M\u016Fstek".
+clearClosures {}                   \u2013 sma\u017Ee v\u0161echny uzav\xEDrky.
 fitRoute {}                        \u2013 doramuje pohled na celou trasu.
 arcBestView {}                     \u2013 ide\xE1ln\xED 3D pohled na leteck\xFD oblouk (jen po routeBetween s planeArc).
 clearRoute {}                      \u2013 sma\u017Ee trasu.
@@ -164,10 +170,10 @@ PRAVIDLA:
    Um\xED\u0161 i popisky (addLabel), po\u010Das\xED (setWeather) a ikony na m\xEDsto (placeIcon s kind: vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani, pin).
    Vlastn\xED OBR\xC1ZEK ikonky ani .glb soubor nahr\xE1t neum\xED\u0161 \u2014 to je u\u017Eivatel\u016Fv soubor; tyhle
    n\xE1stroje ti samy \u0159eknou, kdy\u017E nic nahran\xE9ho nen\xED, a otev\u0159ou spr\xE1vnou sekci.
-6c. Re\u017Eimy trasy jsou JEN: driving, foot, cycle, planeDirect, planeArc, planeCustom.
-   VLAK ANI AUTOBUS aplikace neum\xED \u2014 nevym\xFD\u0161lej mode "train"/"bus". Kdy\u017E u\u017Eivatel chce
-   vlak/autobus, \u0159ekni to na rovinu a nab\xEDdni auto (driving) nebo vzdu\u0161nou linku
-   (planeDirect) jako n\xE1hradu; trasu vykresli jen v tom n\xE1hradn\xEDm re\u017Eimu.
+6c. Re\u017Eimy trasy: driving (auto), truck (kamion), moto (motorka), train (vlak \u2014 jede po kolej\xEDch \u010CR),
+   boat (lo\u010F \u2014 jede po \u0159ek\xE1ch a kan\xE1lech \u010CR), foot, cycle, planeDirect, planeArc, planeCustom.
+   Pro "cesta vlakem", "vlakem z A do B" pou\u017Eij routeBetween s mode "train"; pro "lod\xED po Vltav\u011B/Labi"
+   mode "boat"; pro kamion/n\xE1kladn\xED auto "truck"; pro motorku "moto". AUTOBUS aplikace neum\xED \u2014 nab\xEDdni driving.
 6d. Na dotaz NA VZD\xC1LENOST ("kolik je to", "jak daleko", "vzdu\u0161nou \u010Darou")
    pou\u017Eij measureDistance {from, to} a vra\u0165 "done":false. \u010C\xEDslo NAPI\u0160 do "say"
    TEPRVE v dal\u0161\xEDm kole z distanceKm ve V\xDDSLEDC\xCDCH.
@@ -199,6 +205,9 @@ PRAVIDLA:
 P\u0158\xCDKLADY (p\u0159esn\u011B takto):
 "p\u0159epni na satelit" -> {"say":"P\u0159ep\xEDn\xE1m na satelit.","calls":[{"tool":"setBaseStyle","args":{"style":"satellite"},"label":"Satelit"}],"done":true}
 "trasa z Prahy do Brna" -> {"say":"Kresl\xEDm trasu Praha\u2013Brno.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Brno"},"label":"Trasa"},{"tool":"fitRoute","args":{},"label":"Doramov\xE1n\xED"}],"done":true}
+"vlakem z Prahy do Plzn\u011B" -> {"say":"Kresl\xEDm trasu vlakem Praha\u2013Plze\u0148.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Plze\u0148","mode":"train"},"label":"Vlak"}],"done":true}
+"uzav\xEDrka D1 mezi Humpolcem a V\u011Btrn\xFDm Jen\xEDkovem" -> {"say":"Vyzna\u010Duji uzav\u0159en\xFD \xFAsek D1.","calls":[{"tool":"roadClosure","args":{"from":"Humpolec","to":"V\u011Btrn\xFD Jen\xEDkov"},"label":"Uzav\xEDrka"}],"done":true}
+"v\xFDluka metra C mezi Florenc\xED a Ka\u010Derovem" -> {"say":"Vyzna\u010Duji v\xFDluku metra C.","calls":[{"tool":"metroClosure","args":{"line":"C","from":"Florenc","to":"Ka\u010Derov"},"label":"V\xFDluka metra"}],"done":true}
 "uka\u017E 3D Let\u0148any" -> {"say":"Let\xEDm na Let\u0148any ve 3D.","calls":[{"tool":"show3D","args":{"query":"Let\u0148any"},"label":"3D Let\u0148any"}],"done":true}
 "kolik je to z Prahy do V\xEDdn\u011B vzdu\u0161nou \u010Darou" -> {"say":"M\u011B\u0159\xEDm.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"V\xEDde\u0148"},"label":"Vzd\xE1lenost"}],"done":false}
 N\xE1zvy m\xEDst d\xE1vej V\u017DDY v 1. p\xE1du (Prahy -> Praha, do Brna -> Brno, z Ostravy -> Ostrava).

@@ -167,7 +167,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .nav-point input{flex:1}
 .nav-connector{width:2px;height:16px;background:var(--border-hi);margin-left:13px;border-radius:1px}
 
-.transport-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+.transport-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:14px}
 .transport-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:.2s;color:var(--tx2)}
 .transport-btn:hover{border-color:var(--border-hi);background:var(--bg2)}
 .transport-btn.active{border-color:var(--accent);background:var(--accent);color:#fff}
@@ -961,6 +961,10 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
           <button type="button" class="transport-btn" data-mode="train" title="Vlak — trasa po železniční síti ČR">
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14"/><circle cx="9" cy="13" r=".6" fill="currentColor"/><circle cx="15" cy="13" r=".6" fill="currentColor"/><path d="m8 16-2.5 5M16 16l2.5 5M7 19h10"/></svg></div>
             <span class="t-label">Vlak</span>
+          </button>
+          <button type="button" class="transport-btn" data-mode="boat" title="Loď — trasa po řekách a kanálech ČR">
+            <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15h18l-2.5 4h-13Z"/><path d="M6 15V9h9l3 6"/><path d="M9 9V5h3v4"/><path d="M2 21c1.5 0 2.5-.8 3.5-.8s2 .8 3.5.8 2.5-.8 3.5-.8 2 .8 3.5.8 2.5-.8 3.5-.8"/></svg></div>
+            <span class="t-label">Loď</span>
           </button>
           <button type="button" class="transport-btn" data-mode="foot">
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M13.5 8.5h-3c-.6 0-1 .4-1 1v4l-2.5 5"/><path d="M13.5 8.5l1 4.5-2.5 2.5V20"/><path d="M9.5 13.5l2.5 2"/><path d="M7 18.5l1.5-.5"/></svg></div>
@@ -13233,13 +13237,14 @@ function makeGreatCircle(start, end, steps=120){
    Veřejné routery umí jen silnice, takže síť je přibalená (assets/rail_cz.json,
    z OSM, ~150 kB gzip) a hledá se v prohlížeči Dijkstrou. Načte se až při
    první trase vlakem. Start a cíl se přichytí na nejbližší místo na trati. */
-let _pzRail = null, _pzRailLoading = null;
-async function pzLoadRail(){
-  if(_pzRail) return _pzRail;
-  if(_pzRailLoading) return _pzRailLoading;
-  _pzRailLoading = (async () => {
-    const res = await fetch(new URL('assets/rail_cz.json', document.baseURI));
-    if(!res.ok) throw new Error('Železniční síť se nepodařilo načíst (' + res.status + ').');
+const _pzNets = {}, _pzNetsLoading = {};
+async function pzLoadRail(){ return pzLoadNet('assets/rail_cz.json', 'Železniční síť'); }
+async function pzLoadNet(path, what){
+  if(_pzNets[path]) return _pzNets[path];
+  if(_pzNetsLoading[path]) return _pzNetsLoading[path];
+  _pzNetsLoading[path] = (async () => {
+    const res = await fetch(new URL(path, document.baseURI));
+    if(!res.ok) throw new Error(what + ' se nepodařilo načíst (' + res.status + ').');
     const d = await res.json(); const Q = d.q || 1e5;
     const N = d.n.length / 2, nodes = new Array(N);
     for(let i = 0; i < N; i++) nodes[i] = [d.n[2*i] / Q, d.n[2*i+1] / Q];
@@ -13253,10 +13258,10 @@ async function pzLoadRail(){
       adj[a].push(idx); adj[b].push(idx);
       return {a, b, len: cum[cum.length-1] || len, pts, cum};
     });
-    _pzRail = {nodes, edges, adj};
-    return _pzRail;
+    _pzNets[path] = {nodes, edges, adj};
+    return _pzNets[path];
   })();
-  try{ return await _pzRailLoading; } finally { _pzRailLoading = null; }
+  try{ return await _pzNetsLoading[path]; } finally { delete _pzNetsLoading[path]; }
 }
 // Nejbližší bod na trati: hrana + poloha na ní (projekce na úsečku).
 function pzRailSnap(g, p){
@@ -13326,8 +13331,8 @@ function pzRailLeg(g, from, to){
   out.push(...tail.slice(1));
   return {coords: out, km: best / 1000, snapKm: Math.max(sA.distKm, sB.distKm)};
 }
-async function pzRailRoute(points){
-  const g = await pzLoadRail();
+async function pzRailRoute(points, g){
+  g = g || await pzLoadRail();
   let all = [];
   for(let i = 1; i < points.length; i++){
     const leg = pzRailLeg(g, points[i-1], points[i]);
@@ -13358,6 +13363,7 @@ async function routeFromPoints(a,b,mode){
   }
   if(mode === 'planeCustom') return allPoints;
   if(mode === 'train') return pzRailRoute(allPoints);
+  if(mode === 'boat') return pzRailRoute(allPoints, await pzLoadNet('assets/water_cz.json', 'Síť řek'));
   const coordString = allPoints.map(pt => `${pt[0]},${pt[1]}`).join(';');
   let url = '';
   if(mode === 'cycle'){
@@ -13607,7 +13613,7 @@ async function findRoute(){
     $('endInput').value = bInfo.label || `${b[1].toFixed(5)}, ${b[0].toFixed(5)}`;
     restorePointMarkers();
     state.routeCoords = await routeFromPoints(a,b,state.currentTransportMode);
-    if(state.currentTransportMode === 'train' && state.routeCoords.length > 1){
+    if((state.currentTransportMode === 'train' || state.currentTransportMode === 'boat') && state.routeCoords.length > 1){
       // Body A/B na koleje, ať čára nezačíná uprostřed náměstí.
       state.pointA = state.routeCoords[0].slice(); state.pointB = state.routeCoords[state.routeCoords.length-1].slice();
       restorePointMarkers();
@@ -18157,7 +18163,7 @@ document.addEventListener('keydown', e => {
   // =========================================================================
   const TOOL_STYLE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
   const TOOL_TABS = ['styly','trasa','scena','animace','projekt','export'];
-  const TOOL_MODES = ['driving','truck','moto','train','foot','cycle','planeDirect','planeArc','planeCustom'];
+  const TOOL_MODES = ['driving','truck','moto','train','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
 
   function toolOpenSection(sectionId, open = true){
     const sec = $(sectionId);
