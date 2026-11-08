@@ -658,6 +658,20 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 @media (min-width:981px){ .sidebar{border-radius:0} }
 
 </style>
+<style id="pz-compact-sections">
+/* Kompaktnější panel: grafici mají v jednom sloupci desítky sekcí a mezi
+   sbalenými kartami se plýtvalo místem. Mezera 10 -> 4 px, hlavička karty
+   51 -> ~36 px. Na dotykových zařízeních zůstává hlavička vyšší kvůli prstu. */
+.tab-pane > .section{margin-bottom:4px}
+.tab-pane > .section.section-collapsible{padding-top:8px}
+.tab-pane > .section-collapsible > h3{padding-bottom:8px}
+.tab-pane > .section-collapsible:not(.collapsed) > .section-body{padding-bottom:11px}
+@media (pointer:coarse){
+  .tab-pane > .section{margin-bottom:6px}
+  .tab-pane > .section.section-collapsible{padding-top:11px}
+  .tab-pane > .section-collapsible > h3{padding-bottom:11px}
+}
+</style>
 </head>
 <body>
 <div class="app">
@@ -7173,6 +7187,31 @@ function populateCzRegionSelect(){
   if(cur && list.find(item => item.id === cur)) sel.value = cur;
 }
 
+// Hranice států, státy a kraje ČR jsou dohromady ~7,5 MB GeoJSON. Dřív se
+// stahovaly při každém startu, i když je nikdo nepotřeboval — a byly hlavní
+// příčinou, proč se mapa načítala sedm vteřin. Teď se stáhnou až ve chvíli,
+// kdy je opravdu něco chce: zapnutá vrstva, politický podklad, vybraný stát,
+// otevřená sekce, nebo pokyn asistentovi.
+function geoDataWanted(){
+  if(state.countriesGeojson || state.czRegionsGeojson || state.geoDataLoading || state.geoDataRequested) return true;
+  return !!($('showPoliticalCountries')?.checked || $('showCzRegions')?.checked ||
+            $('showCountryBordersOverlay')?.checked || ($('baseStyle')?.value === 'political') ||
+            $('countryFocusSelect')?.value);
+}
+function requestGeoData(){
+  state.geoDataRequested = true;
+  try{ ensureOverlaySetup(); }catch(e){}
+}
+// Sekce, které data potřebují: stahování začne, jakmile je uživatel otevře
+// nebo sáhne na některý z jejich prvků — seznamy států jsou pak připravené
+// dřív, než po nich sáhne.
+document.addEventListener('click', e => {
+  if(e.target.closest?.('#politicalStylePanel > h3, #countryBordersOverlaySection > h3, #czPoliticalSection > h3')) requestGeoData();
+}, true);
+document.addEventListener('change', e => {
+  if(/^(showPoliticalCountries|showCzRegions|showCountryBordersOverlay|countryFocusSelect|politicalCountrySelect|czRegionSelect)$/.test(e.target?.id || '')) requestGeoData();
+}, true);
+
 async function ensureGeoDataLoaded(){
   if(state.countriesGeojson && state.czRegionsGeojson && state.countryBorderLinesGeojson) return true;
   if(state.geoDataLoading) return state.geoDataLoading;
@@ -7323,6 +7362,7 @@ function ensurePoliticalLayers(){
 
 function ensureOverlaySetup(){
   if(state._overlaySetupRunning) return;
+  if(!geoDataWanted()) return;
   state._overlaySetupRunning = true;
   ensureGeoDataLoaded().then(ok => {
     state._overlaySetupRunning = false;
@@ -8212,23 +8252,21 @@ function ensureTransitLayers(){
   const add = (id, def) => { if(!map.getLayer(id)){ try{ map.addLayer(def); }catch(e){} } };
 
   if(typeof PRAHA_TRAM_GEOJSON !== 'undefined'){
+    // Praha je zabalená v appce, aby MHD naskočila okamžitě. Zbytek republiky
+    // (Brno, Ostrava, Plzeň, Olomouc, Liberec, Most–Litvínov) je 296 kB navíc,
+    // takže se stáhne až po zapnutí MHD a jen jednou. Stažená data si držíme
+    // v paměti, protože přepnutí podkladu vrstvy smaže a vytvoří znovu — bez
+    // toho by po změně stylu zůstala zase jen Praha.
     if(!map.getSource('pz-tram')){
-      try{ map.addSource('pz-tram', {type:'geojson', data:PRAHA_TRAM_GEOJSON}); }catch(e){}
-      // Praha je zabalená v appce, aby MHD naskočila okamžitě. Zbytek republiky
-      // (Brno, Ostrava, Plzeň, Olomouc, Liberec, Most–Litvínov) je 296 kB navíc,
-      // což by zdržovalo každé spuštění kvůli vrstvě, kterou většinou nikdo
-      // nezapne — dotáhne se proto až teď a jen jednou. Když se to nepovede,
-      // zůstane Praha a nic se nerozbije.
-      if(!window.__pzTramCzLoading){
-        window.__pzTramCzLoading = true;
-        fetch('assets/mhd_cz_tram.json', {cache:'force-cache'})
-          .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
-          .then(gj => {
-            const src = state.map?.getSource?.('pz-tram');
-            if(src?.setData) src.setData(gj);
-          })
-          .catch(() => { window.__pzTramCzLoading = false; });
-      }
+      try{ map.addSource('pz-tram', {type:'geojson', data: window.__pzTramCz || PRAHA_TRAM_GEOJSON}); }catch(e){}
+    }
+    if(!window.__pzTramCz && !window.__pzTramCzLoading && $('showTransit')?.checked){
+      window.__pzTramCzLoading = true;
+      fetch('assets/mhd_cz_tram.json', {cache:'force-cache'})
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+        .then(gj => { window.__pzTramCz = gj; state.map?.getSource?.('pz-tram')?.setData?.(gj); })
+        .catch(() => {})  // když to nevyjde, zůstane Praha
+        .finally(() => { window.__pzTramCzLoading = false; });
     }
     add('pz-tram-far', {
       id:'pz-tram-far', type:'line', source:'pz-tram', maxzoom: 14,
@@ -10153,6 +10191,7 @@ function applyBoundaryTweaksDebounced(){
 function applyPoliticalOverlayTweaks(){
   if(!state.map?.isStyleLoaded()) return;
   if(!(state.countriesGeojson || state.countryBorderLinesGeojson || state.czRegionsGeojson)){
+    if(!geoDataWanted()) return;
     ensureGeoDataLoaded().then(ok => {
       if(!ok) return;
       ensurePoliticalLayers();
@@ -17933,7 +17972,12 @@ document.addEventListener('keydown', e => {
     // ---- politická mapa: vybarvení krajů a států ----------------------------
     // Volební a regionální grafika. Text od redaktora („Středočeský kraj", „Německo")
     // páruje s položkami selectu bez ohledu na diakritiku a skloňování.
-    colorPolitical({region, country, color, clear} = {}){
+    async colorPolitical({region, country, color, clear} = {}){
+      if(!clear){
+        // Seznamy států a krajů se plní z dat, která se stahují až na vyžádání.
+        state.geoDataRequested = true;
+        try{ await ensureGeoDataLoaded(); populateCountrySelects(); populateCzRegionSelect(); }catch(e){}
+      }
       const dia = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
       // Select má státy v DOMÁCÍCH názvech („Deutschland"), ale redakce píše česky
       // („Německo"). Bez tohohle překladu selhalo i tak základní zadání jako
