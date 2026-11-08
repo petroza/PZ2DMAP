@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
+<script>try{if(localStorage.getItem('pzUiTheme')==='light')document.documentElement.dataset.ui='light';}catch(e){}</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PZ MAP</title>
@@ -665,6 +666,24 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .wp-item.active,.wp-item.active:hover{border-color:var(--accent);background:rgba(230,57,70,.17);box-shadow:inset 4px 0 0 var(--accent);color:var(--tx1)}
 .wp-item.active .wp-badge{background:var(--accent);color:#fff}
 .wp-item.active > .small:first-child,.wp-item.active div[style*="font-weight:700"]{color:var(--tx1);font-weight:700;opacity:1}
+
+/* ===== Světlý režim aplikace (přepínač ☀/☾ vedle vlajek) =====
+   Mění jen ovládací panely, ne mapu. Barvy jdou přes proměnné, níž jen místa,
+   kde je v tmavém skinu natvrdo bílý text na proměnném pozadí. */
+html[data-ui="light"]{
+  --bg0:#eef1f5;--bg1:#ffffff;--bg2:#f5f7fa;--bg3:#e8ecf1;--bg4:#dde2e9;
+  --border:#d3d9e2;--border-hi:#aeb7c4;
+  --tx1:#121821;--tx2:#4a5466;--tx3:#6d7789;
+  --accent-glow:rgba(230,57,70,.18);
+  color-scheme:light;
+}
+html:not([data-ui="light"]){color-scheme:dark}
+html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
+html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
+html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
+html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
+.ui-theme-btn{width:26px;height:20px;display:grid;place-items:center;padding:0;border:1px solid var(--border);background:var(--bg3);color:var(--tx1);cursor:pointer;font-size:12px;line-height:1;flex-shrink:0}
+.ui-theme-btn:hover{border-color:var(--border-hi);background:var(--bg4)}
 </style>
 <style id="pz-compact-sections">
 /* Kompaktnější panel: grafici mají v jednom sloupci desítky sekcí a mezi
@@ -696,6 +715,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
         <div class="brand-copy"><span class="brand-title">PZ MAP</span></div>
       </div>
       <div class="lang-switcher lang-switcher-inline" id="langSwitcherSlot"></div>
+      <button type="button" class="ui-theme-btn" id="uiThemeBtn" title="Světlý / tmavý režim aplikace">☀</button>
     </div>
   </div>
   <div class="brand-search-bar">
@@ -16413,7 +16433,17 @@ function setupWeatherUI(){
 
 }
 
+function pzSetUiTheme(mode){
+  const light = mode === 'light';
+  if(light) document.documentElement.dataset.ui = 'light'; else delete document.documentElement.dataset.ui;
+  try{ localStorage.setItem('pzUiTheme', light ? 'light' : 'dark'); }catch(e){}
+  const b = document.getElementById('uiThemeBtn');
+  if(b){ b.textContent = light ? '☾' : '☀'; b.title = light ? 'Přepnout na tmavý režim aplikace' : 'Přepnout na světlý režim aplikace'; }
+}
 function bindUI(){
+  pzSetUiTheme(document.documentElement.dataset.ui === 'light' ? 'light' : 'dark');
+  document.getElementById('uiThemeBtn')?.addEventListener('click', () =>
+    pzSetUiTheme(document.documentElement.dataset.ui === 'light' ? 'dark' : 'light'));
   setupWeatherUI();
   // Až po vyhodnocení celého skriptu: PZ_ICON_SET je const definovaná níž než
   // volání bindUI() a přístup k ní dřív by skončil v temporal dead zone.
