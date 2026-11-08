@@ -167,7 +167,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .nav-point input{flex:1}
 .nav-connector{width:2px;height:16px;background:var(--border-hi);margin-left:13px;border-radius:1px}
 
-.transport-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
+.transport-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
 .transport-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:.2s;color:var(--tx2)}
 .transport-btn:hover{border-color:var(--border-hi);background:var(--bg2)}
 .transport-btn.active{border-color:var(--accent);background:var(--accent);color:#fff}
@@ -221,7 +221,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .anim-custom-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .anim-custom-actions .icon-preview-box{flex:0 0 48px}
 .anim-custom-actions .btn{flex:0 0 auto;min-width:0}
-.anim-sys-icon-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:4px}
+.anim-sys-icon-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:4px}
 .sys-icon-btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;padding:9px 8px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);color:var(--tx2);cursor:pointer;transition:.15s;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
 .sys-icon-btn:hover{border-color:var(--border-hi);background:var(--bg2)}
 .sys-icon-btn.active{border-color:var(--accent);background:rgba(230,57,70,.06);color:var(--accent)}
@@ -950,6 +950,14 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.2 14.9c0-.8.4-1.5 1.1-1.8l1-3.2c.4-1.3 1.6-2.2 3-2.2h5.5c1.3 0 2.6.8 3.1 2l1.1 2.7h1.1c1 0 1.8.8 1.8 1.8v2.2c0 .7-.6 1.3-1.3 1.3h-.8a2.6 2.6 0 0 1-5.1 0H9.2a2.6 2.6 0 0 1-5.1 0h-.2c-.4 0-.7-.3-.7-.7v-2.1Zm4.7-4.8-.8 2.4h9.3l-1-2.4c-.2-.6-.8-1-1.4-1H9.3c-.7 0-1.2.4-1.4 1Zm-1.4 6.1a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Zm10.8 0a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z"/></svg></div>
             <span class="t-label" data-i18n="Auto">Auto</span>
           </button>
+          <button type="button" class="transport-btn" data-mode="truck" title="Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)">
+            <div class="t-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 6.5C2 5.67 2.67 5 3.5 5h10c.83 0 1.5.67 1.5 1.5V8h3.1c.5 0 .96.25 1.24.66l2.4 3.55c.17.25.26.54.26.84V16c0 .83-.67 1.5-1.5 1.5h-.6a2.75 2.75 0 0 1-5.3 0H9.4a2.75 2.75 0 0 1-5.3 0h-.6C2.67 17.5 2 16.83 2 16V6.5Zm13 3V12h4.6l-1.7-2.5H15ZM6.75 18.6a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Zm10.5 0a1.25 1.25 0 1 0 0-2.5 1.25 1.25 0 0 0 0 2.5Z"/></svg></div>
+            <span class="t-label">Kamion</span>
+          </button>
+          <button type="button" class="transport-btn" data-mode="moto">
+            <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="16.5" r="3.2"/><circle cx="19" cy="16.5" r="3.2"/><path d="M5 16.5h5l3.5-5H8.5"/><path d="M13.5 11.5 16 6h2.5"/><path d="M19 16.5 16 6"/><path d="M10 11.5 8.5 9H6"/></svg></div>
+            <span class="t-label">Motorka</span>
+          </button>
           <button type="button" class="transport-btn" data-mode="foot">
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="4.5" r="2"/><path d="M13.5 8.5h-3c-.6 0-1 .4-1 1v4l-2.5 5"/><path d="M13.5 8.5l1 4.5-2.5 2.5V20"/><path d="M9.5 13.5l2.5 2"/><path d="M7 18.5l1.5-.5"/></svg></div>
             <span class="t-label" data-i18n="Pěšky">Pěšky</span>
@@ -1209,6 +1217,10 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
             <img src="assets/sys_car.png" alt="" loading="lazy" decoding="async">
             <span data-i18n="Auto">Auto</span>
           </button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="truck" title="Kamion"><img src="assets/sys_truck.svg" alt="" loading="lazy"><span>Kamion</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="moto" title="Motorka"><img src="assets/sys_moto.svg" alt="" loading="lazy"><span>Motorka</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="train" title="Vlak"><img src="assets/sys_train.svg" alt="" loading="lazy"><span>Vlak</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="boat" title="Loď"><img src="assets/sys_boat.svg" alt="" loading="lazy"><span>Loď</span></button>
         </div>
         <p class="hint" data-i18n="hint_anim_system_icons">Kliknutím vybereš vestavěnou animační ikonku.</p>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
@@ -4180,8 +4192,23 @@ const SVG_ICONS = {
 
 const ANIM_SYSTEM_ICONS = {
   plane: 'assets/sys_plane.svg',
-  car: 'assets/sys_car.png'
+  car: 'assets/sys_car.png',
+  truck: 'assets/sys_truck.svg',
+  moto: 'assets/sys_moto.svg',
+  train: 'assets/sys_train.svg',
+  boat: 'assets/sys_boat.svg'
 };
+// Která ikonka patří ke kterému druhu dopravy — při přepnutí dopravy se
+// ikonka vymění sama (pokud grafik nenahrál vlastní obrázek).
+const PZ_MODE_ICON = {driving:'car', truck:'truck', moto:'moto', train:'train', boat:'boat',
+  planeDirect:'plane', planeArc:'plane', planeCustom:'plane'};
+function pzMatchIconToMode(){
+  const want = PZ_MODE_ICON[state.currentTransportMode];
+  const customUpload = !!state.animIconData && !state.animSystemIcon;
+  if(customUpload) return;
+  if(want && state.animSystemIcon !== want) setAnimSystemIcon(want, {silent:true, refresh:false});
+  else if(!want && state.animSystemIcon) setAnimSystemIcon(null, {silent:true, refresh:false});
+}
 
 const state = {
   map:null,
@@ -4294,15 +4321,16 @@ function setActiveButton(groupSel, attr, value, activeClass='active'){
 }
 
 function getCurrentMoverType(){
-  return state.currentTransportMode === 'driving' ? 'car'
+  const m = state.currentTransportMode;
+  return (m === 'driving' || m === 'truck' || m === 'moto') ? 'car'
+    : m === 'train' ? 'train' : m === 'boat' ? 'boat'
     : state.currentTransportMode === 'cycle' ? 'bike'
     : state.currentTransportMode.startsWith('plane') ? 'plane'
     : 'dot';
 }
 
 function getCurrentAnimationIconType(){
-  return state.animSystemIcon === 'plane' ? 'sysPlane'
-    : state.animSystemIcon === 'car' ? 'sysCar'
+  return state.animSystemIcon ? 'sys' + state.animSystemIcon[0].toUpperCase() + state.animSystemIcon.slice(1)
     : getCurrentMoverType();
 }
 
@@ -17222,6 +17250,7 @@ function bindUI(){
     state.addingMapLabel = false;
     setActiveButton('.transport-btn', 'mode', state.currentTransportMode);
     updateTransportSections();
+    try{ pzMatchIconToMode(); }catch(e){}
     state.smoothAngle = null;
     removeAnimMarker();
     renderAnimIconPreview();
@@ -18010,7 +18039,7 @@ document.addEventListener('keydown', e => {
   // =========================================================================
   const TOOL_STYLE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
   const TOOL_TABS = ['styly','trasa','scena','animace','projekt','export'];
-  const TOOL_MODES = ['driving','foot','cycle','planeDirect','planeArc','planeCustom'];
+  const TOOL_MODES = ['driving','truck','moto','foot','cycle','planeDirect','planeArc','planeCustom'];
 
   function toolOpenSection(sectionId, open = true){
     const sec = $(sectionId);
