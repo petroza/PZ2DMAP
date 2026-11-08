@@ -6,9 +6,10 @@ Stav k 8. 11. 2026.
 
 **https://tnmap.pages.dev** — Cloudflare Pages, projekt `tnmap`.
 
-Běží na nasazení `c1aeeb91` z 19. 9. 2026. Nasazuje se **ad-hoc uploadem**,
-projekt není napojený na git — proto se obsah repozitáře a živé verze
-opakovaně rozcházel.
+Od 8. 11. 2026 běží na obsahu této větve (`claude/tnmap-improvement-mq79cw`).
+Předchozí produkce byla `c1aeeb91` z 19. 9. 2026 — zůstává jako cesta zpět.
+Nasazuje se **ad-hoc uploadem**, projekt není napojený na git; proto se obsah
+repozitáře a živé verze v minulosti opakovaně rozcházel. Nasazuj jen z gitu.
 
 Backend jsou Pages Functions nad D1 databází `23869285-146f-4a51-9ed3-247c42e387e3`:
 
@@ -28,9 +29,21 @@ const PZ_ON_PHP_HOST = /(^|\.)appcreate\.cloud$/i.test(location.hostname);
 const PZ_API = (php, fn) => PZ_ON_PHP_HOST ? php : fn;
 ```
 
-**Zdrojový kód těchto Functions v repozitáři není** a z Cloudflare ho stáhnout
-nejde. Dokud se nenajde (naposledy hlášen v `O:\TNmap`), nelze nasadit nový
-front-end bez toho, že by se backend ztratil.
+Zdroják Functions je v `functions/api/`. Původní zářijový kód se z Cloudflare
+stáhnout nedal, takže je napsaný znovu podle schématu D1 a kontraktů, které
+front-end volá. Výjimka: `/api/chmi` je zatím most na nasazení `c1aeeb91`,
+protože převod feedu ČHMÚ na ORP se nedal ověřit — viz komentář v `chmi.js`.
+
+Endpointy družic, letadel a lodí (`/api/planes`, `/api/ships`, `/api/tle`,
+`/api/satnogs`) v nové verzi nejsou; jejich panely byly zrušené.
+
+### ⚠ Náhled a produkce sdílejí jednu databázi
+
+Náhledová nasazení (`<větev>.tnmap.pages.dev`) mají napojenou **stejnou D1
+jako produkce**. Zápis z náhledu mění ostrá data. 8. 11. jeden testovací
+požadavek bez tokenu na náhledu smazal všechny projekty (obnoveno ze zálohy
+do dvou minut). Zápisy teď bez tokenu neprojdou, ale **na náhledu nikdy
+netestuj ukládání s jinými daty, než jaká v databázi už jsou.**
 
 ## AI asistent
 
@@ -60,11 +73,14 @@ z gitu.
 
 ## Nasazení front-endu
 
-Po doplnění zdrojáku Functions do `functions/`:
+Wrangler bere `functions/` z pracovního adresáře a v kořeni repa leží
+`wrangler.jsonc` pro starší Worker, takže nasazuj z čistého adresáře:
 
 ```bash
-npx wrangler pages deploy dist --project-name=tnmap --branch=preview-nazev   # náhled
-npx wrangler pages deploy dist --project-name=tnmap                          # produkce
+./tools/build-site.sh                       # složí dist/ včetně functions/
+cd dist && mkdir -p public && mv index.html assets presets.json projects.json public/
+npx wrangler pages deploy public --project-name=tnmap --branch=konsolidace   # náhled
+npx wrangler pages deploy public --project-name=tnmap --branch=main          # produkce
 ```
 
 **Náhled vždy první.** Každé nasazení má vlastní adresu
