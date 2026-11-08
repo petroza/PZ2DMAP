@@ -5393,6 +5393,8 @@ function ensureRouteSources(){
   if(!m.getLayer('route-ghost-line')) m.addLayer({id:'route-ghost-line', type:'line', source:'route-ghost', layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#002ee6','line-width':4,'line-opacity':0.4}});
   if(!m.getLayer('route-anim-glow')) m.addLayer({id:'route-anim-glow', type:'line', source:'route-anim', paint:{'line-color':'#ffffff','line-width':16,'line-opacity':0.12,'line-blur':6}});
   if(!m.getLayer('route-anim-line')) m.addLayer({id:'route-anim-line', type:'line', source:'route-anim', layout:{'line-cap':'round','line-join':'round'}, paint:{'line-color':'#002ee6','line-width':5,'line-opacity':1}});
+  // Vlak: klasická železniční značka — bílé pražce přes čáru trasy (barvu volí grafik).
+  if(!m.getLayer('route-anim-pruhy')) m.addLayer({id:'route-anim-pruhy', type:'line', source:'route-anim', layout:{'line-cap':'butt','line-join':'round'}, paint:{'line-color':'#ffffff','line-width':2,'line-opacity':0,'line-dasharray':[2.2,2.2]}});
   if(!m.getSource('route-arc3d')) m.addSource('route-arc3d', {type:'geojson', data: emptyFC()});
   if(!m.getLayer('route-arc3d-extrude')) m.addLayer({id:'route-arc3d-extrude', type:'fill-extrusion', source:'route-arc3d', paint:{
     'fill-extrusion-color':'#002ee6',
@@ -13712,6 +13714,9 @@ function updateRouteStyle(){
   safeSetPaint('route-anim-glow','line-color',d);
   safeSetPaint('route-anim-glow','line-opacity',hideGround ? 0 : (arc3d ? 0.04 : 0.12));
   safeSetPaint('route-arc3d-extrude','fill-extrusion-color',c);
+  const isTrain = state.currentTransportMode === 'train';
+  safeSetPaint('route-anim-pruhy','line-width',Math.max(1.2, (w+1) * 0.42));
+  safeSetPaint('route-anim-pruhy','line-opacity',isTrain && !hideGround ? 0.95 : 0);
 }
 
 function animationTotal(){ return parseFloat($('animStart')?.value || '0') + parseFloat($('animDuration')?.value || '8'); }
