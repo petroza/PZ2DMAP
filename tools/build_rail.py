@@ -23,11 +23,16 @@ for f in sorted(glob.glob(src_dir + '/t_*_*.json')):
         ways[w['id']] = w
 print('cest', len(ways), file=sys.stderr)
 
+BRANCH_FACTOR = 1.6     # vedlejší tratě: router dá přednost hlavní trati
+seg_f = {}
 coord = {}
 use = defaultdict(int)
 for w in ways.values():
     for nid, g in zip(w['nodes'], w['geometry']):
         coord[nid] = (g['lon'], g['lat'])
+    f = BRANCH_FACTOR if w.get('tags', {}).get('usage') == 'branch' else 1.0
+    for i in range(1, len(w['nodes'])):
+        seg_f[(w['nodes'][i-1], w['nodes'][i])] = seg_f[(w['nodes'][i], w['nodes'][i-1])] = f
     for i, nid in enumerate(w['nodes']):
         use[nid] += 1 if i in (0, len(w['nodes']) - 1) else 2
 def hav(a, b):
@@ -137,7 +142,7 @@ best_edge = {}
 for e in edges:
     a, b = root(e[0]), root(e[-1])
     if a == b: continue
-    L = sum(hav(coord[e[i]], coord[e[i+1]]) for i in range(len(e)-1))
+    L = sum(hav(coord[e[i]], coord[e[i+1]]) * seg_f.get((e[i], e[i+1]), 1.0) for i in range(len(e)-1))
     key = (a, b) if a < b else (b, a)
     seq = [a] + e[1:-1] + [b]
     if key not in best_edge or L < best_edge[key][0]: best_edge[key] = (L, seq)
@@ -177,10 +182,11 @@ for e in edges:
     ra, rb = find(e[0]), find(e[-1])
     if ra != rb: par[ra] = rb
 comp_len = defaultdict(float)
-elen = []
+elen = []; ecost = []
 for e in edges:
     L = sum(hav(coord[e[i]], coord[e[i+1]]) for i in range(len(e)-1))
-    elen.append(L); comp_len[find(e[0])] += L
+    C = sum(hav(coord[e[i]], coord[e[i+1]]) * seg_f.get((e[i], e[i+1]), 1.0) for i in range(len(e)-1))
+    elen.append(L); ecost.append(C); comp_len[find(e[0])] += L
 keep = [i for i, e in enumerate(edges) if comp_len[find(e[0])] >= MIN_COMPONENT_KM * 1000]
 print('hran', len(edges), '→', len(keep), '| km', round(sum(elen[i] for i in keep)/1000), file=sys.stderr)
 
@@ -221,7 +227,8 @@ for i in keep:
     for p in pts[1:-1]:
         x, y = q(p[0]), q(p[1]); flat += [x - px, y - py]; px, py = x, y
     npts += len(pts)
-    out_e.append([a, b, int(round(elen[i])), flat])
+    k = round(ecost[i] / elen[i], 2) if elen[i] > 0 else 1
+    out_e.append([a, b, int(round(elen[i])), flat] + ([k] if k != 1 else []))
 json.dump({'v': 1, 'q': 1e5, 'n': nodes, 'e': out_e,
            'attribution': '© OpenStreetMap contributors, ODbL'}, open(out_path, 'w'), separators=(',', ':'))
 import os

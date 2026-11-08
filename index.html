@@ -13250,13 +13250,15 @@ async function pzLoadNet(path, what){
     for(let i = 0; i < N; i++) nodes[i] = [d.n[2*i] / Q, d.n[2*i+1] / Q];
     const adj = Array.from({length:N}, () => []);
     const edges = d.e.map((e, idx) => {
-      const [a, b, len, flat] = e;
+      const [a, b, len, flat, kf] = e;
       const pts = [nodes[a]]; let x = d.n[2*a], y = d.n[2*a+1];
       for(let k = 0; k < flat.length; k += 2){ x += flat[k]; y += flat[k+1]; pts.push([x / Q, y / Q]); }
       pts.push(nodes[b]);
       const cum = [0]; for(let k = 1; k < pts.length; k++) cum.push(cum[k-1] + haversineKm(pts[k-1], pts[k]) * 1000);
       adj[a].push(idx); adj[b].push(idx);
-      return {a, b, len: cum[cum.length-1] || len, pts, cum};
+      const L = cum[cum.length-1] || len;
+      // k = cenový koeficient (vedlejší trať > 1): router dá přednost hlavní trati
+      return {a, b, len: L, k: kf || 1, cost: L * (kf || 1), pts, cum};
     });
     _pzNets[path] = {nodes, edges, adj};
     return _pzNets[path];
@@ -13294,7 +13296,7 @@ function pzRailLeg(g, from, to){
   const eA = g.edges[sA.ei], eB = g.edges[sB.ei];
   let directCost = Infinity, direct = null;
   if(sA.ei === sB.ei){
-    directCost = Math.abs(sA.along - sB.along);
+    directCost = Math.abs(sA.along - sB.along) * eA.k;
     const lo = Math.min(sA.k, sB.k), hi = Math.max(sA.k, sB.k);
     const mid = eA.pts.slice(lo, hi);
     direct = sA.along <= sB.along ? [sA.pt, ...mid, sB.pt] : [sA.pt, ...mid.reverse(), sB.pt];
@@ -13305,21 +13307,21 @@ function pzRailLeg(g, from, to){
   const heap = []; const push = (n, d) => { heap.push([d, n]); let i = heap.length - 1; while(i > 0){ const p = (i - 1) >> 1; if(heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
   const pop = () => { const top = heap[0], last = heap.pop(); if(heap.length){ heap[0] = last; let i = 0; for(;;){ const l = 2*i+1, r = l+1; let m = i; if(l < heap.length && heap[l][0] < heap[m][0]) m = l; if(r < heap.length && heap[r][0] < heap[m][0]) m = r; if(m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
   const seed = (n, d) => { if(d < dist[n]){ dist[n] = d; prev[n] = -2; push(n, d); } };
-  seed(eA.a, sA.along); seed(eA.b, eA.len - sA.along);
+  seed(eA.a, sA.along * eA.k); seed(eA.b, (eA.len - sA.along) * eA.k);
   const goalA = eB.a, goalB = eB.b; let doneA = false, doneB = false;
   while(heap.length){
     const [d, n] = pop(); if(d > dist[n]) continue;
     if(n === goalA) doneA = true; if(n === goalB) doneB = true;
     if((doneA && doneB) || d > directCost) break;
     for(const ei of g.adj[n]){
-      const e = g.edges[ei], m = e.a === n ? e.b : e.a, nd = d + e.len;
+      const e = g.edges[ei], m = e.a === n ? e.b : e.a, nd = d + e.cost;
       if(nd < dist[m]){ dist[m] = nd; prev[m] = ei; push(m, nd); }
     }
   }
-  const viaA = dist[goalA] + sB.along, viaB = dist[goalB] + (eB.len - sB.along);
+  const viaA = dist[goalA] + sB.along * eB.k, viaB = dist[goalB] + (eB.len - sB.along) * eB.k;
   const best = Math.min(viaA, viaB);
   if(!(best < Infinity) && !direct) throw new Error('Mezi těmito místy nevede souvislá trať.');
-  if(direct && directCost <= best) return {coords: direct, km: directCost / 1000, snapKm: Math.max(sA.distKm, sB.distKm)};
+  if(direct && directCost <= best) return {coords: direct, km: lineLength(direct), snapKm: Math.max(sA.distKm, sB.distKm)};
   const endNode = viaA <= viaB ? goalA : goalB;
   // zpětně od cílového uzlu k počátečnímu
   const chain = []; let n = endNode;
@@ -13329,7 +13331,7 @@ function pzRailLeg(g, from, to){
   chain.forEach(seg => out.push(...seg.slice(1)));
   const tail = pzEdgePart(eB, sB, endNode === eB.a).reverse();
   out.push(...tail.slice(1));
-  return {coords: out, km: best / 1000, snapKm: Math.max(sA.distKm, sB.distKm)};
+  return {coords: out, km: lineLength(out), snapKm: Math.max(sA.distKm, sB.distKm)};
 }
 async function pzRailRoute(points, g){
   g = g || await pzLoadRail();
