@@ -174,6 +174,10 @@ PRAVIDLA:
    boat (lo\u010F \u2014 jede po \u0159ek\xE1ch a kan\xE1lech \u010CR), foot, cycle, planeDirect, planeArc, planeCustom.
    Pro "cesta vlakem", "vlakem z A do B" pou\u017Eij routeBetween s mode "train"; pro "lod\xED po Vltav\u011B/Labi"
    mode "boat"; pro kamion/n\xE1kladn\xED auto "truck"; pro motorku "moto". AUTOBUS aplikace neum\xED \u2014 nab\xEDdni driving.
+6g. V\xCDC ZEM\xCD / KRAJ\u016E NAJEDNOU: na KA\u017DDOU zemi samostatn\xE9 vol\xE1n\xED colorPolitical se svou barvou \u2014
+   "Ukrajinu \u017Elut\u011B a Rusko \u010Derven\u011B" = DV\u011A vol\xE1n\xED. Nikdy \u017E\xE1dnou zemi nevynech\xE1vej.
+6h. resetApp pou\u017E\xEDvej JEN na "na za\u010D\xE1tek", "reset", "vyma\u017E v\u0161echno". Na "uka\u017E cel\xE9 \u010Cesko"
+   pou\u017Eij gotoPlace {"query":"\u010Cesko"} \u2014 resetApp by p\u0159epnul podklad a zru\u0161il, co u\u017Eivatel cht\u011Bl.
 6d. Na dotaz NA VZD\xC1LENOST ("kolik je to", "jak daleko", "vzdu\u0161nou \u010Darou")
    pou\u017Eij measureDistance {from, to} a vra\u0165 "done":false. \u010C\xEDslo NAPI\u0160 do "say"
    TEPRVE v dal\u0161\xEDm kole z distanceKm ve V\xDDSLEDC\xCDCH.
@@ -205,6 +209,7 @@ PRAVIDLA:
 P\u0158\xCDKLADY (p\u0159esn\u011B takto):
 "p\u0159epni na satelit" -> {"say":"P\u0159ep\xEDn\xE1m na satelit.","calls":[{"tool":"setBaseStyle","args":{"style":"satellite"},"label":"Satelit"}],"done":true}
 "trasa z Prahy do Brna" -> {"say":"Kresl\xEDm trasu Praha\u2013Brno.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Brno"},"label":"Trasa"},{"tool":"fitRoute","args":{},"label":"Doramov\xE1n\xED"}],"done":true}
+"obarvi Ukrajinu \u017Elut\u011B a Rusko \u010Derven\u011B" -> {"say":"Barv\xEDm Ukrajinu a Rusko.","calls":[{"tool":"colorPolitical","args":{"country":"Ukrajina","color":"\u017Elut\xE1"},"label":"Ukrajina"},{"tool":"colorPolitical","args":{"country":"Rusko","color":"\u010Derven\xE1"},"label":"Rusko"}],"done":true}
 "vlakem z Prahy do Plzn\u011B" -> {"say":"Kresl\xEDm trasu vlakem Praha\u2013Plze\u0148.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Plze\u0148","mode":"train"},"label":"Vlak"}],"done":true}
 "uzav\xEDrka D1 mezi Humpolcem a V\u011Btrn\xFDm Jen\xEDkovem" -> {"say":"Vyzna\u010Duji uzav\u0159en\xFD \xFAsek D1.","calls":[{"tool":"roadClosure","args":{"from":"Humpolec","to":"V\u011Btrn\xFD Jen\xEDkov"},"label":"Uzav\xEDrka"}],"done":true}
 "v\xFDluka metra C mezi Florenc\xED a Ka\u010Derovem" -> {"say":"Vyzna\u010Duji v\xFDluku metra C.","calls":[{"tool":"metroClosure","args":{"line":"C","from":"Florenc","to":"Ka\u010Derov"},"label":"V\xFDluka metra"}],"done":true}
@@ -340,14 +345,19 @@ var worker_default = {
       // oboje znamená nakreslit dvě čáry nebo spustit akci dvakrát. Držíme pro
       // každý nástroj tu variantu, která opravdu nese argumenty.
       {
-        const best = /* @__PURE__ */ new Map();
-        for (const c of finalPlan.calls) {
-          if (!TOOL_NAME.test(c.tool)) continue;
-          const prev = best.get(c.tool);
-          const n = Object.keys(c.args || {}).length;
-          if (!prev || n > Object.keys(prev.args || {}).length) best.set(c.tool, c);
-        }
-        finalPlan.calls = [...best.values()];
+        // Pozor: víc volání TÉHOŽ nástroje s různými args je legitimní (dvě země,
+        // dvě ikony, dvě šipky). Zahazujeme jen přesné duplikáty a prázdné kopie.
+        const valid = finalPlan.calls.filter((c) => TOOL_NAME.test(c.tool));
+        const withArgs = new Set(valid.filter((c) => Object.keys(c.args || {}).length).map((c) => c.tool));
+        const seenKeys = /* @__PURE__ */ new Set();
+        finalPlan.calls = valid.filter((c) => {
+          const empty = !Object.keys(c.args || {}).length;
+          if (empty && withArgs.has(c.tool)) return false;
+          const key = c.tool + "|" + JSON.stringify(c.args || {});
+          if (seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
       }
       // say občas nese ocásek rozbitého JSON — uživateli ho neukazujeme.
       finalPlan.say = String(finalPlan.say || "").replace(/[,{\[]?\s*['"]?(done|calls|args|tool)['"]?\s*:.*$/s, "").trim() || (finalPlan.calls.length ? "Prov\xE1d\xEDm\u2026" : "Hotovo.");
