@@ -8211,6 +8211,21 @@ function ensureTransitLayers(){
   if(typeof PRAHA_TRAM_GEOJSON !== 'undefined'){
     if(!map.getSource('pz-tram')){
       try{ map.addSource('pz-tram', {type:'geojson', data:PRAHA_TRAM_GEOJSON}); }catch(e){}
+      // Praha je zabalená v appce, aby MHD naskočila okamžitě. Zbytek republiky
+      // (Brno, Ostrava, Plzeň, Olomouc, Liberec, Most–Litvínov) je 296 kB navíc,
+      // což by zdržovalo každé spuštění kvůli vrstvě, kterou většinou nikdo
+      // nezapne — dotáhne se proto až teď a jen jednou. Když se to nepovede,
+      // zůstane Praha a nic se nerozbije.
+      if(!window.__pzTramCzLoading){
+        window.__pzTramCzLoading = true;
+        fetch('assets/mhd_cz_tram.json', {cache:'force-cache'})
+          .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+          .then(gj => {
+            const src = state.map?.getSource?.('pz-tram');
+            if(src?.setData) src.setData(gj);
+          })
+          .catch(() => { window.__pzTramCzLoading = false; });
+      }
     }
     add('pz-tram-far', {
       id:'pz-tram-far', type:'line', source:'pz-tram', maxzoom: 14,
