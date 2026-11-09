@@ -2305,6 +2305,7 @@ const EN_OVERRIDES = {
   "Místo nalezeno.": "Place found.",
   "Nastav body A a B, pak drž Ctrl a klikáním do mapy přidávej průjezdné body.": "Set points A and B, then hold Ctrl and click on the map to add waypoints.",
   "Načítám mapový podklad…": "Loading map base…",
+  "Mapový podklad načten.": "Map base loaded.",
   "Nejdřív klikem vyber objekt na mapě.": "First, click to select an object on the map.",
   "Nejdřív nahraj ikonku.": "Upload an icon first.",
   "Nejdřív najdi trasu.": "Find a route first.",
@@ -5299,6 +5300,8 @@ function initMap(){
     restorePointMarkers();
   });
   state.map.on('click', onMapClick);
+  // Klik do mapy zavře otevřený našeptávač hledání.
+  state.map.on('mousedown', () => { try{ if(!$('placeSearchResults')?.hidden) clearPlaceSearchResults(); }catch(e){} });
   // Arrows are drawn in screen space, so keep them a constant on-screen size by
   // recomputing on every map move/zoom; show a rubber-band preview while placing.
   state.map.on('move', () => { if((state.sceneArrows||[]).length || state.sceneArrowDraft) setSceneArrowDataThrottled(); });
@@ -7780,6 +7783,7 @@ function applyBasicProjectSnapshot(snapshot){
   refreshManualViaMarkers();
   restorePointMarkers();
   redrawRoute();
+  setTimeout(() => { try{ refreshAnimatedMarkerPreview(); }catch(e){} }, 0);   // po kroku zpět/vpřed i načtení projektu
 
   const animation = snapshot.animation || {};
   state.currentRotMode = animation.currentRotMode || 'fixed';
@@ -8497,6 +8501,14 @@ function ensureTransitLayers(){
         .catch(() => {})  // když to nevyjde, zůstane Praha
         .finally(() => { window.__pzTramCzLoading = false; });
     }
+    // Bílý lem pod čarou: na satelitu / tmavém podkladu by tenká hnědá tramvaj
+    // a zelená/červená linka metra v lese a střechách zmizely.
+    add('pz-tram-far-casing', {
+      id:'pz-tram-far-casing', type:'line', source:'pz-tram', maxzoom: 14,
+      layout:{'line-cap':'round','line-join':'round',visibility:'none'},
+      paint:{'line-color':'#ffffff','line-opacity':0.75,
+        'line-width':['interpolate',['linear'],['zoom'],6,1.6,10,2.4,14,3.6]}
+    });
     add('pz-tram-far', {
       id:'pz-tram-far', type:'line', source:'pz-tram', maxzoom: 14,
       layout:{'line-cap':'round','line-join':'round',visibility:'none'},
@@ -8508,6 +8520,13 @@ function ensureTransitLayers(){
     if(!map.getSource('pz-metro')){
       try{ map.addSource('pz-metro', {type:'geojson', data:PRAHA_METRO_GEOJSON}); }catch(e){}
     }
+    add('pz-metro-casing', {
+      id:'pz-metro-casing', type:'line', source:'pz-metro',
+      filter:['==', ['get','kind'], 'line'],
+      layout:{'line-cap':'round','line-join':'round',visibility:'none'},
+      paint:{'line-color':'#ffffff','line-opacity':0.8,
+        'line-width':['interpolate',['linear'],['zoom'],6,2.4,9,3.6,12,5.4,16,8.5]}
+    });
     add('pz-metro-line', {
       id:'pz-metro-line', type:'line', source:'pz-metro',
       filter:['==', ['get','kind'], 'line'],
@@ -8572,6 +8591,8 @@ function applyRoadClassVisibility(){
   ensureTransitLayers();
   const metro = !!$('showMetro')?.checked;
   const transit = !!$('showTransit')?.checked;
+  safeSetLayout('pz-metro-casing', 'visibility', metro ? 'visible' : 'none');
+  safeSetLayout('pz-tram-far-casing', 'visibility', transit ? 'visible' : 'none');
   safeSetLayout('pz-metro-line', 'visibility', metro ? 'visible' : 'none');
   safeSetLayout('pz-metro-stops', 'visibility', metro ? 'visible' : 'none');
   safeSetLayout('pz-tram-line', 'visibility', transit ? 'visible' : 'none');
@@ -10582,6 +10603,8 @@ function reloadStyle(){
   state.map.setStyle(allStyles[key] || allStyles.liberty || STYLES.liberty);
   state.map.once('style.load', () => {
     state.map.jumpTo({center, zoom, pitch, bearing});
+    // „Načítám mapový podklad…" jinak visel ve stavovém řádku až do další akce.
+    state.map.once('idle', () => { try{ refreshAnimatedMarkerPreview(); }catch(e){} try{ if(/Načítám mapový podklad|Loading map base/.test($('statusBar')?.textContent || '')) setStatus(t('Mapový podklad načten.')); }catch(e){} });
   });
   setTimeout(updateExportFrame, 60);
   setTimeout(wakePoliticalStyle, 30);
@@ -13027,6 +13050,7 @@ function focusPlaceResult(item){
   clearPlaceSearchMarker();
   state.placeSearchMarker = new maplibregl.Marker({color:'#e63946'}).setLngLat(point).addTo(state.map);
   if($('placeSearchInput')) $('placeSearchInput').value = normalizePlaceLabel(item) || $('placeSearchInput').value;
+  clearPlaceSearchResults();   // seznam jinak zůstal viset přes záložky
   setStatus(t('Místo nalezeno.'));
 }
 
@@ -13717,6 +13741,9 @@ async function findRoute(){
     redrawRoute();
     fitRoute();
     state._pzLastRouteOk = true;
+    // Objekt na trase (auto/vlak/letadlo) má být vidět i v klidu, ne až po přehrání.
+    setTimeout(() => { try{ refreshAnimatedMarkerPreview(); }catch(e){} }, 0);
+    try{ clearPlaceSearchMarker(); }catch(e){}   // starý pin z hledání by překrýval bod A/B
     setStatus(state.pzTrainStations ? (t('Trasa nalezena.') + ' ' + (state.pzTrainStations[0] || '…') + ' → ' + (state.pzTrainStations[1] || '…')) : t('Trasa nalezena.'));
   } catch (e){
     console.error(e);
@@ -18017,10 +18044,9 @@ function applyLang(lang) {
     else if (txt.startsWith('Projekt uloží trasu')) el.textContent = t('Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.');
   });
 
-  if (state.placeSearchResults?.length) {
+  // Změna jazyka nesmí znovu otevřít našeptávač (překryl by záložky).
+  if (state.placeSearchResults?.length && !document.getElementById('placeSearchResults')?.hidden) {
     renderPlaceSearchResults(state.placeSearchResults);
-    const q = document.getElementById('placeSearchInput')?.value?.trim();
-    if (q) setTimeout(() => performPlaceSearch({focusFirst:false, keepList:true}), 40);
   }
   // Map-source watermark prefix is translated via t(); refresh it on language change.
   try{ updateMapSourceWatermark(); }catch(e){}
@@ -18175,12 +18201,21 @@ document.addEventListener('keydown', e => {
     'findRouteBtn','addWaypointBtn','addFlightWaypointBtn',
     'applyPoliticalCountryColorBtn','applyCzRegionColorBtn',
     'savePresetBtn','updatePresetBtn',
-    'resetPoliticalSelectionBtn','resetCzSelectionBtn'
+    'resetPoliticalSelectionBtn','resetCzSelectionBtn',
+    // scéna a uzavírky — bez nich jeden „Krok zpět" vracel několik akcí najednou
+    // (tlačítka „Klikni do mapy" jen přepínají režim — snímek dělá až klik do mapy)
+    'clearSceneArrowsBtn','clearSceneDistancesBtn','clearScenePerimetersBtn',
+    'deleteMapLabelBtn','deleteSceneArrowBtn','deleteSceneDistanceBtn','deleteSceneIconBtn','deleteScenePerimeterBtn',
+    'updateMapLabelBtn','updateSceneArrowBtn','updateSceneDistanceBtn','updateSceneIconBtn','updateScenePerimeterBtn',
+    'pzClRoadBtn','pzClMetroBtn','pzClClearBtn','placeSearchBtn'
   ]);
+  // Volba druhu dopravy trasu hned přepočítá — snímek musí vzniknout PŘED tím.
+  const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove';
+  window.__pzPushUndo = () => pushUndo();   // asistent: snímek před každým nástrojem
   document.addEventListener('click', (e) => {
     const btn = e.target?.closest?.('button,[role="button"]');
-    if(!btn || !btn.id) return;
-    if(MUTATING_BUTTON_IDS.has(btn.id)) pushUndo();
+    if(!btn) return;
+    if((btn.id && MUTATING_BUTTON_IDS.has(btn.id)) || btn.matches?.(MUTATING_BUTTON_SELECTORS)) pushUndo();
   }, true);
 
   // Snapshot before slider/color-picker gestures so Ctrl+Z covers them too
@@ -18203,7 +18238,9 @@ document.addEventListener('keydown', e => {
       const addingIcon = !!state.addingSceneIcon;
       const addingLabel = !!state.addingMapLabel;
       const addingFlight = !!state.addingFlightPoint;
-      if(routeActive || painting || addingIcon || addingLabel || addingFlight){
+      const sceneDraw = !!(state.addingSceneArrow || state.addingSceneDistance || state.addingScenePerimeter
+        || state.selectedSceneArrowId || state.selectedSceneDistanceId || state.selectedScenePerimeterId);
+      if(routeActive || painting || addingIcon || addingLabel || addingFlight || sceneDraw){
         pushUndo();
       }
     }, true);
@@ -19466,6 +19503,7 @@ function pzColorFromName(v){
     const name = call && call.tool;
     if(!api) return {ok:false, error:'API mapy není připravené.'};
     if(!name || typeof api[name] !== 'function') return {ok:false, error:'Neznámý nástroj: ' + name};
+    if(!/^(get|fit|open|arcBest)/.test(name)) try{ window.__pzPushUndo?.(); }catch(e){}
     try{
       const r = await api[name](call.args || {});
       return (r && typeof r === 'object') ? r : {ok:true};
