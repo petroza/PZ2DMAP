@@ -888,7 +888,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
               <div class="color-row"><input id="countryBorderColor" type="color" value="#ffffff"><label data-i18n="Barva hranic">Barva</label></div>
               <div><label>Tloušťka <span class="val" id="countryBorderWidthVal">2.5 px</span></label><input id="countryBorderWidth" type="range" min="0.5" max="10" step="0.1" value="2.5"></div>
             </div>
-            <label>Průhlednost <span class="val" id="countryBorderOpacityVal">100%</span></label>
+            <label>Krytí <span class="val" id="countryBorderOpacityVal">100%</span></label>
             <input id="countryBorderOpacity" type="range" min="0" max="1" step="0.01" value="1">
           </details>
         </div>
@@ -908,7 +908,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <details class="compact-details">
             <summary>Další nastavení výplně</summary>
             <div class="color-row"><input id="politicalCountryDefaultColor" type="color" value="#e7e2d8"><label data-i18n="Výchozí barva">Výchozí barva</label></div>
-            <label>Průhlednost výplně <span class="val" id="politicalFillOpacityVal">92%</span></label>
+            <label>Krytí výplně <span class="val" id="politicalFillOpacityVal">92%</span></label>
             <input id="politicalFillOpacity" type="range" min="0" max="1" step="0.01" value="0.92">
           </details>
         </div>
@@ -930,7 +930,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <div class="small" style="display:flex;align-items:end">Kraje jsou dostupné jen pro ČR. Po kliknutí do mapy se synchronizuje formulářový výběr kraje.</div>
           <div style="display:flex;align-items:end"><button type="button" class="btn btn-sm" id="zoomToCzBtn" data-i18n="Přiblížit ČR">Přiblížit ČR</button></div>
         </div>
-        <label>Opacity výplně <span class="val" id="czRegionFillOpacityVal">82%</span></label>
+        <label>Krytí výplně <span class="val" id="czRegionFillOpacityVal">82%</span></label>
         <input id="czRegionFillOpacity" type="range" min="0" max="1" step="0.01" value="0.82">
         <div class="btns">
           <button type="button" class="btn btn-sm btn-primary" id="applyCzRegionColorBtn" data-i18n="Barvit kraj">Barvit kraj</button>
@@ -1066,7 +1066,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <div class="row">
           <div class="color-row"><input id="scenePerimeterColor" type="color" value="#e22d2d"><label data-i18n="Barva vrstvy">Barva vrstvy</label></div>
-          <div><label>Průhlednost <span class="val" id="scenePerimeterOpacityVal">12 %</span></label><input id="scenePerimeterOpacity" type="range" min="0" max="80" step="1" value="12"></div>
+          <div><label>Krytí výplně <span class="val" id="scenePerimeterOpacityVal">12 %</span></label><input id="scenePerimeterOpacity" type="range" min="0" max="80" step="1" value="12"></div>
         </div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addScenePerimeterBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
@@ -1676,8 +1676,8 @@ const I18N = {
   // Labels with values
   'Hlavní silnice (šířka)':   {cs:'Hlavní silnice',sk:'Hlavné cesty',bg:'Главни пътища',hr:'Glavne ceste',ro:'Drumuri principale'},
   'Vedlejší silnice (šířka)': {cs:'Vedlejší silnice',sk:'Vedľajšie cesty',bg:'Второст. пътища',hr:'Sporedne ceste',ro:'Drumuri secundare'},
-  'Budovy (opacity)':         {cs:'Budovy',sk:'Budovy',bg:'Сгради',hr:'Zgrade',ro:'Clădiri'},
-  'Hranice (opacity)':        {cs:'Hranice průhlednost',sk:'Priehľadnosť hraníc',bg:'Прозрачност на граници',hr:'Prozirnost granica',ro:'Opacitate frontiere'},
+  'Budovy (opacity)':         {cs:'Krytí budov',sk:'Krytie budov',bg:'Плътност на сградите',hr:'Neprozirnost zgrada',ro:'Opacitate clădiri'},
+  'Hranice (opacity)':        {cs:'Krytí hranic',sk:'Krytie hraníc',bg:'Прозрачност на граници',hr:'Prozirnost granica',ro:'Opacitate frontiere'},
   'Hranice (šířka)':         {cs:'Hranice šířka',sk:'Šírka hraníc',bg:'Ширина на граници',hr:'Širina granica',ro:'Lățime frontiere'},
   'Tloušťka':                 {cs:'Tloušťka',sk:'Hrúbka',bg:'Дебелина',hr:'Debljina',ro:'Grosime'},
   'Velikost (ik)':            {cs:'Velikost',sk:'Veľkosť',bg:'Размер',hr:'Veličina',ro:'Dimensiune'},
@@ -1973,6 +1973,8 @@ const I18N = {
   'Ikonka upravena.': {cs:'Ikonka upravena.',sk:'Ikonka upravená.',bg:'Иконата е редактирана.',hr:'Ikona uređena.',ro:'Pictogramă editată.'},
   'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.': {cs:'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.',sk:'Ikonka vybraná. Delete zmaže, Ctrl+D duplikuje, ťahom posunieš.',bg:'Иконата е избрана. Delete изтрива, Ctrl+D дублира, плъзни за преместване.',hr:'Ikona odabrana. Delete briše, Ctrl+D duplicira, povuci za pomak.',ro:'Pictogramă selectată. Delete șterge, Ctrl+D duplică, trage pentru mutare.'},
   'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.': {cs:'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.',sk:'Prepíš text popisu: Enter uloží, Esc zruší. Popis zmažeš Esc a potom Delete.',bg:'Промени текста: Enter запазва, Esc отказва. Изтриване: Esc и после Delete.',hr:'Prepiši tekst oznake: Enter sprema, Esc odustaje. Brisanje: Esc pa Delete.',ro:'Rescrie textul etichetei: Enter salvează, Esc anulează. Ștergere: Esc apoi Delete.'},
+  'Krytí výplně': {cs:'Krytí výplně',sk:'Krytie výplne',bg:'Плътност на запълването',hr:'Neprozirnost ispune',ro:'Opacitatea umplerii',en:'Fill opacity'},
+  'Krytí': {cs:'Krytí',sk:'Krytie',bg:'Плътност',hr:'Neprozirnost',ro:'Opacitate',en:'Opacity'},
   'Ikonka smazána.': {cs:'Ikonka smazána.',sk:'Ikonka zmazaná.',bg:'Иконата е изтрита.',hr:'Ikona obrisana.',ro:'Pictogramă ștearsă.'},
   'Táhneš ikonku.': {cs:'Táhneš ikonku.',sk:'Ťaháš ikonku.',bg:'Влачиш икона.',hr:'Povlačiš ikonu.',ro:'Tragi pictograma.'},
   'Ikonka přesunuta.': {cs:'Ikonka přesunuta.',sk:'Ikonka presunutá.',bg:'Иконата е преместена.',hr:'Ikona premještena.',ro:'Pictogramă mutată.'},
@@ -10605,8 +10607,10 @@ function initPoliticalStylePanel(){
   // in the Styl tab so the user can colour countries by click over ANY basemap
   // (the political fill is an overlay). Only the CZ-regions block lives in the
   // political-only panel.
+  // Kraje ČR teď zůstávají vždy viditelné v záložce Styl: barvení krajů funguje
+  // na každém vektorovém podkladu (vyplní se jen obarvené kraje) a grafik je na
+  // Positronu dřív vůbec nenašel — sekce se ukazovala jen u podkladu „Politická".
   if(!mount || !czSection) return;
-  if(czSection.parentElement !== mount) mount.appendChild(czSection);
 }
 
 function updateStylePanelVisibility(){
@@ -16948,6 +16952,7 @@ function setupWeatherUI(){
 // Místo desítek ručních zásahů v HTML: projdi textové uzly panelu a přelož
 // přesné české texty podle slovníku; originál si pamatuj, ať jde přepnout zpět.
 const PZ_EN_TEXT = {
+  "Krytí výplně": "Fill opacity",
   "Mapa načtena.": "Map loaded.",
   "Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)": "Truck — route along roads (ignores truck restrictions)",
   "Loď — trasa po řekách a kanálech ČR": "Boat — route along Czech rivers and canals",
@@ -18211,17 +18216,17 @@ function applyLang(lang) {
   setNearestLabel('countryFocusSelect', 'Vybraný stát');
   setNearestLabel('countryBorderColor', 'Barva hranic');
   setNearestLabel('countryBorderWidth', 'Tloušťka');
-  setNearestLabel('countryBorderOpacity', 'Opacity');
+  setNearestLabel('countryBorderOpacity', 'Krytí');
   setNearestLabel('politicalCountrySearch', 'Vyhledat stát');
   setNearestLabel('politicalCountrySelect', 'Stát');
   setNearestLabel('politicalCountryColor', 'Barva státu');
   setNearestLabel('politicalCountryDefaultColor', 'Výchozí barva');
-  setNearestLabel('politicalFillOpacity', 'Opacity výplně');
+  setNearestLabel('politicalFillOpacity', 'Krytí výplně');
   setNearestLabel('czRegionSearch', 'Vyhledat kraj');
   setNearestLabel('czRegionSelect', 'Kraj');
   setNearestLabel('czRegionColor', 'Barva kraje');
   setNearestLabel('czRegionDefaultColor', 'Výchozí barva');
-  setNearestLabel('czRegionFillOpacity', 'Opacity výplně');
+  setNearestLabel('czRegionFillOpacity', 'Krytí výplně');
   setNearestLabel('projectName', 'Název projektu');
   setNearestLabel('savedProjectSelect', 'Projekty');
 
