@@ -128,6 +128,8 @@ openSection {section}              \u2013 otev\u0159e konkr\xE9tn\xED n\xE1stroj
                                      model3dSection, mapLabelSection, weatherLayersSection,
                                      weatherModelSection, cameraAnimSection.
 resetApp {}                        \u2013 reset na za\u010D\xE1tek (cel\xE1 \u010CR, Positron).
+undo {}                            \u2013 KROK ZP\u011AT: vr\xE1t\xED posledn\xED zm\u011Bnu (jako Ctrl+Z).
+redo {}                            \u2013 krok vp\u0159ed (zru\u0161\xED posledn\xED krok zp\u011Bt).
 `.trim();
 function systemPrompt(mapState) {
   return `Jsi asistent v \u010Desk\xE9 mapov\xE9 aplikaci PZ MAP (TN mapa) pro televizn\xED grafiku.
@@ -176,6 +178,7 @@ PRAVIDLA:
    mode "boat"; pro kamion/n\xE1kladn\xED auto "truck"; pro motorku "moto". AUTOBUS aplikace neum\xED \u2014 nab\xEDdni driving.
 6g. V\xCDC ZEM\xCD / KRAJ\u016E NAJEDNOU: na KA\u017DDOU zemi samostatn\xE9 vol\xE1n\xED colorPolitical se svou barvou \u2014
    "Ukrajinu \u017Elut\u011B a Rusko \u010Derven\u011B" = DV\u011A vol\xE1n\xED. Nikdy \u017E\xE1dnou zemi nevynech\xE1vej.
+6i. "vra\u0165 to", "zp\u011Bt", "krok zp\u011Bt", "zru\u0161 to", "to ne", "vra\u0165 posledn\xED zm\u011Bnu" -> undo {} (JEDNO vol\xE1n\xED). NIKDY na to nepou\u017E\xEDvej clearRoute, clearClosures ani resetApp. "znovu", "krok vp\u0159ed" -> redo {}.
 6h. resetApp pou\u017E\xEDvej JEN na "na za\u010D\xE1tek", "reset", "vyma\u017E v\u0161echno". Na "uka\u017E cel\xE9 \u010Cesko"
    pou\u017Eij gotoPlace {"query":"\u010Cesko"} \u2014 resetApp by p\u0159epnul podklad a zru\u0161il, co u\u017Eivatel cht\u011Bl.
 6d. Na dotaz NA VZD\xC1LENOST ("kolik je to", "jak daleko", "vzdu\u0161nou \u010Darou")
@@ -212,6 +215,7 @@ P\u0158\xCDKLADY (p\u0159esn\u011B takto):
 "obarvi Ukrajinu \u017Elut\u011B a Rusko \u010Derven\u011B" -> {"say":"Barv\xEDm Ukrajinu a Rusko.","calls":[{"tool":"colorPolitical","args":{"country":"Ukrajina","color":"\u017Elut\xE1"},"label":"Ukrajina"},{"tool":"colorPolitical","args":{"country":"Rusko","color":"\u010Derven\xE1"},"label":"Rusko"}],"done":true}
 "vlakem z Prahy do Plzn\u011B" -> {"say":"Kresl\xEDm trasu vlakem Praha\u2013Plze\u0148.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Plze\u0148","mode":"train"},"label":"Vlak"}],"done":true}
 "uzav\xEDrka D1 mezi Humpolcem a V\u011Btrn\xFDm Jen\xEDkovem" -> {"say":"Vyzna\u010Duji uzav\u0159en\xFD \xFAsek D1.","calls":[{"tool":"roadClosure","args":{"from":"Humpolec","to":"V\u011Btrn\xFD Jen\xEDkov"},"label":"Uzav\xEDrka"}],"done":true}
+"vra\u0165 to o krok zp\u011Bt" -> {"say":"Vrac\xEDm posledn\xED zm\u011Bnu.","calls":[{"tool":"undo","args":{},"label":"Krok zp\u011Bt"}],"done":true}
 "v\xFDluka metra C mezi Florenc\xED a Ka\u010Derovem" -> {"say":"Vyzna\u010Duji v\xFDluku metra C.","calls":[{"tool":"metroClosure","args":{"line":"C","from":"Florenc","to":"Ka\u010Derov"},"label":"V\xFDluka metra"}],"done":true}
 "uka\u017E 3D Let\u0148any" -> {"say":"Let\xEDm na Let\u0148any ve 3D.","calls":[{"tool":"show3D","args":{"query":"Let\u0148any"},"label":"3D Let\u0148any"}],"done":true}
 "kolik je to z Prahy do V\xEDdn\u011B vzdu\u0161nou \u010Darou" -> {"say":"M\u011B\u0159\xEDm.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"V\xEDde\u0148"},"label":"Vzd\xE1lenost"}],"done":false}

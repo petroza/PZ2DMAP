@@ -18428,7 +18428,9 @@ document.addEventListener('keydown', e => {
   ]);
   // Volba druhu dopravy trasu hned přepočítá — snímek musí vzniknout PŘED tím.
   const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove';
-  window.__pzPushUndo = () => pushUndo();   // asistent: snímek před každým nástrojem
+  window.__pzPushUndo = () => pushUndo();
+  window.__pzUndo = () => { const n = undoStack.length; doUndo(); return n > 0; };
+  window.__pzRedo = () => { const n = redoStack.length; doRedo(); return n > 0; };   // asistent: snímek před každým nástrojem
   document.addEventListener('click', (e) => {
     const btn = e.target?.closest?.('button,[role="button"]');
     if(!btn) return;
@@ -19606,6 +19608,9 @@ function pzColorFromName(v){
       return {ok:true, tab};
     },
     openSection({section, open = true} = {}){ return toolOpenSection(section, open); },
+    // Krok zpět / vpřed — „vrať to", „zpět", „zruš poslední změnu".
+    undo(){ const ok = window.__pzUndo?.(); return ok ? {ok:true} : {ok:false, error:'Není žádný krok zpět.'}; },
+    redo(){ const ok = window.__pzRedo?.(); return ok ? {ok:true} : {ok:false, error:'Není žádný krok vpřed.'}; },
     resetApp(){ try{ resetAppToStart(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; }
   };
 
@@ -19763,7 +19768,7 @@ function pzColorFromName(v){
     const name = call && call.tool;
     if(!api) return {ok:false, error:'API mapy není připravené.'};
     if(!name || typeof api[name] !== 'function') return {ok:false, error:'Neznámý nástroj: ' + name};
-    if(!/^(get|fit|open|arcBest)/.test(name)) try{ window.__pzPushUndo?.(); }catch(e){}
+    if(!/^(get|fit|open|arcBest|undo|redo)/.test(name)) try{ window.__pzPushUndo?.(); }catch(e){}
     try{
       const r = await api[name](call.args || {});
       return (r && typeof r === 'object') ? r : {ok:true};
