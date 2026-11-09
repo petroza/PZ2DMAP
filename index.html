@@ -13993,19 +13993,21 @@ function pzPointAtKm(coords, cum, total, d){
   }
   return pointAtProgress(coords, d / total);
 }
-function pzUpdateConsist(progress){
-  const m = state.map; if(!m || !m.isStyleLoaded?.()) return;
+function pzUpdateConsist(progress, opts){
+  // Export si každý snímek kreslí na vlastní mapě (createNativeExportMarkers) —
+  // tam se volá s opts.map a opts.size; jinak živá mapa a živá ikonka.
+  const m = opts?.map || state.map; if(!m || !m.isStyleLoaded?.()) return;
   if(!m._pzConsistHook){
     m._pzConsistHook = true;
     m.on('zoom', () => { if(state.map === m && state._pzConsistLast != null) try{ pzUpdateConsist(state._pzConsistLast); }catch(e){} });
   }
   const spec = (progress != null && state.animSystemIcon) ? PZ_CONSIST[state.animSystemIcon] : null;
-  state._pzConsistLast = progress;
+  if(!opts) state._pzConsistLast = progress;
   const coords = state.routeCoords || [];
   const feats = [];
-  if(spec && coords.length > 1 && state.animatedMarkerEl){
+  if(spec && coords.length > 1 && (opts?.size || state.animatedMarkerEl)){
     const inverted = !!$('invertIcons')?.checked;
-    const size = parseFloat(state.animatedMarkerEl.style.width) || parseInt($('animIconSize')?.value || '34', 10);
+    const size = opts?.size || parseFloat(state.animatedMarkerEl.style.width) || parseInt($('animIconSize')?.value || '34', 10);
     const {cum, total} = cumulativeRouteLengths(coords);
     const lead = pointAtProgress(coords, progress) || coords[0];
     // km na CSS pixel v místě soupravy (MapLibre: dlaždice 512 px)
@@ -15135,6 +15137,7 @@ function createNativeExportMarkers(exportMap){
       try{ const lp = arc3dLiftPx(point, progress); const off = Array.isArray(lp) ? lp : [0, -(lp || 0)]; temp.animatedMarker.setOffset(off); }catch(e){}
       temp.animatedMarker.setRotation(cameraFacingDisplayAngle(cameraFacing, finalAngle(progress)));
       temp.markerCameraMode = align.key;
+      try{ pzUpdateConsist(progress, {map: exportMap, size}); temp.consist = !!PZ_CONSIST[state.animSystemIcon]; }catch(e){}
     }
   }
   return temp;
@@ -15508,6 +15511,15 @@ async function drawNativeMapFrame(targetCanvas){
     state.markerCameraMode = tempMarkers.markerCameraMode;
 
     if(frame) frame.classList.add('hidden');
+    // Vagony/návěs: GeoJSON se zpracuje asynchronně — počkat, než je ve snímku.
+    if(tempMarkers.consist){
+      const t0 = performance.now();
+      while(performance.now() - t0 < 600){
+        try{ if(exportMap.isSourceLoaded('pz-souprava')) break; }catch(e){ break; }
+        await new Promise(r => setTimeout(r, 16));
+      }
+      try{ exportMap.triggerRepaint(); }catch(e){}
+    }
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const ok = await drawBrowserMapFrame(targetCanvas);
     if(ok && state._exportKeepSession && !state._exportMapSession){
