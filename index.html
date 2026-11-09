@@ -2308,6 +2308,10 @@ const EN_OVERRIDES = {
   "Nastav body A a B, pak drž Ctrl a klikáním do mapy přidávej průjezdné body.": "Set points A and B, then hold Ctrl and click on the map to add waypoints.",
   "Načítám mapový podklad…": "Loading map base…",
   "Mapový podklad načten.": "Map base loaded.",
+  "Žádné šipky.": "No arrows.",
+  "Žádné uzavírky.": "No closures.",
+  "Natáhni bod A → B přímo v mapě.": "Drag from point A to B directly on the map.",
+  "Presety barev platí jen pro vektorové podklady (Positron, Liberty…). Satelitní a další rastrové podklady se barvit nedají.": "Colour presets apply only to vector base maps (Positron, Liberty…). Satellite and other raster base maps cannot be recoloured.",
   "Nejdřív klikem vyber objekt na mapě.": "First, click to select an object on the map.",
   "Nejdřív nahraj ikonku.": "Upload an icon first.",
   "Nejdřív najdi trasu.": "Find a route first.",
@@ -6151,7 +6155,7 @@ function syncSceneArrowInputs(a){
 function renderSceneArrowList(){
   const box = $('sceneArrowList'); if(!box) return;
   box.innerHTML = '';
-  if(!state.sceneArrows.length){ box.innerHTML = '<div class="small" style="opacity:.6;padding:4px 2px">Žádné šipky.</div>'; return; }
+  if(!state.sceneArrows.length){ box.innerHTML = '<div class="small" style="opacity:.6;padding:4px 2px">' + escapeHtml(t('Žádné šipky.')) + '</div>'; return; }
   state.sceneArrows.forEach((a, idx) => {
     const row = document.createElement('div');
     row.className = 'wp-item' + (a.id === state.selectedSceneArrowId ? ' active' : '');
@@ -16877,6 +16881,51 @@ function setupWeatherUI(){
 
 }
 
+
+// ===== Doplňkový překlad do angličtiny =====
+// Starší i nové části panelu nemají data-i18n (názvy vrstev, export, uzavírky…).
+// Místo desítek ručních zásahů v HTML: projdi textové uzly panelu a přelož
+// přesné české texty podle slovníku; originál si pamatuj, ať jde přepnout zpět.
+const PZ_EN_TEXT = {
+  'Tloušťka':'Width', 'Natáhni bod A → B přímo v mapě.':'Drag from point A to B directly on the map.',
+  'Uzavírky':'Closures', 'Silnice / dálnice':'Road / motorway', 'Od':'From', 'Do':'To',
+  'Přes (nepovinné)':'Via (optional)', 'Objížďka přes (nepovinné)':'Detour via (optional)',
+  'Vyznačit uzavírku':'Mark closure', 'Metro':'Metro', 'Linka':'Line', 'Stanice od':'Station from',
+  'do (nepovinné)':'to (optional)', 'Vyznačit uzavírku metra':'Mark metro closure', 'Smazat uzavírky':'Clear closures',
+  'Vlastní rozlišení…':'Custom resolution…', 'Vlastní šířka (px)':'Custom width (px)', 'Vlastní výška (px)':'Custom height (px)',
+  'Zobrazit kraje ČR':'Show Czech regions', 'Barvit kraj kliknutím do mapy':'Colour a region by clicking the map',
+  'Opacity výplně':'Fill opacity', 'Pozadí / pevnina':'Background / land', 'Půda (tráva, pole, lesy)':'Ground (grass, fields, forests)',
+  'Plochy (letiště, průmysl, obchody)':'Areas (airports, industry, shops)', 'Obdélníčky s čísly silnic':'Road number shields',
+  'MHD – tramvaje a zastávky (celá ČR)':'Public transport – trams and stops (all CZ)',
+  'Velikost a průhlednost vrstev':'Layer size and opacity', 'Ambientní okluze (AO)':'Ambient occlusion (AO)', 'Síla AO':'AO strength',
+  'Vrhat stíny budov':'Cast building shadows', 'Hranice států':'Country borders', 'Vybarvit stát':'Colour a country',
+  'Další nastavení výplně':'More fill settings', 'Průhlednost':'Opacity',
+  'Světlá':'Light', 'Světlá – kontrast':'Light – contrast', 'Světlá – výrazná':'Light – bold',
+  'Kamion':'Truck', 'Motorka':'Motorbike', 'Vlak':'Train', 'Loď':'Boat',
+  'Ikonky ve scéně':'Scene icons', 'Upload ikonky':'Upload icon', 'Smazat ikonky':'Clear icons',
+  'Měřítko':'Scale', 'Velikost':'Size', 'Osa nahoru':'Up axis', 'Nahrát GLB soubor':'Upload GLB file',
+  'Ikona se natáčí po směru jízdy / letu automaticky.':'The icon turns along the direction of travel automatically.',
+  'Kam míří vlastní obrázek':'Where your image points'
+};
+const PZ_EN_PREFIX = [
+  ['Ruční rozměr 64–8192 px', 'Manual size 64–8192 px. Odd values are rounded down to even for the video codec.'],
+  ['Presety barev platí jen', 'Colour presets apply only to vector base maps (Positron, Liberty…). Satellite and other raster base maps cannot be recoloured.']
+];
+function pzTranslateTextNodes(lang){
+  const root = document.querySelector('.sidebar') || document.body;
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for(let n = w.nextNode(); n; n = w.nextNode()){
+    const raw = n.__pzCs != null ? n.__pzCs : n.textContent;
+    const key = raw.trim(); if(!key) continue;
+    let en = PZ_EN_TEXT[key];
+    if(!en){ const pr = PZ_EN_PREFIX.find(([p]) => key.startsWith(p)); if(pr) en = pr[1]; }
+    if(!en) continue;
+    if(n.__pzCs == null) n.__pzCs = raw;
+    const lead = raw.match(/^\s*/)[0], trail = raw.match(/\s*$/)[0];
+    n.textContent = lang === 'en' ? (lead + en + trail) : n.__pzCs;
+  }
+}
+
 function pzSetUiTheme(mode){
   const light = mode === 'light';
   if(light) document.documentElement.dataset.ui = 'light'; else delete document.documentElement.dataset.ui;
@@ -17715,6 +17764,8 @@ function applyLang(lang) {
   try{ renderMapLabelList(); }catch(e){}
   try{ renderWaypointList(); }catch(e){}
 
+  try{ pzTranslateTextNodes(lang); }catch(e){}
+  setTimeout(() => { try{ pzTranslateTextNodes(lang); }catch(e){} }, 0);   // po všech ostatních průchodech
   // Update lang buttons
   document.querySelectorAll('.lang-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.lang === lang);
@@ -18619,7 +18670,7 @@ function pzFitClosures(list){
 function pzRenderClosureList(){
   const box = $('pzClosureList'); if(!box) return;
   const list = pzClosures();
-  box.innerHTML = list.length ? '' : '<div class="small" style="opacity:.6;padding:4px 2px">Žádné uzavírky.</div>';
+  box.innerHTML = list.length ? '' : '<div class="small" style="opacity:.6;padding:4px 2px">' + escapeHtml(t('Žádné uzavírky.')) + '</div>';
   list.forEach(c => {
     const row = document.createElement('div');
     row.className = 'wp-item' + (c === state.pzSelectedClosure ? ' active' : '');
