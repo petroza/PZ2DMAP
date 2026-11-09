@@ -15266,6 +15266,13 @@ async function drawNativeMapFrameChunked(targetCanvas, camera, capturedGhost, ca
     state.markerCameraMode = tempMarkers.markerCameraMode;
 
     if(frame) frame.classList.add('hidden');
+    if(tempMarkers.consist){   // vagony/návěs: počkat na asynchronní GeoJSON
+      const t0 = performance.now();
+      while(performance.now() - t0 < 600){
+        try{ if(exportMap.isSourceLoaded('pz-souprava')) break; }catch(e){ break; }
+        await new Promise(r => setTimeout(r, 16));
+      }
+    }
 
     const totalCols = Math.ceil(outW / chunkSize);
     const totalRows = Math.ceil(outH / chunkSize);
