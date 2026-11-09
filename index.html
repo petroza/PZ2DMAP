@@ -1131,7 +1131,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <h3 data-i18n="Ikonky ve scéně">Ikonky ve scéně</h3>
         <div class="row">
           <div><label data-i18n="Upload ikonky">Upload ikonky</label><input id="sceneIconUpload" type="file" accept="image/*"></div>
-          <div><label data-i18n="Velikost (ik)">Velikost <span class="val" id="sceneIconSizeVal">30 px</span></label><input id="sceneIconSize" type="range" min="16" max="96" step="2" value="30"></div>
+          <div><label data-i18n="Velikost (ik)">Velikost <span class="val" id="sceneIconSizeVal">44 px</span></label><input id="sceneIconSize" type="range" min="16" max="96" step="2" value="44"></div>
         </div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addSceneIconBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
@@ -19331,7 +19331,7 @@ function pzColorFromName(v){
         try{
           const dLat = radius / 111320, dLng = radius / (111320 * Math.max(0.1, Math.cos(center[1] * Math.PI / 180)));
           state.map.fitBounds([[center[0] - dLng, center[1] - dLat], [center[0] + dLng, center[1] + dLat]],
-                              {padding: 80, duration: 900});
+                              {padding: getFitPadding(), duration: 900});
         }catch(e){}
       }
       return {ok:true, place: place || 'střed mapy', radiusMeters: radius,
