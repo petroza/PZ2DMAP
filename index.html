@@ -1970,6 +1970,8 @@ const I18N = {
   'Nejdřív nahraj ikonku.': {cs:'Nejdřív nahraj ikonku.',sk:'Najskôr nahraj ikonku.',bg:'Първо качи икона.',hr:'Prvo učitaj ikonu.',ro:'Mai întâi încarcă o pictogramă.'},
   'Nejdřív vyber ikonku.': {cs:'Nejdřív vyber ikonku.',sk:'Najskôr vyber ikonku.',bg:'Първо избери икона.',hr:'Prvo odaberi ikonu.',ro:'Mai întâi selectează pictograma.'},
   'Ikonka upravena.': {cs:'Ikonka upravena.',sk:'Ikonka upravená.',bg:'Иконата е редактирана.',hr:'Ikona uređena.',ro:'Pictogramă editată.'},
+  'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.': {cs:'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.',sk:'Ikonka vybraná. Delete zmaže, Ctrl+D duplikuje, ťahom posunieš.',bg:'Иконата е избрана. Delete изтрива, Ctrl+D дублира, плъзни за преместване.',hr:'Ikona odabrana. Delete briše, Ctrl+D duplicira, povuci za pomak.',ro:'Pictogramă selectată. Delete șterge, Ctrl+D duplică, trage pentru mutare.'},
+  'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.': {cs:'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.',sk:'Prepíš text popisu: Enter uloží, Esc zruší. Popis zmažeš Esc a potom Delete.',bg:'Промени текста: Enter запазва, Esc отказва. Изтриване: Esc и после Delete.',hr:'Prepiši tekst oznake: Enter sprema, Esc odustaje. Brisanje: Esc pa Delete.',ro:'Rescrie textul etichetei: Enter salvează, Esc anulează. Ștergere: Esc apoi Delete.'},
   'Ikonka smazána.': {cs:'Ikonka smazána.',sk:'Ikonka zmazaná.',bg:'Иконата е изтрита.',hr:'Ikona obrisana.',ro:'Pictogramă ștearsă.'},
   'Táhneš ikonku.': {cs:'Táhneš ikonku.',sk:'Ťaháš ikonku.',bg:'Влачиш икона.',hr:'Povlačiš ikonu.',ro:'Tragi pictograma.'},
   'Ikonka přesunuta.': {cs:'Ikonka přesunuta.',sk:'Ikonka presunutá.',bg:'Иконата е преместена.',hr:'Ikona premještena.',ro:'Pictogramă mutată.'},
@@ -2306,6 +2308,8 @@ const EN_OVERRIDES = {
   "Ikonka duplikována.": "Icon duplicated.",
   "Ikonka načtena — klikni do mapy pro vložení nebo ji použij na vybranou ikonku.": "Icon loaded — click on the map to place it, or apply it to the selected icon.",
   "Ikonka přesunuta.": "Icon moved.",
+  "Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.": "Icon selected. Delete removes it, Ctrl+D duplicates, drag to move.",
+  "Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.": "Type the label text: Enter saves, Esc cancels. To delete the label press Esc, then Delete.",
   "Ikonka smazána.": "Icon deleted.",
   "Ikonka upravena.": "Icon updated.",
   "Ikonka vložena do mapy.": "Icon placed on the map.",
@@ -12551,7 +12555,7 @@ function createSceneIconAt(lngLatObj, options={}){
   const id = 'scene_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
   const el = createSceneIconElement(data, size);
   el.title = 'Klikni pro výběr, přetáhni pro posun';
-  el.addEventListener('click', ev => { ev.stopPropagation(); selectSceneIcon(id); });
+  el.addEventListener('click', ev => { ev.stopPropagation(); selectSceneIcon(id); setStatus(t('Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.')); });
   const marker = new maplibregl.Marker({element:el, anchor:'center', draggable:true}).setLngLat([ll.lng, ll.lat]).addTo(state.map);
   marker.on('dragstart', ()=>{
     state.draggingViaPoint = true;
@@ -12603,6 +12607,7 @@ function startMapLabelInlineEdit(id){
   const bubble = el?.querySelector?.('.map-label-bubble');
   if(!item || !bubble || bubble.isContentEditable) return;
   selectMapLabel(id, false);
+  setStatus(t('Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.'));
   const oldText = item.text || 'Popisek';
   bubble.textContent = oldText;
   bubble.contentEditable = 'true';
@@ -17314,6 +17319,11 @@ function bindUI(){
         else setStatus(t('Měření vzdálenosti: klikej body v mapě. Pravým tlačítkem nebo dvojklikem měření ukončíš (zůstane zobrazené), Backspace vrátí poslední bod.'));
         return;
       }
+      // Smazání / vložení / duplikace z klávesnice: snímek pro Ctrl+Z (dřív se
+      // smazaná ikonka klávesou Delete už nedala vrátit).
+      const snapKey = e.key === 'Delete' || (e.key === 'Backspace' && getSelectedMapObject())
+        || (mod && ['v','d'].includes(e.key.toLowerCase()));
+      if(snapKey) try{ window.__pzPushUndo?.(); }catch(err){}
       if(e.key === 'Delete'){
         if(deleteSelectedPresetTiles()){ e.preventDefault(); return; }
         if(deleteSelectedMapObject()) e.preventDefault();
@@ -18375,7 +18385,9 @@ document.addEventListener('keydown', e => {
       const addingFlight = !!state.addingFlightPoint;
       const sceneDraw = !!(state.addingSceneArrow || state.addingSceneDistance || state.addingScenePerimeter
         || state.selectedSceneArrowId || state.selectedSceneDistanceId || state.selectedScenePerimeterId);
-      if(routeActive || painting || addingIcon || addingLabel || addingFlight || sceneDraw){
+      // tažení ikonky / popisku / bodu za značku — přesun má jít vrátit
+      const onMarker = !!e.target?.closest?.('.maplibregl-marker');
+      if(routeActive || painting || addingIcon || addingLabel || addingFlight || sceneDraw || onMarker){
         pushUndo();
       }
     }, true);
