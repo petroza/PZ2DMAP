@@ -687,6 +687,8 @@ html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
 html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
 html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
 html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
+/* Pokročilé funkce: schované, dokud je grafik nezapne v Nastavení (nebo je projekt nepoužívá) */
+html:not(.pz-adv) .pz-adv-only:not(.pz-adv-inuse){display:none!important}
 .pz-tpl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
 .pz-tpl-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border:1px solid var(--border);background:var(--bg2);color:var(--tx1);font:700 9.5px var(--font);letter-spacing:.2px;text-transform:uppercase;cursor:pointer;min-width:0}
 .pz-tpl-btn img{width:28px;height:28px}
@@ -864,7 +866,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <input id="boundaryOpacity" type="range" min="0" max="1" step="0.01" value="1">
         </details>
       </div>
-      <div class="section" id="sunShadowSection">
+      <div class="section pz-adv-only" id="sunShadowSection">
         <h3 data-i18n="Slunce a stíny">Slunce a stíny</h3>
         <label class="check"><input id="aoOn" type="checkbox" checked> <span data-i18n="Ambientní okluze (AO)">Ambientní okluze (AO)</span></label>
         <label data-i18n="Síla AO">Síla AO <span class="val" id="aoStrengthVal">55 %</span></label>
@@ -1174,7 +1176,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <div id="sceneIconList" class="wp-list"></div>
       </div>
 
-      <div class="section" id="model3dSection">
+      <div class="section pz-adv-only" id="model3dSection">
         <h3>3D model (GLB)</h3>
         <label class="btn btn-sm" style="display:inline-flex;align-items:center;cursor:pointer"><input id="model3dUpload" type="file" accept=".glb,model/gltf-binary" style="display:none"> Nahrát GLB soubor</label>
         <div class="row" style="margin-top:8px">
@@ -1527,6 +1529,11 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="settings-head"><b><span data-i18n="Nastavení">Nastavení</span></b><button type="button" id="closeSettingsBtn" class="settings-close" aria-label="Zavřít">×</button></div>
     <div class="settings-body">
       <div class="settings-sec">
+        <h4>Pokročilé funkce</h4>
+        <label class="check"><input id="advancedFeatures" type="checkbox"> Zobrazit pokročilé funkce</label>
+        <div class="small" style="margin-top:4px">3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba.</div>
+      </div>
+      <div class="settings-sec">
         <h4>Mapa</h4>
         <label class="check"><input id="lightMapMode" type="checkbox"> Světlý režim mapy (světlý podklad)</label>
       </div>
@@ -1535,16 +1542,16 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <div class="small" style="margin-bottom:6px">Zaškrtnuté vlajky se zobrazí nahoře. Výchozí je čeština.</div>
         <div id="langToggleList" class="lang-toggle-list"></div>
       </div>
-      <div class="settings-sec">
+      <div class="settings-sec pz-adv-only">
         <h4>Statistika</h4>
         <div id="settingsStats" class="small"></div>
       </div>
-      <div class="settings-sec">
+      <div class="settings-sec pz-adv-only">
         <h4>Selfcheck</h4>
         <button type="button" class="btn btn-sm" id="runSelfcheckBtn">Spustit kontrolu</button>
         <div id="selfcheckResult" class="small" style="margin-top:8px;line-height:1.7"></div>
       </div>
-      <div class="settings-sec" id="settingsCustomSources"></div>
+      <div class="settings-sec pz-adv-only" id="settingsCustomSources"></div>
     </div>
   </div>
 </div>
@@ -2949,13 +2956,13 @@ const PRESETS = {
 const BUILTIN_PRESET_ORDER = ['tnSvetla','tnSvetlaKontrast','tnSvetlaVyrazna','mapycz','mapycomTuristicka','flightradar','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
 const BUILTIN_PRESET_LABELS = {
   tnSvetla:'Světlá', tnSvetlaKontrast:'Světlá – kontrast', tnSvetlaVyrazna:'Světlá – výrazná',
-  mapycz:'Mapy.cz clean', mapycomTuristicka:'Mapy.com turistická', flightradar:'FlightRadar24', waze:'Waze světlá', uber:'Uber dark', ct24:'ČT24', tnNovaClean:'TN Nova clean',
+  mapycz:'Čistá navigační', mapycomTuristicka:'Turistická', flightradar:'Letecká olivová', waze:'Navigační světlá', uber:'Městská tmavá', ct24:'Zpravodajská modrá', tnNovaClean:'TN Nova clean',
   modSoft1:'Modrá Jemná 1', modSoft7:'Modrá Jemná 7', modSoft11:'Modrá Jemná 11', modSoft16:'Modrá Jemná 16', modSoft20:'Modrá Jemná 20',
   novaBlue:'TV Modrá', novaTerrain:'TV Reliéf',
   ua:'UA', dark:'Tmavá', slate:'Slate', paper:'Paper', news:'News', sunset:'Sunset',
   ocean:'Ocean', mint:'Mint', candy:'Candy', neon:'Neon', tn:'TN Nova', reset:'Reset',
   newsPro:'TN News Pro', newsDark:'TN News Dark', newsWarm:'TN News Warm', newsPrint:'TN News Print',
-  newsBlue:'TN News Blue', newsSoft:'TN News Soft', newsClean:'TN News Clean', newsNight:'TN News Night', gptBlue:'GPT Blue', gptWhite:'GPT White'
+  newsBlue:'TN News Blue', newsSoft:'TN News Soft', newsClean:'TN News Clean', newsNight:'TN News Night', gptBlue:'Ostrá modrá', gptWhite:'Ostrá bílá'
 };
 const DEFAULT_BUILTIN_PRESET_RANGES = {majorWidth:'1.3', minorWidth:'1.0', buildingOpacity:'0.72', boundaryOpacity:'1', boundaryWidth:'1.2'};
 const DEFAULT_BUILTIN_PRESET_VISIBILITY = {showBuildings:true, showParks:true, showLandcover:true, showLanduse:true, showAeroway:true, showBoundaries:true, showLabels:true, showRoadShields:true, showMinorRoads:true, showMajorRoads:true, showMotorways:true, showPrimaryRoads:true, showSecondaryRoads:true, showWaterways:true, showRailways:true, showMetro:false, showTransit:false};
@@ -4144,6 +4151,26 @@ function getAllStyles(){
   return merged;
 }
 
+// Méně používané podklady — v nabídce jen s Pokročilými funkcemi (nebo když jsou zrovna vybrané).
+const PZ_ADV_STYLES = ['bright','osmStandard','openTopo','cyclOsm'];
+function pzAdvancedOn(){ try{ return localStorage.getItem('pzAdvanced') === '1'; }catch(e){ return false; } }
+function pzApplyAdvanced(on){
+  if(on != null){ try{ localStorage.setItem('pzAdvanced', on ? '1' : '0'); }catch(e){} }
+  const adv = pzAdvancedOn();
+  document.documentElement.classList.toggle('pz-adv', adv);
+  if($('advancedFeatures')) $('advancedFeatures').checked = adv;
+  const sel = $('baseStyle');
+  sel?.querySelectorAll('option[data-adv]').forEach(o => { o.hidden = !adv && o.value !== sel.value; });
+  pzMarkAdvancedInUse();
+}
+// Projekt, který pokročilou funkci používá (3D model, stíny), ji musí ukázat i bez
+// zapnutých Pokročilých — jinak by ji grafik nemohl upravit ani vypnout.
+function pzMarkAdvancedInUse(){
+  try{
+    $('model3dSection')?.classList.toggle('pz-adv-inuse', !!(state.model3d && state.model3d.lngLat));
+    $('sunShadowSection')?.classList.toggle('pz-adv-inuse', !!($('sunShadowsOn')?.checked || $('aoOn')?.checked));
+  }catch(e){}
+}
 function refreshBaseStyleSelect(){
   const sel = $('baseStyle'); if(!sel) return;
   const cur = sel.value;
@@ -4152,7 +4179,9 @@ function refreshBaseStyleSelect(){
   const builtinGroup = document.createElement('optgroup');
   builtinGroup.label = t('Základní styly');
   [{k:'liberty',l:'Liberty 3D'},{k:'bright',l:'Bright'},{k:'positron',l:'Positron'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
-    const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l); builtinGroup.appendChild(o);
+    const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l);
+    if(PZ_ADV_STYLES.includes(s.k)){ o.dataset.adv = '1'; o.hidden = !pzAdvancedOn() && s.k !== cur; }
+    builtinGroup.appendChild(o);
   });
   sel.appendChild(builtinGroup);
   if(custom.length){
@@ -7907,6 +7936,7 @@ function applyProjectSnapshot(snapshot, statusMsg){
     ensureOverlaySetup();
     window.setTimeout(() => {
       applyBasicProjectSnapshot(snapshot || {});
+      try{ pzMarkAdvancedInUse(); }catch(e){}
       setStatus(statusMsg || 'Projekt načten.');
     }, 120);
   };
@@ -9533,12 +9563,43 @@ function tnClientId(){
 function tnUserName(){ try{ return (localStorage.getItem('tnmap_user')||'').slice(0,40); }catch(_e){ return ''; } }
 const tnPending = {seconds:0, exports:0, routes:0, chat:0};
 function tnBump(kind, n){ if(kind in tnPending) tnPending[kind] += (n||1); }
+// Počet použití funkce (tlačítko, režim, šablona, nástroj asistenta) — odchází
+// spolu se statistikou. Slouží k rozhodnutí, co se používá a co je zbytečné.
+const tnFeatPending = {};
+function tnFeature(key){
+  const k = String(key || '').replace(/[^a-z0-9_:.-]/gi, '').slice(0, 48);
+  if(k) tnFeatPending[k] = (tnFeatPending[k] || 0) + 1;
+}
+window.tnFeature = tnFeature;   // chat asistenta běží v jiném bloku skriptu
+try{
+  document.addEventListener('click', e => {
+    const el = e.target?.closest?.('button,[role="button"],.preset-card,input[type="checkbox"]'); if(!el) return;
+    if(el.closest('.tnchat-panel')) return;
+    if(el.matches('.transport-btn')) return tnFeature('mode:' + (el.dataset.mode || ''));
+    if(el.matches('.pz-tpl-btn')) return tnFeature('tpl:' + (el.dataset.tpl || ''));
+    if(el.matches('.tab-btn')) return tnFeature('tab:' + (el.dataset.tab || ''));
+    if(el.matches('.sys-icon-btn')) return tnFeature('icon:' + (el.dataset.sysIcon || ''));
+    if(el.matches('.preset-card')) return tnFeature('preset');
+    if(el.matches('.lang-btn')) return tnFeature('lang:' + (el.dataset.lang || ''));
+    if(el.matches('.section-collapsible > h3, .section > h3')) return;
+    if(el.id) return tnFeature((el.type === 'checkbox' ? 'chk:' : 'b:') + el.id);
+  }, true);
+  document.addEventListener('change', e => {
+    if(e.target?.id === 'baseStyle') tnFeature('style:' + e.target.value);
+  }, true);
+  document.addEventListener('click', e => {
+    const h = e.target?.closest?.('.section > h3'); const sec = h?.parentElement;
+    if(sec?.id && sec.classList.contains('collapsed')) tnFeature('open:' + sec.id);  // otevření sekce
+  }, true);
+}catch(_e){}
 function tnFlushUsage(useBeacon, force){
+  const features = Object.assign({}, tnFeatPending);
   const body = {clientId: tnClientId(), name: tnUserName(),
                 seconds: tnPending.seconds, exports: tnPending.exports,
-                routes: tnPending.routes, chat: tnPending.chat};
-  if(!force && !(body.seconds || body.exports || body.routes || body.chat)) return;
+                routes: tnPending.routes, chat: tnPending.chat, features};
+  if(!force && !(body.seconds || body.exports || body.routes || body.chat || Object.keys(features).length)) return;
   tnPending.seconds = tnPending.exports = tnPending.routes = tnPending.chat = 0;
+  Object.keys(tnFeatPending).forEach(k => delete tnFeatPending[k]);
   const payload = JSON.stringify(body);
   try{
     // Při zavírání karty stihne odejít jen sendBeacon; fetch by se zrušil.
@@ -9565,7 +9626,7 @@ function setLightMapMode(on){
   }catch(_e){}
 }
 const TN_LANG_TITLES = {cs:'Čeština',sk:'Slovenčina',bg:'Български',hr:'Hrvatski',ro:'Română',en:'English'};
-function getEnabledLangs(){ try{ const s=localStorage.getItem('tnmap_langs'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)&&a.length) return new Set(a); } }catch(_e){} return new Set(['cs','sk','bg','hr','ro','en']); }
+function getEnabledLangs(){ try{ const s=localStorage.getItem('tnmap_langs'); if(s){ const a=JSON.parse(s); if(Array.isArray(a)&&a.length) return new Set(a); } }catch(_e){} return new Set(['cs','sk','en']); /* BG/HR/RO jen po zapnutí v Nastavení */ }
 function applyLangVisibility(){
   const en=getEnabledLangs();
   document.querySelectorAll('.lang-btn').forEach(b=>{ b.style.display = en.has(b.dataset.lang) ? '' : 'none'; });
@@ -9596,7 +9657,21 @@ function refreshSettingsStats(){
                  '<div style="margin-top:10px">Tvoje jméno pro statistiky (nepovinné):</div>' +
                  '<input id="tnUserNameInput" type="text" maxlength="40" placeholder="např. Petr Z." ' +
                  'style="width:100%;margin-top:4px" autocomplete="off">' +
-                 '<div class="hint" style="margin-top:4px">Bez jména se v přehledu ukáže jen anonymní id prohlížeče.</div>';
+                 '<div class="hint" style="margin-top:4px">Bez jména se v přehledu ukáže jen anonymní id prohlížeče.</div>' +
+                 '<div style="margin-top:12px;font-weight:700">Nejpoužívanější funkce (30 dní, celá redakce)</div>' +
+                 '<div id="tnFeatureStats" class="small" style="margin-top:4px;max-height:220px;overflow:auto">Načítám…</div>';
+  // Souhrn z /api/usage (GET) — podklad pro rozhodnutí, co se nepoužívá.
+  (async () => {
+    const box = $('tnFeatureStats'); if(!box) return;
+    try{
+      const r = await fetch(TN_USAGE_URL + '?days=30', {cache:'no-store'});
+      const d = await r.json();
+      const rows = (d.features || []).slice(0, 40);
+      box.innerHTML = rows.length
+        ? rows.map(x => '<div style="display:flex;justify-content:space-between;gap:8px"><span>' + escapeHtml(x.feature) + '</span><b>' + (x.count|0) + '×</b></div>').join('')
+        : 'Zatím žádná data — počítá se od nasazení této verze.';
+    }catch(e){ box.textContent = 'Přehled se nepodařilo načíst.'; }
+  })();
   const inp = $('tnUserNameInput');
   if(inp){
     inp.value = tnUserName();
@@ -14957,6 +15032,13 @@ function setupWeatherUI(){
 // Místo desítek ručních zásahů v HTML: projdi textové uzly panelu a přelož
 // přesné české texty podle slovníku; originál si pamatuj, ať jde přepnout zpět.
 const PZ_EN_TEXT = {
+  "Čistá navigační": "Clean navigation", "Turistická": "Hiking", "Letecká olivová": "Aviation olive",
+  "Navigační světlá": "Navigation light", "Městská tmavá": "City dark", "Zpravodajská modrá": "News blue",
+  "Ostrá modrá": "Sharp blue", "Ostrá bílá": "Sharp white",
+  "Nejpoužívanější funkce (30 dní, celá redakce)": "Most used features (30 days, whole newsroom)",
+  "Pokročilé funkce": "Advanced features",
+  "Zobrazit pokročilé funkce": "Show advanced features",
+  "3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba.": "3D model, sun and shadows, custom map sources, extra base maps (Bright, OSM, OpenTopo, CyclOSM), statistics and app self-check. Not needed for daily graphics.",
   "Rychlá scéna": "Quick scene",
   "Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.": "Enter a place and click an event type: icon, label, perimeter where relevant and framing are set up at once. Everything can be edited afterwards or undone with Ctrl+Z.",
   "Text popisku": "Label text",
@@ -15079,6 +15161,11 @@ function bindUI(){
   // volání bindUI() a přístup k ní dřív by skončil v temporal dead zone.
   setTimeout(() => { try{ pzBuildIconPalette(); }catch(e){ console.warn('icon palette', e); } }, 0);
   setTimeout(() => { try{ pzBuildTemplates(); }catch(e){ console.warn('templates', e); } }, 0);
+  pzApplyAdvanced();
+  $('advancedFeatures')?.addEventListener('change', e => { pzApplyAdvanced(e.target.checked);
+    setStatus(e.target.checked ? 'Pokročilé funkce zobrazeny.' : 'Pokročilé funkce skryty.'); });
+  $('sunShadowsOn')?.addEventListener('change', pzMarkAdvancedInUse);
+  $('aoOn')?.addEventListener('change', pzMarkAdvancedInUse);
   setTimeout(() => { try{ pzBindClosureUI(); }catch(e){ console.warn('closure UI', e); }
     try{ if(typeof currentLang !== 'undefined' && currentLang === 'en') pzTranslateTextNodes('en'); }catch(e){}
     try{ pzAutoFillOpacity($('baseStyle')?.value || 'positron'); }catch(e){} }, 0);
@@ -17849,10 +17936,12 @@ function pzColorFromName(v){
     if(!api) return {ok:false, error:'API mapy není připravené.'};
     if(!name || typeof api[name] !== 'function') return {ok:false, error:'Neznámý nástroj: ' + name};
     if(!/^(get|fit|open|arcBest|undo|redo)/.test(name)) try{ window.__pzPushUndo?.(); }catch(e){}
+    try{ window.tnFeature?.('tool:' + name); }catch(e){}
     try{
       const r = await api[name](call.args || {});
       return (r && typeof r === 'object') ? r : {ok:true};
     }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
+    finally{ try{ pzMarkAdvancedInUse(); }catch(e){} }   // asistent mohl vložit 3D model / zapnout stíny
   }
 
   // Rychlé povely bez AI: jednoznačné krátké příkazy vyřídíme hned v prohlížeči.
@@ -17891,6 +17980,7 @@ function pzColorFromName(v){
     history.push({role:'user', content:userText});
     try{ tnBump('chat', 1); }catch(_e){}
     const quick = quickCommand(userText);
+    try{ window.tnFeature?.(quick ? 'ai:quick' : 'ai:llm'); }catch(_e){}
     if(quick){
       try{
         add('bot', quick.say);
