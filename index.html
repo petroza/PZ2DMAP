@@ -1025,6 +1025,8 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <label data-i18n="Tloušťka">Tloušťka <span class="val" id="routeWidthVal">4 px</span></label>
         <input id="routeWidth" type="range" min="1" max="16" step="0.5" value="4">
+        <label>Síla glow <span class="val" id="routeGlowVal">12 %</span></label>
+        <input id="routeGlow" type="range" min="0" max="100" step="1" value="12" title="Záře pod trasou v barvě Glow / stopa">
         <label style="margin-top:10px;display:block" data-i18n="Koncové body (A/B)">Koncové body (A/B)</label>
         <div class="endpoint-grid">
           <button type="button" class="endpoint-shape active" data-endpoint-shape="circle">
@@ -7699,6 +7701,7 @@ function serializeProjectSnapshot(){
       currentTransportMode: state.currentTransportMode,
       routeColor: $('routeColor')?.value || '#002ee6',
       routeDotColor: $('routeDotColor')?.value || '#ffffff',
+      routeGlow: $('routeGlow')?.value || '12',
       routeWidth: $('routeWidth')?.value || '4',
       routeEndpointShape: state.routeEndpointShape || 'circle',
       routeEndpointSize: parseInt($('routeEndpointSize')?.value, 10) || state.routeEndpointSize || 28,
@@ -7777,6 +7780,7 @@ function applyBasicProjectSnapshot(snapshot){
   state.currentTransportMode = route.currentTransportMode || 'driving';
   if($('routeColor') && route.routeColor) $('routeColor').value = route.routeColor;
   if($('routeDotColor') && route.routeDotColor) $('routeDotColor').value = route.routeDotColor;
+  if($('routeGlow')) $('routeGlow').value = String(route.routeGlow ?? 12);
   if($('routeWidth') && route.routeWidth != null) $('routeWidth').value = String(route.routeWidth);
   state.routeEndpointShape = route.routeEndpointShape === 'square' ? 'square' : 'circle';
   state.routeEndpointSize = Math.max(12, Math.min(48, parseInt(route.routeEndpointSize, 10) || 28));
@@ -13802,7 +13806,9 @@ function updateRouteStyle(){
   safeSetPaint('route-ghost-line','line-width',isArc ? Math.max(2, w-1) : (isCycle ? Math.max(2, w-0.5) : w));
   safeSetPaint('route-ghost-line','line-opacity',arc3d ? 0 : (isArc ? 0.55 : (isCycle ? 0.42 : 0.38)));
   safeSetPaint('route-ghost-glow','line-color',isArc ? '#000000' : d);
-  safeSetPaint('route-ghost-glow','line-opacity',arc3d ? 0 : (isArc ? 0.18 : 0.12));
+  const glowG = Math.max(0, Math.min(100, parseFloat($('routeGlow')?.value ?? '12'))) / 100;
+  safeSetPaint('route-ghost-glow','line-opacity',arc3d ? 0 : (isArc ? 0.18 : glowG));
+  safeSetPaint('route-ghost-glow','line-width', isArc ? 14 : Math.max(14, (w + 1) * 3));
   // On the 3D arc the surface line is just the ground shadow; the user can hide
   // it entirely to keep only the lifted arc.
   const hideGround = arc3d && $('hideGroundLine')?.checked;
@@ -13810,7 +13816,11 @@ function updateRouteStyle(){
   safeSetPaint('route-anim-line','line-width',isCycle ? w : w+1);
   safeSetPaint('route-anim-line','line-opacity',hideGround ? 0 : (arc3d ? 0.22 : 1));
   safeSetPaint('route-anim-glow','line-color',d);
-  safeSetPaint('route-anim-glow','line-opacity',hideGround ? 0 : (arc3d ? 0.04 : 0.12));
+  // Síla glow (posuvník): výchozí 12 % = dosavadní jemný vzhled; víc = výrazná záře.
+  const glow = Math.max(0, Math.min(100, parseFloat($('routeGlow')?.value ?? '12'))) / 100;
+  if($('routeGlowVal')) $('routeGlowVal').textContent = Math.round(glow * 100) + ' %';
+  safeSetPaint('route-anim-glow','line-opacity',hideGround ? 0 : (arc3d ? glow / 3 : glow));
+  safeSetPaint('route-anim-glow','line-width', Math.max(16, (w + 1) * 3));
   safeSetPaint('route-arc3d-extrude','fill-extrusion-color',c);
   const isTrain = state.currentTransportMode === 'train';
   safeSetPaint('route-anim-pruhy','line-width',Math.max(1.2, (w+1) * 0.42));
@@ -15662,9 +15672,9 @@ function drawRouteLinesToExportCtx(ctx, crop){
   const isCycle = state.currentTransportMode === 'cycle';
   const ghost = getLiveSourceDataFromMap(m, 'route-ghost');
   const anim = getLiveSourceDataFromMap(m, 'route-anim');
-  strokeFc(ghost, isArc ? '#000000' : d, 14, isArc ? 0.18 : 0.12); // ghost glow
+  strokeFc(ghost, isArc ? '#000000' : d, isArc ? 14 : Math.max(14, (w + 1) * 3), isArc ? 0.18 : Math.max(0, Math.min(100, parseFloat($('routeGlow')?.value ?? '12'))) / 100); // ghost glow
   strokeFc(ghost, isArc ? '#6f7684' : c, isArc ? Math.max(2, w-1) : (isCycle ? Math.max(2, w-0.5) : w), isArc ? 0.55 : (isCycle ? 0.42 : 0.38));
-  strokeFc(anim, d, 16, 0.12); // anim glow
+  strokeFc(anim, d, Math.max(16, (w + 1) * 3), Math.max(0, Math.min(100, parseFloat($('routeGlow')?.value ?? '12'))) / 100); // anim glow
   strokeFc(anim, c, isCycle ? w : w+1, 1);
 }
 
@@ -16905,7 +16915,7 @@ const PZ_EN_TEXT = {
   'Ikonky ve scéně':'Scene icons', 'Upload ikonky':'Upload icon', 'Smazat ikonky':'Clear icons',
   'Měřítko':'Scale', 'Velikost':'Size', 'Osa nahoru':'Up axis', 'Nahrát GLB soubor':'Upload GLB file',
   'Ikona se natáčí po směru jízdy / letu automaticky.':'The icon turns along the direction of travel automatically.',
-  'Kam míří vlastní obrázek':'Where your image points'
+  'Kam míří vlastní obrázek':'Where your image points', 'Síla glow':'Glow strength'
 };
 const PZ_EN_PREFIX = [
   ['Ruční rozměr 64–8192 px', 'Manual size 64–8192 px. Odd values are rounded down to even for the video codec.'],
@@ -17139,7 +17149,7 @@ function bindUI(){
     .forEach(id => $(id)?.addEventListener('input', applyPoliticalOverlayTweaksDebounced));
   ['showCountryBordersOverlay','showPoliticalCountries','showCzRegions']
     .forEach(id => $(id)?.addEventListener('change', applyPoliticalOverlayTweaks));
-  ['routeColor','routeDotColor','routeWidth'].forEach(id => $(id)?.addEventListener('input', (()=>{
+  ['routeColor','routeDotColor','routeWidth','routeGlow'].forEach(id => $(id)?.addEventListener('input', (()=>{
     let _t=null;
     return ()=>{ clearTimeout(_t); _t=setTimeout(()=>{ updateReadouts(); updateRouteStyle(); }, 40); };
   })()));
