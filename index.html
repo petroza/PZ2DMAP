@@ -18595,10 +18595,11 @@ function pzEnsureClosureLayers(m){
        paint:{'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],5,2.4,12,4.4], 'line-dasharray':[1.1,1.1]}});
   add({id:'pzuz-podzemi-obrys', type:'line', source:'pz-closures', filter:kind('metro'), layout:round,
        paint:{'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],9,7,15,14]}});
-  add({id:'pzuz-podzemi', type:'line', source:'pz-closures', filter:kind('metro'), layout:round,
-       paint:{'line-color':'#8b929b', 'line-width':['interpolate',['linear'],['zoom'],9,4.5,15,10]}});
+  add({id:'pzuz-podzemi', type:'line', source:'pz-closures', filter:kind('metro'), layout:{'line-join':'round','line-cap':'butt'},
+       paint:{'line-color':['coalesce',['get','color'],'#8b929b'], 'line-width':['interpolate',['linear'],['zoom'],9,5,15,11],
+              'line-dasharray':[1.6,1.1]}});
   add({id:'pzuz-podzemi-pruhy', type:'line', source:'pz-closures', filter:kind('metro'), layout:{'line-join':'round'},
-       paint:{'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],9,1.6,15,3.4], 'line-dasharray':[1.4,1.4]}});
+       paint:{'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],9,1.2,15,2.4], 'line-opacity':0.9}});
   add({id:'pzuz-zastavka', type:'circle', source:'pz-closures', filter:kind('stop'),
        paint:{'circle-radius':['interpolate',['linear'],['zoom'],9,3,15,6], 'circle-color':'#ffffff',
               'circle-stroke-color':'#7d8590', 'circle-stroke-width':2}});
@@ -18613,37 +18614,38 @@ function pzEnsureClosureLayers(m){
        layout:{'text-field':['get','text'], 'text-font':['Noto Sans Bold'], 'text-size':['coalesce',['get','size'],16],
                'text-letter-spacing':0.06, 'text-allow-overlap':true, 'text-ignore-placement':true,
                'text-offset':['coalesce',['get','offset'],['literal',[0,-1.6]]], 'text-anchor':'center'},
-       paint:{'text-color':['coalesce',['get','color'],'#c1121f'], 'text-halo-color':'#ffffff', 'text-halo-width':2.6}});
+       paint:{'text-color':['coalesce',['get','color'],'#c1121f'], 'text-halo-color':'#ffffff', 'text-halo-width':3}});
 }
 
 function pzClosureFeatures(){
   const F = [];
-  const line = (coords, kind) => F.push({type:'Feature', properties:{kind}, geometry:{type:'LineString', coordinates:coords}});
+  const line = (coords, kind, extra) => F.push({type:'Feature', properties:Object.assign({kind}, extra || {}), geometry:{type:'LineString', coordinates:coords}});
   const pt = (c, props) => F.push({type:'Feature', properties:props, geometry:{type:'Point', coordinates:c}});
   pzClosures().forEach(c => {
     if(c.detour?.length > 1){
       line(c.detour, 'detour');
       const mid = pzLineMidpoint(c.detour);
-      if(mid) pt(mid, {kind:'label', text:'OBJÍŽĎKA', color:'#b35c00'});
+      if(mid) pt(mid, {kind:'label', text:'OBJÍŽĎKA', color:'#b35c00', size:18});
     }
     if(c.kind === 'road' && c.coords?.length > 1){
       line(c.coords, 'road');
       pt(c.coords[0], {kind:'end'}); pt(c.coords[c.coords.length-1], {kind:'end'});
       const mid = pzLineMidpoint(c.coords);
-      if(mid) pt(mid, {kind:'label', text: c.label || 'UZAVŘENO'});
+      if(mid) pt(mid, {kind:'label', text: c.label || 'UZAVŘENO', size:20});
     }
     if(c.kind === 'metro'){
-      if(c.coords?.length > 1) line(c.coords, 'metro');
+      // výluka v barvě linky (C červeně) — šedá se v Positronu pletla s železnicí
+      if(c.coords?.length > 1) line(c.coords, 'metro', {color: PZ_METRO_LINE_COLORS[c.line] || '#8b929b'});
       // Úsek: křížek a název jen na koncích, mezilehlé stanice jako šedé tečky —
       // jinak se u delšího úseku názvy na celoměstském záběru překrývají.
       const sts = c.stations || [];
       sts.forEach((st, i) => {
         const isEnd = i === 0 || i === sts.length - 1;
         pt(st.coord, {kind: isEnd ? 'end' : 'stop'});
-        if(isEnd) pt(st.coord, {kind:'label', text: st.name, size:14, color:'#1b1f24', offset:[0,1.5]});
+        if(isEnd) pt(st.coord, {kind:'label', text: st.name, size:17, color:'#1b1f24', offset:[0,1.5]});
       });
       const mid = c.coords?.length > 1 ? pzLineMidpoint(c.coords) : c.stations?.[0]?.coord;
-      if(mid) pt(mid, {kind:'label', text: c.label || 'MIMO PROVOZ'});
+      if(mid) pt(mid, {kind:'label', text: c.label || 'MIMO PROVOZ', size:20});
     }
   });
   return {type:'FeatureCollection', features:F};
@@ -18802,7 +18804,10 @@ function pzBuildIconPalette(){
       state.sceneIconData = pzIconDataUrl(kind);
       const pv = $('sceneIconPreview'); if(pv) pv.innerHTML = `<img src="${state.sceneIconData}" alt="">`;
       grid.querySelectorAll('.pz-icon-pick').forEach(x => x.classList.toggle('btn-primary', x === b));
-      setStatus('Ikona „' + it.label + '" vybraná — klikni do mapy, nebo použij „Klikni do mapy".');
+      // Výběr ikony rovnou zapne vkládání — dřív hláška radila „klikni do mapy",
+      // ale klik nic neudělal, dokud grafik nezmáčkl ještě „Klikni do mapy".
+      if(!state.addingSceneIcon) $('addSceneIconBtn')?.click();
+      setStatus('Ikona „' + it.label + '" vybraná — klikni do mapy, kam ji dát.');
     });
     grid.appendChild(b);
   });
