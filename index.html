@@ -369,6 +369,10 @@ input[type=color]:hover{border-color:var(--accent)}
 .map-label-square{width:var(--label-dot-size,14px);height:var(--label-dot-size,14px);background:#ff1434;flex:0 0 auto;box-shadow:0 1px 6px rgba(0,0,0,.2)}
 .map-label-marker.selected .map-label-bubble{outline:2px solid rgba(38,208,196,.95);outline-offset:2px}
 .map-label-bubble.editing{cursor:text;user-select:text;-webkit-user-select:text}
+/* křížek u vybraného popisku — dřív šel popisek smazat jen nezřejmým Esc + Delete; do exportu se nekreslí */
+.map-label-del{display:none;position:absolute;top:-11px;right:-11px;width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;background:#e63946;color:#fff;font:700 14px/1 sans-serif;cursor:pointer;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.35);z-index:2}
+.map-label-marker.selected .map-label-del{display:grid}
+.map-label-del:hover{background:#c1121f}
 .map-label-marker.selected .map-label-square{box-shadow:0 0 0 2px rgba(38,208,196,.35),0 1px 6px rgba(0,0,0,.24)}
 .map-label-row.active{border-color:var(--accent);background:rgba(230,57,70,.06)}
 .map-label-row .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1986,7 +1990,7 @@ const I18N = {
   'Nejdřív vyber ikonku.': {cs:'Nejdřív vyber ikonku.',sk:'Najskôr vyber ikonku.',bg:'Първо избери икона.',hr:'Prvo odaberi ikonu.',ro:'Mai întâi selectează pictograma.'},
   'Ikonka upravena.': {cs:'Ikonka upravena.',sk:'Ikonka upravená.',bg:'Иконата е редактирана.',hr:'Ikona uređena.',ro:'Pictogramă editată.'},
   'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.': {cs:'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.',sk:'Ikonka vybraná. Delete zmaže, Ctrl+D duplikuje, ťahom posunieš.',bg:'Иконата е избрана. Delete изтрива, Ctrl+D дублира, плъзни за преместване.',hr:'Ikona odabrana. Delete briše, Ctrl+D duplicira, povuci za pomak.',ro:'Pictogramă selectată. Delete șterge, Ctrl+D duplică, trage pentru mutare.'},
-  'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.': {cs:'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.',sk:'Prepíš text popisu: Enter uloží, Esc zruší. Popis zmažeš Esc a potom Delete.',bg:'Промени текста: Enter запазва, Esc отказва. Изтриване: Esc и после Delete.',hr:'Prepiši tekst oznake: Enter sprema, Esc odustaje. Brisanje: Esc pa Delete.',ro:'Rescrie textul etichetei: Enter salvează, Esc anulează. Ștergere: Esc apoi Delete.'},
+  'Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.': {cs:'Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.',sk:'Prepíš text popisu: Enter uloží, Esc zruší. Zmazať: červený krížik pri popise.',bg:'Промени текста: Enter запазва, Esc отказва. Изтриване: Esc и после Delete.',hr:'Prepiši tekst oznake: Enter sprema, Esc odustaje. Brisanje: Esc pa Delete.',ro:'Rescrie textul etichetei: Enter salvează, Esc anulează. Ștergere: Esc apoi Delete.'},
   'Krytí výplně': {cs:'Krytí výplně',sk:'Krytie výplne',bg:'Плътност на запълването',hr:'Neprozirnost ispune',ro:'Opacitatea umplerii',en:'Fill opacity'},
   'Krytí': {cs:'Krytí',sk:'Krytie',bg:'Плътност',hr:'Neprozirnost',ro:'Opacitate',en:'Opacity'},
   'Nejdřív napiš místo události.': {cs:'Nejdřív napiš místo události.',sk:'Najprv napíš miesto udalosti.',bg:'Първо въведи мястото.',hr:'Najprije upiši mjesto događaja.',ro:'Scrie mai întâi locul evenimentului.',en:'Type the place of the event first.'},
@@ -2328,7 +2332,7 @@ const EN_OVERRIDES = {
   "Ikonka načtena — klikni do mapy pro vložení nebo ji použij na vybranou ikonku.": "Icon loaded — click on the map to place it, or apply it to the selected icon.",
   "Ikonka přesunuta.": "Icon moved.",
   "Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.": "Icon selected. Delete removes it, Ctrl+D duplicates, drag to move.",
-  "Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.": "Type the label text: Enter saves, Esc cancels. To delete the label press Esc, then Delete.",
+  "Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.": "Type the label text: Enter saves, Esc cancels. Delete: red cross next to the label.",
   "Ikonka smazána.": "Icon deleted.",
   "Ikonka upravena.": "Icon updated.",
   "Ikonka vložena do mapy.": "Icon placed on the map.",
@@ -12489,7 +12493,7 @@ function deleteSceneIcon(id){
 function createMapLabelElement(text, size, side='right'){
   const el = document.createElement('div');
   el.className = 'map-label-marker';
-  el.innerHTML = `<span class="map-label-content"><span class="map-label-bubble"></span><span class="map-label-square"></span></span>`;
+  el.innerHTML = `<span class="map-label-content"><span class="map-label-bubble"></span><span class="map-label-square"></span><button type="button" class="map-label-del" title="Smazat popisek" aria-label="Smazat popisek">×</button></span>`;
   applyMapLabelStyle(el, {text, size, side});
   return el;
 }
@@ -12633,7 +12637,7 @@ function startMapLabelInlineEdit(id){
   const bubble = el?.querySelector?.('.map-label-bubble');
   if(!item || !bubble || bubble.isContentEditable) return;
   selectMapLabel(id, false);
-  setStatus(t('Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.'));
+  setStatus(t('Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.'));
   const oldText = item.text || 'Popisek';
   bubble.textContent = oldText;
   bubble.contentEditable = 'true';
@@ -12697,8 +12701,15 @@ function addMapLabelAt(lngLatObj, options={}){
   const id = 'label_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
   const el = createMapLabelElement(textVal, sizeVal, sideVal);
   el.title = 'Klikni pro přepsání, přetáhni za čtvereček/prostor popisku pro posun';
+  el.querySelector('.map-label-del')?.addEventListener('mousedown', ev => ev.stopPropagation());
+  el.querySelector('.map-label-del')?.addEventListener('click', ev => {
+    ev.stopPropagation(); ev.preventDefault();
+    try{ window.__pzPushUndo?.(); }catch(e){}
+    deleteMapLabel(id);
+  });
   el.addEventListener('click', ev => {
     ev.stopPropagation();
+    if(ev.target.closest?.('.map-label-del')) return;
     if(state.suppressMapLabelEdit) return;
     startMapLabelInlineEdit(id);
   });
