@@ -683,6 +683,11 @@ html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
 html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
 html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
 html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
+.pz-tpl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
+.pz-tpl-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border:1px solid var(--border);background:var(--bg2);color:var(--tx1);font:700 9.5px var(--font);letter-spacing:.2px;text-transform:uppercase;cursor:pointer;min-width:0}
+.pz-tpl-btn img{width:28px;height:28px}
+.pz-tpl-btn:hover{border-color:var(--accent);background:var(--bg3)}
+.pz-tpl-btn:disabled{opacity:.5;cursor:wait}
 /* světlý režim: plovoucí panely měly napevno tmavé pozadí → tmavý text nebyl čitelný */
 html[data-ui="light"]{--blue:#0b62c4;--green:#1f8a3e}
 html[data-ui="light"] .tnchat-panel,html[data-ui="light"] .shortcuts-panel{background:var(--bg1);box-shadow:0 14px 40px rgba(20,30,50,.18)}
@@ -1058,6 +1063,15 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     </div>
 
     <div class="tab-pane" data-pane="scena">
+      <div class="section" id="pzTemplateSection">
+        <h3>Rychlá scéna</h3>
+        <p class="hint" style="margin:0 0 8px">Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.</p>
+        <div class="row">
+          <div><label>Místo</label><input id="pzTplPlace" type="text" placeholder="např. Humpolec, D1 km 90"></div>
+          <div><label>Text popisku</label><input id="pzTplText" type="text" placeholder="nepovinné"></div>
+        </div>
+        <div class="pz-tpl-grid" id="pzTplGrid"></div>
+      </div>
       <div class="section" id="scenePerimeterSection">
         <h3 data-i18n="Perimetr / radius jako vrstva">Perimetr / radius jako vrstva</h3>
         <div class="row">
@@ -1975,6 +1989,8 @@ const I18N = {
   'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.': {cs:'Přepiš text popisku: Enter uloží, Esc zruší. Popisek smažeš Esc a pak Delete.',sk:'Prepíš text popisu: Enter uloží, Esc zruší. Popis zmažeš Esc a potom Delete.',bg:'Промени текста: Enter запазва, Esc отказва. Изтриване: Esc и после Delete.',hr:'Prepiši tekst oznake: Enter sprema, Esc odustaje. Brisanje: Esc pa Delete.',ro:'Rescrie textul etichetei: Enter salvează, Esc anulează. Ștergere: Esc apoi Delete.'},
   'Krytí výplně': {cs:'Krytí výplně',sk:'Krytie výplne',bg:'Плътност на запълването',hr:'Neprozirnost ispune',ro:'Opacitatea umplerii',en:'Fill opacity'},
   'Krytí': {cs:'Krytí',sk:'Krytie',bg:'Плътност',hr:'Neprozirnost',ro:'Opacitate',en:'Opacity'},
+  'Nejdřív napiš místo události.': {cs:'Nejdřív napiš místo události.',sk:'Najprv napíš miesto udalosti.',bg:'Първо въведи мястото.',hr:'Najprije upiši mjesto događaja.',ro:'Scrie mai întâi locul evenimentului.',en:'Type the place of the event first.'},
+  'Scéna připravena:': {cs:'Scéna připravena:',sk:'Scéna pripravená:',bg:'Сцената е готова:',hr:'Scena pripremljena:',ro:'Scenă pregătită:',en:'Scene ready:'},
   'Ikonka smazána.': {cs:'Ikonka smazána.',sk:'Ikonka zmazaná.',bg:'Иконата е изтрита.',hr:'Ikona obrisana.',ro:'Pictogramă ștearsă.'},
   'Táhneš ikonku.': {cs:'Táhneš ikonku.',sk:'Ťaháš ikonku.',bg:'Влачиш икона.',hr:'Povlačiš ikonu.',ro:'Tragi pictograma.'},
   'Ikonka přesunuta.': {cs:'Ikonka přesunuta.',sk:'Ikonka presunutá.',bg:'Иконата е преместена.',hr:'Ikona premještena.',ro:'Pictogramă mutată.'},
@@ -16993,6 +17009,12 @@ function setupWeatherUI(){
 // Místo desítek ručních zásahů v HTML: projdi textové uzly panelu a přelož
 // přesné české texty podle slovníku; originál si pamatuj, ať jde přepnout zpět.
 const PZ_EN_TEXT = {
+  "Rychlá scéna": "Quick scene",
+  "Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.": "Enter a place and click an event type: icon, label, perimeter where relevant and framing are set up at once. Everything can be edited afterwards or undone with Ctrl+Z.",
+  "Text popisku": "Label text",
+  "nepovinné": "optional",
+  "např. Humpolec, D1 km 90": "e.g. Humpolec, D1 km 90",
+  "Nehoda": "Accident", "Zásah": "Police", "Záchranáři": "Rescue",
   "Krytí výplně": "Fill opacity",
   "Mapa načtena.": "Map loaded.",
   "Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)": "Truck — route along roads (ignores truck restrictions)",
@@ -17108,6 +17130,7 @@ function bindUI(){
   // Až po vyhodnocení celého skriptu: PZ_ICON_SET je const definovaná níž než
   // volání bindUI() a přístup k ní dřív by skončil v temporal dead zone.
   setTimeout(() => { try{ pzBuildIconPalette(); }catch(e){ console.warn('icon palette', e); } }, 0);
+  setTimeout(() => { try{ pzBuildTemplates(); }catch(e){ console.warn('templates', e); } }, 0);
   setTimeout(() => { try{ pzBindClosureUI(); }catch(e){ console.warn('closure UI', e); }
     try{ if(typeof currentLang !== 'undefined' && currentLang === 'en') pzTranslateTextNodes('en'); }catch(e){}
     try{ pzAutoFillOpacity($('baseStyle')?.value || 'positron'); }catch(e){} }, 0);
@@ -18988,6 +19011,63 @@ function pzIconKind(name){
   const first = k.split(/[\s_-]+/).find(w => PZ_ICON_ALIASES[w] || PZ_ICON_SET[w]);
   return first ? (PZ_ICON_SET[first] ? first : PZ_ICON_ALIASES[first]) : null;
 }
+// ---- Rychlá scéna: šablony nejčastějších zpráv ------------------------------
+// Místo se geokóduje jen jednou, ikona/popisek/perimetr se vloží přímo (bez
+// tří samostatných dotazů na Nominatim) a celé to jde vrátit jedním Ctrl+Z.
+const PZ_TEMPLATES = [
+  {id:'nehoda',    icon:'nehoda',    label:'Nehoda',     text:'NEHODA',           zoom:12.5},
+  {id:'pozar',     icon:'pozar',     label:'Požár',      text:'POŽÁR',            zoom:13.5},
+  {id:'vybuch',    icon:'vybuch',    label:'Výbuch',     text:'VÝBUCH',           zoom:14, radius:500},
+  {id:'policie',   icon:'policie',   label:'Zásah',      text:'POLICEJNÍ ZÁSAH',  zoom:14.5, radius:300},
+  {id:'zachranka', icon:'zachranka', label:'Záchranáři', text:'ZÁSAH ZÁCHRANÁŘŮ', zoom:13.5},
+  {id:'povoden',   icon:'povoden',   label:'Povodeň',    text:'POVODNĚ',          zoom:11.5},
+  {id:'varovani',  icon:'varovani',  label:'Varování',   text:'VAROVÁNÍ',         zoom:12},
+  {id:'misto',     icon:'pin',       label:'Místo',      text:null,               zoom:12.5}
+];
+function pzBuildTemplates(){
+  const grid = $('pzTplGrid'); if(!grid || grid.childElementCount) return;
+  PZ_TEMPLATES.forEach(tp => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pz-tpl-btn'; b.dataset.tpl = tp.id;
+    b.title = tp.text ? (tp.label + ': ikonka + popisek „' + tp.text + '"' + (tp.radius ? ' + perimetr ' + tp.radius + ' m' : '')) : 'Špendlík + název místa';
+    b.innerHTML = '<img alt="" src="' + pzIconDataUrl(tp.icon) + '"><span>' + escapeHtml(tp.label) + '</span>';
+    b.addEventListener('click', () => pzApplyTemplate(tp.id, b));
+    grid.appendChild(b);
+  });
+  $('pzTplPlace')?.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); pzApplyTemplate('misto'); } });
+}
+async function pzApplyTemplate(id, btn){
+  const tp = PZ_TEMPLATES.find(x => x.id === id); if(!tp) return {ok:false, error:'Neznámá šablona.'};
+  const place = ($('pzTplPlace')?.value || '').trim();
+  if(!place){ setStatus(t('Nejdřív napiš místo události.'), 'error'); $('pzTplPlace')?.focus(); return {ok:false, error:'Chybí místo.'}; }
+  if(btn) btn.disabled = true;
+  setStatus(t('Hledám místo…') + ' „' + place + '"');
+  try{
+    let g; try{ g = await geocode(place); }
+    catch(e){ setStatus(t('Místo nenalezeno.') + ' „' + place + '"', 'error'); return {ok:false, error:'Místo nenalezeno.'}; }
+    try{ window.__pzPushUndo?.(); }catch(e){}
+    const ll = {lng:+g.lon, lat:+g.lat};
+    const shortName = String(g.name || g.display_name || place).split(',')[0].trim();
+    const text = (($('pzTplText')?.value || '').trim() || tp.text || shortName.toUpperCase());
+    clearPlaceSearchMarker?.();
+    state.screenPan = {x:0, y:0};
+    await new Promise(res => {
+      let done = false; const fin = () => { if(!done){ done = true; res(); } };
+      state.map.once('moveend', fin); setTimeout(fin, 2500);
+      state.map.flyTo({center:[ll.lng, ll.lat], zoom: tp.zoom, padding: getFitPadding(), duration: 900});
+    });
+    if(tp.radius) createScenePerimeterAt(ll, {radiusMeters: tp.radius, unit:'m', silent:true});
+    createSceneIconAt(ll, {data: pzIconDataUrl(tp.icon), silent:true});
+    const size = parseInt($('sceneIconSize')?.value || '44', 10) || 44;
+    // popisek vycentrovaný NAD ikonou (marker má kotvu ve středu celého popisku)
+    const lsz = parseInt(state.mapLabelGlobalSize || $('mapLabelSize')?.value || '28', 10) || 28;
+    addMapLabelAt(offsetLngLat(ll, 0, -Math.round(size * 0.5 + lsz * 1.05 + 12)), {text, silent:true});
+    try{ clearMapLabelSelection(); }catch(e){}
+    setStatus(t('Scéna připravena:') + ' ' + tp.label + ' · ' + shortName);
+    return {ok:true, place: g.display_name, text};
+  } finally { if(btn) btn.disabled = false; }
+}
+
 function pzIconDataUrl(kind){
   const it = PZ_ICON_SET[kind]; if(!it) return null;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(it.svg);
