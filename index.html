@@ -7461,6 +7461,11 @@ function pzRegionFillOpacity(op){
   if(($('baseStyle')?.value || '') === 'political' || !ids.length) return op;
   return ['match', ['get', '__appId'], ids, op, 0];
 }
+function pzCountryFillOpacity(op){
+  const ids = Object.entries(state.countryColorMap || {}).filter(([id, c]) => id && c).map(([id]) => id);
+  if(($('baseStyle')?.value || '') === 'political' || !ids.length) return op;
+  return ['match', ['get', '__appId'], ids, op, 0];
+}
 function buildMatchColorExpression(mapObj, defaultColor){
   const entries = Object.entries(mapObj || {}).filter(([id, color]) => !!id && !!color);
   if(!entries.length) return defaultColor;
@@ -7546,7 +7551,7 @@ function ensurePoliticalLayers(){
   const showStandaloneCountryBorders = bordersOn && bMode === 'all' && !showCzReg && !showPolCountries;
   const showSelectedCountryBorder = bordersOn && bMode === 'selected' && selCountryId && !(showCzReg && isCzechCountryId(selCountryId));
   const showPoliticalOutline = showPolCountries && !showCzReg;
-  safeSetPaint('pz-political-fill', 'fill-opacity', showPolCountries ? polFillOpacity : 0);
+  safeSetPaint('pz-political-fill', 'fill-opacity', showPolCountries ? pzCountryFillOpacity(polFillOpacity) : 0);
   safeSetFilter('pz-political-outline', showCzReg && excludeCzechFilter ? excludeCzechFilter : null);
   safeSetPaint('pz-political-outline', 'line-opacity', showPoliticalOutline ? Math.max(0.45, bOpacity * 0.8) : 0);
   safeSetPaint('pz-country-borders-all', 'line-opacity', showStandaloneCountryBorders ? bOpacity : 0);
@@ -8286,7 +8291,7 @@ function clearPoliticalPainting(){
 
   if(state.map?.isStyleLoaded()){
     safeSetPaint('pz-political-fill', 'fill-color', politicalDefaultColor);
-    safeSetPaint('pz-political-fill', 'fill-opacity', showPoliticalCountries ? politicalFillOpacity : 0);
+    safeSetPaint('pz-political-fill', 'fill-opacity', showPoliticalCountries ? pzCountryFillOpacity(politicalFillOpacity) : 0);
     safeSetLayout('pz-political-fill', 'visibility', showPoliticalCountries ? 'visible' : 'none');
 
     safeSetPaint('pz-cz-regions-fill', 'fill-color', czDefaultColor);
@@ -10408,7 +10413,7 @@ function applyMapTweaks(){
     const politicalDefaultColor = $('politicalCountryDefaultColor')?.value || '#e7e2d8';
     const politicalFillOpacity = parseFloat($('politicalFillOpacity')?.value || '0.92');
     safeSetPaint('pz-political-fill', 'fill-color', buildMatchColorExpression(state.countryColorMap, politicalDefaultColor));
-    safeSetPaint('pz-political-fill', 'fill-opacity', showPoliticalCountries ? politicalFillOpacity : 0);
+    safeSetPaint('pz-political-fill', 'fill-opacity', showPoliticalCountries ? pzCountryFillOpacity(politicalFillOpacity) : 0);
     safeSetLayout('pz-political-fill', 'visibility', showPoliticalCountries ? 'visible' : 'none');
     safeSetPaint('pz-political-outline', 'line-color', borderColor || '#ffffff');
     safeSetPaint('pz-political-outline', 'line-width', Math.max(1.2, borderWidth * 0.9));
@@ -10495,7 +10500,7 @@ function applyPoliticalOverlayTweaks(){
   const politicalDefaultColor = $('politicalCountryDefaultColor')?.value || '#e7e2d8';
   const politicalFillOpacity = parseFloat($('politicalFillOpacity')?.value || '0.92');
   safeSetPaint('pz-political-fill', 'fill-color', buildMatchColorExpression(state.countryColorMap, politicalDefaultColor));
-  safeSetPaint('pz-political-fill', 'fill-opacity', showPoliticalCountries ? politicalFillOpacity : 0);
+  safeSetPaint('pz-political-fill', 'fill-opacity', showPoliticalCountries ? pzCountryFillOpacity(politicalFillOpacity) : 0);
   safeSetLayout('pz-political-fill', 'visibility', showPoliticalCountries ? 'visible' : 'none');
   safeSetPaint('pz-political-outline', 'line-color', borderColor || '#ffffff');
   safeSetPaint('pz-political-outline', 'line-width', Math.max(1.2, borderWidth * 0.9));
