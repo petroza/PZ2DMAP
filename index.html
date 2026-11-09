@@ -16951,7 +16951,8 @@ function bindUI(){
   // Až po vyhodnocení celého skriptu: PZ_ICON_SET je const definovaná níž než
   // volání bindUI() a přístup k ní dřív by skončil v temporal dead zone.
   setTimeout(() => { try{ pzBuildIconPalette(); }catch(e){ console.warn('icon palette', e); } }, 0);
-  setTimeout(() => { try{ pzBindClosureUI(); }catch(e){ console.warn('closure UI', e); } }, 0);
+  setTimeout(() => { try{ pzBindClosureUI(); }catch(e){ console.warn('closure UI', e); }
+    try{ if(typeof currentLang !== 'undefined' && currentLang === 'en') pzTranslateTextNodes('en'); }catch(e){} }, 0);
   // Brand logo = "home" reset: collapse all sections, back to the first tab.
   (() => {
     const logo = document.querySelector('.brand-icon');
