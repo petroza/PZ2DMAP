@@ -13033,9 +13033,44 @@ async function searchPlaces(query, limit=8){
   url.searchParams.set('q', q);
   url.searchParams.set('accept-language', getSearchAcceptLanguage(currentLang));
   await nominatimThrottle();
-  const res = await fetch(url.toString(), getNominatimFetchOptions());
-  if(!res.ok) throw new Error('Geocoding failed');
-  return await res.json();
+  // Nominatim pod zátěží občas vrátí prázdný seznam nebo chybu a grafik pak
+  // dostal „Místo nenalezeno" u Humpolce. Záloha: Photon (Komoot, také OSM data).
+  let data = null;
+  try{
+    const res = await fetch(url.toString(), Object.assign({}, getNominatimFetchOptions(), {signal: fetchTimeoutSignal(10000)}));
+    if(res.ok) data = await res.json();
+  }catch(e){}
+  if(Array.isArray(data) && data.length) return data;
+  try{
+    const alt = await searchPlacesPhoton(q, limit);
+    if(alt.length) return alt;
+  }catch(e){}
+  if(Array.isArray(data)) return data;
+  throw new Error('Geocoding failed');
+}
+async function searchPlacesPhoton(q, limit=8){
+  const u = new URL('https://photon.komoot.io/api/');
+  u.searchParams.set('q', q);
+  u.searchParams.set('limit', String(Math.max(1, Math.min(10, limit))));
+  const res = await fetch(u.toString(), {signal: fetchTimeoutSignal(8000)});
+  if(!res.ok) return [];
+  const gj = await res.json();
+  const ZOOMTYPE = {city:'city', town:'town', village:'village', hamlet:'hamlet', suburb:'suburb', district:'suburb',
+    country:'country', state:'state', county:'county', street:'road', locality:'neighbourhood'};
+  return (gj.features || []).map(f => {
+    const pr = f.properties || {}, c = f.geometry?.coordinates || [];
+    const ex = pr.extent; // [minLon, maxLat, maxLon, minLat]
+    const parts = [pr.name, pr.city && pr.city !== pr.name ? pr.city : null, pr.county, pr.state, pr.country].filter(Boolean);
+    return {
+      lat: String(c[1]), lon: String(c[0]), display_name: parts.join(', '), name: pr.name || '',
+      namedetails: {name: pr.name || ''},
+      boundingbox: Array.isArray(ex) && ex.length === 4 ? [String(ex[3]), String(ex[1]), String(ex[0]), String(ex[2])] : null,
+      addresstype: ZOOMTYPE[pr.osm_value] || ZOOMTYPE[pr.type] || pr.type || '',
+      class: pr.osm_key || '', type: pr.osm_value || '',
+      address: {city: pr.city, county: pr.county, state: pr.state, country: pr.country, country_code: (pr.countrycode || '').toLowerCase()},
+      _source: 'photon'
+    };
+  }).filter(it => isFinite(+it.lat) && isFinite(+it.lon));
 }
 
 async function geocode(q){
@@ -18655,8 +18690,32 @@ document.addEventListener('keydown', e => {
       tab: state.currentTab,
       hasRoute: (state.routeCoords||[]).length > 0,
       shadows: !!$('sunShadowsOn')?.checked,
-      ao: !!$('aoOn')?.checked
+      ao: !!$('aoOn')?.checked,
+      // Co na mapě je — na to se odkazují pokyny „ho", „ten popisek", „Rusko ne".
+      scene: toolSceneSummary()
     };
+  }
+  function toolSceneSummary(){
+    const nameOf = (selId, id) => { const o = [...($(selId)?.options || [])].find(x => x.value === id); return (o?.textContent || id).trim(); };
+    const sc = {};
+    const route = (state.routeCoords || []).length ? {from: $('startInput')?.value?.split(',')[0] || '', to: $('endInput')?.value?.split(',')[0] || '', mode: state.currentTransportMode} : null;
+    if(route) sc.route = route;
+    const colored = {};
+    Object.entries(state.czRegionColorMap || {}).forEach(([id, c]) => { if(c) colored[nameOf('czRegionSelect', id)] = c; });
+    let csName = null; try{ csName = new Intl.DisplayNames(['cs'], {type:'region'}); }catch(e){}
+    Object.entries(state.countryColorMap || {}).forEach(([id, c]) => {
+      if(!c) return;
+      let n = null; try{ if(csName && /^[A-Z]{2}$/.test(id)) n = csName.of(id); }catch(e){}
+      colored[n || nameOf('politicalCountrySelect', id)] = c;
+    });
+    if(Object.keys(colored).length) sc.colored = colored;
+    if(state.mapLabels?.length) sc.labels = state.mapLabels.map(l => l.text).slice(0, 10);
+    if(state.sceneIcons?.length) sc.icons = state.sceneIcons.length;
+    if(state.sceneArrows?.length) sc.arrows = state.sceneArrows.length;
+    if(state.scenePerimeters?.length) sc.perimeters = state.scenePerimeters.map(x => Math.round(x.radiusMeters || 0) + ' m');
+    if(state.sceneDistances?.length) sc.distances = state.sceneDistances.length;
+    if((state.pzClosures || []).length) sc.closures = state.pzClosures.map(c => c.title || c.label).slice(0, 6);
+    return sc;
   }
 
 // České názvy barev („červená", „tmavě modrá") i #hex -> #rrggbb. Dřív to
@@ -19215,6 +19274,23 @@ function pzColorFromName(v){
             || opts.find(o => n.split(' ').every(w => w.length < 3 || dia(o.textContent).includes(w)))
             || null;
       };
+      if(clear && (region || country)){
+        // Odebrat JEN jmenovaný kraj/stát („Rusko tam nechci") — dřív clear smazal
+        // veškeré barvení a asistent tak nemohl splnit opravný pokyn.
+        const removed = [];
+        if(region){
+          const opt = pick('czRegionSelect', region);
+          if(opt && state.czRegionColorMap?.[opt.value]){ delete state.czRegionColorMap[opt.value]; removed.push(opt.textContent.trim()); }
+        }
+        if(country){
+          const iso = CZ_COUNTRY[dia(country).replace(/\s+/g, ' ').trim()];
+          const opt = (iso ? pick('politicalCountrySelect', iso) : null) || pick('politicalCountrySelect', country);
+          if(opt && state.countryColorMap?.[opt.value]){ delete state.countryColorMap[opt.value]; removed.push(opt.textContent.trim()); }
+        }
+        if(!removed.length) return {ok:false, error:'„' + (region || country) + '" není obarvené.'};
+        try{ applyMapTweaks(); }catch(e){}
+        return {ok:true, removed};
+      }
       if(clear){
         try{ clearPoliticalPainting(); }catch(e){ return {ok:false, error:String(e)}; }
         return {ok:true, cleared:true};
@@ -19614,6 +19690,23 @@ function pzColorFromName(v){
       return {ok:true, tab};
     },
     openSection({section, open = true} = {}){ return toolOpenSection(section, open); },
+    // Smazat jeden druh prvků scény („smaž ten popisek", „pryč se šipkami").
+    clearScene({what} = {}){
+      const W = String(what || '').toLowerCase();
+      const map = {
+        labels: () => clearMapLabels?.(), popisky: 'labels',
+        icons: () => clearSceneIcons?.(), ikony: 'icons',
+        arrows: () => clearSceneArrows?.(), sipky: 'arrows',
+        perimeters: () => clearScenePerimeters?.(), perimetry: 'perimeters',
+        distances: () => clearSceneDistances?.(), vzdalenosti: 'distances',
+        closures: () => { state.pzClosures = []; pzRedrawClosures(); }, uzavirky: 'closures',
+        colors: () => clearPoliticalPainting?.(), barvy: 'colors'
+      };
+      let fn = map[W]; if(typeof fn === 'string') fn = map[fn];
+      if(typeof fn !== 'function') return {ok:false, error:'what musí být labels, icons, arrows, perimeters, distances, closures nebo colors.'};
+      try{ fn(); }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
+      return {ok:true, cleared:W};
+    },
     // Krok zpět / vpřed — „vrať to", „zpět", „zruš poslední změnu".
     undo(){ const ok = window.__pzUndo?.(); return ok ? {ok:true} : {ok:false, error:'Není žádný krok zpět.'}; },
     redo(){ const ok = window.__pzRedo?.(); return ok ? {ok:true} : {ok:false, error:'Není žádný krok vpřed.'}; },
@@ -19781,12 +19874,55 @@ function pzColorFromName(v){
     }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
   }
 
+  // Rychlé povely bez AI: jednoznačné krátké příkazy vyřídíme hned v prohlížeči.
+  // Jsou okamžité, fungují i při vyčerpaném denním limitu Workers AI a limit
+  // nešetří jen ony — každý dotaz na model stojí ~7 000 tokenů promptu.
+  const QUICK = [
+    [/^(krok )?zpet$|^vrat( to)?( zpet| o krok zpet)?$|^zrus (to|posledni (krok|zmenu))$|^undo$/, 'Vracím poslední změnu.', [{tool:'undo', label:'Krok zpět'}]],
+    [/^(krok )?vpred$|^znovu$|^redo$/, 'Krok vpřed.', [{tool:'redo', label:'Krok vpřed'}]],
+    [/^((prepni|dej|zapni|chci)( na)? )?satelit(ni (mapu|podklad|snimek))?$/, 'Přepínám na satelit.', [{tool:'setBaseStyle', args:{style:'satellite'}, label:'Satelit'}]],
+    [/^((prepni|dej|chci)( na)? )?hybrid$/, 'Přepínám na hybridní mapu.', [{tool:'setBaseStyle', args:{style:'hybrid'}, label:'Hybrid'}]],
+    [/^((prepni|dej|chci)( na)? )?(positron|svetlou mapu|svetly podklad|zakladni mapu)$/, 'Přepínám na Positron.', [{tool:'setBaseStyle', args:{style:'positron'}, label:'Positron'}]],
+    [/^((prepni|dej|chci)( na)? )?(politickou mapu|politicka mapa)$/, 'Přepínám na politickou mapu.', [{tool:'setBaseStyle', args:{style:'political'}, label:'Politická mapa'}]],
+    [/^(zapni |dej |prepni na )?globus$/, 'Zapínám glóbus.', [{tool:'setGlobe', args:{on:true}, label:'Glóbus'}]],
+    [/^vypni globus$|^(prepni na |dej )?plochou mapu$/, 'Vypínám glóbus.', [{tool:'setGlobe', args:{on:false}, label:'Plochá mapa'}]],
+    [/^(otevri |prepni na |jdi na |ukaz )?(zalozku )?(export|exportovat)$/, 'Otevírám export.', [{tool:'openTab', args:{tab:'export'}, label:'Export'}]],
+    [/^(otevri |prepni na |jdi na )?(zalozku )?(trasa|trasu)$/, 'Otevírám trasu.', [{tool:'openTab', args:{tab:'trasa'}, label:'Trasa'}]],
+    [/^(otevri |prepni na |jdi na )?(zalozku )?(scena|scenu)$/, 'Otevírám scénu.', [{tool:'openTab', args:{tab:'scena'}, label:'Scéna'}]],
+    [/^(otevri |prepni na |jdi na )?(zalozku )?(animace|animaci)$/, 'Otevírám animaci.', [{tool:'openTab', args:{tab:'animace'}, label:'Animace'}]],
+    [/^(ukaz )?celou trasu$|^doramuj trasu$/, 'Ukazuji celou trasu.', [{tool:'fitRoute', label:'Celá trasa'}]],
+    [/^(ukaz )?(cele cesko|celou cr|celou ceskou republiku)$/, 'Ukazuji celé Česko.', [{tool:'gotoPlace', args:{query:'Česko'}, label:'Česko'}]],
+    [/^(smaz|zrus|vymaz) (uzavirky|vyluky|vsechny uzavirky)$/, 'Mažu uzavírky.', [{tool:'clearClosures', label:'Smazání uzavírek'}]],
+    [/^(smaz|zrus|vymaz) trasu$/, 'Mažu trasu.', [{tool:'clearRoute', label:'Smazání trasy'}]]
+  ];
+  function quickCommand(text){
+    const k = stripDia(String(text || '')).toLowerCase().replace(/[.!?,]+/g, ' ')
+      .replace(/\b(prosim|pls|hned)\b/g, ' ').replace(/\s+/g, ' ').trim();
+    if(!k || k.length > 40) return null;
+    const hit = QUICK.find(([re]) => re.test(k));
+    return hit ? {say: hit[1], calls: hit[2]} : null;
+  }
+
   async function ask(userText){
     if(busy) return;
     busy = true; sendBtn.disabled = true;
     add('user', userText);
     history.push({role:'user', content:userText});
     try{ tnBump('chat', 1); }catch(_e){}
+    const quick = quickCommand(userText);
+    if(quick){
+      try{
+        add('bot', quick.say);
+        const done = [];
+        for(const c of quick.calls){
+          const out = await runTool(c);
+          addAction(c.label || c.tool, out.ok !== false);
+          done.push(c.tool + '(' + JSON.stringify(c.args || {}) + ') → ' + (out.ok === false ? 'CHYBA: ' + (out.error || '') : 'ok'));
+        }
+        history.push({role:'assistant', content: quick.say + '\n[provedeno: ' + done.join('; ') + ']'});
+      } finally { busy = false; sendBtn.disabled = false; input.focus(); }
+      return;
+    }
     const thinking = add('bot', '…');
 
     try{
@@ -19841,7 +19977,13 @@ function pzColorFromName(v){
           addAction((c.label || c.tool), out.ok !== false);
           toolResults.push({tool:c.tool, args:c.args || {}, result:out});
         }
-        history.push({role:'assistant', content:(data.say || '') + ' [provedeno: ' + calls.map(c=>c.tool).join(', ') + ']'});
+        // Do historie i argumenty a výsledek — jinak model neví, CO obarvil nebo kam
+        // dal popisek, a na „dej ho červeně" / „Rusko tam nechci" nemá co navázat.
+        const doneTxt = calls.map((c, i) => {
+          const r = toolResults[i] && toolResults[i].result;
+          return c.tool + '(' + JSON.stringify(c.args || {}).slice(0, 160) + ') → ' + (r && r.ok === false ? 'CHYBA: ' + String(r.error || '').slice(0, 80) : 'ok');
+        }).join('; ');
+        history.push({role:'assistant', content:(data.say || '') + '\n[provedeno: ' + doneTxt + ']'});
         if(data.done) break;
       }
     }catch(e){

@@ -64,7 +64,8 @@ colorPolitical {region?, country?, color?, clear?} \u2013 VYBARV\xCD kraj \u010C
                                      (volebn\xED/region\xE1ln\xED grafika). "vyzna\u010D St\u0159edo\u010Desk\xFD kraj \u010Derven\u011B"
                                      -> {"region":"St\u0159edo\u010Desk\xFD kraj","color":"\u010Derven\xE1"};
                                      "zv\xFDrazni N\u011Bmecko mod\u0159e" -> {"country":"N\u011Bmecko","color":"modr\xE1"}.
-                                     clear:true sma\u017Ee v\u0161echno vybarven\xED. Nezapome\u0148, \u017Ee politickou
+                                     clear:true S region/country odebere JEN ten kraj/st\xE1t ("Rusko tam nechci" -> {"country":"Rusko","clear":true}).
+                                     clear:true bez region/country sma\u017Ee v\u0161echno vybarven\xED. Nezapome\u0148, \u017Ee politickou
                                      mapu obvykle chce\u0161 i jako podklad: setBaseStyle {"style":"political"}.
 setColors {prvek:"#rrggbb", \u2026}     \u2013 nastav\xED BARVY. Kl\xED\u010De: route (trasa), routeDots (body A/B),
                                      land, water, building, park, landcover, landuse, aeroway,
@@ -130,6 +131,8 @@ openSection {section}              \u2013 otev\u0159e konkr\xE9tn\xED n\xE1stroj
 resetApp {}                        \u2013 reset na za\u010D\xE1tek (cel\xE1 \u010CR, Positron).
 undo {}                            \u2013 KROK ZP\u011AT: vr\xE1t\xED posledn\xED zm\u011Bnu (jako Ctrl+Z).
 redo {}                            \u2013 krok vp\u0159ed (zru\u0161\xED posledn\xED krok zp\u011Bt).
+clearScene {what}                  \u2013 sma\u017Ee jeden druh prvk\u016F: labels | icons | arrows | perimeters | distances | closures | colors
+                                     ("sma\u017E ten popisek" -> {"what":"labels"}, "pry\u010D se \u0161ipkami" -> {"what":"arrows"}).
 `.trim();
 function systemPrompt(mapState) {
   return `Jsi asistent v \u010Desk\xE9 mapov\xE9 aplikaci PZ MAP (TN mapa) pro televizn\xED grafiku.
@@ -192,7 +195,11 @@ PRAVIDLA:
    Kdy\u017E se odpov\u011B\u010F d\xE1 ur\u010Dit ze stavu, NEPTEJ se znovu a rovnou to prove\u010F.
    Odeb\xEDrac\xED a opravn\xE9 pokyny ("nechci", "zru\u0161", "ostatn\xED ne", "jen X", "vra\u0165 zp\xE1tky")
    NEJSOU nov\xFD p\u0159\xEDkaz \u2014 jsou \xFAprava toho, co u\u017E na map\u011B je. Spl\u0148 je zru\u0161en\xEDm nebo
-   p\u0159ebarven\xEDm existuj\xEDc\xEDho prvku (nap\u0159. colorPolitical {"clear":true}), ne nov\xFDm vytvo\u0159en\xEDm.
+   p\u0159ebarven\xEDm existuj\xEDc\xEDho prvku, ne nov\xFDm vytvo\u0159en\xEDm. STAV MAPY.scene \u0159\xEDk\xE1, co na map\u011B JE
+   (scene.colored = obarven\xE9 kraje/st\xE1ty, scene.labels, scene.arrows, scene.route\u2026).
+   "a te\u010F ho dej \u010Derven\u011B" po obarven\xED kraje -> colorPolitical t\xE9ho\u017E kraje s novou barvou;
+   "X tam nechci" -> colorPolitical {"country":"X","clear":true}; "sma\u017E popisek" -> clearScene {"what":"labels"};
+   "ud\u011Blej to vlakem" -> routeBetween se STEJN\xDDM from/to ze scene.route a mode "train".
 6h. N\xE1zvy m\xEDst se spojovn\xEDkem jsou JEDNO m\xEDsto: "Brno-Kom\xEDn", "Praha-Libu\u0161",
    "Fr\xFDdek-M\xEDstek" -> gotoPlace {"query":"Brno-Kom\xEDn"}. Pomlčka NEN\xCD odd\u011Blova\u010D dvou m\xEDst
    a m\u011Bstsk\xE9 \u010D\xE1sti pi\u0161 v\u017Edy s m\u011Bstem: {"query":"Brno-Kom\xEDn"}.
@@ -383,7 +390,12 @@ var worker_default = {
       }
       return json(finalPlan, 200, origin);
     } catch (e) {
-      return json({ say: "Asistent te\u010F nem\u016F\u017Ee odpov\u011Bd\u011Bt (" + String(e && e.message || e).slice(0, 120) + ").", calls: [], done: true }, 200, origin);
+      const msg = String(e && e.message || e);
+      // Vyčerpaný denní limit Workers AI (4006) — grafik dřív viděl anglickou technickou hlášku.
+      if (/4006|daily free allocation|neurons/i.test(msg)) {
+        return json({ say: "Asistent m\xE1 na dne\u0161ek vy\u010Derpan\xFD denn\xED limit (obnov\xED se v 1:00). Jednoduch\xE9 povely jako \u201Ezp\u011Bt\u201C, \u201Esatelit\u201C, \u201Egl\xF3bus\u201C nebo \u201Eotev\u0159i export\u201C funguj\xED d\xE1l, v\u0161e ostatn\xED zvl\xE1dne\u0161 v panelu vlevo.", calls: [], done: true, quota: true }, 200, origin);
+      }
+      return json({ say: "Asistent te\u010F nem\u016F\u017Ee odpov\u011Bd\u011Bt (" + msg.slice(0, 120) + ").", calls: [], done: true }, 200, origin);
     }
   }
 };
