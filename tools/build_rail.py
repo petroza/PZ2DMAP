@@ -45,7 +45,8 @@ def hav(a, b):
 # --- Hojení mezer: v OSM chybí kousky kolejí (odfiltrované spojky, rozdělené
 # cesty bez společného uzlu), trať pak „končí" pár set metrů před pokračováním.
 # Slepý konec napojíme na nejbližší kolej PŘED sebou (≤ 600 m, odchylka ≤ 35°).
-GAP_M, GAP_DEG = 600.0, 35.0
+import os
+GAP_M, GAP_DEG = float(os.environ.get("GAP_M", "600")), 35.0   # řeky: GAP_M=2500 (OSM má díry i přes kilometr)
 _sid = [0]
 def new_id():
     _sid[0] -= 1; return _sid[0]
@@ -70,8 +71,9 @@ for wid, w in list(ways.items()):
         dx, dy = (p[0] - q[0]) * kx, p[1] - q[1]; dl = math.hypot(dx, dy) or 1
         gx, gy = int(p[0] / cell), int(p[1] / cell)
         best = None
-        for ix in range(gx - 1, gx + 2):
-            for iy in range(gy - 1, gy + 2):
+        R = max(1, int(GAP_M / 700) + 1)
+        for ix in range(gx - R, gx + R + 1):
+            for iy in range(gy - R, gy + R + 1):
                 for cand in grid.get((ix, iy), ()):
                     if wid in node_way[cand]: continue
                     c = coord[cand]; dist = hav(p, c)

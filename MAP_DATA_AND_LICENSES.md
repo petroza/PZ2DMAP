@@ -46,7 +46,7 @@ the networks would simply vanish.
 |---|---|---|
 | inlined in `index.html` | Prague metro lines A/B/C and stops | OpenStreetMap via Overpass |
 | `assets/mhd_cz_tram.json` | tram networks of Praha, Brno, Ostrava, Plzeň, Olomouc, Liberec and Most–Litvínov | OpenStreetMap via Overpass |
-| `assets/water_cz.json` | major Czech rivers and Baťův kanál as a routing graph (boat mode) | OpenStreetMap via Overpass (`tools/fetch_rivers.sh`), built by `tools/build_rail.py` |
+| `assets/water_cz.json` | major Czech rivers and Baťův kanál as a routing graph (boat mode) | OpenStreetMap via Overpass (`tools/fetch_rivers.sh` + `tools/fetch_rivers_relations.sh`), built by `GAP_M=2500 tools/build_rail.py` |
 | `assets/rail_cz.json` | Czech standard-gauge rail network as a routing graph (train mode) | OpenStreetMap via Overpass, built by `tools/build_rail.py` |
 
 Both are **© OpenStreetMap contributors, ODbL**. Geometry is simplified to about
