@@ -7454,6 +7454,13 @@ function getOverlayBeforeId(){
   return state.map?.getLayer('route-ghost-glow') ? 'route-ghost-glow' : undefined;
 }
 
+// Na běžném podkladu se vyplní jen OBARVENÉ kraje — ostatní by šedou výplní
+// zbytečně zakryly mapu (zůstává jim hranice). Na „Politické" plocha jako dřív.
+function pzRegionFillOpacity(op){
+  const ids = Object.entries(state.czRegionColorMap || {}).filter(([id, c]) => id && c).map(([id]) => id);
+  if(($('baseStyle')?.value || '') === 'political' || !ids.length) return op;
+  return ['match', ['get', '__appId'], ids, op, 0];
+}
 function buildMatchColorExpression(mapObj, defaultColor){
   const entries = Object.entries(mapObj || {}).filter(([id, color]) => !!id && !!color);
   if(!entries.length) return defaultColor;
@@ -7544,7 +7551,7 @@ function ensurePoliticalLayers(){
   safeSetPaint('pz-political-outline', 'line-opacity', showPoliticalOutline ? Math.max(0.45, bOpacity * 0.8) : 0);
   safeSetPaint('pz-country-borders-all', 'line-opacity', showStandaloneCountryBorders ? bOpacity : 0);
   safeSetPaint('pz-country-borders-selected', 'line-opacity', showSelectedCountryBorder ? Math.min(1, bOpacity + 0.15) : 0);
-  safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzReg ? czFillOpacity : 0);
+  safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzReg ? pzRegionFillOpacity(czFillOpacity) : 0);
   safeSetPaint('pz-cz-regions-outline', 'line-opacity', showCzReg ? 0.92 : 0);
 }
 
@@ -8283,7 +8290,7 @@ function clearPoliticalPainting(){
     safeSetLayout('pz-political-fill', 'visibility', showPoliticalCountries ? 'visible' : 'none');
 
     safeSetPaint('pz-cz-regions-fill', 'fill-color', czDefaultColor);
-    safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzRegions ? czRegionFillOpacity : 0);
+    safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzRegions ? pzRegionFillOpacity(czRegionFillOpacity) : 0);
     safeSetLayout('pz-cz-regions-fill', 'visibility', showCzRegions ? 'visible' : 'none');
   }
 
@@ -10412,7 +10419,7 @@ function applyMapTweaks(){
     const czDefaultColor = $('czRegionDefaultColor')?.value || '#d7dbe2';
     const czRegionFillOpacity = parseFloat($('czRegionFillOpacity')?.value || '0.82');
     safeSetPaint('pz-cz-regions-fill', 'fill-color', buildMatchColorExpression(state.czRegionColorMap, czDefaultColor));
-    safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzRegions ? czRegionFillOpacity : 0);
+    safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzRegions ? pzRegionFillOpacity(czRegionFillOpacity) : 0);
     safeSetLayout('pz-cz-regions-fill', 'visibility', showCzRegions ? 'visible' : 'none');
     safeSetLayout('pz-cz-regions-outline', 'visibility', showCzRegions ? 'visible' : 'none');
   }
@@ -10499,7 +10506,7 @@ function applyPoliticalOverlayTweaks(){
   const czDefaultColor = $('czRegionDefaultColor')?.value || '#d7dbe2';
   const czRegionFillOpacity = parseFloat($('czRegionFillOpacity')?.value || '0.82');
   safeSetPaint('pz-cz-regions-fill', 'fill-color', buildMatchColorExpression(state.czRegionColorMap, czDefaultColor));
-  safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzRegions ? czRegionFillOpacity : 0);
+  safeSetPaint('pz-cz-regions-fill', 'fill-opacity', showCzRegions ? pzRegionFillOpacity(czRegionFillOpacity) : 0);
   safeSetLayout('pz-cz-regions-fill', 'visibility', showCzRegions ? 'visible' : 'none');
   safeSetLayout('pz-cz-regions-outline', 'visibility', showCzRegions ? 'visible' : 'none');
   updateReadouts();
