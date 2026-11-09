@@ -78,7 +78,7 @@ Wrangler bere `functions/` z pracovního adresáře a v kořeni repa leží
 
 ```bash
 ./tools/build-site.sh                       # složí dist/ včetně functions/
-cd dist && mkdir -p public && mv index.html assets presets.json projects.json public/
+cd dist && mkdir -p public && mv index.html assets public/
 npx wrangler pages deploy public --project-name=tnmap --branch=konsolidace   # náhled
 npx wrangler pages deploy public --project-name=tnmap --branch=main          # produkce
 ```

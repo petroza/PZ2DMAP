@@ -11,7 +11,8 @@ mkdir -p dist
 cp index.html dist/
 cp -r assets dist/
 cp -r functions dist/
-cp presets.json projects.json dist/ 2>/dev/null || true
+# presets.json / projects.json se už nenasazují: appka je nečte a ve veřejném
+# webu by byl k stažení starý projekt. Zálohy dat jsou v map_data/.
 
 echo "dist/ hotovo: $(du -sh dist | cut -f1)"
 find dist -maxdepth 2 -mindepth 1 -type d -printf '  %P/\n' | sort
