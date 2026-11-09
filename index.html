@@ -179,8 +179,8 @@ input[type=color]:hover{border-color:var(--accent)}
 
 .nav-actions{display:flex;gap:8px}
 .nav-actions .btn{flex:1}
-.nav-actions .btn-find{background:var(--green);border-color:var(--green);color:#fff;font-size:13px;padding:10px;box-shadow:0 2px 10px rgba(60,191,96,.2)}
-.nav-actions .btn-find:hover{background:#4ad96e}
+.nav-actions .btn-find{background:#23893d;border-color:#23893d;color:#fff;font-size:13px;padding:10px;box-shadow:0 2px 10px rgba(60,191,96,.2)}
+.nav-actions .btn-find:hover{background:#2ea64c;border-color:#2ea64c}
 .nav-actions .btn-find svg{width:16px;height:16px}
 .nav-clear{background:rgba(248,81,73,.14);border-color:rgba(248,81,73,.55);color:#f85149;padding:10px;font-weight:600}
 .nav-clear:hover{background:#f85149;border-color:#f85149;color:#fff}
@@ -622,6 +622,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .nav-suggest,.export-progress{backdrop-filter:none}
 .status-bar{background:var(--bg1);box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .map-actions .map-action-btn{background:var(--bg1);box-shadow:none}
+.export-frame::before{background:var(--bg1);color:var(--tx1);border-color:var(--border);font-weight:600}
 .map-actions .map-action-btn:active{transform:none}
 .map-source-watermark{background:rgba(255,255,255,.92);color:#1a1a1a;border-color:rgba(0,0,0,.14);box-shadow:0 1px 4px rgba(0,0,0,.14)}
 .floating-player .player-controls{background:var(--bg1);box-shadow:0 0 0 1px rgba(0,0,0,.35)}
@@ -682,6 +683,14 @@ html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
 html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
 html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
 html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
+/* světlý režim: plovoucí panely měly napevno tmavé pozadí → tmavý text nebyl čitelný */
+html[data-ui="light"]{--blue:#0b62c4;--green:#1f8a3e}
+html[data-ui="light"] .tnchat-panel,html[data-ui="light"] .shortcuts-panel{background:var(--bg1);box-shadow:0 14px 40px rgba(20,30,50,.18)}
+html[data-ui="light"] .shortcuts-panel h4{color:var(--tx1)}
+html[data-ui="light"] .tnchat-msg.err{color:#b4232f}
+html[data-ui="light"] .btn-danger{color:#c4232d;border-color:rgba(196,35,45,.35)}
+html[data-ui="light"] .nav-clear{color:#c4232d;background:rgba(196,35,45,.08);border-color:rgba(196,35,45,.45)}
+html[data-ui="light"] .map-loading{background:rgba(238,241,245,.55);color:var(--tx1)}
 .ui-theme-btn{width:26px;height:20px;display:grid;place-items:center;padding:0;border:1px solid var(--border);background:var(--bg3);color:var(--tx1);cursor:pointer;font-size:12px;line-height:1;flex-shrink:0}
 .ui-theme-btn:hover{border-color:var(--border-hi);background:var(--bg4)}
 .pz-metro-badge{background:none!important;border:0!important;padding:0!important;display:inline-grid;place-items:center;overflow:hidden}
@@ -7879,13 +7888,13 @@ function applyBasicProjectSnapshot(snapshot){
   }
 }
 
-function applyProjectSnapshot(snapshot){
+function applyProjectSnapshot(snapshot, statusMsg){
   const nextStyle = snapshot?.baseStyle || 'liberty';
   const doApply = () => {
     ensureOverlaySetup();
     window.setTimeout(() => {
       applyBasicProjectSnapshot(snapshot || {});
-      setStatus('Projekt načten.');
+      setStatus(statusMsg || 'Projekt načten.');
     }, 120);
   };
   if(($('baseStyle')?.value || 'liberty') !== nextStyle){
@@ -18291,8 +18300,7 @@ document.addEventListener('keydown', e => {
     if(current){ redoStack.push(current); if(redoStack.length > UNDO_LIMIT) redoStack.shift(); }
     applyingUndo = true;
     try {
-      applyProjectSnapshot(snap);
-      setStatus(t ? t('Krok zpět.') : 'Krok zpět.');
+      applyProjectSnapshot(snap, t ? t('Krok zpět.') : 'Krok zpět.');
     } finally {
       setTimeout(() => { applyingUndo = false; updateUndoBtn(); }, 200);
     }
@@ -18305,8 +18313,7 @@ document.addEventListener('keydown', e => {
     if(current){ undoStack.push(current); if(undoStack.length > UNDO_LIMIT) undoStack.shift(); }
     applyingUndo = true;
     try {
-      applyProjectSnapshot(snap);
-      setStatus(t ? t('Krok vpřed.') : 'Krok vpřed.');
+      applyProjectSnapshot(snap, t ? t('Krok vpřed.') : 'Krok vpřed.');
     } finally {
       setTimeout(() => { applyingUndo = false; updateUndoBtn(); }, 200);
     }
