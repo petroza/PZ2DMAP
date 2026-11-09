@@ -10604,8 +10604,25 @@ function updateStylePanelVisibility(){
   if(politicalPanel) politicalPanel.style.display = (key === 'political') ? '' : 'none';
 }
 
+// Sytost výplně států/krajů podle podkladu: na „Politické" plná barva, na běžné
+// mapě jemnější, aby pod obarveným krajem zůstala čitelná mapa. Mění se jen
+// výchozí hodnoty — co si grafik nastavil (nebo načetl z projektu), zůstane.
+const PZ_FILL_DEFAULTS = {politicalFillOpacity:[0.92, 0.55], czRegionFillOpacity:[0.82, 0.5]};
+function pzAutoFillOpacity(key){
+  const political = key === 'political';
+  Object.entries(PZ_FILL_DEFAULTS).forEach(([id, [pol, norm]]) => {
+    const el = $(id); if(!el) return;
+    const v = parseFloat(el.value);
+    if(Math.abs(v - pol) > 0.005 && Math.abs(v - norm) > 0.005) return;   // vlastní hodnota
+    const target = political ? pol : norm;
+    if(Math.abs(v - target) < 0.005) return;
+    el.value = String(target);
+    el.dispatchEvent(new Event('input', {bubbles:true}));
+  });
+}
 function reloadStyle(){
   const key = $('baseStyle').value || 'liberty';
+  try{ pzAutoFillOpacity(key); }catch(e){}
   updateStylePanelVisibility();
   updateMapSourceWatermark();
   const allStyles = getAllStyles();
@@ -16952,7 +16969,8 @@ function bindUI(){
   // volání bindUI() a přístup k ní dřív by skončil v temporal dead zone.
   setTimeout(() => { try{ pzBuildIconPalette(); }catch(e){ console.warn('icon palette', e); } }, 0);
   setTimeout(() => { try{ pzBindClosureUI(); }catch(e){ console.warn('closure UI', e); }
-    try{ if(typeof currentLang !== 'undefined' && currentLang === 'en') pzTranslateTextNodes('en'); }catch(e){} }, 0);
+    try{ if(typeof currentLang !== 'undefined' && currentLang === 'en') pzTranslateTextNodes('en'); }catch(e){}
+    try{ pzAutoFillOpacity($('baseStyle')?.value || 'positron'); }catch(e){} }, 0);
   // Brand logo = "home" reset: collapse all sections, back to the first tab.
   (() => {
     const logo = document.querySelector('.brand-icon');
