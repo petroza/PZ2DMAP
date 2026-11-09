@@ -7725,6 +7725,8 @@ function serializeProjectSnapshot(){
       pointB: state.pointB,
       clickPhase: state.clickPhase,
       routeCoords: state.routeCoords,
+      startLabel: $('startInput')?.value || '',
+      endLabel: $('endInput')?.value || '',
       manualViaPoints: state.manualViaPoints,
       currentTransportMode: state.currentTransportMode,
       routeColor: $('routeColor')?.value || '#002ee6',
@@ -7806,6 +7808,9 @@ function applyBasicProjectSnapshot(snapshot){
   state.routeCoords = Array.isArray(route.routeCoords) ? route.routeCoords : [];
   state.manualViaPoints = Array.isArray(route.manualViaPoints) ? route.manualViaPoints : [];
   state.currentTransportMode = route.currentTransportMode || 'driving';
+  // texty polí A/B: po kroku zpět zůstávalo „Praha, Česko" u prázdné trasy
+  if($('startInput')) $('startInput').value = ('startLabel' in route) ? (route.startLabel || '') : (state.pointA ? $('startInput').value : '');
+  if($('endInput')) $('endInput').value = ('endLabel' in route) ? (route.endLabel || '') : (state.pointB ? $('endInput').value : '');
   if($('routeColor') && route.routeColor) $('routeColor').value = route.routeColor;
   if($('routeDotColor') && route.routeDotColor) $('routeDotColor').value = route.routeDotColor;
   if($('routeGlow')) $('routeGlow').value = String(route.routeGlow ?? 12);
@@ -14168,7 +14173,8 @@ function getCurrentAnimationProgress(){
 }
 
 function refreshAnimatedMarkerPreview(){
-  if(!state.routeCoords.length) return;
+  // bez trasy (např. krok zpět před „Najít trasu") nesmí na mapě zůstat objekt ani souprava
+  if(!state.routeCoords.length){ try{ removeAnimMarker(); }catch(e){} try{ pzUpdateConsist(null); }catch(e){} return; }
   if(!$('animDot')?.checked){ removeAnimMarker(); return; }
   setAnimProgress(getCurrentAnimationProgress());
 }
