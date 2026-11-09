@@ -16948,6 +16948,50 @@ function setupWeatherUI(){
 // Místo desítek ručních zásahů v HTML: projdi textové uzly panelu a přelož
 // přesné české texty podle slovníku; originál si pamatuj, ať jde přepnout zpět.
 const PZ_EN_TEXT = {
+  "Mapa načtena.": "Map loaded.",
+  "Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)": "Truck — route along roads (ignores truck restrictions)",
+  "Loď — trasa po řekách a kanálech ČR": "Boat — route along Czech rivers and canals",
+  "Vlak — trasa po železniční síti ČR": "Train — route along the Czech railway network",
+  "Loď": "Boat",
+  "Metro — linky se kreslí ve svých barvách A/B/C": "Metro — lines are drawn in their A/B/C colours",
+  "Náhled křivky rychlosti": "Speed curve preview",
+  "Záře pod trasou v barvě Glow / stopa": "Glow under the route in the Glow / trail colour",
+  "Bezpečné zóny (jen náhled, neexportuje se)": "Safe zones (preview only, not exported)",
+  "Klávesové zkratky (?)": "Keyboard shortcuts (?)",
+  "Nastavení": "Settings",
+  "Na začátek — podklad Positron, celé Česko v rámečku": "Start over — Positron base map, whole Czechia in frame",
+  "Přepnout na světlý režim aplikace": "Switch to light mode",
+  "Přepnout na tmavý režim aplikace": "Switch to dark mode",
+  "Zavřít menu": "Close menu",
+  "Přetáhni na konkrétní čas": "Drag to a specific time",
+  "např. Humpolec": "e.g. Humpolec",
+  "např. Jihlava": "e.g. Jihlava",
+  "např. Pelhřimov": "e.g. Pelhřimov",
+  "vynutí správný tah": "forces the right road",
+  "Krytí vrstev počasí": "Weather layer opacity",
+  "Letiště a letištní plochy": "Airports and airfields",
+  "Rozostření stínu": "Shadow blur",
+  "Připnout na trasu (následuje animaci)": "Pin to route (follows the animation)",
+  "Vrhat stín (slunce táhneš přímo v mapě)": "Cast shadow (drag the sun directly on the map)",
+  "Přichytit k povrchu (postavit na zem)": "Snap to surface (stand on the ground)",
+  "Zobrazit hranice států nad mapou": "Show country borders above the map",
+  "Zobrazit vybarvené státy": "Show coloured countries",
+  "Barvit stát kliknutím do mapy": "Colour a country by clicking the map",
+  "Vestavěné ikony": "Built-in icons",
+  "Místo": "Place",
+  "Výbuch": "Explosion",
+  "Požár": "Fire",
+  "Záchranka": "Ambulance",
+  "Povodeň": "Flood",
+  "Varování": "Warning",
+  "Výška": "Height",
+  "Otočení Y": "Rotation Y",
+  "Náklon X": "Tilt X",
+  "Náklon Z": "Tilt Z",
+  "Mezerník": "Space",
+  "Pravé tl. / Ctrl+táhnout": "Right btn / Ctrl+drag",
+  "Shift+táhnout": "Shift+drag",
+  "Silnice: úsek se najde po skutečné silnici. Když vede jinudy než chceš (např. ne po dálnici), přidej bod „Přes\". Metro: jedna stanice, nebo úsek mezi dvěma stanicemi.": "Road: the section follows the actual road. If it goes a different way than you want (e.g. not along the motorway), add a “Via” point. Metro: one station, or a section between two stations.",
   'Tloušťka':'Width', 'Natáhni bod A → B přímo v mapě.':'Drag from point A to B directly on the map.',
   'Uzavírky':'Closures', 'Silnice / dálnice':'Road / motorway', 'Od':'From', 'Do':'To',
   'Přes (nepovinné)':'Via (optional)', 'Objížďka přes (nepovinné)':'Detour via (optional)',
@@ -16973,13 +17017,26 @@ const PZ_EN_PREFIX = [
   ['Presety barev platí jen', 'Colour presets apply only to vector base maps (Positron, Liberty…). Satellite and other raster base maps cannot be recoloured.']
 ];
 function pzTranslateTextNodes(lang){
-  const root = document.querySelector('.sidebar') || document.body;
-  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const root = document.body;
+  const enOf = key => PZ_EN_TEXT[key] || (typeof EN_OVERRIDES !== 'undefined' && EN_OVERRIDES[key]) || (PZ_EN_PREFIX.find(([p]) => key.startsWith(p)) || [])[1];
+  // titulky a placeholdery (tooltipy tlačítek, ikon, polí uzavírek…)
+  root.querySelectorAll('[title],[placeholder]').forEach(el => {
+    if(el.closest('.maplibregl-marker,.tnchat-panel')) return;
+    ['title','placeholder'].forEach(a => {
+      const store = 'pzCs' + a;
+      const cs = el.dataset[store] != null ? el.dataset[store] : el.getAttribute(a);
+      if(!cs) return;
+      const en = enOf(cs.trim()); if(!en) return;
+      if(el.dataset[store] == null) el.dataset[store] = cs;
+      el.setAttribute(a, lang === 'en' ? en : cs);
+    });
+  });
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode: n =>
+    n.parentElement?.closest('script,style,.maplibregl-marker,.tnchat-panel,.place-search-results') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT});
   for(let n = w.nextNode(); n; n = w.nextNode()){
     const raw = n.__pzCs != null ? n.__pzCs : n.textContent;
     const key = raw.trim(); if(!key) continue;
-    let en = PZ_EN_TEXT[key];
-    if(!en){ const pr = PZ_EN_PREFIX.find(([p]) => key.startsWith(p)); if(pr) en = pr[1]; }
+    const en = enOf(key);
     if(!en) continue;
     if(n.__pzCs == null) n.__pzCs = raw;
     const lead = raw.match(/^\s*/)[0], trail = raw.match(/\s*$/)[0];
@@ -16992,7 +17049,10 @@ function pzSetUiTheme(mode){
   if(light) document.documentElement.dataset.ui = 'light'; else delete document.documentElement.dataset.ui;
   try{ localStorage.setItem('pzUiTheme', light ? 'light' : 'dark'); }catch(e){}
   const b = document.getElementById('uiThemeBtn');
-  if(b){ b.textContent = light ? '☾' : '☀'; b.title = light ? 'Přepnout na tmavý režim aplikace' : 'Přepnout na světlý režim aplikace'; }
+  if(b){ b.textContent = light ? '☾' : '☀';
+    const cs = light ? 'Přepnout na tmavý režim aplikace' : 'Přepnout na světlý režim aplikace';
+    b.dataset.pzCstitle = cs;
+    b.title = (typeof currentLang !== 'undefined' && currentLang === 'en' && PZ_EN_TEXT[cs]) || cs; }
 }
 function bindUI(){
   pzSetUiTheme(document.documentElement.dataset.ui === 'light' ? 'light' : 'dark');
@@ -17806,7 +17866,13 @@ Object.keys(I18N).forEach(key => {
 
 function t(key, ...args) {
   const entry = I18N[key];
-  if (!entry) return key;
+  if (!entry){
+    // klíče jen v EN_OVERRIDES / PZ_EN_TEXT (bez řádku v I18N) dřív zůstaly česky
+    if(currentLang === 'en'){
+      try{ const en = (typeof EN_OVERRIDES !== 'undefined' && EN_OVERRIDES[key]) || (typeof PZ_EN_TEXT !== 'undefined' && PZ_EN_TEXT[key]); if(en){ let tx = en; args.forEach((a, i) => { tx = tx.replace(`{${i}}`, a); }); return tx; } }catch(e){}
+    }
+    return key;
+  }
   let text = entry[currentLang] || entry['cs'] || key;
   args.forEach((a, i) => { text = text.replace(`{${i}}`, a); });
   return text;
