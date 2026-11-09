@@ -686,6 +686,8 @@ html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
 .ui-theme-btn:hover{border-color:var(--border-hi);background:var(--bg4)}
 .pz-metro-badge{background:none!important;border:0!important;padding:0!important;display:inline-grid;place-items:center;overflow:hidden}
 .pz-metro-badge svg{width:100%;height:100%;display:block}
+.tab-btn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.15px}
+html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-size:9px;letter-spacing:0}
 </style>
 <style id="pz-compact-sections">
 /* Kompaktnější panel: grafici mají v jednom sloupci desítky sekcí a mezi
@@ -10581,6 +10583,15 @@ function updateStylePanelVisibility(){
     const el = $(id);
     if(el) el.style.display = display;
   });
+  // Rastrový podklad (satelit apod.) barvit nejde — místo tichého zmizení presetů vysvětlit proč.
+  let hint = $('pzPresetRasterHint');
+  if(!hint){
+    const anchor = $('stylePresetSection');
+    if(anchor){ hint = document.createElement('p'); hint.id = 'pzPresetRasterHint'; hint.className = 'hint';
+      hint.style.margin = '8px 12px'; anchor.parentNode.insertBefore(hint, anchor); }
+  }
+  if(hint){ hint.textContent = t('Presety barev platí jen pro vektorové podklady (Positron, Liberty…). Satelitní a další rastrové podklady se barvit nedají.');
+    hint.style.display = (hideAdvancedStyleUi && key !== 'political') ? '' : 'none'; }
   const politicalPanel = $('politicalStylePanel');
   if(politicalPanel) politicalPanel.style.display = (key === 'political') ? '' : 'none';
 }
@@ -14542,6 +14553,7 @@ function getCameraUiMode(){
 function setCameraUiMode(mode){
   const follow = $('followCamera');
   const en = $('cameraAnimEnabled');
+  const wasFollow = !!follow?.checked;
   if(mode === 'follow'){
     if(follow) follow.checked = true;
     if(en) en.checked = false;
@@ -14557,6 +14569,10 @@ function setCameraUiMode(mode){
   updateCameraAnimUI();
   renderCameraKeyframeList();
   refreshAnimatedMarkerPreview();
+  // Ze „Sleduje objekt" zpět na statickou: kamera zůstávala u cíle — vrátit výchozí záběr na trasu.
+  if(wasFollow && mode === 'static' && state.routeCoords?.length > 1){
+    try{ state.map.easeTo({pitch:0, bearing:0, duration:0}); fitRoute(); }catch(e){}
+  }
 }
 function updateCameraAnimUI(){
   const en = !!$('cameraAnimEnabled')?.checked;
@@ -14850,7 +14866,8 @@ function updateExportFrame(){
     const maxH = rect.height * 0.72;
     if(frameH > maxH){ frameH = maxH; frameW = frameH * aspect; }
   } else {
-    frameH = rect.height * 0.78;
+    // na výšku: dole nechat místo pro přehrávač (jinak ho rámeček překrýval)
+    frameH = Math.min(rect.height * 0.78, rect.height - 2 * 120);
     frameW = frameH * aspect;
     const maxW = freeW * 0.72;
     if(frameW > maxW){ frameW = maxW; frameH = frameW / aspect; }
@@ -14873,6 +14890,12 @@ function getExportSize(){
   // H.264 4:2:0 requires even dimensions — round down so the encoder config never
   // silently fails on an odd value. No-op for all current (even) presets.
   w = w & ~1; h = h & ~1;
+  // pole srovnat s tím, co se opravdu vyrenderuje (lichá → o 1 px méně)
+  if(custom && !batchValue){
+    try{ const fw = $('exportCustomWidth'), fh = $('exportCustomHeight');
+      if(fw && document.activeElement !== fw && String(w) !== fw.value) fw.value = String(w);
+      if(fh && document.activeElement !== fh && String(h) !== fh.value) fh.value = String(h); }catch(e){}
+  }
   return {w: Math.max(2, w), h: Math.max(2, h)};
 }
 
@@ -16934,6 +16957,10 @@ function bindUI(){
   });
   $('globeProjection')?.addEventListener('change', async ()=>{
     showMapLoading();
+    // Glóbus a plocha mají jinou škálu zoomu — po vypnutí glóbusu vrátit zoom,
+    // který byl před zapnutím (jinak mapa „poskočila" o úroveň blíž).
+    const turningOn = isGlobeProjectionOn();
+    if(turningOn && state.map) state._pzPreGlobeZoom = state.map.getZoom();
     applyGlobeProjection();
     // Satelity mají DVĚ různé vrstvy (2D tečky na mapě, 3D lift na glóbusu) — při
     // přepnutí projekce za chodu se musí přehodit rovnou, ne až při dalším tiku.
@@ -16950,7 +16977,8 @@ function bindUI(){
     // once more after any fit animation settles.
     try{
       if(!isGlobeProjectionOn() && state.map){
-        const lvl = () => { try{ state.map.stop(); state.map.easeTo({ pitch:0, bearing:0, duration:250 }); }catch(_e){} };
+        const z0 = state._pzPreGlobeZoom; state._pzPreGlobeZoom = null;
+        const lvl = () => { try{ state.map.stop(); state.map.easeTo(Object.assign({ pitch:0, bearing:0, duration:250 }, (z0 != null && !(state.currentTransportMode === 'planeArc' && state.routeCoords.length > 1)) ? {zoom:z0} : {})); }catch(_e){} };
         lvl();
         setTimeout(lvl, 950);
       }
@@ -17358,7 +17386,7 @@ function bindUI(){
     if(!state.selectedScenePerimeterId){ setStatus(t('Nejdřív vyber perimetr.')); return; }
     deleteScenePerimeter(state.selectedScenePerimeterId);
   });
-  $('clearScenePerimetersBtn')?.addEventListener('click', clearScenePerimeters);
+  $('clearScenePerimetersBtn')?.addEventListener('click', () => clearScenePerimeters());
 
   updateSceneDistanceWidthReadout();
   updateSceneDistanceInfo(null);
@@ -17389,7 +17417,8 @@ function bindUI(){
     if(!state.selectedSceneDistanceId){ setStatus(t('Nejdřív vyber vzdálenost.')); return; }
     deleteSceneDistance(state.selectedSceneDistanceId);
   });
-  $('clearSceneDistancesBtn')?.addEventListener('click', clearSceneDistances);
+  // () => … : jinak se událost kliknutí předá jako `silent` a stav i režim zůstanou viset
+  $('clearSceneDistancesBtn')?.addEventListener('click', () => clearSceneDistances());
   // --- Scene arrows ---
   $('sceneArrowWidth')?.addEventListener('input', ()=>{
     if($('sceneArrowWidthVal')) $('sceneArrowWidthVal').textContent = ($('sceneArrowWidth').value || '6') + ' px';
