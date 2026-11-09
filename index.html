@@ -14073,13 +14073,19 @@ function pzConsistImage(src, inverted){
   im.src = new URL(src, document.baseURI).href;
   return rec;
 }
-function pzPointAtKm(coords, cum, total, d){
+function pzPointAtKm(coords, cum, total, d, chordKm){
   if(d >= total) return coords[coords.length-1];
   if(d <= 0){
-    // před startem: prodloužit první úsek dozadu, ať se vagony nenahromadí v jednom bodě
-    const a = coords[0], b = pointAtProgress(coords, Math.min(1, 0.2 / Math.max(total, 0.2)));
-    const L = haversineKm(a, b) || 1e-9, k = d / L;
-    return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k];
+    // před startem: zrcadlit navazující úsek trati za start (bod ve vzdálenosti |d|
+    // za startem odrazit přes start). Dřív se prodlužoval jen první úsek ~200 m,
+    // což bývá spojnice centrum→nádraží s nahodilým směrem a vagony trčely mimo trať.
+    const a = coords[0];
+    if(total <= 1e-9) return a;
+    // jedna pevná tětiva (délka soupravy) → vagony za startem leží v přímce, ne v kličce
+    const ahead = Math.min(Math.max(chordKm || 0, -d), total);
+    const b = pointAtProgress(coords, ahead / total);
+    const L = haversineKm(a, b) || 1e-9, k = -d / L;
+    return [a[0] - (b[0] - a[0]) * k, a[1] - (b[1] - a[1]) * k];
   }
   return pointAtProgress(coords, d / total);
 }
@@ -14103,14 +14109,15 @@ function pzUpdateConsist(progress, opts){
     // km na CSS pixel v místě soupravy (MapLibre: dlaždice 512 px)
     const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
     let d = progress * total;
+    const chord = spec.reduce((a, u) => a + u.gap, 0) * size * kmPerPx + spec[spec.length - 1].half * size * kmPerPx;
     spec.forEach((u, i) => {
       const rec = pzConsistImage(u.img, inverted);
       if(!rec.ready) return;
       if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
       d -= u.gap * size * kmPerPx;
       const half = u.half * size * kmPerPx;
-      const front = pzPointAtKm(coords, cum, total, d + half), back = pzPointAtKm(coords, cum, total, d - half);
-      const mid = pzPointAtKm(coords, cum, total, d);
+      const front = pzPointAtKm(coords, cum, total, d + half, chord), back = pzPointAtKm(coords, cum, total, d - half, chord);
+      const mid = pzPointAtKm(coords, cum, total, d, chord);
       const midLat = (front[1] + back[1]) / 2 * Math.PI / 180;
       const rot = Math.atan2((front[0] - back[0]) * Math.cos(midLat), front[1] - back[1]) * 180 / Math.PI;
       feats.push({type:'Feature', geometry:{type:'Point', coordinates:mid}, properties:{img:rec.id, rot, sz: size / 64, k:i}});
@@ -18647,9 +18654,17 @@ function pzEnsureClosureLayers(m){
        layout:{'text-field':'×', 'text-font':['Noto Sans Bold'], 'text-size':['interpolate',['linear'],['zoom'],5,15,13,22],
                'text-allow-overlap':true, 'text-ignore-placement':true, 'text-offset':[0,-0.05]},
        paint:{'text-color':'#ffffff'}});
-  add({id:'pzuz-text', type:'symbol', source:'pz-closures', filter:kind('label'),
+  // Názvy stanic: při oddálení se jinak přetiskly přes sebe i přes „MIMO PROVOZ"
+  // (Anděl × Smíchovské nádraží). Vlastní vrstva pod hlavním nápisem, kolize zapnuté,
+  // takže se překrývající název skryje. Hlavní nápis se kreslí vždy a blokuje okolí.
+  add({id:'pzuz-text-stanice', type:'symbol', source:'pz-closures', filter:['all', kind('label'), ['has','minor']],
        layout:{'text-field':['get','text'], 'text-font':['Noto Sans Bold'], 'text-size':['coalesce',['get','size'],16],
-               'text-letter-spacing':0.06, 'text-allow-overlap':true, 'text-ignore-placement':true,
+               'text-letter-spacing':0.06, 'text-allow-overlap':false, 'text-ignore-placement':false, 'text-padding':2,
+               'text-offset':['coalesce',['get','offset'],['literal',[0,-1.6]]], 'text-anchor':'center'},
+       paint:{'text-color':['coalesce',['get','color'],'#c1121f'], 'text-halo-color':'#ffffff', 'text-halo-width':3}});
+  add({id:'pzuz-text', type:'symbol', source:'pz-closures', filter:['all', kind('label'), ['!', ['has','minor']]],
+       layout:{'text-field':['get','text'], 'text-font':['Noto Sans Bold'], 'text-size':['coalesce',['get','size'],16],
+               'text-letter-spacing':0.06, 'text-allow-overlap':true, 'text-ignore-placement':false,
                'text-offset':['coalesce',['get','offset'],['literal',[0,-1.6]]], 'text-anchor':'center'},
        paint:{'text-color':['coalesce',['get','color'],'#c1121f'], 'text-halo-color':'#ffffff', 'text-halo-width':3}});
 }
@@ -18679,7 +18694,7 @@ function pzClosureFeatures(){
       sts.forEach((st, i) => {
         const isEnd = i === 0 || i === sts.length - 1;
         pt(st.coord, {kind: isEnd ? 'end' : 'stop'});
-        if(isEnd) pt(st.coord, {kind:'label', text: st.name, size:17, color:'#1b1f24', offset:[0,1.5]});
+        if(isEnd) pt(st.coord, {kind:'label', text: st.name, size:17, color:'#1b1f24', offset:[0,1.5], minor:1});
       });
       const mid = c.coords?.length > 1 ? pzLineMidpoint(c.coords) : c.stations?.[0]?.coord;
       if(mid) pt(mid, {kind:'label', text: c.label || 'MIMO PROVOZ', size:20});
@@ -18689,7 +18704,7 @@ function pzClosureFeatures(){
 }
 
 const PZ_CLOSURE_LAYERS = ['pzuz-objizdka-obrys','pzuz-objizdka','pzuz-usek-obrys','pzuz-usek','pzuz-usek-pruhy',
-  'pzuz-podzemi-obrys','pzuz-podzemi','pzuz-podzemi-pruhy','pzuz-zastavka','pzuz-konec','pzuz-konec-x','pzuz-text'];
+  'pzuz-podzemi-obrys','pzuz-podzemi','pzuz-podzemi-pruhy','pzuz-zastavka','pzuz-konec','pzuz-konec-x','pzuz-text-stanice','pzuz-text'];
 function pzRedrawClosures(){
   const m = state.map; if(!m?.isStyleLoaded?.()) return;
   pzEnsureClosureLayers(m);
@@ -19530,7 +19545,7 @@ function pzColorFromName(v){
    každém počítači/fontu sedí jinak, takže opticky ujížděly ze středu kruhu. */
 .tnchat-fab svg{width:26px;height:26px;display:block}
 .tnchat-fab:hover{background:var(--accent-hi);transform:translateY(-2px) scale(1.06)}.tnchat-fab:active{transform:translateY(0) scale(.98)}
-.tnchat-panel{position:absolute;right:14px;bottom:116px;z-index:131;width:min(380px,calc(100vw - 28px));
+.tnchat-panel{position:absolute;right:14px;bottom:148px;z-index:131;width:min(380px,calc(100vw - 28px));
   max-height:min(560px,70vh);display:none;flex-direction:column;background:rgba(13,17,25,.97);
   backdrop-filter:blur(14px);border:1px solid var(--border-hi);border-radius:14px;
   box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}
