@@ -33,7 +33,7 @@ html,body{height:100%;font-family:var(--font);font-size:13px;color:var(--tx1);ba
 .brand-icon{width:34px;height:34px;background:var(--accent);border-radius:var(--radius);display:grid;place-items:center;font-weight:800;font-size:13px;color:#fff;box-shadow:0 2px 8px var(--accent-glow);position:relative}.brand-icon span{position:relative;top:-0.5px;line-height:1;display:block}
 .brand-title{font-size:14px;font-weight:700;color:var(--tx1);letter-spacing:.4px}
 
-.sidebar-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg0);flex-shrink:0}
+.sidebar-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;padding:6px 10px;border-bottom:1px solid var(--border);background:var(--bg0);flex-shrink:0}
 .tab-btn{width:100%;min-width:0;padding:8px 2px;font-size:10px;font-weight:700;letter-spacing:.35px;text-align:center;text-transform:uppercase;color:var(--tx3);background:0 0;border:none;border-radius:8px;cursor:pointer;transition:.2s}
 .tab-btn:hover{color:var(--tx2);background:var(--bg2)}
 .tab-btn.active{color:#fff;background:var(--bg3)}
@@ -695,6 +695,14 @@ html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
 html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
 html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
 html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
+/* Projekt: plovoucí panel pod horní lištou (dřív samostatná záložka) */
+.project-panel{position:absolute;top:56px;right:14px;z-index:210;width:min(380px,calc(100vw - 28px));max-height:calc(100dvh - 140px);overflow:auto;background:var(--bg1);border:1px solid var(--border-hi);box-shadow:0 12px 32px rgba(0,0,0,.45);padding:10px 12px 12px}
+.project-panel[hidden]{display:none}
+.project-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;font-size:12px;letter-spacing:.4px;text-transform:uppercase}
+.project-panel .section{margin:0;border:0;background:none;padding:0}
+.project-panel .section > h3{display:none}
+.map-action-btn.active-panel{border-color:var(--accent);color:var(--tx1)}
+@media (max-width:760px){.project-panel{top:52px;right:8px;left:8px;width:auto}}
 /* Pokročilé funkce: schované, dokud je grafik nezapne v Nastavení (nebo je projekt nepoužívá) */
 html:not(.pz-adv) .pz-adv-only:not(.pz-adv-inuse){display:none!important}
 .pz-tpl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
@@ -762,12 +770,11 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     </div>
   </div>
   <div class="sidebar-tabs">
-    <button type="button" class="tab-btn active" data-tab="styly" data-i18n="Styl">Styl</button>
-    <button type="button" class="tab-btn" data-tab="scena" data-i18n="Scéna">Scéna</button>
+    <button type="button" class="tab-btn active" data-tab="scena" data-i18n="Scéna">Scéna</button>
     <button type="button" class="tab-btn" data-tab="trasa" data-i18n="Trasa">Trasa</button>
     <button type="button" class="tab-btn" data-tab="animace" data-i18n="Animace">Animace</button>
-    <button type="button" class="tab-btn" data-tab="projekt" data-i18n="Projekt">Projekt</button>
     <button type="button" class="tab-btn" data-tab="export" data-i18n="Export">Export</button>
+    <button type="button" class="tab-btn" data-tab="styly" data-i18n="Styl">Styl</button>
   </div>
   <div class="lang-switcher">
     <span class="lang-label">LANG</span>
@@ -780,7 +787,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
   </div>
   <div class="sidebar-content">
 
-    <div class="tab-pane active" data-pane="styly">
+    <div class="tab-pane" data-pane="styly">
       <div class="section">
         <h3 data-i18n="Základní styly">Základní styly</h3>
         <select id="baseStyle" autocomplete="off"></select>
@@ -892,71 +899,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <input id="shadowSoftness" type="range" min="0" max="100" step="1" value="50">
         <p class="hint" data-i18n="hint_sun_shadows">Slunce nasvítí stěny 3D budov a zároveň vrhá jejich stíny. Stíny se počítají z výšek budov, takže se objeví od přiblížení, kde má mapa 3D budovy (zhruba od zoomu 14). Nižší slunce = delší stíny. Vyrenderuje se i do videa.</p>
       </div>
-      <div class="section" id="countryBordersOverlaySection">
-        <h3 data-i18n="Hranice států overlay">Hranice a barvy států</h3>
-        <div class="control-step">
-          <div class="control-step-title"><span class="control-step-number">1</span> Hranice států</div>
-          <label class="check"><input id="showCountryBordersOverlay" type="checkbox"> Zobrazit hranice států</label>
-          <details class="compact-details">
-            <summary>Vzhled a rozsah hranic</summary>
-            <div class="row">
-              <div><label data-i18n="Režim">Zobrazit</label><select id="countryBorderMode"><option value="all" selected data-i18n="Všechny státy">Všechny státy</option><option value="selected" data-i18n="Jen vybraný stát">Jen vybraný stát</option></select></div>
-              <div><label data-i18n="Vybraný stát">Vybraný stát</label><select id="countryFocusSelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
-            </div>
-            <div class="row">
-              <div class="color-row"><input id="countryBorderColor" type="color" value="#ffffff"><label data-i18n="Barva hranic">Barva</label></div>
-              <div><label>Tloušťka <span class="val" id="countryBorderWidthVal">2.5 px</span></label><input id="countryBorderWidth" type="range" min="0.5" max="10" step="0.1" value="2.5"></div>
-            </div>
-            <label>Krytí <span class="val" id="countryBorderOpacityVal">100%</span></label>
-            <input id="countryBorderOpacity" type="range" min="0" max="1" step="0.01" value="1">
-          </details>
-        </div>
-        <div id="worldPoliticalSection" class="control-step">
-          <div class="control-step-title"><span class="control-step-number">2</span> Vybarvit stát</div>
-          <label data-i18n="Vyhledat stát">Najdi stát</label>
-          <div class="country-search-wrap"><input id="politicalCountrySearch" type="text" placeholder="Začni psát název…" autocomplete="off"><div class="nav-suggest" id="politicalCountrySearchSuggest" role="listbox"></div></div>
-          <label data-i18n="Stát">Nebo vyber ze seznamu</label>
-          <select id="politicalCountrySelect"><option value="" data-i18n="Načítám…">Načítám…</option></select>
-          <div class="color-row" style="margin-top:10px"><input id="politicalCountryColor" type="color" value="#ff6b6b"><label data-i18n="Barva státu">Barva státu</label></div>
-          <div class="control-actions">
-            <button type="button" class="btn btn-sm btn-primary" id="applyPoliticalCountryColorBtn" data-i18n="Barvit stát">Použít barvu</button>
-            <button type="button" class="btn btn-sm" id="zoomToCountryBtn" data-i18n="Přiblížit stát">Přiblížit stát</button>
-          </div>
-          <label class="check" style="margin-top:12px"><input id="showPoliticalCountries" type="checkbox"> Zobrazit vybarvené státy</label>
-          <label class="check"><input id="paintPoliticalCountryOnClick" type="checkbox"> Rychlé barvení kliknutím do mapy</label>
-          <details class="compact-details">
-            <summary>Další nastavení výplně</summary>
-            <div class="color-row"><input id="politicalCountryDefaultColor" type="color" value="#e7e2d8"><label data-i18n="Výchozí barva">Výchozí barva</label></div>
-            <label>Krytí výplně <span class="val" id="politicalFillOpacityVal">92%</span></label>
-            <input id="politicalFillOpacity" type="range" min="0" max="1" step="0.01" value="0.92">
-          </details>
-        </div>
-      </div>
-      <div class="section" id="czPoliticalSection">
-        <h3 data-i18n="Kraje ČR">Kraje ČR</h3>
-        <div class="small" style="margin-bottom:8px">Samostatná funkce pro Českou republiku. Kraj můžeš vybrat klikem nebo ve formuláři a obarvit libovolnou barvou.</div>
-        <label class="check"><input id="showCzRegions" type="checkbox"> Zobrazit kraje ČR</label>
-        <label class="check"><input id="paintCzRegionOnClick" type="checkbox"> Barvit kraj kliknutím do mapy</label>
-        <div class="row">
-          <div><label data-i18n="Vyhledat kraj">Vyhledat kraj</label><input id="czRegionSearch" type="text" placeholder="Piš název kraje…"></div>
-          <div><label data-i18n="Kraj">Kraj</label><select id="czRegionSelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
-        </div>
-        <div class="row">
-          <div class="color-row"><input id="czRegionColor" type="color" value="#002ee6"><label data-i18n="Barva kraje">Barva kraje</label></div>
-          <div class="color-row"><input id="czRegionDefaultColor" type="color" value="#d7dbe2"><label data-i18n="Výchozí barva">Výchozí barva</label></div>
-        </div>
-        <div class="row">
-          <div class="small" style="display:flex;align-items:end">Kraje jsou dostupné jen pro ČR. Po kliknutí do mapy se synchronizuje formulářový výběr kraje.</div>
-          <div style="display:flex;align-items:end"><button type="button" class="btn btn-sm" id="zoomToCzBtn" data-i18n="Přiblížit ČR">Přiblížit ČR</button></div>
-        </div>
-        <label>Krytí výplně <span class="val" id="czRegionFillOpacityVal">82%</span></label>
-        <input id="czRegionFillOpacity" type="range" min="0" max="1" step="0.01" value="0.82">
-        <div class="btns">
-          <button type="button" class="btn btn-sm btn-primary" id="applyCzRegionColorBtn" data-i18n="Barvit kraj">Barvit kraj</button>
-          <button type="button" class="btn btn-sm" id="resetPoliticalSelectionBtn" data-i18n="Reset výběru">Reset výběru</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearPoliticalPaintingBtn" data-i18n="Reset všeho">Reset všeho</button>
-        </div>
-      </div>
     </div>
 
     <div class="tab-pane" data-pane="trasa">
@@ -1030,240 +972,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
       </div>
 
-      <div class="section" id="waypointSection">
-        <h3 data-i18n="Zastávky na trase">Zastávky na trase</h3>
-        <div class="btns"><button type="button" class="btn btn-sm" id="addWaypointBtn" data-i18n="+ Přidat zastávku">+ Přidat zastávku</button></div>
-        <div id="waypointList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_via_points">Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.</p>
-      </div>
-
-      <div class="section" id="flightWaypointSection">
-        <h3 data-i18n="Naklikaná cesta">Naklikaná cesta</h3>
-        <div class="btns">
-          <button type="button" class="btn btn-sm btn-danger" id="clearFlightWaypointsBtn" data-i18n="Smazat body">Smazat body</button>
-        </div>
-        <div id="flightWaypointList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_custom_draw">Kresli trasu klikáním do mapy od začátku do konce. Každý klik přidá další bod. Pravým tlačítkem trasu ukončíš — poslední bod se stane cílem (B). Body jdou na mapě chytit a přetáhnout.</p>
-      </div>
-
-      <div class="section">
-        <h3 data-i18n="Vzhled trasy">Vzhled trasy</h3>
-        <div class="row">
-          <div class="color-row"><input id="routeColor" type="color" value="#002ee6"><label data-i18n="Barva trasy">Barva trasy</label></div>
-          <div class="color-row"><input id="routeDotColor" type="color" value="#ffffff"><label data-i18n="Glow / stopa">Glow / stopa</label></div>
-        </div>
-        <label data-i18n="Tloušťka">Tloušťka <span class="val" id="routeWidthVal">4 px</span></label>
-        <input id="routeWidth" type="range" min="1" max="16" step="0.5" value="4">
-        <label>Síla glow <span class="val" id="routeGlowVal">12 %</span></label>
-        <input id="routeGlow" type="range" min="0" max="100" step="1" value="12" title="Záře pod trasou v barvě Glow / stopa">
-        <label style="margin-top:10px;display:block" data-i18n="Koncové body (A/B)">Koncové body (A/B)</label>
-        <div class="endpoint-grid">
-          <button type="button" class="endpoint-shape active" data-endpoint-shape="circle">
-            <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg></span>
-            <span class="t-label" data-i18n="Kruh (bod)">Kruh</span>
-          </button>
-          <button type="button" class="endpoint-shape" data-endpoint-shape="square">
-            <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></span>
-            <span class="t-label" data-i18n="Čtverec (bod)">Čtverec</span>
-          </button>
-        </div>
-        <label style="margin-top:8px" data-i18n="Velikost (end)">Velikost <span class="val" id="routeEndpointSizeVal">28 px</span></label>
-        <input id="routeEndpointSize" type="range" min="12" max="48" step="1" value="28">
-        <label class="check" id="showDirectLineWrap" style="margin-top:8px"><input id="showDirectLine" type="checkbox" checked> Zobrazit přímou spojnici (oblouk)</label>
-        <label class="check" id="hideGroundLineWrap" style="display:none;margin-top:8px"><input id="hideGroundLine" type="checkbox"> <span data-i18n="Skrýt pozemní stín (jen oblouk)">Skrýt pozemní stín (jen oblouk)</span></label>
-        <button type="button" class="btn btn-sm" id="arcBestViewBtn" style="display:none;margin-top:8px;width:100%" data-i18n="Optimální pohled na oblouk (3D)">Optimální pohled na oblouk (3D)</button>
-      </div>
-
-    </div>
-
-    <div class="tab-pane" data-pane="scena">
-      <div class="section" id="pzTemplateSection">
-        <h3>Rychlá scéna</h3>
-        <p class="hint" style="margin:0 0 8px">Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.</p>
-        <div class="row">
-          <div><label>Místo</label><input id="pzTplPlace" type="text" placeholder="např. Humpolec, D1 km 90"></div>
-          <div><label>Text popisku</label><input id="pzTplText" type="text" placeholder="nepovinné"></div>
-        </div>
-        <div class="pz-tpl-grid" id="pzTplGrid"></div>
-      </div>
-      <div class="section" id="scenePerimeterSection">
-        <h3 data-i18n="Perimetr / radius jako vrstva">Perimetr / radius jako vrstva</h3>
-        <div class="row">
-          <div><label data-i18n="Rádius">Rádius</label><input id="scenePerimeterRadius" type="number" min="0.001" step="0.1" value="100"></div>
-          <div><label data-i18n="Jednotka">Jednotka</label><select id="scenePerimeterUnit"><option value="km" selected data-i18n="kilometry">kilometry</option><option value="m" data-i18n="metry">metry</option></select></div>
-        </div>
-        <div class="row">
-          <div class="color-row"><input id="scenePerimeterColor" type="color" value="#e22d2d"><label data-i18n="Barva vrstvy">Barva vrstvy</label></div>
-          <div><label>Krytí výplně <span class="val" id="scenePerimeterOpacityVal">12 %</span></label><input id="scenePerimeterOpacity" type="range" min="0" max="80" step="1" value="12"></div>
-        </div>
-        <div class="btns">
-          <button type="button" class="btn btn-sm" id="addScenePerimeterBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateScenePerimeterBtn" data-i18n="Upravit vybraný">Upravit vybraný</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteScenePerimeterBtn" data-i18n="Smazat vybraný">Smazat vybraný</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearScenePerimetersBtn" data-i18n="Smazat perimetry">Smazat perimetry</button>
-        </div>
-        <div id="scenePerimeterList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_perimeter">Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.</p>
-      </div>
-
-      <div class="section" id="sceneDistanceSection">
-        <h3 data-i18n="Vzdálenost jako vrstva">Vzdálenost jako vrstva</h3>
-        <div class="row">
-          <div><label data-i18n="Jednotka">Jednotka</label><select id="sceneDistanceUnit"><option value="km" selected data-i18n="kilometry">kilometry</option><option value="m" data-i18n="metry">metry</option></select></div>
-          <div><label>Tloušťka <span class="val" id="sceneDistanceWidthVal">3 px</span></label><input id="sceneDistanceWidth" type="range" min="1" max="12" step="0.5" value="3"></div>
-        </div>
-        <div class="row">
-          <div class="color-row"><input id="sceneDistanceColor" type="color" value="#ffd400"><label data-i18n="Barva linky">Barva linky</label></div>
-          <div class="small" id="sceneDistanceInfo" style="display:flex;align-items:end">Natáhni bod A → B přímo v mapě.</div>
-        </div>
-        <div class="btns">
-          <button type="button" class="btn btn-sm" id="addSceneDistanceBtn" data-i18n="Natáhni A → B">Natáhni A → B</button>
-          <button type="button" class="btn btn-sm" id="updateSceneDistanceBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneDistanceBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearSceneDistancesBtn" data-i18n="Smazat vzdálenosti">Smazat vzdálenosti</button>
-        </div>
-        <div id="sceneDistanceList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_distance">Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.</p>
-      </div>
-
-      <div class="section" id="sceneArrowSection">
-        <h3 data-i18n="Šipky">Šipky</h3>
-        <div class="row">
-          <div class="color-row"><input id="sceneArrowColor" type="color" value="#e22d2d"><label data-i18n="Barva šipky">Barva šipky</label></div>
-          <div><label data-i18n="Tloušťka šipky">Tloušťka <span class="val" id="sceneArrowWidthVal">6 px</span></label><input id="sceneArrowWidth" type="range" min="2" max="16" step="0.5" value="6"></div>
-        </div>
-        <div class="btns">
-          <button type="button" class="btn btn-sm" id="addSceneArrowBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateSceneArrowBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneArrowBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearSceneArrowsBtn" data-i18n="Smazat šipky">Smazat šipky</button>
-        </div>
-        <div id="sceneArrowList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_arrow">Zapni režim a klikni do mapy dvakrát: první klik = začátek (ocas), druhý = hrot. Šipku vybereš kliknutím na ni, pak táhni za body T/H = posun konců. Barva a tloušťka se vztahují na vybranou. Vyrenderuje se i do videa.</p>
-      </div>
-      <div class="section" id="pzClosureSection">
-        <h3>Uzavírky</h3>
-        <label style="display:block;margin-bottom:6px;font-weight:600">Silnice / dálnice</label>
-        <div class="row">
-          <div><label>Od</label><input id="pzClFrom" type="text" placeholder="např. Humpolec"></div>
-          <div><label>Do</label><input id="pzClTo" type="text" placeholder="např. Jihlava"></div>
-        </div>
-        <div class="row">
-          <div><label>Přes (nepovinné)</label><input id="pzClVia" type="text" placeholder="vynutí správný tah"></div>
-          <div><label>Objížďka přes (nepovinné)</label><input id="pzClDetour" type="text" placeholder="např. Pelhřimov"></div>
-        </div>
-        <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClRoadBtn">Vyznačit uzavírku</button></div>
-        <label style="display:block;margin:12px 0 6px;font-weight:600">Metro</label>
-        <div class="row">
-          <div><label>Linka</label><select id="pzClMetroLine"><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
-          <div><label>Stanice od</label><select id="pzClMetroFrom"></select></div>
-          <div><label>do (nepovinné)</label><select id="pzClMetroTo"></select></div>
-        </div>
-        <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClMetroBtn">Vyznačit uzavírku metra</button></div>
-        <div class="btns" style="margin-top:8px"><button type="button" class="btn btn-sm btn-danger" id="pzClClearBtn">Smazat uzavírky</button></div>
-        <div id="pzClosureList" class="wp-list"></div>
-        <p class="hint">Silnice: úsek se najde po skutečné silnici. Když vede jinudy než chceš (např. ne po dálnici), přidej bod „Přes". Metro: jedna stanice, nebo úsek mezi dvěma stanicemi.</p>
-      </div>
-
-      <div class="section" id="sceneIconSection">
-        <h3 data-i18n="Ikonky ve scéně">Ikonky ve scéně</h3>
-        <div class="row">
-          <div><label data-i18n="Upload ikonky">Upload ikonky</label><input id="sceneIconUpload" type="file" accept="image/*"></div>
-          <div><label data-i18n="Velikost (ik)">Velikost <span class="val" id="sceneIconSizeVal">44 px</span></label><input id="sceneIconSize" type="range" min="16" max="96" step="2" value="44"></div>
-        </div>
-        <div class="btns">
-          <button type="button" class="btn btn-sm" id="addSceneIconBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateSceneIconBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneIconBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearSceneIconsBtn" data-i18n="Smazat ikonky">Smazat ikonky</button>
-        </div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
-          <div id="sceneIconPreview" class="icon-preview-box"></div>
-          <span class="small">Nahraj PNG/SVG, pak klikni do mapy. Vybranou ikonku můžeš i zpětně upravit nebo přesunout.</span>
-        </div>
-        <div id="sceneIconList" class="wp-list"></div>
-      </div>
-
-      <div class="section pz-adv-only" id="model3dSection">
-        <h3>3D model (GLB)</h3>
-        <label class="btn btn-sm" style="display:inline-flex;align-items:center;cursor:pointer"><input id="model3dUpload" type="file" accept=".glb,model/gltf-binary" style="display:none"> Nahrát GLB soubor</label>
-        <div class="row" style="margin-top:8px">
-          <div><label>Velikost <span class="val" id="model3dSizeVal">300 m</span></label><input id="model3dSize" type="range" min="5" max="400000" step="5" value="300"></div>
-          <div><label>Měřítko <span class="val" id="model3dScaleVal">1.00×</span></label><input id="model3dScale" type="range" min="0.05" max="10" step="0.05" value="1"></div>
-        </div>
-        <div class="row">
-          <div><label>Osa nahoru</label><select id="model3dUp"><option value="y" selected>Y (glTF)</option><option value="z">Z (Blender/CAD)</option><option value="x">X</option></select></div>
-          <div><label>Výška <span class="val" id="model3dAltVal">0 m</span></label><input id="model3dAlt" type="range" min="0" max="10000" step="10" value="0"></div>
-        </div>
-        <div class="row">
-          <div><label>Otočení Y <span class="val" id="model3dRotVal">0°</span></label><input id="model3dRot" type="range" min="0" max="360" step="1" value="0"></div>
-          <div><label>Náklon X <span class="val" id="model3dRotXVal">0°</span></label><input id="model3dRotX" type="range" min="0" max="360" step="1" value="0"></div>
-        </div>
-        <div class="row">
-          <div><label>Náklon Z <span class="val" id="model3dRotZVal">0°</span></label><input id="model3dRotZ" type="range" min="0" max="360" step="1" value="0"></div>
-          <div style="display:flex;align-items:end"><button type="button" class="btn btn-sm" id="model3dResetRotBtn" style="width:100%">Vynulovat rotace</button></div>
-        </div>
-        <label class="check"><input id="model3dSnap" type="checkbox"> Přichytit k povrchu (postavit na zem)</label>
-        <label class="check"><input id="model3dShadow" type="checkbox"> Vrhat stín (slunce táhneš přímo v mapě)</label>
-        <div class="row" id="model3dShadowBlurRow"><div style="flex:1"><label>Rozostření stínu <span class="val" id="model3dShadowBlurVal">35 %</span></label><input id="model3dShadowBlur" type="range" min="0" max="100" step="1" value="35"></div></div>
-        <label class="check"><input id="model3dFollow" type="checkbox"> Připnout na trasu (následuje animaci)</label>
-        <div class="btns">
-          <button type="button" class="btn btn-sm" id="placeModel3dBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteModel3dBtn" disabled data-i18n="Smazat">Smazat</button>
-        </div>
-        <p class="hint" data-i18n="hint_3d_model">Nahraj .glb (binární glTF). Když model leží na boku, přepni „Osa nahoru" (glTF=Y, Blender/CAD=Z). Otočení Y = směr, Náklon X/Z = naklonění. „Přichytit k povrchu" ho postaví na zem. Umístěný model přesuneš tažením za modrý bod přímo v mapě. Zapni „Vrhat stín" a táhni žluté slunce — stín se podle něj otáčí a prodlužuje. Vše se vyrenderuje i do videa. Pro 3D pohled nakloň mapu nebo zapni glóbus.</p>
-      </div>
-
-      <div class="section" id="mapLabelSection">
-        <h3 data-i18n="Popisky">Popisky</h3>
-        <div class="row">
-          <div><label data-i18n="Text popisku">Text popisku</label><input id="mapLabelText" type="text" placeholder="Např. Vídeň"></div>
-          <div><label data-i18n="Velikost všech popisků">Velikost všech popisků <span class="val" id="mapLabelSizeVal">28 px</span></label><input id="mapLabelSize" type="range" min="14" max="80" step="1" value="28"></div>
-        </div>
-        <div class="row">
-          <div><label data-i18n="Červený čtvereček">Červený čtvereček</label><select id="mapLabelSide"><option value="right" selected data-i18n="Vpravo">Vpravo</option><option value="left" data-i18n="Vlevo">Vlevo</option></select></div>
-          <div><label>Styl</label><select id="mapLabelStyle">
-            <option value="classic" selected>Bílý (klasický)</option>
-            <option value="navy">Nova modrý</option>
-            <option value="red">Nova červený (breaking)</option>
-            <option value="dark">Černý</option>
-          </select></div>
-        </div>
-        <div class="small" style="margin:-4px 0 8px">Strana čtverečku i styl platí pro nový popisek a mění vybraný.</div>
-        <div class="btns">
-          <button type="button" class="btn btn-sm" id="addMapLabelBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateMapLabelBtn" data-i18n="Upravit vybraný">Upravit vybraný</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteMapLabelBtn" data-i18n="Smazat vybraný">Smazat vybraný</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearMapLabelsBtn" data-i18n="Smazat vše">Smazat vše</button>
-        </div>
-        <div id="mapLabelList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_labels">Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.</p>
-      </div>
-
-      <div class="section" id="weatherLayersSection">
-        <h3 data-i18n="Vrstvy počasí">Vrstvy počasí</h3>
-        <div class="row">
-          <div class="color-row"><input id="wxRadarToggle" type="checkbox"><label data-i18n="Radar srážek (živě)">Radar srážek (živě)</label></div>
-        </div>
-        <div class="row" id="wxRadarPlayer" style="display:none">
-          <div style="display:flex;align-items:center;gap:8px;width:100%">
-            <button id="wxRadarPlayBtn" type="button" title="Play / pause" aria-label="play/pause" style="width:32px;height:28px;flex:none;cursor:pointer;background:#c0392b;color:#fff;border:0;font-size:12px;line-height:1">▶</button>
-            <input id="wxRadarSeek" type="range" min="0" max="0" step="1" value="0" style="flex:1;min-width:60px" aria-label="radar timeline">
-            <span id="wxRadarTime" style="min-width:58px;text-align:right;font-variant-numeric:tabular-nums;opacity:.9;font-size:12px">—</span>
-          </div>
-        </div>
-        <div class="row">
-          <div class="color-row"><input id="wxCloudsToggle" type="checkbox"><label data-i18n="Satelitní oblačnost (denně)">Satelitní oblačnost (denně)</label></div>
-        </div>
-        <div class="row">
-          <div><label data-i18n="Krytí vrstev počasí">Krytí vrstev počasí <span class="val" id="wxOpacityVal">85 %</span></label><input id="wxOpacity" type="range" min="20" max="100" step="1" value="85"></div>
-        </div>
-        <p class="hint" data-i18n="hint_weather_radar">Radar srážek je živý (RainViewer, ~10min). Satelitní oblačnost je nejnovější denní snímek z NASA GIBS (viditelné pásmo – nejlépe přes den; v noci je tmavý).</p>
-      </div>
-
-    </div>
-
-    <div class="tab-pane" data-pane="animace">
       <div class="section anim-sys-icon-section" id="animationSystemIconsSection">
         <h3 data-i18n="Ikona objektu">Ikona objektu</h3>
         <div class="anim-sys-icon-grid">
@@ -1335,6 +1043,305 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
       </div>
 
+      <div class="section" id="waypointSection">
+        <h3 data-i18n="Zastávky na trase">Zastávky na trase</h3>
+        <div class="btns"><button type="button" class="btn btn-sm" id="addWaypointBtn" data-i18n="+ Přidat zastávku">+ Přidat zastávku</button></div>
+        <div id="waypointList" class="wp-list"></div>
+        <p class="hint" data-i18n="hint_via_points">Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.</p>
+      </div>
+
+      <div class="section" id="flightWaypointSection">
+        <h3 data-i18n="Naklikaná cesta">Naklikaná cesta</h3>
+        <div class="btns">
+          <button type="button" class="btn btn-sm btn-danger" id="clearFlightWaypointsBtn" data-i18n="Smazat body">Smazat body</button>
+        </div>
+        <div id="flightWaypointList" class="wp-list"></div>
+        <p class="hint" data-i18n="hint_custom_draw">Kresli trasu klikáním do mapy od začátku do konce. Každý klik přidá další bod. Pravým tlačítkem trasu ukončíš — poslední bod se stane cílem (B). Body jdou na mapě chytit a přetáhnout.</p>
+      </div>
+
+      <div class="section">
+        <h3 data-i18n="Vzhled trasy">Vzhled trasy</h3>
+        <div class="row">
+          <div class="color-row"><input id="routeColor" type="color" value="#002ee6"><label data-i18n="Barva trasy">Barva trasy</label></div>
+          <div class="color-row"><input id="routeDotColor" type="color" value="#ffffff"><label data-i18n="Glow / stopa">Glow / stopa</label></div>
+        </div>
+        <label data-i18n="Tloušťka">Tloušťka <span class="val" id="routeWidthVal">4 px</span></label>
+        <input id="routeWidth" type="range" min="1" max="16" step="0.5" value="4">
+        <label>Síla glow <span class="val" id="routeGlowVal">12 %</span></label>
+        <input id="routeGlow" type="range" min="0" max="100" step="1" value="12" title="Záře pod trasou v barvě Glow / stopa">
+        <label style="margin-top:10px;display:block" data-i18n="Koncové body (A/B)">Koncové body (A/B)</label>
+        <div class="endpoint-grid">
+          <button type="button" class="endpoint-shape active" data-endpoint-shape="circle">
+            <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg></span>
+            <span class="t-label" data-i18n="Kruh (bod)">Kruh</span>
+          </button>
+          <button type="button" class="endpoint-shape" data-endpoint-shape="square">
+            <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></span>
+            <span class="t-label" data-i18n="Čtverec (bod)">Čtverec</span>
+          </button>
+        </div>
+        <label style="margin-top:8px" data-i18n="Velikost (end)">Velikost <span class="val" id="routeEndpointSizeVal">28 px</span></label>
+        <input id="routeEndpointSize" type="range" min="12" max="48" step="1" value="28">
+        <label class="check" id="showDirectLineWrap" style="margin-top:8px"><input id="showDirectLine" type="checkbox" checked> Zobrazit přímou spojnici (oblouk)</label>
+        <label class="check" id="hideGroundLineWrap" style="display:none;margin-top:8px"><input id="hideGroundLine" type="checkbox"> <span data-i18n="Skrýt pozemní stín (jen oblouk)">Skrýt pozemní stín (jen oblouk)</span></label>
+        <button type="button" class="btn btn-sm" id="arcBestViewBtn" style="display:none;margin-top:8px;width:100%" data-i18n="Optimální pohled na oblouk (3D)">Optimální pohled na oblouk (3D)</button>
+      </div>
+
+    </div>
+
+    <div class="tab-pane active" data-pane="scena">
+      <div class="section" id="pzTemplateSection">
+        <h3>Rychlá scéna</h3>
+        <p class="hint" style="margin:0 0 8px">Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.</p>
+        <div class="row">
+          <div><label>Místo</label><input id="pzTplPlace" type="text" placeholder="např. Humpolec, D1 km 90"></div>
+          <div><label>Text popisku</label><input id="pzTplText" type="text" placeholder="nepovinné"></div>
+        </div>
+        <div class="pz-tpl-grid" id="pzTplGrid"></div>
+      </div>
+      <div class="section" id="mapLabelSection">
+        <h3 data-i18n="Popisky">Popisky</h3>
+        <div class="row">
+          <div><label data-i18n="Text popisku">Text popisku</label><input id="mapLabelText" type="text" placeholder="Např. Vídeň"></div>
+          <div><label data-i18n="Velikost všech popisků">Velikost všech popisků <span class="val" id="mapLabelSizeVal">28 px</span></label><input id="mapLabelSize" type="range" min="14" max="80" step="1" value="28"></div>
+        </div>
+        <div class="row">
+          <div><label data-i18n="Červený čtvereček">Červený čtvereček</label><select id="mapLabelSide"><option value="right" selected data-i18n="Vpravo">Vpravo</option><option value="left" data-i18n="Vlevo">Vlevo</option></select></div>
+          <div><label>Styl</label><select id="mapLabelStyle">
+            <option value="classic" selected>Bílý (klasický)</option>
+            <option value="navy">Nova modrý</option>
+            <option value="red">Nova červený (breaking)</option>
+            <option value="dark">Černý</option>
+          </select></div>
+        </div>
+        <div class="small" style="margin:-4px 0 8px">Strana čtverečku i styl platí pro nový popisek a mění vybraný.</div>
+        <div class="btns">
+          <button type="button" class="btn btn-sm" id="addMapLabelBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
+          <button type="button" class="btn btn-sm" id="updateMapLabelBtn" data-i18n="Upravit vybraný">Upravit vybraný</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteMapLabelBtn" data-i18n="Smazat vybraný">Smazat vybraný</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearMapLabelsBtn" data-i18n="Smazat vše">Smazat vše</button>
+        </div>
+        <div id="mapLabelList" class="wp-list"></div>
+        <p class="hint" data-i18n="hint_labels">Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.</p>
+      </div>
+
+      <div class="section" id="sceneIconSection">
+        <h3 data-i18n="Ikonky ve scéně">Ikonky ve scéně</h3>
+        <div class="row">
+          <div><label data-i18n="Upload ikonky">Upload ikonky</label><input id="sceneIconUpload" type="file" accept="image/*"></div>
+          <div><label data-i18n="Velikost (ik)">Velikost <span class="val" id="sceneIconSizeVal">44 px</span></label><input id="sceneIconSize" type="range" min="16" max="96" step="2" value="44"></div>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn btn-sm" id="addSceneIconBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
+          <button type="button" class="btn btn-sm" id="updateSceneIconBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneIconBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearSceneIconsBtn" data-i18n="Smazat ikonky">Smazat ikonky</button>
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+          <div id="sceneIconPreview" class="icon-preview-box"></div>
+          <span class="small">Nahraj PNG/SVG, pak klikni do mapy. Vybranou ikonku můžeš i zpětně upravit nebo přesunout.</span>
+        </div>
+        <div id="sceneIconList" class="wp-list"></div>
+      </div>
+
+      <div class="section" id="sceneArrowSection">
+        <h3 data-i18n="Šipky">Šipky</h3>
+        <div class="row">
+          <div class="color-row"><input id="sceneArrowColor" type="color" value="#e22d2d"><label data-i18n="Barva šipky">Barva šipky</label></div>
+          <div><label data-i18n="Tloušťka šipky">Tloušťka <span class="val" id="sceneArrowWidthVal">6 px</span></label><input id="sceneArrowWidth" type="range" min="2" max="16" step="0.5" value="6"></div>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn btn-sm" id="addSceneArrowBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
+          <button type="button" class="btn btn-sm" id="updateSceneArrowBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneArrowBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearSceneArrowsBtn" data-i18n="Smazat šipky">Smazat šipky</button>
+        </div>
+        <div id="sceneArrowList" class="wp-list"></div>
+        <p class="hint" data-i18n="hint_arrow">Zapni režim a klikni do mapy dvakrát: první klik = začátek (ocas), druhý = hrot. Šipku vybereš kliknutím na ni, pak táhni za body T/H = posun konců. Barva a tloušťka se vztahují na vybranou. Vyrenderuje se i do videa.</p>
+      </div>
+      <div class="section" id="pzClosureSection">
+        <h3>Uzavírky</h3>
+        <label style="display:block;margin-bottom:6px;font-weight:600">Silnice / dálnice</label>
+        <div class="row">
+          <div><label>Od</label><input id="pzClFrom" type="text" placeholder="např. Humpolec"></div>
+          <div><label>Do</label><input id="pzClTo" type="text" placeholder="např. Jihlava"></div>
+        </div>
+        <div class="row">
+          <div><label>Přes (nepovinné)</label><input id="pzClVia" type="text" placeholder="vynutí správný tah"></div>
+          <div><label>Objížďka přes (nepovinné)</label><input id="pzClDetour" type="text" placeholder="např. Pelhřimov"></div>
+        </div>
+        <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClRoadBtn">Vyznačit uzavírku</button></div>
+        <label style="display:block;margin:12px 0 6px;font-weight:600">Metro</label>
+        <div class="row">
+          <div><label>Linka</label><select id="pzClMetroLine"><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
+          <div><label>Stanice od</label><select id="pzClMetroFrom"></select></div>
+          <div><label>do (nepovinné)</label><select id="pzClMetroTo"></select></div>
+        </div>
+        <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClMetroBtn">Vyznačit uzavírku metra</button></div>
+        <div class="btns" style="margin-top:8px"><button type="button" class="btn btn-sm btn-danger" id="pzClClearBtn">Smazat uzavírky</button></div>
+        <div id="pzClosureList" class="wp-list"></div>
+        <p class="hint">Silnice: úsek se najde po skutečné silnici. Když vede jinudy než chceš (např. ne po dálnici), přidej bod „Přes". Metro: jedna stanice, nebo úsek mezi dvěma stanicemi.</p>
+      </div>
+
+      <div class="section" id="scenePerimeterSection">
+        <h3 data-i18n="Perimetr / radius jako vrstva">Perimetr / radius jako vrstva</h3>
+        <div class="row">
+          <div><label data-i18n="Rádius">Rádius</label><input id="scenePerimeterRadius" type="number" min="0.001" step="0.1" value="100"></div>
+          <div><label data-i18n="Jednotka">Jednotka</label><select id="scenePerimeterUnit"><option value="km" selected data-i18n="kilometry">kilometry</option><option value="m" data-i18n="metry">metry</option></select></div>
+        </div>
+        <div class="row">
+          <div class="color-row"><input id="scenePerimeterColor" type="color" value="#e22d2d"><label data-i18n="Barva vrstvy">Barva vrstvy</label></div>
+          <div><label>Krytí výplně <span class="val" id="scenePerimeterOpacityVal">12 %</span></label><input id="scenePerimeterOpacity" type="range" min="0" max="80" step="1" value="12"></div>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn btn-sm" id="addScenePerimeterBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
+          <button type="button" class="btn btn-sm" id="updateScenePerimeterBtn" data-i18n="Upravit vybraný">Upravit vybraný</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteScenePerimeterBtn" data-i18n="Smazat vybraný">Smazat vybraný</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearScenePerimetersBtn" data-i18n="Smazat perimetry">Smazat perimetry</button>
+        </div>
+        <div id="scenePerimeterList" class="wp-list"></div>
+        <p class="hint" data-i18n="hint_perimeter">Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.</p>
+      </div>
+
+      <div class="section" id="sceneDistanceSection">
+        <h3 data-i18n="Vzdálenost jako vrstva">Vzdálenost jako vrstva</h3>
+        <div class="row">
+          <div><label data-i18n="Jednotka">Jednotka</label><select id="sceneDistanceUnit"><option value="km" selected data-i18n="kilometry">kilometry</option><option value="m" data-i18n="metry">metry</option></select></div>
+          <div><label>Tloušťka <span class="val" id="sceneDistanceWidthVal">3 px</span></label><input id="sceneDistanceWidth" type="range" min="1" max="12" step="0.5" value="3"></div>
+        </div>
+        <div class="row">
+          <div class="color-row"><input id="sceneDistanceColor" type="color" value="#ffd400"><label data-i18n="Barva linky">Barva linky</label></div>
+          <div class="small" id="sceneDistanceInfo" style="display:flex;align-items:end">Natáhni bod A → B přímo v mapě.</div>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn btn-sm" id="addSceneDistanceBtn" data-i18n="Natáhni A → B">Natáhni A → B</button>
+          <button type="button" class="btn btn-sm" id="updateSceneDistanceBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneDistanceBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearSceneDistancesBtn" data-i18n="Smazat vzdálenosti">Smazat vzdálenosti</button>
+        </div>
+        <div id="sceneDistanceList" class="wp-list"></div>
+        <p class="hint" data-i18n="hint_distance">Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.</p>
+      </div>
+
+      <div class="section" id="countryBordersOverlaySection">
+        <h3 data-i18n="Hranice států overlay">Hranice a barvy států</h3>
+        <div class="control-step">
+          <div class="control-step-title"><span class="control-step-number">1</span> Hranice států</div>
+          <label class="check"><input id="showCountryBordersOverlay" type="checkbox"> Zobrazit hranice států</label>
+          <details class="compact-details">
+            <summary>Vzhled a rozsah hranic</summary>
+            <div class="row">
+              <div><label data-i18n="Režim">Zobrazit</label><select id="countryBorderMode"><option value="all" selected data-i18n="Všechny státy">Všechny státy</option><option value="selected" data-i18n="Jen vybraný stát">Jen vybraný stát</option></select></div>
+              <div><label data-i18n="Vybraný stát">Vybraný stát</label><select id="countryFocusSelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
+            </div>
+            <div class="row">
+              <div class="color-row"><input id="countryBorderColor" type="color" value="#ffffff"><label data-i18n="Barva hranic">Barva</label></div>
+              <div><label>Tloušťka <span class="val" id="countryBorderWidthVal">2.5 px</span></label><input id="countryBorderWidth" type="range" min="0.5" max="10" step="0.1" value="2.5"></div>
+            </div>
+            <label>Krytí <span class="val" id="countryBorderOpacityVal">100%</span></label>
+            <input id="countryBorderOpacity" type="range" min="0" max="1" step="0.01" value="1">
+          </details>
+        </div>
+        <div id="worldPoliticalSection" class="control-step">
+          <div class="control-step-title"><span class="control-step-number">2</span> Vybarvit stát</div>
+          <label data-i18n="Vyhledat stát">Najdi stát</label>
+          <div class="country-search-wrap"><input id="politicalCountrySearch" type="text" placeholder="Začni psát název…" autocomplete="off"><div class="nav-suggest" id="politicalCountrySearchSuggest" role="listbox"></div></div>
+          <label data-i18n="Stát">Nebo vyber ze seznamu</label>
+          <select id="politicalCountrySelect"><option value="" data-i18n="Načítám…">Načítám…</option></select>
+          <div class="color-row" style="margin-top:10px"><input id="politicalCountryColor" type="color" value="#ff6b6b"><label data-i18n="Barva státu">Barva státu</label></div>
+          <div class="control-actions">
+            <button type="button" class="btn btn-sm btn-primary" id="applyPoliticalCountryColorBtn" data-i18n="Barvit stát">Použít barvu</button>
+            <button type="button" class="btn btn-sm" id="zoomToCountryBtn" data-i18n="Přiblížit stát">Přiblížit stát</button>
+          </div>
+          <label class="check" style="margin-top:12px"><input id="showPoliticalCountries" type="checkbox"> Zobrazit vybarvené státy</label>
+          <label class="check"><input id="paintPoliticalCountryOnClick" type="checkbox"> Rychlé barvení kliknutím do mapy</label>
+          <details class="compact-details">
+            <summary>Další nastavení výplně</summary>
+            <div class="color-row"><input id="politicalCountryDefaultColor" type="color" value="#e7e2d8"><label data-i18n="Výchozí barva">Výchozí barva</label></div>
+            <label>Krytí výplně <span class="val" id="politicalFillOpacityVal">92%</span></label>
+            <input id="politicalFillOpacity" type="range" min="0" max="1" step="0.01" value="0.92">
+          </details>
+        </div>
+      </div>
+      <div class="section" id="czPoliticalSection">
+        <h3 data-i18n="Kraje ČR">Kraje ČR</h3>
+        <div class="small" style="margin-bottom:8px">Samostatná funkce pro Českou republiku. Kraj můžeš vybrat klikem nebo ve formuláři a obarvit libovolnou barvou.</div>
+        <label class="check"><input id="showCzRegions" type="checkbox"> Zobrazit kraje ČR</label>
+        <label class="check"><input id="paintCzRegionOnClick" type="checkbox"> Barvit kraj kliknutím do mapy</label>
+        <div class="row">
+          <div><label data-i18n="Vyhledat kraj">Vyhledat kraj</label><input id="czRegionSearch" type="text" placeholder="Piš název kraje…"></div>
+          <div><label data-i18n="Kraj">Kraj</label><select id="czRegionSelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
+        </div>
+        <div class="row">
+          <div class="color-row"><input id="czRegionColor" type="color" value="#002ee6"><label data-i18n="Barva kraje">Barva kraje</label></div>
+          <div class="color-row"><input id="czRegionDefaultColor" type="color" value="#d7dbe2"><label data-i18n="Výchozí barva">Výchozí barva</label></div>
+        </div>
+        <div class="row">
+          <div class="small" style="display:flex;align-items:end">Kraje jsou dostupné jen pro ČR. Po kliknutí do mapy se synchronizuje formulářový výběr kraje.</div>
+          <div style="display:flex;align-items:end"><button type="button" class="btn btn-sm" id="zoomToCzBtn" data-i18n="Přiblížit ČR">Přiblížit ČR</button></div>
+        </div>
+        <label>Krytí výplně <span class="val" id="czRegionFillOpacityVal">82%</span></label>
+        <input id="czRegionFillOpacity" type="range" min="0" max="1" step="0.01" value="0.82">
+        <div class="btns">
+          <button type="button" class="btn btn-sm btn-primary" id="applyCzRegionColorBtn" data-i18n="Barvit kraj">Barvit kraj</button>
+          <button type="button" class="btn btn-sm" id="resetPoliticalSelectionBtn" data-i18n="Reset výběru">Reset výběru</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearPoliticalPaintingBtn" data-i18n="Reset všeho">Reset všeho</button>
+        </div>
+      </div>
+      <div class="section" id="weatherLayersSection">
+        <h3 data-i18n="Vrstvy počasí">Vrstvy počasí</h3>
+        <div class="row">
+          <div class="color-row"><input id="wxRadarToggle" type="checkbox"><label data-i18n="Radar srážek (živě)">Radar srážek (živě)</label></div>
+        </div>
+        <div class="row" id="wxRadarPlayer" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;width:100%">
+            <button id="wxRadarPlayBtn" type="button" title="Play / pause" aria-label="play/pause" style="width:32px;height:28px;flex:none;cursor:pointer;background:#c0392b;color:#fff;border:0;font-size:12px;line-height:1">▶</button>
+            <input id="wxRadarSeek" type="range" min="0" max="0" step="1" value="0" style="flex:1;min-width:60px" aria-label="radar timeline">
+            <span id="wxRadarTime" style="min-width:58px;text-align:right;font-variant-numeric:tabular-nums;opacity:.9;font-size:12px">—</span>
+          </div>
+        </div>
+        <div class="row">
+          <div class="color-row"><input id="wxCloudsToggle" type="checkbox"><label data-i18n="Satelitní oblačnost (denně)">Satelitní oblačnost (denně)</label></div>
+        </div>
+        <div class="row">
+          <div><label data-i18n="Krytí vrstev počasí">Krytí vrstev počasí <span class="val" id="wxOpacityVal">85 %</span></label><input id="wxOpacity" type="range" min="20" max="100" step="1" value="85"></div>
+        </div>
+        <p class="hint" data-i18n="hint_weather_radar">Radar srážek je živý (RainViewer, ~10min). Satelitní oblačnost je nejnovější denní snímek z NASA GIBS (viditelné pásmo – nejlépe přes den; v noci je tmavý).</p>
+      </div>
+
+      <div class="section pz-adv-only" id="model3dSection">
+        <h3>3D model (GLB)</h3>
+        <label class="btn btn-sm" style="display:inline-flex;align-items:center;cursor:pointer"><input id="model3dUpload" type="file" accept=".glb,model/gltf-binary" style="display:none"> Nahrát GLB soubor</label>
+        <div class="row" style="margin-top:8px">
+          <div><label>Velikost <span class="val" id="model3dSizeVal">300 m</span></label><input id="model3dSize" type="range" min="5" max="400000" step="5" value="300"></div>
+          <div><label>Měřítko <span class="val" id="model3dScaleVal">1.00×</span></label><input id="model3dScale" type="range" min="0.05" max="10" step="0.05" value="1"></div>
+        </div>
+        <div class="row">
+          <div><label>Osa nahoru</label><select id="model3dUp"><option value="y" selected>Y (glTF)</option><option value="z">Z (Blender/CAD)</option><option value="x">X</option></select></div>
+          <div><label>Výška <span class="val" id="model3dAltVal">0 m</span></label><input id="model3dAlt" type="range" min="0" max="10000" step="10" value="0"></div>
+        </div>
+        <div class="row">
+          <div><label>Otočení Y <span class="val" id="model3dRotVal">0°</span></label><input id="model3dRot" type="range" min="0" max="360" step="1" value="0"></div>
+          <div><label>Náklon X <span class="val" id="model3dRotXVal">0°</span></label><input id="model3dRotX" type="range" min="0" max="360" step="1" value="0"></div>
+        </div>
+        <div class="row">
+          <div><label>Náklon Z <span class="val" id="model3dRotZVal">0°</span></label><input id="model3dRotZ" type="range" min="0" max="360" step="1" value="0"></div>
+          <div style="display:flex;align-items:end"><button type="button" class="btn btn-sm" id="model3dResetRotBtn" style="width:100%">Vynulovat rotace</button></div>
+        </div>
+        <label class="check"><input id="model3dSnap" type="checkbox"> Přichytit k povrchu (postavit na zem)</label>
+        <label class="check"><input id="model3dShadow" type="checkbox"> Vrhat stín (slunce táhneš přímo v mapě)</label>
+        <div class="row" id="model3dShadowBlurRow"><div style="flex:1"><label>Rozostření stínu <span class="val" id="model3dShadowBlurVal">35 %</span></label><input id="model3dShadowBlur" type="range" min="0" max="100" step="1" value="35"></div></div>
+        <label class="check"><input id="model3dFollow" type="checkbox"> Připnout na trasu (následuje animaci)</label>
+        <div class="btns">
+          <button type="button" class="btn btn-sm" id="placeModel3dBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteModel3dBtn" disabled data-i18n="Smazat">Smazat</button>
+        </div>
+        <p class="hint" data-i18n="hint_3d_model">Nahraj .glb (binární glTF). Když model leží na boku, přepni „Osa nahoru" (glTF=Y, Blender/CAD=Z). Otočení Y = směr, Náklon X/Z = naklonění. „Přichytit k povrchu" ho postaví na zem. Umístěný model přesuneš tažením za modrý bod přímo v mapě. Zapni „Vrhat stín" a táhni žluté slunce — stín se podle něj otáčí a prodlužuje. Vše se vyrenderuje i do videa. Pro 3D pohled nakloň mapu nebo zapni glóbus.</p>
+      </div>
+
+    </div>
+
+    <div class="tab-pane" data-pane="animace">
       <div class="section">
         <h3 data-i18n="Parametry animace">Parametry animace</h3>
         <label data-i18n="Prodleva startu">Prodleva startu <span class="val" id="animStartVal">0 s</span></label>
@@ -1423,40 +1430,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       </div>
     </div>
 
-
-    <div class="tab-pane" data-pane="projekt">
-      <div class="section">
-        <h3 data-i18n="Projekty">Projekty</h3>
-        <div class="row">
-          <div><label data-i18n="Název projektu">Název projektu</label><input id="projectName" type="text" placeholder="Např. Volby 2026 Praha"></div>
-          <div><label data-i18n="Projekty">Projekty</label><select id="savedProjectSelect"><option value="" data-i18n="Vyber projekt…">Vyber projekt…</option></select></div>
-        </div>
-        <div class="btns">
-          <button type="button" class="btn btn-sm btn-primary" id="saveProjectBtn" data-i18n="Uložit projekt">Uložit projekt</button>
-          <button type="button" class="btn btn-sm" id="loadProjectBtn" data-i18n="Načíst projekt">Načíst projekt</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteProjectBtn" data-i18n="Smazat projekt">Smazat projekt</button>
-          <button type="button" class="btn btn-sm" id="shareProjectBtn" data-i18n="Odeslat link">Odeslat link</button>
-        </div>
-        <div id="shareProjectBox" class="small" style="display:none;margin-top:8px">
-          <div style="margin-bottom:4px">Odkaz na rozdělanou práci (kolega ho otevře a načte se mu všechno):</div>
-          <input id="shareProjectLink" type="text" readonly style="width:100%" onclick="this.select()">
-        </div>
-        <p class="hint" data-i18n="hint_project">Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.</p>
-        <div id="projectThumbWrap" style="margin-top:10px;display:none">
-          <label data-i18n="Náhled projektu">Náhled projektu</label>
-          <img id="projectThumbPreview" alt="" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
-        </div>
-      </div>
-      <div class="section">
-        <h3 data-i18n="Záloha">Záloha</h3>
-        <div class="btns">
-          <button type="button" class="btn btn-sm btn-primary" id="backupExportBtn" data-i18n="Stáhnout zálohu (.json)">Stáhnout zálohu (.json)</button>
-          <button type="button" class="btn btn-sm" id="backupImportBtn" data-i18n="Obnovit ze zálohy">Obnovit ze zálohy</button>
-        </div>
-        <input id="backupImportFile" class="file-input-hidden" type="file" accept=".json,application/json">
-        <p class="hint" data-i18n="hint_backup">Záloha obsahuje všechny projekty, presety stylů i vlastní mapové zdroje. Obnova data sloučí s aktuálními podle ID (stejné ID přepíše verze ze zálohy).</p>
-      </div>
-    </div>
 
     <div class="tab-pane" data-pane="export">
       <div class="section">
@@ -1556,6 +1529,15 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <div class="small" style="margin-bottom:6px">Zaškrtnuté vlajky se zobrazí nahoře. Výchozí je čeština.</div>
         <div id="langToggleList" class="lang-toggle-list"></div>
       </div>
+      <div class="settings-sec" id="backupSettingsSec">
+        <h4 data-i18n="Záloha">Záloha</h4>
+        <div class="btns">
+          <button type="button" class="btn btn-sm btn-primary" id="backupExportBtn" data-i18n="Stáhnout zálohu (.json)">Stáhnout zálohu (.json)</button>
+          <button type="button" class="btn btn-sm" id="backupImportBtn" data-i18n="Obnovit ze zálohy">Obnovit ze zálohy</button>
+        </div>
+        <input id="backupImportFile" class="file-input-hidden" type="file" accept=".json,application/json">
+        <p class="hint" data-i18n="hint_backup">Záloha obsahuje všechny projekty, presety stylů i vlastní mapové zdroje. Obnova data sloučí s aktuálními podle ID (stejné ID přepíše verze ze zálohy).</p>
+      </div>
       <div class="settings-sec pz-adv-only">
         <h4>Statistika</h4>
         <div id="settingsStats" class="small"></div>
@@ -1589,6 +1571,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sg-center"></div>
   </div></div>
   <div class="map-actions">
+    <button id="projectPanelBtn" class="map-action-btn" type="button" title="Projekt — uložit, otevřít, sdílet" aria-label="Projekt">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span data-i18n="Projekt">Projekt</span>
+    </button>
     <button id="safeGuidesBtn" class="map-action-btn" type="button" title="Bezpečné zóny (jen náhled, neexportuje se)" aria-label="Bezpečné zóny">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><rect x="6" y="8" width="12" height="8" rx="1" stroke-dasharray="2 2"/></svg>
       <span data-i18n="Zóny">Zóny</span>
@@ -1613,6 +1599,31 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       <span style="font-weight:800;font-size:13px">?</span>
     </button>
   </div>
+<div id="projectPanel" class="project-panel" hidden>
+  <div class="project-panel-head"><b data-i18n="Projekt">Projekt</b><button type="button" id="projectPanelClose" class="settings-close" aria-label="Zavřít">×</button></div>
+      <div class="section">
+        <h3 data-i18n="Projekty">Projekty</h3>
+        <div class="row">
+          <div><label data-i18n="Název projektu">Název projektu</label><input id="projectName" type="text" placeholder="Např. Volby 2026 Praha"></div>
+          <div><label data-i18n="Projekty">Projekty</label><select id="savedProjectSelect"><option value="" data-i18n="Vyber projekt…">Vyber projekt…</option></select></div>
+        </div>
+        <div class="btns">
+          <button type="button" class="btn btn-sm btn-primary" id="saveProjectBtn" data-i18n="Uložit projekt">Uložit projekt</button>
+          <button type="button" class="btn btn-sm" id="loadProjectBtn" data-i18n="Načíst projekt">Načíst projekt</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteProjectBtn" data-i18n="Smazat projekt">Smazat projekt</button>
+          <button type="button" class="btn btn-sm" id="shareProjectBtn" data-i18n="Odeslat link">Odeslat link</button>
+        </div>
+        <div id="shareProjectBox" class="small" style="display:none;margin-top:8px">
+          <div style="margin-bottom:4px">Odkaz na rozdělanou práci (kolega ho otevře a načte se mu všechno):</div>
+          <input id="shareProjectLink" type="text" readonly style="width:100%" onclick="this.select()">
+        </div>
+        <p class="hint" data-i18n="hint_project">Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.</p>
+        <div id="projectThumbWrap" style="margin-top:10px;display:none">
+          <label data-i18n="Náhled projektu">Náhled projektu</label>
+          <img id="projectThumbPreview" alt="" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
+        </div>
+      </div>
+</div>
   <div id="shortcutsPanel" class="shortcuts-panel" hidden>
     <h4 data-i18n="Klávesové zkratky">Klávesové zkratky</h4>
     <div class="sc-row"><kbd>Mezerník</kbd><span data-i18n="sc_play">Přehrát / pauza animace</span></div>
@@ -3005,7 +3016,7 @@ const PRESET_DB_KEY = 'map69_style_presets_v2';
 const HIDDEN_BUILTIN_PRESET_KEY = 'map69_hidden_builtin_presets_v1';
 const BUILTIN_PRESET_NAME_OVERRIDES_KEY = 'map69_builtin_preset_name_overrides_v1';
 const PROJECT_DB_KEY = 'map69_projects_v1';
-const TAB_ORDER_KEY = 'map60_tab_order_v1';
+const TAB_ORDER_KEY = 'map60_tab_order_v2';   // v2: Scéna → Trasa → Animace → Export → Styl, bez záložky Projekt
 // Kde běží serverová část. Na Forpsi jsou to .php skripty, na Cloudflare Pages
 // Functions pod /api/. Jeden a týž index.html tak funguje na obou hostech.
 const PZ_ON_PHP_HOST = /(^|\.)appcreate\.cloud$/i.test(location.hostname);
@@ -4576,7 +4587,8 @@ function setAnimCustomIcon(data, options={}){
 function setTab(name){
   const hasButton = $$('.tab-btn').some(btn => btn.dataset.tab === name);
   const hasPane = $$('.tab-pane').some(p => p.dataset.pane === name);
-  if(!hasButton || !hasPane) name = 'styly';
+  if(name === 'projekt'){ try{ pzToggleProjectPanel(true); }catch(e){} return; }   // dřívější záložka → panel
+  if(!hasButton || !hasPane) name = 'scena';
   state.currentTab = name;
   $$('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === name));
   $$('.tab-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === name));
@@ -4587,7 +4599,8 @@ function setTab(name){
 // tab, collapse every section, drop any armed insert/measure tool and close overlays.
 // It deliberately does NOT touch the route, scene objects, project or map view.
 function resetAppToStart(){
-  try{ setTab('styly'); }catch(_e){}
+  try{ setTab('scena'); }catch(_e){}
+  try{ pzToggleProjectPanel(false); }catch(_e){}
   // Domů = stejný pohled jako při prvním otevření: první sekce každé záložky
   // rozbalená, zbytek sbalený. Úplně sbalený panel nedával grafikovi nic, čeho
   // by se chytil.
@@ -4842,10 +4855,11 @@ function syncPoliticalPaintModes(active){
 
 function initTabs(){
   applySavedTabOrder();
-  let saved = localStorage.getItem('map60_tab') || 'styly';
+  let saved = localStorage.getItem('map60_tab') || 'scena';
+  if(saved === 'projekt') saved = 'scena';
   // Don't dump the user into animation/scene/export settings on a fresh start
   // when there's nothing to animate yet — start them on the route tab instead.
-  if(['animace','scena','export'].includes(saved) && !(state.routeCoords && state.routeCoords.length)){
+  if(['animace','export'].includes(saved) && !(state.routeCoords && state.routeCoords.length)){
     saved = 'trasa';
   }
   setTab(saved);
@@ -15084,6 +15098,7 @@ function setupWeatherUI(){
 // Místo desítek ručních zásahů v HTML: projdi textové uzly panelu a přelož
 // přesné české texty podle slovníku; originál si pamatuj, ať jde přepnout zpět.
 const PZ_EN_TEXT = {
+  "Projekt — uložit, otevřít, sdílet": "Project — save, open, share",
   "Styl": "Style", "Bílý (klasický)": "White (classic)", "Nova modrý": "Nova blue", "Nova červený (breaking)": "Nova red (breaking)", "Černý": "Black",
   "Strana čtverečku i styl platí pro nový popisek a mění vybraný.": "Square side and style apply to new labels and change the selected one.",
   "Čistá navigační": "Clean navigation", "Turistická": "Hiking", "Letecká olivová": "Aviation olive",
@@ -15206,7 +15221,22 @@ function pzSetUiTheme(mode){
     b.dataset.pzCstitle = cs;
     b.title = (typeof currentLang !== 'undefined' && currentLang === 'en' && PZ_EN_TEXT[cs]) || cs; }
 }
+// Panel Projekt (uložit / otevřít / sdílet) — dřív samostatná záložka s deseti prvky.
+function pzToggleProjectPanel(open){
+  const p = $('projectPanel'), b = $('projectPanelBtn'); if(!p) return;
+  const show = open == null ? p.hidden : !!open;
+  p.hidden = !show;
+  b?.classList.toggle('active-panel', show);
+  if(show){ try{ $('shortcutsPanel').hidden = true; }catch(e){} setTimeout(() => $('projectName')?.focus(), 0); }
+}
 function bindUI(){
+  $('projectPanelBtn')?.addEventListener('click', e => { e.stopPropagation(); pzToggleProjectPanel(); });
+  $('projectPanelClose')?.addEventListener('click', () => pzToggleProjectPanel(false));
+  document.addEventListener('mousedown', e => {
+    const p = $('projectPanel'); if(!p || p.hidden) return;
+    if(e.target.closest('#projectPanel,#projectPanelBtn,.settings-modal')) return;
+    pzToggleProjectPanel(false);
+  });
   pzSetUiTheme(document.documentElement.dataset.ui === 'light' ? 'light' : 'dark');
   document.getElementById('uiThemeBtn')?.addEventListener('click', () =>
     pzSetUiTheme(document.documentElement.dataset.ui === 'light' ? 'dark' : 'light'));
@@ -15466,6 +15496,7 @@ function bindUI(){
       const sp = $('settingsPanel'); if(sp && !sp.hidden){ sp.hidden = true; return; }
       const sc = $('shortcutsPanel');
       if(sc && !sc.hidden) sc.hidden = true;
+      const pp = $('projectPanel'); if(pp && !pp.hidden){ pzToggleProjectPanel(false); return; }
       if(state.addingModel3d){ state.addingModel3d = false; setStatus(t('Umísťování 3D modelu ukončeno.')); }
       if(state.addingScenePerimeter){ state.addingScenePerimeter = false; setStatus(t('Vkládání perimetru ukončeno.')); }
       if(state.addingSceneDistance){ state.addingSceneDistance = false; setStatus(t('Měření vzdálenosti ukončeno.')); }
@@ -16249,12 +16280,11 @@ function applyLang(lang) {
 
   // Update additional static texts not marked by data-i18n
   const staticTextSelectors = {
-    '.tab-btn[data-tab="projekt"]': 'Projekt',
     '#politicalStylePanel h3': 'Politická mapa',
     '#countryBordersOverlaySection > h3': 'Hranice států overlay',
     '#worldPoliticalSection > h3': 'Státy světa',
     '#czPoliticalSection > h3': 'Kraje ČR',
-    '.tab-pane[data-pane="projekt"] .section > h3': 'Projekty'
+    '#projectPanel .project-panel-head b': 'Projekt'
   };
   Object.entries(staticTextSelectors).forEach(([sel, key]) => {
     const el = document.querySelector(sel);
@@ -17816,7 +17846,7 @@ function pzColorFromName(v){
     openTab({tab} = {}){
       if(!TOOL_TABS.includes(tab)) return {ok:false, error:'Neznámá záložka. Dostupné: ' + TOOL_TABS.join(', ')};
       try{ setTab(tab); }catch(e){ return {ok:false, error:String(e)}; }
-      return {ok:true, tab};
+      return {ok:true, tab, note: tab === 'projekt' ? 'Projekt je panel v horní liště.' : undefined};
     },
     openSection({section, open = true} = {}){ return toolOpenSection(section, open); },
     // Smazat jeden druh prvků scény („smaž ten popisek", „pryč se šipkami").
@@ -17895,7 +17925,7 @@ function pzColorFromName(v){
    hlavička na tři řádky, menu nešlo zavřít a přehrávač/stav/asistent se překrývaly. */
 .mobile-close-btn{display:none}
 @media (max-width:980px){
-  .sidebar-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));overflow:visible;padding:6px 8px}
+  .sidebar-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:visible;padding:6px 8px}
   .sidebar-tabs .tab-btn{width:100%;min-width:0;padding:11px 1px;font-size:9.5px;letter-spacing:0}
   .sidebar-brand-top{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px}
   .sidebar-brand-top .brand-meta{flex:1 1 auto;justify-content:flex-start;gap:10px}

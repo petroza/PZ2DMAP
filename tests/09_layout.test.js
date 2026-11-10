@@ -1,5 +1,5 @@
 // Rozvržení: na telefonu, tabletu i notebooku se přehrávač, stav, asistent ani
-// zdroj mapy nepřekrývají; na telefonu jsou všechny záložky v jednom řádku.
+// zdroj mapy nepřekrývají; na telefonu je všech 5 záložek v jednom řádku.
 const {check, done, open} = require('./lib');
 async function overlaps(page){
   return page.evaluate(() => {
@@ -21,7 +21,7 @@ async function overlaps(page){
       await page.tap('#mobileMenuBtn'); await page.waitForTimeout(600);
       const w = await page.$$eval('.tab-btn', bs => bs.map(b => b.getBoundingClientRect().right));
       const vw = await page.evaluate(() => innerWidth);
-      check(w.length === 6 && Math.max(...w) <= vw, `${dev}: všech 6 záložek v řádku`);
+      check(w.length === 5 && Math.max(...w) <= vw, `${dev}: všech 5 záložek v řádku`);
       await page.tap('#mobileCloseBtn'); await page.waitForTimeout(500);
       check(await page.evaluate(() => !document.body.classList.contains('mobile-panel-open')), `${dev}: menu jde zavřít`);
     }

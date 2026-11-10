@@ -12,7 +12,7 @@ const {check, done, open} = require('./lib');
       const r = el.getBoundingClientRect(); if(!r.width) continue; for(const a of ['placeholder', 'title']){ const v = el.getAttribute(a); if(v && re.test(v) && !/^(e\.g\.|např)/i.test(v) && !/[A-Z][a-z]+ř|ň|Pelhřimov/.test(v)) out.add('@' + a + ': ' + v.slice(0, 50)); } }
     return [...out]; });
   let left = new Set(await scan());
-  for(const tb of ['styly', 'scena', 'trasa', 'animace', 'projekt', 'export']){
+  for(const tb of ['scena', 'trasa', 'animace', 'export', 'styly']){
     await page.click(`.tab-btn[data-tab="${tb}"]`); await page.waitForTimeout(250);
     await page.evaluate(() => [...document.querySelectorAll('.section.collapsed h3')].filter(h => h.offsetParent).forEach(h => h.click()));
     for(let y = 0; y < 8; y++){ await page.evaluate(y => { document.querySelector('.sidebar-content').scrollTop = y * 700; }, y); await page.waitForTimeout(80); (await scan()).forEach(x => left.add(x)); }

@@ -26,7 +26,7 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 | 06 labels_export | styly popisků Nova na mapě i v exportu PNG |
 | 07 advanced | Pokročilé funkce schované / zapnuté / zapamatované |
 | 08 contrast | kontrast textu ≥ 3:1 ve světlém i tmavém režimu |
-| 09 layout | telefon, tablet, notebook: nic se nepřekrývá, záložky v řádku |
+| 09 layout | telefon, tablet, notebook: nic se nepřekrývá, 5 záložek v řádku |
 | 10 i18n | angličtina bez zbytků češtiny, čistý návrat do češtiny |
 | 11 assistant | rychlé povely a délka trasy bez dotazu na model (odpovědi podvržené) |
 | 12 search | Hledat skočí na místo, záloha Photon při výpadku Nominatimu |

@@ -21,13 +21,13 @@ function diff(a, b, p = '', out = []){ if(JSON.stringify(a) === JSON.stringify(b
     return o; });
   check(Object.values(r).every(Boolean), 'scéna postavena: ' + JSON.stringify(r));
   await A.page.waitForTimeout(2000);
-  await A.page.click('.tab-btn[data-tab="projekt"]'); await A.page.fill('#projectName', 'ZZ test roundtrip');
+  await A.page.click('#projectPanelBtn'); await A.page.fill('#projectName', 'ZZ test roundtrip');
   await A.page.click('#saveProjectBtn'); await A.page.waitForTimeout(3000);
   const snapA = (store.projects || []).find(x => x.name === 'ZZ test roundtrip')?.snapshot;
   check(!!snapA, 'projekt se uložil');
   await A.close();
   const B = await open({store, wait: 6000});
-  await B.page.click('.tab-btn[data-tab="projekt"]'); await B.page.waitForTimeout(500);
+  await B.page.click('#projectPanelBtn'); await B.page.waitForTimeout(500);
   const opt = (await B.page.$$eval('#savedProjectSelect option', o => o.map(x => [x.value, x.textContent]))).find(o => /ZZ test roundtrip/.test(o[1]));
   check(!!opt, 'projekt je v seznamu');
   if(opt){ await B.page.selectOption('#savedProjectSelect', opt[0]); await B.page.click('#loadProjectBtn'); await B.page.waitForTimeout(6000); }
