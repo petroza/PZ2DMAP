@@ -4483,6 +4483,9 @@ function pzVehicleImage(type){
   }
   return pzVehicleCache.get(type);
 }
+// Kamion je v kresbě rozdělený na tahač a návěs, takže při stejné „velikosti
+// ikonky" vychází drobnější než ostatní — návrh počítá s délkou 52–66 px.
+function pzVehicleSizeK(){ return state.animSystemIcon === 'truck' ? 1.45 : 1; }
 function pzLegacyIconInverted(){
   return !pzHasVehiclePalette(state.animSystemIcon) && !!$('invertIcons')?.checked;
 }
@@ -12918,7 +12921,7 @@ function getAnimMarkerAlignment(){
 }
 
 function ensureAnimMarker(point, angle, liftPx=0){
-  const size = parseInt($('animIconSize')?.value || '34',10);
+  const size = Math.round(parseInt($('animIconSize')?.value || '34',10) * pzVehicleSizeK());
   const cameraFacing = !!($('followCamera')?.checked);
   const align = getAnimMarkerAlignment();
   const inverted = pzLegacyIconInverted();
@@ -13983,7 +13986,7 @@ function createNativeExportMarkers(exportMap){
       // Scale the icon to the export's output-resolution CSS space so it keeps the SAME
       // size relative to the map as in the live preview (fixed-px markers would otherwise
       // look much smaller in the rendered video than on screen).
-      const size = Math.round(parseInt($('animIconSize')?.value || '34',10) * (state._exportMarkerScale || 1));
+      const size = Math.round(parseInt($('animIconSize')?.value || '34',10) * pzVehicleSizeK() * (state._exportMarkerScale || 1));
       const cameraFacing = !!($('followCamera')?.checked);
       const align = getAnimMarkerAlignment();
       const el = createMarkerEl(getCurrentMoverType(), size);
