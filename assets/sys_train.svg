@@ -1,5 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <path fill="#000" fill-rule="evenodd" d="M128 6 Q166 8 170 52 L170 240 Q170 250 160 250 L96 250 Q86 250 86 240 L86 52 Q90 8 128 6 Z
-  M104 40 Q128 24 152 40 L154 62 L102 62 Z
-  M100 84 L156 84 L156 92 L100 92 Z M100 140 L156 140 L156 148 L100 148 Z M100 196 L156 196 L156 204 L100 204 Z"/>
+  <!-- lokomotiva shora (příď nahoře), styl MINT: špičatá příď s tmavým sklem, akcentní pruhy (#3ECF9E), střešní mřížka -->
+  <defs>
+    <linearGradient id="b" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#e4e9ed"/><stop offset=".3" stop-color="#fbfcfd"/><stop offset=".7" stop-color="#fbfcfd"/><stop offset="1" stop-color="#dfe5ea"/></linearGradient>
+    <linearGradient id="w" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#0f161d"/><stop offset="1" stop-color="#2a3642"/></linearGradient>
+    <filter id="s" x="-30%" y="-10%" width="160%" height="120%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0b1a2a" flood-opacity=".28"/></filter>
+  </defs>
+  <g filter="url(#s)">
+    <path fill="#fff" d="M88 246 Q72 246 72 230 L72 80 Q72 54 94 36 Q114 10 128 4 Q142 10 162 36 Q184 54 184 80 L184 230 Q184 246 168 246 Z"/>
+    <path fill="url(#b)" stroke="#c3ccd4" stroke-width="2" d="M90 240 Q78 240 78 228 L78 82 Q78 58 98 42 Q116 18 128 11 Q140 18 158 42 Q178 58 178 82 L178 228 Q178 240 166 240 Z"/>
+  </g>
+  <path fill="url(#w)" d="M96 62 Q110 30 128 20 Q146 30 160 62 Q160 74 150 78 Q128 66 106 78 Q96 74 96 62 Z"/>
+  <path fill="none" stroke="#7f8d99" stroke-width="2.5" stroke-linecap="round" d="M108 44 Q118 32 128 27"/>
+  <rect x="86" y="96" width="9" height="130" rx="4.5" fill="#3ECF9E"/>
+  <rect x="161" y="96" width="9" height="130" rx="4.5" fill="#3ECF9E"/>
+  <rect x="108" y="128" width="40" height="58" rx="11" fill="#e2e7eb" stroke="#b4bec7" stroke-width="2.5"/>
+  <path d="M117 141 H139 M117 151 H139 M117 161 H139 M117 171 H139" stroke="#98a3ad" stroke-width="3" stroke-linecap="round"/>
 </svg>

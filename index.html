@@ -141,6 +141,10 @@ input[type=color]:hover{border-color:var(--accent)}
 .scene-icon-marker{display:flex;align-items:center;justify-content:center;pointer-events:auto;cursor:grab;user-select:none;border-radius:8px}
 .scene-icon-marker:active{cursor:grabbing}
 .scene-icon-marker.selected{outline:2px solid rgba(38,208,196,.95);outline-offset:2px}
+/* vícenásobný výběr (Ctrl+klik / Alt+tažení) */
+.scene-icon-marker.pz-multi{outline:2px dashed #F03B3B;outline-offset:3px}
+.map-label-marker.pz-multi .map-label-bubble{outline:2px dashed #F03B3B;outline-offset:3px}
+.pz-marquee{position:absolute;z-index:45;border:1.5px dashed #F03B3B;background:rgba(240,59,59,.08);pointer-events:none}
 /* Brief pulse on a freshly added marker so the user notices it's there and draggable. */
 .just-added-hint{animation:justAddedPulse 1.5s ease-out 2}
 @keyframes justAddedPulse{0%{filter:drop-shadow(0 0 0 rgba(38,208,196,.9))}50%{filter:drop-shadow(0 0 10px rgba(38,208,196,.95))}100%{filter:drop-shadow(0 0 0 rgba(38,208,196,0))}}
@@ -742,6 +746,17 @@ html:not(.pz-adv) .pz-adv-only:not(.pz-adv-inuse){display:none!important}
 .pz-tpl-btn img{width:28px;height:28px}
 .pz-tpl-btn:hover{border-color:var(--accent);background:var(--bg3)}
 .pz-tpl-btn:disabled{opacity:.5;cursor:wait}
+.pz-tint-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 2px}
+.pz-tint-sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);padding:0;cursor:pointer;background:var(--bg3);color:var(--tx2);font:700 11px var(--font);line-height:1}
+.pz-tint-sw:hover{border-color:var(--border-hi)}
+.pz-tint-sw.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
+#animIconColor{width:32px;height:26px;padding:0;border:2px solid var(--border);border-radius:6px;background:none;cursor:pointer}
+#animIconColor.active{border-color:var(--accent)}
+/* přetažení dlaždice / ikonky do mapy; pan-y = svislý tah dál posouvá panel */
+.pz-tpl-btn,.pz-icon-pick{touch-action:pan-y;cursor:grab}
+.pz-drag-ghost{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;z-index:1000;opacity:.55;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5));transition:opacity .12s}
+.pz-drag-ghost.ok{opacity:1}
+body.pz-dragging,body.pz-dragging *{cursor:grabbing!important;user-select:none}
 /* světlý režim: plovoucí panely měly napevno tmavé pozadí → tmavý text nebyl čitelný */
 html[data-ui="light"]{--blue:#0b62c4;--green:#1f8a3e}
 html[data-ui="light"] .tnchat-panel,html[data-ui="light"] .shortcuts-panel{background:var(--bg1);box-shadow:0 14px 40px rgba(20,30,50,.18)}
@@ -1022,6 +1037,18 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <p class="hint" data-i18n="hint_anim_system_icons">Kliknutím vybereš vestavěnou animační ikonku.</p>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
         <input id="animIconSize" type="range" min="18" max="96" step="2" value="34">
+        <label style="margin-top:10px">Barva ikonky</label>
+        <div class="pz-tint-row" id="animIconTintRow">
+          <button type="button" class="pz-tint-sw pz-tint-orig active" data-tint="" title="Původní barva" style="background:conic-gradient(#3ECF9E 0 50%,#14171c 0)"></button>
+          <button type="button" class="pz-tint-sw" data-tint="#6B7480" title="Graphite" style="background:#6B7480"></button>
+          <button type="button" class="pz-tint-sw" data-tint="#F03B3B" title="TN červená" style="background:#F03B3B"></button>
+          <button type="button" class="pz-tint-sw" data-tint="#0D1767" title="TN modrá" style="background:#0D1767"></button>
+          <button type="button" class="pz-tint-sw" data-tint="#1F5FFF" title="Modrá" style="background:#1F5FFF"></button>
+          <button type="button" class="pz-tint-sw" data-tint="#FFD400" title="Žlutá" style="background:#FFD400"></button>
+          <button type="button" class="pz-tint-sw" data-tint="#1FA34A" title="Zelená" style="background:#1FA34A"></button>
+          <button type="button" class="pz-tint-sw" data-tint="#FFFFFF" title="Bílá" style="background:#FFFFFF"></button>
+          <input id="animIconColor" type="color" value="#f03b3b" title="Vlastní barva">
+        </div>
         <label class="check" style="margin-top:10px"><input id="invertIcons" type="checkbox">  Invertovat ikonky (pro světlou mapu)</label>
 
         <div style="margin-top:12px">
@@ -1124,7 +1151,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="tab-pane active" data-pane="scena">
       <div class="section" id="pzTemplateSection">
         <h3>Rychlá scéna</h3>
-        <p class="hint" style="margin:0 0 8px">Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.</p>
+        <p class="hint" style="margin:0 0 8px">Zadej místo a klikni na typ události — nebo dlaždici rovnou přetáhni do mapy na místo, kam patří. Ikonka, popisek, případně perimetr se připraví naráz. Všechno jde upravit nebo vrátit Ctrl+Z.</p>
         <div class="row">
           <div><label>Místo</label><input id="pzTplPlace" type="text" placeholder="např. Humpolec, D1 km 90"></div>
           <div><label>Text popisku</label><input id="pzTplText" type="text" placeholder="nepovinné"></div>
@@ -1671,7 +1698,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sc-row"><kbd>Esc</kbd><span data-i18n="sc_esc">Ukončit vkládání</span></div>
     <div class="sc-row"><kbd>Delete</kbd><span data-i18n="sc_delete">Smazat vybraný objekt</span></div>
     <div class="sc-row"><kbd>Ctrl+C/V/D</kbd><span data-i18n="sc_copy">Kopírovat / vložit / duplikovat</span></div>
-    <div class="sc-row"><kbd>Ctrl+klik</kbd><span data-i18n="sc_via">Přidat zastávku na trase</span></div>
+    <div class="sc-row"><kbd>Ctrl+klik</kbd><span>Přidat ikonku / popisek do výběru</span></div>
+    <div class="sc-row"><kbd>Alt+táhnout</kbd><span>Vybrat ikonky a popisky obdélníkem</span></div>
+    <div class="sc-row"><kbd>Ctrl+A</kbd><span>Vybrat všechny ikonky a popisky</span></div>
+    <div class="sc-row"><kbd>Ctrl+klik do mapy</kbd><span data-i18n="sc_via">Přidat zastávku na trase</span></div>
     <div class="sc-row"><kbd>Pravé tl. / Ctrl+táhnout</kbd><span data-i18n="sc_orbit">Naklonit a otočit (3D / glóbus)</span></div>
     <div class="sc-row"><kbd>Shift+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
   </div>
@@ -2821,6 +2851,15 @@ function updateSceneAddButtonStates(){
   set(document.getElementById('addScenePerimeterBtn'), state.addingScenePerimeter);
   set(document.getElementById('addSceneDistanceBtn'), state.addingSceneDistance);
   set(document.getElementById('addSceneArrowBtn'), state.addingSceneArrow);
+  // Zelený roh = do této sekce teď půjde klik do mapy (zapnuté vkládání).
+  // Dřív svítil u každé sekce, do které grafik jen klikl, a nic neříkal.
+  try{
+    if(typeof SCENE_MODE_SECTION !== 'undefined'){
+      const armed = Object.entries(SCENE_MODE_SECTION).find(([mode]) => state[SCENE_ADD_FLAGS[mode]]);
+      const id = armed ? armed[1] : null;
+      if(state.activeEditSection !== id) setActiveEditSection(id);
+    }
+  }catch(e){}
 }
 
 const LIBERTY_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -5432,6 +5471,7 @@ function initMap(){
     updateMapSourceWatermark();
     initAutosave();
     setStatus(t('Mapa načtena.'));
+    try{ pzInitMarquee(); }catch(_e){}
     // Až teď je mapa i vrstvy připravené, takže sdílený stav jde bezpečně použít.
     try{ loadSharedProjectFromUrl(); }catch(_e){}
     // První spuštění (pohled se nikam nepohnul, žádný odkaz ani trasa): zarovnat
@@ -7947,6 +7987,7 @@ function serializeProjectSnapshot(){
       animIconData: state.animSystemIcon ? null : (state.animIconData || null),
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
+      animIconTint: state.animIconTint || null,
       animStart: $('animStart')?.value || '0',
       animDuration: $('animDuration')?.value || '8',
       cameraPitch: $('cameraPitch')?.value || '45',
@@ -8036,6 +8077,8 @@ function applyBasicProjectSnapshot(snapshot){
   if($('animEasing')) $('animEasing').value = ['linear','easeInOut','easeIn','easeOut'].includes(animation.animEasing) ? animation.animEasing : 'linear';
   state.animSystemIcon = animation.animSystemIcon && ANIM_SYSTEM_ICONS[animation.animSystemIcon] ? animation.animSystemIcon : null;
   state.animIconData = state.animSystemIcon ? ANIM_SYSTEM_ICONS[state.animSystemIcon] : (animation.animIconData || null);
+  state.animIconTint = /^#[0-9a-f]{6}$/i.test(animation.animIconTint || '') ? animation.animIconTint : null;
+  try{ pzSyncTintUi(); }catch(e){}
   renderAnimSystemIconSelection();
   renderAnimIconPreview();
 
@@ -8052,6 +8095,7 @@ function applyBasicProjectSnapshot(snapshot){
   updateCameraAnimUI();
 
   clearProjectSceneObjectsSilently();
+  try{ state.multiSel?.clear(); }catch(e){}
   (snapshot.sceneIcons || []).forEach(item => createSceneIconAt(item.lngLat, {data:item.data, size:item.size, silent:true}));
   (snapshot.scenePerimeters || []).forEach(item => createScenePerimeterAt(item.lngLat, {id:item.id, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, silent:true}));
   (snapshot.sceneDistances || []).forEach(item => createSceneDistance(item.a, item.b, {id:item.id, unit:item.unit, color:item.color, width:item.width, silent:true}));
@@ -10662,6 +10706,159 @@ function applySelectedSceneIconChanges(){
   setStatus(t('Ikonka upravena.'));
 }
 
+// ===== Vícenásobný výběr grafiky na mapě (jako v grafickém editoru) =====
+// Ctrl/Cmd+klik přidá nebo odebere ikonku či popisek z výběru, Alt+tažení
+// vybere obdélníkem, Ctrl+A vybere všechno. Delete smaže vybrané, tažením
+// kterékoli vybrané položky se posune celá skupina. Esc / klik do mapy výběr zruší.
+state.multiSel = new Set();
+function pzMultiAll(){
+  return [
+    ...(state.sceneIcons || []).map(item => ({key:'i:' + item.id, kind:'icon', item})),
+    ...(state.mapLabels || []).map(item => ({key:'l:' + item.id, kind:'label', item}))
+  ];
+}
+function pzMultiPrune(){
+  const keys = new Set(pzMultiAll().map(x => x.key));
+  [...state.multiSel].forEach(k => { if(!keys.has(k)) state.multiSel.delete(k); });
+}
+function pzMultiSelected(){ pzMultiPrune(); return pzMultiAll().filter(x => state.multiSel.has(x.key)); }
+function pzMultiRefresh(){
+  pzMultiPrune();
+  pzMultiAll().forEach(x => x.item.marker?.getElement?.()?.classList.toggle('pz-multi', state.multiSel.has(x.key)));
+}
+function pzMultiStatus(){
+  const n = state.multiSel.size;
+  if(n) setStatus(t('Vybráno {0} — Delete smaže, tažením posuneš všechny, Esc zruší výběr.', n));
+}
+function pzMultiClear(silent){
+  if(!state.multiSel?.size) return false;
+  state.multiSel.clear(); pzMultiRefresh();
+  if(!silent) setStatus(t('Výběr zrušen.'));
+  return true;
+}
+function pzMultiKeyOfEl(el){
+  const x = pzMultiAll().find(x => x.item.marker?.getElement?.() === el);
+  return x ? x.key : null;
+}
+function pzMultiToggleEl(el){
+  const key = pzMultiKeyOfEl(el); if(!key) return false;
+  // první Ctrl+klik převezme i dosud vybranou položku (klasický výběr jedné věci)
+  if(!state.multiSel.size){
+    if(state.selectedSceneIconId) state.multiSel.add('i:' + state.selectedSceneIconId);
+    if(state.selectedMapLabelId) state.multiSel.add('l:' + state.selectedMapLabelId);
+  }
+  if(state.multiSel.has(key)) state.multiSel.delete(key); else state.multiSel.add(key);
+  try{ clearSceneIconSelection(); }catch(e){}
+  try{ clearMapLabelSelection(); }catch(e){}
+  pzMultiRefresh(); pzMultiStatus();
+  if(!state.multiSel.size) setStatus(t('Výběr zrušen.'));
+  return true;
+}
+function pzMultiSelectAll(){
+  const all = pzMultiAll(); if(!all.length) return false;
+  all.forEach(x => state.multiSel.add(x.key));
+  try{ clearSceneIconSelection(); }catch(e){}
+  try{ clearMapLabelSelection(); }catch(e){}
+  pzMultiRefresh(); pzMultiStatus();
+  return true;
+}
+function pzMultiDelete(){
+  const sel = pzMultiSelected(); if(!sel.length) return false;
+  sel.forEach(x => { if(x.kind === 'icon') deleteSceneIcon(x.item.id); else deleteMapLabel(x.item.id); });
+  state.multiSel.clear();
+  setStatus(t('Smazáno {0} položek.', sel.length));
+  return true;
+}
+let _pzGroupDrag = null;
+function pzGroupDragStart(marker){
+  const key = pzMultiKeyOfEl(marker.getElement());
+  if(!key || !state.multiSel.has(key) || state.multiSel.size < 2){ if(key && !state.multiSel.has(key)) pzMultiClear(true); _pzGroupDrag = null; return false; }
+  // výchozí bod z okamžiku stisku myši — dragstart přichází až po prvním
+  // pohybu, kdy je značka už o kus posunutá (skupina by zaostávala)
+  const pre = state._pzPreDrag && state._pzPreDrag.el === marker.getElement() ? state._pzPreDrag.ll : marker.getLngLat();
+  const m = state.map, p0 = m.project(pre);
+  _pzGroupDrag = {marker, p0, others: pzMultiSelected().filter(x => x.item.marker !== marker).map(x => ({x, p: m.project(x.item.marker.getLngLat())}))};
+  return true;
+}
+function pzGroupDrag(marker){
+  const g = _pzGroupDrag; if(!g || g.marker !== marker) return;
+  const m = state.map, p = m.project(marker.getLngLat()), dx = p.x - g.p0.x, dy = p.y - g.p0.y;
+  g.others.forEach(o => o.x.item.marker.setLngLat(m.unproject([o.p.x + dx, o.p.y + dy])));
+}
+function pzGroupDragEnd(){
+  const g = _pzGroupDrag;
+  if(!g) return false;
+  pzGroupDrag(g.marker);   // poslední krok tažení (událost drag nemusí přijít)
+  _pzGroupDrag = null;
+  g.others.forEach(o => { const ll = o.x.item.marker.getLngLat(); o.x.item.lngLat = [ll.lng, ll.lat]; });
+  try{ renderSceneIconList(); }catch(e){}
+  try{ renderMapLabelList(); }catch(e){}
+  pzMultiRefresh();
+  setStatus(t('Posunuto {0} položek.', g.others.length + 1));
+  return true;
+}
+// Ctrl/Cmd+klik na ikonku nebo popisek: přidat do výběru (capture — dřív než
+// vlastní klik značky, který by otevřel úpravu textu nebo vybral jen ji).
+document.addEventListener('click', e => {
+  const el = e.target?.closest?.('.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker');
+  if(!el) return;
+  if(e.ctrlKey || e.metaKey){
+    if(pzMultiToggleEl(el)){ e.stopPropagation(); e.preventDefault(); }
+    return;
+  }
+  // obyčejný klik na nevybranou položku výběr zruší (jako v editoru)
+  const key = pzMultiKeyOfEl(el);
+  if(state.multiSel.size && (!key || !state.multiSel.has(key))) pzMultiClear(true);
+}, true);
+// Poloha značky v okamžiku stisku (pro přesný posun skupiny)
+document.addEventListener('mousedown', e => {
+  const el = e.target?.closest?.('.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker');
+  if(!el){ state._pzPreDrag = null; return; }
+  const x = pzMultiAll().find(x => x.item.marker?.getElement?.() === el);
+  state._pzPreDrag = x ? {el, ll: x.item.marker.getLngLat()} : null;
+}, true);
+// Ctrl+klik na značku nesmí zároveň přidat zastávku trasy (mapa dostane mousedown)
+document.addEventListener('mousedown', e => {
+  if((e.ctrlKey || e.metaKey) && e.target?.closest?.('.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker')) state._pzMultiClickGuard = Date.now();
+}, true);
+// Alt+tažení po mapě: výběr obdélníkem
+function pzInitMarquee(){
+  const m = state.map; if(!m || m._pzMarquee) return; m._pzMarquee = true;
+  const box = m.getCanvasContainer();
+  box.addEventListener('mousedown', e => {
+    if(!e.altKey || e.button !== 0) return;
+    if(e.target?.closest?.('.maplibregl-marker')) return;
+    e.preventDefault(); e.stopPropagation();
+    const r = m.getContainer().getBoundingClientRect();
+    const x0 = e.clientX - r.left, y0 = e.clientY - r.top;
+    const div = document.createElement('div'); div.className = 'pz-marquee';
+    m.getContainer().appendChild(div);
+    const wasPan = m.dragPan.isEnabled(); m.dragPan.disable();
+    const add = e.ctrlKey || e.metaKey || e.shiftKey;
+    const move = ev => {
+      const x = ev.clientX - r.left, y = ev.clientY - r.top;
+      Object.assign(div.style, {left: Math.min(x0, x) + 'px', top: Math.min(y0, y) + 'px', width: Math.abs(x - x0) + 'px', height: Math.abs(y - y0) + 'px'});
+    };
+    const up = ev => {
+      document.removeEventListener('mousemove', move, true); document.removeEventListener('mouseup', up, true);
+      div.remove(); if(wasPan) m.dragPan.enable();
+      const x1 = Math.min(x0, ev.clientX - r.left), x2 = Math.max(x0, ev.clientX - r.left);
+      const y1 = Math.min(y0, ev.clientY - r.top), y2 = Math.max(y0, ev.clientY - r.top);
+      if(x2 - x1 < 4 && y2 - y1 < 4) return;
+      if(!add) state.multiSel.clear();
+      pzMultiAll().forEach(x => { const p = m.project(x.item.marker.getLngLat()); if(p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2) state.multiSel.add(x.key); });
+      try{ clearSceneIconSelection(); }catch(e){}
+      try{ clearMapLabelSelection(); }catch(e){}
+      state._pzMultiClickGuard = Date.now();
+      pzMultiRefresh();
+      if(state.multiSel.size) pzMultiStatus(); else setStatus(t('V obdélníku není žádná ikonka ani popisek.'));
+    };
+    document.addEventListener('mousemove', move, true); document.addEventListener('mouseup', up, true);
+  }, true);
+  // klik do prázdné mapy výběr zruší
+  m.on('click', () => { if(Date.now() - (state._pzMultiClickGuard || 0) > 300) pzMultiClear(true); });
+}
+
 function deleteSceneIcon(id){
   const idx = state.sceneIcons.findIndex(item => item.id === id);
   if(idx < 0) return;
@@ -10773,14 +10970,16 @@ function createSceneIconAt(lngLatObj, options={}){
   const marker = new maplibregl.Marker({element:el, anchor:'center', draggable:true}).setLngLat([ll.lng, ll.lat]).addTo(state.map);
   marker.on('dragstart', ()=>{
     state.draggingViaPoint = true;
-    selectSceneIcon(id, false);
+    if(!pzGroupDragStart(marker)) selectSceneIcon(id, false);
     setStatus(t('Táhneš ikonku.'));
   });
+  marker.on('drag', () => pzGroupDrag(marker));
   marker.on('dragend', ()=>{
     const dragLl = marker.getLngLat();
     state.draggingViaPoint = false;
     const item = getSceneIconById(id);
     if(item) item.lngLat = [dragLl.lng, dragLl.lat];
+    if(pzGroupDragEnd()) return;
     renderSceneIconList();
     setStatus(t('Ikonka přesunuta.'));
   });
@@ -10904,15 +11103,17 @@ function addMapLabelAt(lngLatObj, options={}){
   marker.on('dragstart', ()=>{
     state.draggingViaPoint = true;
     state.suppressMapLabelEdit = true;
-    selectMapLabel(id, false);
+    if(!pzGroupDragStart(marker)) selectMapLabel(id, false);
     setStatus(t('Táhneš popisek.'));
   });
+  marker.on('drag', () => pzGroupDrag(marker));
   marker.on('dragend', ()=>{
     const dragLl = marker.getLngLat();
     state.draggingViaPoint = false;
     setTimeout(()=>{ state.suppressMapLabelEdit = false; }, 120);
     const item = getMapLabelById(id);
     if(item) item.lngLat = [dragLl.lng, dragLl.lat];
+    if(pzGroupDragEnd()) return;
     renderMapLabelList();
     setStatus(t('Popisek přesunut.'));
   });
@@ -11784,7 +11985,24 @@ async function pzRailRoute(points, g){
     const leg = pzRailLeg(g, points[i-1], points[i]);
     all.push(...(all.length ? leg.coords.slice(1) : leg.coords));
   }
-  return all;
+  return pzRemoveRouteLoops(all);
+}
+// Trasa po kolejích/řece občas u nádraží zajede na kusou kolej a vrátí se,
+// nebo udělá smyčku. Vlak pak „najede sám do sebe" a vagony se nahromadí na
+// jednom místě. Úsek, který se do 4 km vrátí na skoro stejné místo (do 120 m),
+// se vystřihne.
+function pzRemoveRouteLoops(coords){
+  if(!coords || coords.length < 4) return coords;
+  const out = coords.slice();
+  for(let i = 0; i < out.length - 2; i++){
+    let along = 0, cut = -1;
+    for(let j = i + 1; j < out.length && along < 4; j++){
+      along += haversineKm(out[j-1], out[j]);
+      if(j > i + 1 && along > 0.3 && haversineKm(out[i], out[j]) < 0.12) cut = j;
+    }
+    if(cut > i + 1) out.splice(i + 1, cut - i - 1);
+  }
+  return out;
 }
 
 async function routeFromPoints(a,b,mode){
@@ -12342,12 +12560,12 @@ function finalAngle(progress){
    Vrstva je součást mapy, proto je i v exportu videa bez další práce. */
 const PZ_CONSIST = {
   // gap = vzdálenost středů v násobcích velikosti ikonky, half = půl délky kusu
-  train: [{img:'assets/sys_wagon.svg', gap:0.98, half:0.46}, {img:'assets/sys_wagon.svg', gap:0.98, half:0.46}],
+  train: [{img:'assets/sys_wagon.svg', gap:0.96, half:0.46}, {img:'assets/sys_wagon.svg', gap:0.96, half:0.46}],
   truck: [{img:'assets/sys_trailer.svg', gap:0.58, half:0.44}]
 };
 const _pzConsistImg = {};
-function pzConsistImage(src, inverted){
-  const key = src + (inverted ? '#inv' : '');
+function pzConsistImage(src, inverted, tint){
+  const key = src + (inverted ? '#inv' : '') + (tint ? '#' + tint : '');
   if(_pzConsistImg[key]) return _pzConsistImg[key];
   const rec = {ready:false, data:null, id:'pzsoup-' + Object.keys(_pzConsistImg).length};
   _pzConsistImg[key] = rec;
@@ -12356,11 +12574,31 @@ function pzConsistImage(src, inverted){
     const c = document.createElement('canvas'); c.width = c.height = 256;
     const ctx = c.getContext('2d'); if(inverted) ctx.filter = 'invert(1)';
     ctx.drawImage(im, 0, 0, 256, 256);
-    rec.data = ctx.getImageData(0, 0, 256, 256); rec.ready = true;
+    rec.data = ctx.getImageData(0, 0, 256, 256);
+    if(tint && !rec.accent) rec.data = pzTintPixels(rec.data, tint);
+    rec.ready = true;
     try{ if(state._pzConsistLast != null) pzUpdateConsist(state._pzConsistLast); }catch(e){}
   };
-  im.src = new URL(src, document.baseURI).href;
+  const plain = () => { im.src = new URL(src, document.baseURI).href; };
+  if(tint){
+    pzAccentSvg(src, tint).then(url => { if(url){ rec.accent = true; im.src = url; } else plain(); }).catch(plain);
+  } else plain();
   return rec;
+}
+function pzProjectKm(coords, cum, pt, guessKm){
+  // vzdálenost podél cesty k bodu nejbližšímu vedoucímu kusu (hledá se jen
+  // v okolí očekávané vzdálenosti — trasa se může vracet blízko sebe)
+  let best = Infinity, bestD = guessKm;
+  const lat0 = pt[1] * Math.PI / 180, kx = 111.32 * Math.cos(lat0), ky = 110.57;
+  for(let i = 1; i < coords.length; i++){
+    if(cum[i] < guessKm - 25 || cum[i - 1] > guessKm + 25) continue;
+    const ax = coords[i-1][0] * kx, ay = coords[i-1][1] * ky, bx = coords[i][0] * kx, by = coords[i][1] * ky;
+    const px = pt[0] * kx, py = pt[1] * ky, dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1e-12;
+    const tt = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / L2));
+    const ex = ax + tt * dx - px, ey = ay + tt * dy - py, dd = ex * ex + ey * ey;
+    if(dd < best){ best = dd; bestD = cum[i - 1] + tt * (cum[i] - cum[i - 1]); }
+  }
+  return bestD;
 }
 function pzPointAtKm(coords, cum, total, d, chordKm){
   if(d >= total) return coords[coords.length-1];
@@ -12378,6 +12616,36 @@ function pzPointAtKm(coords, cum, total, d, chordKm){
   }
   return pointAtProgress(coords, d / total);
 }
+// Trasa pro vagony/návěs zjednodušená v měřítku jednoho vozu (Douglas–Peucker):
+// klička nebo zatáčka kratší než vagon by soupravu „poskládala" na jedno místo.
+const _pzConsistPathCache = {coords:null, tol:0, out:null};
+function pzSimplifyKm(coords, tolKm){
+  if(coords.length < 3 || !(tolKm > 0)) return coords;
+  const lat0 = coords[0][1] * Math.PI / 180, kx = 111.32 * Math.cos(lat0), ky = 110.57;
+  const P = coords.map(c => [c[0] * kx, c[1] * ky]);
+  const keep = new Uint8Array(coords.length); keep[0] = keep[coords.length - 1] = 1;
+  const stack = [[0, coords.length - 1]];
+  while(stack.length){
+    const [a, b] = stack.pop();
+    const [ax, ay] = P[a], [bx, by] = P[b], dx = bx - ax, dy = by - ay, L2 = dx * dx + dy * dy || 1e-12;
+    let best = -1, bi = -1;
+    for(let i = a + 1; i < b; i++){
+      const tt = Math.max(0, Math.min(1, ((P[i][0] - ax) * dx + (P[i][1] - ay) * dy) / L2));
+      const ex = ax + tt * dx - P[i][0], ey = ay + tt * dy - P[i][1], d = ex * ex + ey * ey;
+      if(d > best){ best = d; bi = i; }
+    }
+    if(bi > 0 && best > tolKm * tolKm){ keep[bi] = 1; stack.push([a, bi], [bi, b]); }
+  }
+  return coords.filter((_, i) => keep[i]);
+}
+function pzConsistPath(coords, tolKm){
+  const c = _pzConsistPathCache;
+  // tolerance po dvojnásobcích, ať se cesta nepřepočítává při každém kroku zoomu
+  const tq = Math.pow(2, Math.round(Math.log2(Math.max(1e-4, tolKm))));
+  if(c.coords === coords && c.tol === tq) return c.out;
+  c.coords = coords; c.tol = tq; c.out = pzSimplifyKm(coords, tq);
+  return c.out;
+}
 function pzUpdateConsist(progress, opts){
   // Export si každý snímek kreslí na vlastní mapě (createNativeExportMarkers) —
   // tam se volá s opts.map a opts.size; jinak živá mapa a živá ikonka.
@@ -12388,19 +12656,22 @@ function pzUpdateConsist(progress, opts){
   }
   const spec = (progress != null && state.animSystemIcon) ? PZ_CONSIST[state.animSystemIcon] : null;
   if(!opts) state._pzConsistLast = progress;
-  const coords = state.routeCoords || [];
+  const route = state.routeCoords || [];
   const feats = [];
-  if(spec && coords.length > 1 && (opts?.size || state.animatedMarkerEl)){
+  if(spec && route.length > 1 && (opts?.size || state.animatedMarkerEl)){
     const inverted = !!$('invertIcons')?.checked;
     const size = opts?.size || parseFloat(state.animatedMarkerEl.style.width) || parseInt($('animIconSize')?.value || '34', 10);
-    const {cum, total} = cumulativeRouteLengths(coords);
-    const lead = pointAtProgress(coords, progress) || coords[0];
+    const lead = pointAtProgress(route, progress) || route[0];
     // km na CSS pixel v místě soupravy (MapLibre: dlaždice 512 px)
     const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
-    let d = progress * total;
+    // vagony jedou po trase zjednodušené zhruba na délku vozu; vzdálenost
+    // vedoucího kusu se přepočte na tuto cestu, aby souprava navazovala
+    const coords = pzConsistPath(route, size * kmPerPx * 0.7);
+    const {cum, total} = cumulativeRouteLengths(coords);
+    let d = pzProjectKm(coords, cum, lead, progress * total);
     const chord = spec.reduce((a, u) => a + u.gap, 0) * size * kmPerPx + spec[spec.length - 1].half * size * kmPerPx;
     spec.forEach((u, i) => {
-      const rec = pzConsistImage(u.img, inverted);
+      const rec = pzConsistImage(u.img, inverted, pzAnimTint());
       if(!rec.ready) return;
       if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
       d -= u.gap * size * kmPerPx;
@@ -12423,9 +12694,64 @@ function pzUpdateConsist(progress, opts){
     'icon-allow-overlap':true, 'icon-ignore-placement':true, 'symbol-sort-key':['get','k']}});
 }
 
+// Barva ikony objektu: duotón — tmavé části dostanou zvolenou barvu, bílé
+// obrysy a světlé detaily zůstanou světlé, průhlednost se zachová. Jen pro
+// vestavěné ikony (vlastní nahraný obrázek by obarvení zničilo).
+const _pzTintCache = {};
+function pzTintPixels(img, hex){
+  const n = parseInt(String(hex).slice(1), 16), R = n >> 16 & 255, G = n >> 8 & 255, B = n & 255;
+  const d = img.data;
+  for(let i = 0; i < d.length; i += 4){
+    if(!d[i+3]) continue;
+    const l = (0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2]) / 255;
+    d[i] = R + (255 - R) * l; d[i+1] = G + (255 - G) * l; d[i+2] = B + (255 - B) * l;
+  }
+  return img;
+}
+function pzAnimTint(){ return state.animSystemIcon && /^#[0-9a-f]{6}$/i.test(state.animIconTint || '') ? state.animIconTint : ''; }
+function pzTintedSrc(src, hex){
+  if(!src || !hex) return src;
+  const key = src + '|' + hex;
+  const rec = _pzTintCache[key];
+  if(rec) return rec.url || src;
+  const r = _pzTintCache[key] = {url:null};
+  const done = url => { r.url = url; if(state.animatedMarkerEl) state.animatedMarkerEl.dataset.iconSig = ''; try{ refreshAnimatedMarkerPreview(); }catch(e){} };
+  const duotone = () => {
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    im.onload = () => {
+      try{
+        const W = Math.max(128, im.naturalWidth || 256), H = Math.max(128, im.naturalHeight || 256);
+        const c = document.createElement('canvas'); c.width = W; c.height = H;
+        const ctx = c.getContext('2d'); ctx.drawImage(im, 0, 0, W, H);
+        ctx.putImageData(pzTintPixels(ctx.getImageData(0, 0, W, H), hex), 0, 0);
+        done(c.toDataURL('image/png'));
+      }catch(e){ r.url = src; }
+    };
+    im.src = src.startsWith('data:') ? src : new URL(src, document.baseURI).href;
+  };
+  // Kresby s akcentní barvou (vlak, kamion): přebarvit jen akcent, zbytek
+  // (bílá karoserie, tmavé sklo, kola) zůstane.
+  pzAccentSvg(src, hex).then(url => url ? done(url) : duotone()).catch(duotone);
+  return src;
+}
+const PZ_ACCENT = /#3ECF9E/gi;
+const _pzSvgText = {};
+function pzAccentSvg(src, hex){
+  if(!/\.svg(\?|$)/i.test(src)) return Promise.resolve(null);
+  const p = _pzSvgText[src] || (_pzSvgText[src] = fetch(new URL(src, document.baseURI).href).then(r => r.ok ? r.text() : ''));
+  return p.then(txt => (txt && /#3ECF9E/i.test(txt)) ? ('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(txt.replace(PZ_ACCENT, hex))) : null);
+}
+function pzAnimIconSrc(){ return pzTintedSrc(state.animIconData, pzAnimTint()); }
+function pzSyncTintUi(){
+  const cur = (state.animIconTint || '').toUpperCase();
+  let matched = false;
+  document.querySelectorAll('#animIconTintRow .pz-tint-sw').forEach(b => { const on = (b.dataset.tint || '').toUpperCase() === cur; b.classList.toggle('active', on); if(on) matched = true; });
+  const inp = document.getElementById('animIconColor');
+  if(inp){ inp.classList.toggle('active', !!cur && !matched); if(cur && !matched) inp.value = cur.toLowerCase(); }
+}
 function animMarkerInnerHTML(){
   return state.animIconData
-    ? `<img alt="" src="${escapeHtml(state.animIconData)}" style="width:100%;height:100%;object-fit:contain">`
+    ? `<img alt="" src="${escapeHtml(pzAnimIconSrc())}" style="width:100%;height:100%;object-fit:contain">`
     : SVG_ICONS.dot;
 }
 function createMarkerEl(type,size){
@@ -12434,7 +12760,7 @@ function createMarkerEl(type,size){
   if($('invertIcons')?.checked) el.classList.add('inverted');
   el.style.width = size + 'px'; el.style.height = size + 'px';
   el.innerHTML = animMarkerInnerHTML();
-  el.dataset.iconSig = state.animIconData || 'dot';
+  el.dataset.iconSig = (state.animIconData || 'dot') + '|' + (state.animIconData ? pzAnimIconSrc().length : 0);
   return el;
 }
 
@@ -12487,7 +12813,7 @@ function ensureAnimMarker(point, angle, liftPx=0){
   // Rebuild the icon when the selected icon changed (system ⇄ custom ⇄ dot)
   // without recreating the whole marker — otherwise switching e.g. to AUTO
   // left the old element (often the fallback dot) in place.
-  const iconSig = state.animIconData || 'dot';
+  const iconSig = (state.animIconData || 'dot') + '|' + (state.animIconData ? pzAnimIconSrc().length : 0);
   if(state.animatedMarkerEl.dataset.iconSig !== iconSig){
     state.animatedMarkerEl.innerHTML = animMarkerInnerHTML();
     state.animatedMarkerEl.dataset.iconSig = iconSig;
@@ -15283,7 +15609,7 @@ const PZ_EN_TEXT = {
   "Zobrazit pokročilé funkce": "Show advanced features",
   "3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba.": "3D model, sun and shadows, custom map sources, extra base maps (Bright, OSM, OpenTopo, CyclOSM), statistics and app self-check. Not needed for daily graphics.",
   "Rychlá scéna": "Quick scene",
-  "Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.": "Enter a place and click an event type: icon, label, perimeter where relevant and framing are set up at once. Everything can be edited afterwards or undone with Ctrl+Z.",
+  "Zadej místo a klikni na typ události — nebo dlaždici rovnou přetáhni do mapy na místo, kam patří. Ikonka, popisek, případně perimetr se připraví naráz. Všechno jde upravit nebo vrátit Ctrl+Z.": "Enter a place and click an event type — or drag a tile straight onto the map where it belongs. Icon, label and perimeter where relevant are set up at once. Everything can be edited or undone with Ctrl+Z.",
   "Text popisku": "Label text",
   "nepovinné": "optional",
   "např. Humpolec, D1 km 90": "e.g. Humpolec, D1 km 90",
@@ -15640,6 +15966,15 @@ function bindUI(){
   $$('.sys-icon-btn').forEach(btn => btn.addEventListener('click', ()=> setAnimSystemIcon(btn.dataset.sysIcon)));
   ['animDot','followCamera','showTrail','followCameraRotate'].forEach(id => $(id)?.addEventListener('change', refreshAnimatedMarkerPreview));
   $('animEasing')?.addEventListener('change', ()=>{ state.camSmoothedBearing = null; updateEasingPreview(); refreshAnimatedMarkerPreview(); });
+  const setTint = hex => {
+    state.animIconTint = hex || null;
+    pzSyncTintUi();
+    if(state.animatedMarkerEl) state.animatedMarkerEl.dataset.iconSig = '';
+    refreshAnimatedMarkerPreview();
+    if(hex && !state.animSystemIcon) setStatus(t('Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).'));
+  };
+  $$('#animIconTintRow .pz-tint-sw').forEach(b => b.addEventListener('click', () => { try{ window.__pzPushUndo?.(); }catch(e){} setTint(b.dataset.tint); }));
+  $('animIconColor')?.addEventListener('input', e => setTint(e.target.value));
   $('invertIcons')?.addEventListener('change', ()=>{
     if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('inverted', $('invertIcons').checked);
     refreshAnimatedMarkerPreview();
@@ -15721,6 +16056,7 @@ function bindUI(){
       if(state.addingMapLabel){ state.addingMapLabel = false; setStatus(t('Přidávání popisků ukončeno.')); }
       if(state.addingFlightPoint){ state.addingFlightPoint = false; setStatus(t('Přidávání bodů letu ukončeno.')); }
       if(state.selectedPresetTokens?.size){ clearPresetTileMultiSelection(); setStatus('Výběr presetů zrušen.'); }
+      pzMultiClear();
       return;
     }
     if(!typing && e.key === '?'){
@@ -15744,6 +16080,14 @@ function bindUI(){
       const snapKey = e.key === 'Delete' || (e.key === 'Backspace' && getSelectedMapObject())
         || (mod && ['v','d'].includes(e.key.toLowerCase()));
       if(snapKey) try{ window.__pzPushUndo?.(); }catch(err){}
+      if(mod && e.key.toLowerCase() === 'a' && !e.shiftKey && !e.altKey){
+        if(pzMultiSelectAll()) e.preventDefault();
+        return;
+      }
+      if((e.key === 'Delete' || e.key === 'Backspace') && state.multiSel?.size){
+        try{ window.__pzPushUndo?.(); }catch(err){}
+        if(pzMultiDelete()){ e.preventDefault(); return; }
+      }
       if(e.key === 'Delete'){
         if(deleteSelectedPresetTiles()){ e.preventDefault(); return; }
         if(deleteSelectedMapObject()) e.preventDefault();
@@ -15997,7 +16341,6 @@ function bindUI(){
     sec.addEventListener('mousedown', () => {
       const keep = SCENE_ADD_FLAGS[mode];
       Object.values(SCENE_ADD_FLAGS).forEach(f => { if(f !== keep) state[f] = false; });
-      setActiveEditSection(secId);
       try{ updateSceneAddButtonStates(); }catch(e){}
     });
   });
@@ -16232,6 +16575,17 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Vybráno {0} — Delete smaže, tažením posuneš všechny, Esc zruší výběr.": {cs:"Vybráno {0} — Delete smaže, tažením posuneš všechny, Esc zruší výběr.",sk:"Vybraté {0} — Delete zmaže, ťahaním posunieš všetky, Esc zruší výber.",bg:"Избрани {0} — Delete изтрива, с влачене местиш всички, Esc отменя избора.",hr:"Odabrano {0} — Delete briše, povlačenjem pomičeš sve, Esc poništava odabir.",ro:"Selectate {0} — Delete șterge, prin tragere le muți pe toate, Esc anulează selecția.",en:"{0} selected — Delete removes them, drag to move them all, Esc clears the selection."},
+  "Výběr zrušen.": {cs:"Výběr zrušen.",sk:"Výber zrušený.",bg:"Изборът е отменен.",hr:"Odabir poništen.",ro:"Selecție anulată.",en:"Selection cleared."},
+  "Smazáno {0} položek.": {cs:"Smazáno {0} položek.",sk:"Zmazaných {0} položiek.",bg:"Изтрити {0} елемента.",hr:"Obrisano stavki: {0}.",ro:"Șterse {0} elemente.",en:"Deleted {0} items."},
+  "Posunuto {0} položek.": {cs:"Posunuto {0} položek.",sk:"Posunutých {0} položiek.",bg:"Преместени {0} елемента.",hr:"Pomaknuto stavki: {0}.",ro:"Mutate {0} elemente.",en:"Moved {0} items."},
+  "V obdélníku není žádná ikonka ani popisek.": {cs:"V obdélníku není žádná ikonka ani popisek.",sk:"V obdĺžniku nie je žiadna ikonka ani popis.",bg:"В правоъгълника няма икона или надпис.",hr:"U pravokutniku nema ikone ni oznake.",ro:"În dreptunghi nu este nicio pictogramă sau etichetă.",en:"No icon or label inside the rectangle."},
+  "Barva ikonky": {cs:"Barva ikonky",sk:"Farba ikonky",bg:"Цвят на иконата",hr:"Boja ikone",ro:"Culoarea pictogramei",en:"Icon colour"},
+  "Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).": {cs:"Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).",sk:"Farba platí pre vstavané ikony (auto, kamión, vlak, loď, lietadlo).",bg:"Цветът важи за вградените икони (кола, камион, влак, кораб, самолет).",hr:"Boja vrijedi za ugrađene ikone (auto, kamion, vlak, brod, avion).",ro:"Culoarea se aplică pictogramelor integrate (mașină, camion, tren, vapor, avion).",en:"The colour applies to built-in icons (car, truck, train, boat, plane)."},
+  "Ikonka „{0}“ vložena do mapy.": {cs:"Ikonka „{0}“ vložena do mapy.",sk:"Ikonka „{0}“ vložená do mapy.",bg:"Иконата „{0}“ е добавена в картата.",hr:"Ikona „{0}“ umetnuta na kartu.",ro:"Pictograma „{0}“ a fost adăugată pe hartă.",en:"Icon “{0}” added to the map."},
+  "Hledám název místa…": {cs:"Hledám název místa…",sk:"Hľadám názov miesta…",bg:"Търся името на мястото…",hr:"Tražim naziv mjesta…",ro:"Caut numele locului…",en:"Looking up the place name…"},
+  "MÍSTO": {cs:"MÍSTO",sk:"MIESTO",bg:"МЯСТО",hr:"MJESTO",ro:"LOC",en:"PLACE"},
+  "Pusť ji do mapy — mimo mapu se nic nevložilo.": {cs:"Pusť ji do mapy — mimo mapu se nic nevložilo.",sk:"Pusti ju do mapy — mimo mapy sa nič nevložilo.",bg:"Пусни я в картата — извън картата нищо не беше добавено.",hr:"Pusti je na kartu — izvan karte ništa nije umetnuto.",ro:"Las-o pe hartă — în afara hărții nu s-a inserat nimic.",en:"Drop it on the map — nothing was added outside the map."},
   "Hranice a barvy států": {cs:"Hranice a barvy států",sk:"Hranice a farby štátov",bg:"Граници и цветове на държави",hr:"Granice i boje država",ro:"Granițe și culori ale statelor",en:"Country borders & colours"},
   "Rozsah hranic": {cs:"Rozsah",sk:"Rozsah",bg:"Обхват",hr:"Opseg",ro:"Extindere",en:"Extent"},
   "Najdi stát": {cs:"Najdi stát",sk:"Nájdi štát",bg:"Намери държава",hr:"Pronađi državu",ro:"Găsește statul",en:"Find a country"},
@@ -16254,6 +16608,12 @@ Object.assign(I18N, {
 });
 // Texty přímo v HTML bez data-i18n — překládá je pzTranslateTextNodes pro všechny jazyky.
 const PZ_LANG_TEXT = {
+  "Přidat ikonku / popisek do výběru": {sk:"Pridať ikonku / popis do výberu",bg:"Добави икона / надпис към избора",hr:"Dodaj ikonu / oznaku u odabir",ro:"Adaugă pictograma / eticheta la selecție",en:"Add icon / label to the selection"},
+  "Vybrat ikonky a popisky obdélníkem": {sk:"Vybrať ikonky a popisy obdĺžnikom",bg:"Избери икони и надписи с правоъгълник",hr:"Odaberi ikone i oznake pravokutnikom",ro:"Selectează pictograme și etichete cu un dreptunghi",en:"Select icons and labels with a rectangle"},
+  "Vybrat všechny ikonky a popisky": {sk:"Vybrať všetky ikonky a popisy",bg:"Избери всички икони и надписи",hr:"Odaberi sve ikone i oznake",ro:"Selectează toate pictogramele și etichetele",en:"Select all icons and labels"},
+  "Barva ikonky": {sk:"Farba ikonky",bg:"Цвят на иконата",hr:"Boja ikone",ro:"Culoarea pictogramei",en:"Icon colour"},
+  "Původní barva": {sk:"Pôvodná farba",bg:"Оригинален цвят",hr:"Izvorna boja",ro:"Culoarea originală",en:"Original colour"},
+  "Vlastní barva": {sk:"Vlastná farba",bg:"Собствен цвят",hr:"Vlastita boja",ro:"Culoare proprie",en:"Custom colour"},
   "Scéna": {sk:"Scéna",bg:"Сцена",hr:"Scena",ro:"Scenă",en:"Scene"},
   "Presety barev platí jen pro vektorové podklady (Positron, Liberty…). Satelitní a další rastrové podklady se barvit nedají.": {sk:"Presety farieb platia len pre vektorové podklady (Positron, Liberty…). Satelitné a ďalšie rastrové podklady sa farbiť nedajú.",bg:"Цветовите пресети важат само за векторни основи (Positron, Liberty…). Сателитните и другите растерни основи не могат да се оцветяват.",hr:"Predlošci boja vrijede samo za vektorske podloge (Positron, Liberty…). Satelitske i ostale rasterske podloge ne mogu se bojati.",ro:"Preseturile de culori se aplică doar fundalurilor vectoriale (Positron, Liberty…). Fundalurile din satelit și alte fundaluri raster nu pot fi colorate.",en:"Colour presets apply only to vector basemaps (Positron, Liberty…). Satellite and other raster basemaps cannot be recoloured."},
   "Politická mapa": {sk:"Politická mapa",bg:"Политическа карта",hr:"Politička karta",ro:"Hartă politică",en:"Political map"},
@@ -16277,7 +16637,7 @@ const PZ_LANG_TEXT = {
   "Síla glow": {sk:"Sila žiary",bg:"Сила на сиянието",hr:"Jačina sjaja",ro:"Intensitatea strălucirii",en:"Glow strength"},
   "Koncové body (A/B)": {sk:"Koncové body (A/B)",bg:"Крайни точки (A/B)",hr:"Krajnje točke (A/B)",ro:"Puncte de capăt (A/B)",en:"End points (A/B)"},
   "Rychlá scéna": {sk:"Rýchla scéna",bg:"Бърза сцена",hr:"Brza scena",ro:"Scenă rapidă",en:"Quick scene"},
-  "Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.": {sk:"Zadaj miesto a klikni na typ udalosti: ikonka, popis, prípadne perimeter a výrez sa pripravia naraz. Všetko potom ide upraviť alebo vrátiť Ctrl+Z.",bg:"Въведи място и кликни типа събитие: иконата, надписът, евентуално периметърът и изгледът се подготвят наведнъж. Всичко после може да се промени или върне с Ctrl+Z.",hr:"Upiši mjesto i klikni vrstu događaja: ikona, oznaka, eventualno perimetar i izrez pripreme se odjednom. Sve se zatim može urediti ili vratiti s Ctrl+Z.",ro:"Introdu locul și apasă tipul evenimentului: pictograma, eticheta, eventual perimetrul și cadrul se pregătesc deodată. Totul se poate apoi edita sau anula cu Ctrl+Z.",en:"Enter a place and click the event type: icon, label, perimeter if needed and framing are prepared at once. Everything can then be edited or undone with Ctrl+Z."},
+  "Zadej místo a klikni na typ události — nebo dlaždici rovnou přetáhni do mapy na místo, kam patří. Ikonka, popisek, případně perimetr se připraví naráz. Všechno jde upravit nebo vrátit Ctrl+Z.": {sk:"Zadaj miesto a klikni na typ udalosti — alebo dlaždicu rovno pretiahni do mapy na miesto, kam patrí. Ikonka, popis, prípadne perimeter sa pripravia naraz. Všetko ide upraviť alebo vrátiť Ctrl+Z.",bg:"Въведи място и кликни типа събитие — или направо провлачи плочката в картата на мястото ѝ. Иконата, надписът и евентуално периметърът се подготвят наведнъж. Всичко може да се промени или върне с Ctrl+Z.",hr:"Upiši mjesto i klikni vrstu događaja — ili pločicu odmah povuci na kartu, na mjesto kamo pripada. Ikona, oznaka i eventualno perimetar pripreme se odjednom. Sve se može urediti ili vratiti s Ctrl+Z.",ro:"Introdu locul și apasă tipul evenimentului — sau trage direct dala pe hartă, acolo unde îi e locul. Pictograma, eticheta și eventual perimetrul se pregătesc deodată. Totul se poate edita sau anula cu Ctrl+Z.",en:"Enter a place and click an event type — or drag a tile straight onto the map where it belongs. Icon, label and perimeter where relevant are set up at once. Everything can be edited or undone with Ctrl+Z."},
   "Místo": {sk:"Miesto",bg:"Място",hr:"Mjesto",ro:"Loc",en:"Place"},
   "Požár": {sk:"Požiar",bg:"Пожар",hr:"Požar",ro:"Incendiu",en:"Fire"},
   "Výbuch": {sk:"Výbuch",bg:"Експлозия",hr:"Eksplozija",ro:"Explozie",en:"Explosion"},
@@ -17487,7 +17847,8 @@ function pzBuildTemplates(){
     // anglický tooltip pro překladový průchod (pzTranslateTextNodes)
     try{ PZ_EN_TEXT[b.title] = tp.text ? (EN[tp.id] + ': icon + label' + (tp.radius ? ' + ' + tp.radius + ' m perimeter' : '')) : 'Pin + place name'; }catch(e){}
     b.innerHTML = '<img alt="" src="' + pzIconDataUrl(tp.icon) + '"><span>' + escapeHtml(tp.label) + '</span>';
-    b.addEventListener('click', () => pzApplyTemplate(tp.id, b));
+    b.addEventListener('click', () => { if(b.__pzNoClick) return; pzApplyTemplate(tp.id, b); });
+    pzDragToMap(b, pzIconDataUrl(tp.icon), ll => pzDropTemplate(tp.id, ll));
     grid.appendChild(b);
   });
   $('pzTplPlace')?.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); pzApplyTemplate('misto'); } });
@@ -17517,16 +17878,89 @@ async function pzApplyTemplate(id, btn){
       state.map.flyTo({center:[ll.lng, ll.lat], zoom: tp.zoom, padding:{top:0,right:0,bottom:0,left:0},
         offset:[Math.round((fp.left - fp.right) / 2), Math.round((fp.top - fp.bottom) / 2)], duration: 900});
     });
-    if(tp.radius) createScenePerimeterAt(ll, {radiusMeters: tp.radius, unit:'m', silent:true});
-    createSceneIconAt(ll, {data: pzIconDataUrl(tp.icon), silent:true});
-    const size = parseInt($('sceneIconSize')?.value || '44', 10) || 44;
-    // popisek vycentrovaný NAD ikonou (marker má kotvu ve středu celého popisku)
-    const lsz = parseInt(state.mapLabelGlobalSize || $('mapLabelSize')?.value || '28', 10) || 28;
-    addMapLabelAt(offsetLngLat(ll, 0, -Math.round(size * 0.5 + lsz * 1.05 + 12)), {text, silent:true});
-    try{ clearMapLabelSelection(); }catch(e){}
+    pzPlaceTemplateAt(tp, ll, text);
     setStatus(t('Scéna připravena:') + ' ' + tp.label + ' · ' + shortName);
     return {ok:true, place: g.display_name, text};
   } finally { if(btn) btn.disabled = false; }
+}
+// Vloží ikonku, popisek nad ní a případně perimetr na dané místo (bez posunu mapy).
+function pzPlaceTemplateAt(tp, ll, text){
+  if(tp.radius) createScenePerimeterAt(ll, {radiusMeters: tp.radius, unit:'m', silent:true});
+  createSceneIconAt(ll, {data: pzIconDataUrl(tp.icon), silent:true});
+  const size = parseInt($('sceneIconSize')?.value || '44', 10) || 44;
+  // popisek vycentrovaný NAD ikonou (marker má kotvu ve středu celého popisku)
+  const lsz = parseInt(state.mapLabelGlobalSize || $('mapLabelSize')?.value || '28', 10) || 28;
+  addMapLabelAt(offsetLngLat(ll, 0, -Math.round(size * 0.5 + lsz * 1.05 + 12)), {text, silent:true});
+  try{ clearMapLabelSelection(); }catch(e){}
+}
+// Šablona puštěná do mapy: místo je tam, kam ji grafik pustil — bez hledání a
+// bez přeletu. U „Místa" (bez pevného textu) se název dohledá zpětně.
+async function pzDropTemplate(id, ll){
+  const tp = PZ_TEMPLATES.find(x => x.id === id); if(!tp) return;
+  try{ window.__pzPushUndo?.(); }catch(e){}
+  let text = ($('pzTplText')?.value || '').trim() || tp.text;
+  if(!text){
+    setStatus(t('Hledám název místa…'));
+    try{
+      const r = await Promise.race([reverseGeocode([ll.lng, ll.lat], 14), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))]);
+      const a = r?.address || {};
+      text = String(r?.name || a.village || a.town || a.city || a.suburb || a.municipality || '').trim().toUpperCase() || t('MÍSTO');
+    }catch(e){ text = t('MÍSTO'); }
+  }
+  pzPlaceTemplateAt(tp, ll, text);
+  setStatus(t('Scéna připravena:') + ' ' + tp.label + ' · ' + text);
+}
+// Přetažení prvku z panelu do mapy (myš i dotyk, přes pointer události —
+// HTML5 drag&drop na dotykových zařízeních nefunguje). Krátký klik zůstává klikem.
+function pzMapLngLatAt(x, y){
+  const m = state.map; if(!m) return null;
+  const el = document.elementFromPoint(x, y);
+  // jen nad mapou — ne nad panelem, chatem, lištou tlačítek, přehrávačem ani
+  // ovládáním mapy (vodoznaky a rámeček exportu kliky propouštějí)
+  if(!el || el.closest('.sidebar,.tnchat-panel,.tnchat-fab,.project-panel,.settings-modal,.shortcuts-panel,.floating-player,.map-actions,.maplibregl-ctrl,.mobile-menu-btn,#statusBar')) return null;
+  const r = m.getContainer().getBoundingClientRect();
+  if(x < r.left || x > r.right || y < r.top || y > r.bottom) return null;
+  return m.unproject([x - r.left, y - r.top]);
+}
+function pzDragToMap(el, imgSrc, onDrop){
+  // nativní tažení obrázku v tlačítku by gesto přerušilo (pointercancel)
+  el.addEventListener('dragstart', e => e.preventDefault());
+  el.querySelectorAll('img').forEach(i => { i.draggable = false; });
+  el.addEventListener('pointerdown', e => {
+    if(e.button !== 0 || el.disabled) return;
+    const sx = e.clientX, sy = e.clientY;
+    let ghost = null, dragging = false;
+    const move = ev => {
+      if(!dragging){
+        if(Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
+        dragging = true;
+        ghost = document.createElement('img'); ghost.src = imgSrc; ghost.className = 'pz-drag-ghost'; ghost.alt = '';
+        document.body.appendChild(ghost); document.body.classList.add('pz-dragging');
+        // na telefonu panel zakrývá mapu — při tažení ho schovat
+        if(document.body.classList.contains('mobile-panel-open')){ el.__pzReopenPanel = true; document.body.classList.remove('mobile-panel-open'); }
+      }
+      ev.preventDefault();
+      ghost.style.transform = 'translate(' + ev.clientX + 'px,' + ev.clientY + 'px)';
+      ghost.classList.toggle('ok', !!pzMapLngLatAt(ev.clientX, ev.clientY));
+    };
+    const end = ev => {
+      document.removeEventListener('pointermove', move, true);
+      document.removeEventListener('pointerup', end, true);
+      document.removeEventListener('pointercancel', end, true);
+      if(!dragging) return;
+      ghost?.remove(); document.body.classList.remove('pz-dragging');
+      // klik, který po tažení následuje, nesmí spustit hledání místa
+      el.__pzNoClick = true; setTimeout(() => { el.__pzNoClick = false; }, 50);
+      const ll = ev.type === 'pointerup' ? pzMapLngLatAt(ev.clientX, ev.clientY) : null;
+      if(ll) onDrop(ll);
+      else setStatus(t('Pusť ji do mapy — mimo mapu se nic nevložilo.'));
+      if(el.__pzReopenPanel && !ll){ document.body.classList.add('mobile-panel-open'); }
+      el.__pzReopenPanel = false;
+    };
+    document.addEventListener('pointermove', move, true);
+    document.addEventListener('pointerup', end, true);
+    document.addEventListener('pointercancel', end, true);
+  });
 }
 
 function pzIconDataUrl(kind){
@@ -17545,7 +17979,13 @@ function pzBuildIconPalette(){
     b.type = 'button'; b.className = 'btn btn-sm pz-icon-pick'; b.dataset.kind = kind; b.title = it.label;
     b.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;font-size:10px;line-height:1.1';
     b.innerHTML = `<img src="${pzIconDataUrl(kind)}" alt="" style="width:26px;height:26px">${it.label}`;
+    pzDragToMap(b, pzIconDataUrl(kind), ll => {
+      try{ window.__pzPushUndo?.(); }catch(e){}
+      createSceneIconAt(ll, {data: pzIconDataUrl(kind), silent:true});
+      setStatus(t('Ikonka „{0}“ vložena do mapy.', it.label));
+    });
     b.addEventListener('click', () => {
+      if(b.__pzNoClick) return;
       state.sceneIconData = pzIconDataUrl(kind);
       const pv = $('sceneIconPreview'); if(pv) pv.innerHTML = `<img src="${state.sceneIconData}" alt="">`;
       grid.querySelectorAll('.pz-icon-pick').forEach(x => x.classList.toggle('btn-primary', x === b));
@@ -17623,7 +18063,7 @@ function pzColorFromName(v){
   // Háček pro automatické testy (tests/14_fixes.test.js) — funkce appky jsou
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
-    syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName,
+    syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
     get state(){ return state; }};
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------

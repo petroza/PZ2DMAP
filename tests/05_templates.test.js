@@ -20,6 +20,22 @@ const {check, done, open, status, tab} = require('./lib');
   c = await cnt(); check(c.i === 1 && c.l === 1 && c.p === 0, 'jeden Ctrl+Z vrátí celou šablonu');
   await page.fill('#pzTplPlace', ''); await page.click('.pz-tpl-btn[data-tpl="pozar"]'); await page.waitForTimeout(400);
   check(/Nejdřív napiš místo/.test(await status(page)), 'prázdné místo → upozornění');
+  // přetažení dlaždice do mapy: vloží se na místo puštění, bez hledání
+  const before = await cnt();
+  const drag = async (sel, tx, ty) => {
+    const b = await (await page.$(sel)).boundingBox();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down();
+    for(let i = 1; i <= 12; i++){ await page.mouse.move(b.x + (tx - b.x) * i / 12, b.y + (ty - b.y) * i / 12); await page.waitForTimeout(15); }
+    await page.mouse.up(); await page.waitForTimeout(800);
+  };
+  await drag('.pz-tpl-btn[data-tpl="vybuch"]', 1000, 450);
+  c = await cnt(); check(c.i === before.i + 1 && c.l === before.l + 1 && c.p === before.p + 1, 'přetažení Výbuchu do mapy vloží ikonku, popisek i perimetr');
+  const centers = await page.$$eval('.maplibregl-marker.scene-icon-marker', els => els.map(e => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }));
+  check(centers.some(([x, y]) => Math.abs(x - 1000) < 4 && Math.abs(y - 450) < 4), 'ikonka leží přesně na místě puštění');
+  await drag('.pz-tpl-btn[data-tpl="nehoda"]', 250, 500);
+  check((await cnt()).i === c.i, 'puštění nad panelem nic nevloží');
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(1500);
+  c = await cnt(); check(c.i === before.i && c.p === before.p, 'Ctrl+Z vrátí přetaženou šablonu');
   check(errors.length === 0, 'žádná chyba stránky');
   await close(); done();
 })();

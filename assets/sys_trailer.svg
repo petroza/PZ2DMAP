@@ -1,5 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <!-- návěs shora -->
-  <path fill="#000" fill-rule="evenodd" d="M84 10 L172 10 Q178 10 178 16 L178 242 Q178 248 172 248 L84 248 Q78 248 78 242 L78 16 Q78 10 84 10 Z
-  M90 60 L166 60 L166 65 L90 65 Z M90 128 L166 128 L166 133 L90 133 Z M90 196 L166 196 L166 201 L90 201 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" data-accent="#3ECF9E">
+  <!-- návěs shora (předek nahoře), styl MINT: bílá plachta, jemný objem, kola vzadu, koncová světla -->
+  <defs>
+    <linearGradient id="b" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#e2e8ed"/><stop offset=".3" stop-color="#fbfcfd"/><stop offset=".7" stop-color="#fbfcfd"/><stop offset="1" stop-color="#dce3e9"/></linearGradient>
+    <filter id="s" x="-30%" y="-10%" width="160%" height="120%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0b1a2a" flood-opacity=".28"/></filter>
+  </defs>
+  <g fill="#1a2028">
+    <rect x="66" y="170" width="16" height="28" rx="5"/><rect x="174" y="170" width="16" height="28" rx="5"/>
+    <rect x="66" y="204" width="16" height="28" rx="5"/><rect x="174" y="204" width="16" height="28" rx="5"/>
+  </g>
+  <g filter="url(#s)">
+    <rect x="74" y="6" width="108" height="244" rx="12" fill="#fff"/>
+    <rect x="80" y="12" width="96" height="232" rx="8" fill="url(#b)" stroke="#c3ccd4" stroke-width="2"/>
+  </g>
+  <path d="M92 30 H164" stroke="#d3dae0" stroke-width="3" stroke-linecap="round"/>
+  <rect x="84" y="234" width="12" height="6" rx="2" fill="#e5484d"/><rect x="160" y="234" width="12" height="6" rx="2" fill="#e5484d"/>
 </svg>

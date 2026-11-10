@@ -1,5 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <!-- vagon shora (za lokomotivou) -->
-  <path fill="#000" fill-rule="evenodd" d="M96 8 L160 8 Q170 8 170 18 L170 238 Q170 248 160 248 L96 248 Q86 248 86 238 L86 18 Q86 8 96 8 Z
-  M100 40 L156 40 L156 48 L100 48 Z M100 96 L156 96 L156 104 L100 104 Z M100 152 L156 152 L156 160 L100 160 Z M100 208 L156 208 L156 216 L100 216 Z"/>
+  <!-- vagon shora (předek nahoře), styl MINT: bílá karoserie, akcentní pruhy (#3ECF9E = barva akcentu, appka ji přebarvuje), střešní mřížka -->
+  <defs>
+    <linearGradient id="b" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#e4e9ed"/><stop offset=".3" stop-color="#fbfcfd"/><stop offset=".7" stop-color="#fbfcfd"/><stop offset="1" stop-color="#dfe5ea"/></linearGradient>
+    <filter id="s" x="-30%" y="-10%" width="160%" height="120%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0b1a2a" flood-opacity=".28"/></filter>
+  </defs>
+  <rect x="116" y="0" width="24" height="18" rx="3" fill="#5f6873"/>
+  <g filter="url(#s)">
+    <rect x="72" y="12" width="112" height="234" rx="16" fill="#fff"/>
+    <rect x="78" y="18" width="100" height="222" rx="12" fill="url(#b)" stroke="#c3ccd4" stroke-width="2"/>
+  </g>
+  <rect x="86" y="30" width="9" height="196" rx="4.5" fill="#3ECF9E"/>
+  <rect x="161" y="30" width="9" height="196" rx="4.5" fill="#3ECF9E"/>
+  <rect x="106" y="92" width="44" height="72" rx="12" fill="#e2e7eb" stroke="#b4bec7" stroke-width="2.5"/>
+  <path d="M116 106 H140 M116 116 H140 M116 126 H140 M116 136 H140 M116 146 H140" stroke="#98a3ad" stroke-width="3" stroke-linecap="round"/>
 </svg>
