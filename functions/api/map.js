@@ -3,6 +3,7 @@
 //   POST {action:"replace", items:[…]} -> {ok:true, count:N}
 // Appka posílá vždy celé pole najednou, žádné dílčí úpravy.
 import { json, preflight, writeAllowed, readJson } from './_shared.js';
+import { saveHistory } from './_history.js';
 
 const ENTITIES = ['presets', 'projects'];
 
@@ -46,9 +47,21 @@ export async function onRequest({ request, env }) {
   // deletions, aby se mazání dalo rozeznat od "ještě se to sem nedoneslo",
   // až se appka otevře na druhém počítači.
   const { results: had } = await env.DB
-    .prepare('SELECT id FROM items WHERE entity = ?').bind(entity).all();
+    .prepare('SELECT id, json FROM items WHERE entity = ?').bind(entity).all();
   const keep = new Set(items.map(i => i.id));
   const gone = (had || []).map(r => r.id).filter(id => !keep.has(id));
+
+  // Ochrana proti hromadnému smazání. Appka maže po jedné položce; zápis, který
+  // naráz zahodí většinu (a aspoň 3) položek, je skoro jistě chyba — typicky
+  // prohlížeč, který se nenačetl ze serveru a pošle jen svůj krátký seznam —
+  // nebo cizí požadavek. Vědomé hromadné mazání musí poslat allowBulkDelete.
+  if (gone.length >= 3 && gone.length * 2 > (had || []).length && body.allowBulkDelete !== true) {
+    return json({ ok: false, guard: 'bulk-delete', error:
+      `Zápis by smazal ${gone.length} z ${(had || []).length} položek najednou — odmítnuto (ochrana dat).` }, 409);
+  }
+
+  // Předchozí stav do historie verzí (obnova v /admin).
+  await saveHistory(env, entity, (had || []).map(r => r.json), 'zápis z appky');
 
   const stmts = [];
   for (const id of gone) {

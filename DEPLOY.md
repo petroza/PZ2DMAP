@@ -114,3 +114,20 @@ node tools/preview.mjs     # http://localhost:8788
 
 Přístupové údaje patří do proměnných prostředí, ne do repozitáře:
 `CF_API_TOKEN`, `CF_ACCOUNT_ID`, `OWM_KEY`.
+
+
+## Ochrana dat a obnova projektů
+
+- **Historie verzí:** před každým uložením z appky se celý předchozí seznam
+  projektů / presetů uloží do tabulky `items_history` (30 dní, aspoň posledních
+  50, nejvýš 300 verzí na entitu). Obnova: **https://tnmap.pages.dev/admin →
+  Historie projektů a presetů → Obnovit**. Současný stav se před obnovou sám
+  uloží do historie, takže jde vzít zpět.
+- **Ochrana proti hromadnému smazání:** `/api/map` odmítne (HTTP 409) zápis,
+  který by naráz smazal aspoň 3 a zároveň víc než polovinu položek. Typicky jde
+  o prohlížeč, který se nenačetl ze serveru a poslal jen svůj krátký seznam.
+  Grafik uvidí hlášku „Obnov stránku"; místní data zůstávají. Vědomé hromadné
+  smazání musí poslat `allowBulkDelete: true`.
+- Ruční obnova bez /admin (SQL), např. projekty z verze 42:
+  `SELECT json FROM items_history WHERE id = 42` → pole položek → zapsat přes
+  `POST /api/map {entity:'projects', action:'replace', items:[…], allowBulkDelete:true}`.

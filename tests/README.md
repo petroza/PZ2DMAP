@@ -31,6 +31,7 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 | 11 assistant | rychlé povely a délka trasy bez dotazu na model (odpovědi podvržené) |
 | 12 search | Hledat skočí na místo, záloha Photon při výpadku Nominatimu |
 | 13 transport | vlak (nádraží, vagony), loď, kamion s návěsem, uzavírky |
+| 20 api_d1 | serverové API nad náhradní D1 (node:sqlite): token, ochrana proti hromadnému smazání, historie verzí a obnova, statistika |
 | 90 batch_export (pomalý) | hromadný export 16:9 + 9:16 |
 
 Testy 03, 05, 12, 13 potřebují internet (geokódování Nominatim / Photon).

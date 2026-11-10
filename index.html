@@ -3408,6 +3408,13 @@ async function pushEntityToServer(entity, items){
     headers:{'Content-Type':'application/json', ...(SERVER_API_TOKEN ? {'X-Api-Token': SERVER_API_TOKEN} : {})},
     body: JSON.stringify({entity, action:'replace', items, deletedIds})
   });
+  if(res.status === 409){
+    // Ochrana dat na serveru odmítla zápis, který by naráz smazal většinu položek
+    // (typicky se prohlížeč nenačetl ze serveru). Místní data zůstávají, nic se neztratilo.
+    const d = await res.json().catch(()=>({}));
+    try{ setStatus((d.error || 'Server odmítl uložení.') + ' Obnov stránku (F5), ať se načtou data ze serveru.', 'error'); }catch(e){}
+    throw new Error(d.error || 'Server entity save rejected');
+  }
   if(!res.ok) throw new Error('Server entity save failed');
   const data = await res.json().catch(()=>({ok:true}));
   if(data && data.ok === false) throw new Error(data.error || 'Server entity save failed');
