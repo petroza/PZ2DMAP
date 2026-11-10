@@ -17973,6 +17973,25 @@ function pzColorFromName(v){
     return hit ? {say: hit[1], calls: hit[2]} : null;
   }
 
+  function localReadback(results){
+    const fmt = n => Number(n).toLocaleString('cs-CZ', {maximumFractionDigits: 1});
+    const shortName = x => String(x || '').split(',')[0].trim();
+    const out = [];
+    for(const {tool, result:r} of results){
+      if(tool === 'routeBetween' && r.distanceKm != null){
+        let txt = 'Délka trasy ' + fmt(r.distanceKm) + ' km';
+        if(Array.isArray(r.stations) && (r.stations[0] || r.stations[1])) txt += ' (' + (r.stations[0] || '…') + ' → ' + (r.stations[1] || '…') + ')';
+        out.push(txt + '.');
+      } else if(tool === 'measureDistance' && r.distanceKm != null){
+        out.push('Vzdušnou čarou ' + shortName(r.from) + ' – ' + shortName(r.to) + ': ' + fmt(r.distanceKm) + ' km.');
+      } else if(tool === 'drawPerimeter' && r.radiusMeters != null){
+        const m = +r.radiusMeters;
+        out.push((r.place ? shortName(r.place) + ': p' : 'P') + 'erimetr ' + (m >= 1000 ? fmt(m / 1000) + ' km' : Math.round(m) + ' m') + '.');
+      }
+    }
+    return out.join(' ');
+  }
+
   async function ask(userText){
     if(busy) return;
     busy = true; sendBtn.disabled = true;
@@ -18056,6 +18075,20 @@ function pzColorFromName(v){
         }).join('; ');
         history.push({role:'assistant', content:(data.say || '') + '\n[provedeno: ' + doneTxt + ']'});
         if(data.done) break;
+        // Druhé kolo modelu jen kvůli větě „trasa má 205 km" stojí celý prompt
+        // (~7 000 tokenů) z denního limitu. Když všechno prošlo a jde jen o
+        // trasu / měření / perimetr, číslo doplníme sami a dotaz ušetříme.
+        const LOCAL_OK = new Set(['routeBetween','measureDistance','drawPerimeter','fitRoute','arcBestView','setTransportMode','gotoPlace']);
+        const allOk = toolResults.length && toolResults.every(r => r.result && r.result.ok !== false);
+        if(allOk && calls.every(c => LOCAL_OK.has(c.tool))){
+          const extra = localReadback(toolResults);
+          if(extra){
+            thinking.textContent = ((data.say || '').trim() + ' ' + extra).trim();
+            history[history.length - 1].content += '\n' + extra;
+            try{ window.tnFeature?.('ai:localReadback'); }catch(_e){}
+            break;
+          }
+        }
       }
     }catch(e){
       thinking.remove();
