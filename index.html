@@ -17065,10 +17065,13 @@ const PZ_TEMPLATES = [
 ];
 function pzBuildTemplates(){
   const grid = $('pzTplGrid'); if(!grid || grid.childElementCount) return;
+  const EN = {nehoda:'Accident', pozar:'Fire', vybuch:'Explosion', policie:'Police', zachranka:'Rescue', povoden:'Flood', varovani:'Warning', misto:'Place'};
   PZ_TEMPLATES.forEach(tp => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'pz-tpl-btn'; b.dataset.tpl = tp.id;
     b.title = tp.text ? (tp.label + ': ikonka + popisek „' + tp.text + '"' + (tp.radius ? ' + perimetr ' + tp.radius + ' m' : '')) : 'Špendlík + název místa';
+    // anglický tooltip pro překladový průchod (pzTranslateTextNodes)
+    try{ PZ_EN_TEXT[b.title] = tp.text ? (EN[tp.id] + ': icon + label' + (tp.radius ? ' + ' + tp.radius + ' m perimeter' : '')) : 'Pin + place name'; }catch(e){}
     b.innerHTML = '<img alt="" src="' + pzIconDataUrl(tp.icon) + '"><span>' + escapeHtml(tp.label) + '</span>';
     b.addEventListener('click', () => pzApplyTemplate(tp.id, b));
     grid.appendChild(b);
