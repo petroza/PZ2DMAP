@@ -41,6 +41,9 @@ html,body{height:100%;font-family:var(--font);font-size:13px;color:var(--tx1);ba
 .tab-btn.dragging{opacity:.55}
 .tab-btn.drop-before{box-shadow:inset 3px 0 0 var(--accent)}
 .tab-btn.drop-after{box-shadow:inset -3px 0 0 var(--accent)}
+/* rámeček fokusu uvnitř tlačítka — výchozí bílý přetékal do sousedních záložek */
+.tab-btn:focus{outline:none}
+.tab-btn:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
 
 
 .sidebar-content{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
@@ -300,6 +303,8 @@ input[type=color]:hover{border-color:var(--accent)}
 .route-dot.dot-wp{background:var(--yellow);width:22px;height:22px;font-size:10px;border-width:1.5px}
 
 .maplibregl-marker.animated-marker,.maplibregl-marker:has(> .animated-marker){z-index:4}
+.animated-marker.pz-colored-vehicle{filter:none}
+#pzVehiclePalette[hidden]{display:none}
 .animated-marker{position:absolute;pointer-events:none;display:flex;align-items:center;justify-content:center;transform-origin:center center;filter:drop-shadow(0 2px 2px rgba(0,0,0,.48)) drop-shadow(0 6px 8px rgba(0,0,0,.34))}
 .animated-marker svg,.animated-marker img{display:block}
 .animated-marker.inverted{filter:invert(1) hue-rotate(180deg) drop-shadow(0 2px 2px rgba(255,255,255,.28)) drop-shadow(0 6px 8px rgba(0,0,0,.38))}
@@ -1037,6 +1042,20 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <p class="hint" data-i18n="hint_anim_system_icons">Kliknutím vybereš vestavěnou animační ikonku.</p>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
         <input id="animIconSize" type="range" min="18" max="96" step="2" value="34">
+        <div id="pzVehiclePalette" style="margin-top:12px" hidden>
+          <label for="pzVehiclePreset" data-i18n="Barvy vozidla">Barvy vozidla</label>
+          <select id="pzVehiclePreset">
+            <option value="light" data-i18n="Pro světlý podklad">Pro světlý podklad</option>
+            <option value="dark" data-i18n="Pro tmavý podklad">Pro tmavý podklad</option>
+            <option value="blue" data-i18n="Pro modrý podklad">Pro modrý podklad</option>
+            <option value="custom" data-i18n="Vlastní barvy">Vlastní barvy</option>
+          </select>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <div><label for="pzVehicleBody" data-i18n="Karoserie">Karoserie</label><input type="color" id="pzVehicleBody" value="#f8fafc"></div>
+            <div><label for="pzVehicleAccent" data-i18n="Akcent">Akcent</label><input type="color" id="pzVehicleAccent" value="#48cfa5"></div>
+          </div>
+        </div>
+        <div id="animIconTintWrap">
         <label style="margin-top:10px">Barva ikonky</label>
         <div class="pz-tint-row" id="animIconTintRow">
           <button type="button" class="pz-tint-sw pz-tint-orig active" data-tint="" title="Původní barva" style="background:conic-gradient(#3ECF9E 0 50%,#14171c 0)"></button>
@@ -1048,6 +1067,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <button type="button" class="pz-tint-sw" data-tint="#1FA34A" title="Zelená" style="background:#1FA34A"></button>
           <button type="button" class="pz-tint-sw" data-tint="#FFFFFF" title="Bílá" style="background:#FFFFFF"></button>
           <input id="animIconColor" type="color" value="#f03b3b" title="Vlastní barva">
+        </div>
         </div>
         <label class="check" style="margin-top:10px"><input id="invertIcons" type="checkbox">  Invertovat ikonky (pro světlou mapu)</label>
 
@@ -4396,6 +4416,56 @@ const ANIM_SYSTEM_ICONS = {
   train: 'assets/sys_train.svg',
   boat: 'assets/sys_boat.svg'
 };
+const PZ_VEHICLE_SVG = {
+  "plane": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(0.76) translate(-70 -64)\"><g filter=\"url(#shadow)\" stroke-linejoin=\"round\">\n<path d=\"M18 61L9 39Q9 37 13 37L27 40L45 54L58 53L37 12Q36 9 40 9H47L80 51L107 50Q121 50 130 62Q132 64 130 66Q121 78 107 78L80 77L47 119H40Q36 119 37 116L58 75L45 74L27 88L13 91Q9 91 9 89L18 67Z\" fill=\"#415867\" stroke=\"#fff\" stroke-width=\"3.6\"/>\n<path d=\"M20 61L12 40L26 43L43 56L61 55L40 12H46L78 53L107 52Q120 52 128 64Q120 76 107 76L78 75L46 116H40L61 73L43 72L26 85L12 88L20 67Z\" fill=\"url(#roof)\"/>\n<path d=\"M12 40L16 49L24 47L22 42ZM12 88L16 79L24 81L22 86ZM40 12H46L52 20H44ZM40 116H46L52 108H44Z\" fill=\"url(#paint)\"/>\n<path d=\"M65 53L47 18M65 75L47 110\" fill=\"none\" stroke=\"#9BAEBB\" stroke-width=\"1\" opacity=\".7\"/>\n<rect x=\"62\" y=\"36\" width=\"23\" height=\"11\" rx=\"5.5\" fill=\"url(#roof)\" stroke=\"#778F9E\" stroke-width=\"1.3\"/>\n<rect x=\"62\" y=\"81\" width=\"23\" height=\"11\" rx=\"5.5\" fill=\"url(#roof)\" stroke=\"#778F9E\" stroke-width=\"1.3\"/>\n<path d=\"M23 61Q41 56 61 56H105Q118 56 125 64Q118 72 105 72H61Q41 72 23 67Q19 64 23 61Z\" fill=\"url(#roof)\"/>\n<path d=\"M32 60Q47 57 60 57H100M32 68Q47 71 60 71H100\" fill=\"none\" stroke=\"url(#paint)\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n<path d=\"M111 57Q119 59 122 64Q119 69 111 71L109 68L115 64L109 60Z\" fill=\"url(#glass)\"/>\n</g></g></svg>",
+  "boat": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(0.82) translate(-77 -35)\"><g filter=\"url(#shadow)\">\n<path d=\"M19 19 Q31 28 42 30 M19 51 Q31 42 42 40\" fill=\"none\" stroke=\"#FCFFFF\" stroke-width=\"2\" stroke-linecap=\"round\" opacity=\".85\"/>\n<path d=\"M39 16H80Q110 16 132 35Q110 54 80 54H39Q32 54 32 47V23Q32 16 39 16Z\" fill=\"#233845\" stroke=\"#fff\" stroke-width=\"2.6\"/>\n<path d=\"M40 19H80Q107 19 127 35Q107 51 80 51H40Q35 51 35 46V24Q35 19 40 19Z\" fill=\"url(#paint)\"/>\n<path d=\"M44 22H79Q105 22 122 35Q105 48 79 48H44Q38 48 38 43V27Q38 22 44 22Z\" fill=\"url(#roof)\"/>\n<path d=\"M44 28V42M48 27V43\" stroke=\"#B1C3CD\" stroke-width=\"1.3\" stroke-linecap=\"round\"/>\n<path d=\"M59 25H83Q92 25 101 35Q92 45 83 45H59Q55 45 55 41V29Q55 25 59 25Z\" fill=\"url(#glass)\"/>\n<path d=\"M61 28H80Q86 28 90 32V38Q86 42 80 42H61Q58 42 58 39V31Q58 28 61 28Z\" fill=\"url(#roof)\"/>\n<path d=\"M92 29Q96 32 98 35\" fill=\"none\" stroke=\"#8AA9B9\" stroke-width=\"1.3\" stroke-linecap=\"round\"/>\n<path d=\"M103 32L113 35L103 38\" fill=\"none\" stroke=\"#B1C3CD\" stroke-width=\"1.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n</g></g></svg>",
+  "train": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(1) translate(-50 -26)\"><g filter=\"url(#shadow)\"><g transform=\"translate(0 0)\">\n    <path d=\"M13 10H64C75 10 85 16 91 23Q94 26 91 29C85 36 75 42 64 42H13Q7 42 7 36V16Q7 10 13 10Z\" fill=\"#243442\" stroke=\"white\" stroke-width=\"2.4\"/>\n    <path d=\"M14 12H62C74 12 83 18 89 26C83 34 74 40 62 40H14Q9 40 9 35V17Q9 12 14 12Z\" fill=\"url(#roof)\"/>\n    <path d=\"M17 13H60M17 39H60\" stroke=\"url(#paint)\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>\n    <path d=\"M69 15Q79 18 83 26Q79 34 69 37L65 32Q70 26 65 20Z\" fill=\"url(#glass)\"/>\n    <path d=\"M72 18Q77 20 79 24\" fill=\"none\" stroke=\"#88A4B4\" stroke-width=\"1.2\" stroke-linecap=\"round\"/>\n    <rect x=\"28\" y=\"20\" width=\"25\" height=\"12\" rx=\"4\" fill=\"#DCE3E8\" stroke=\"#C6D0D9\" stroke-width=\".7\"/>\n    <path d=\"M34 23V29M38 23V29M42 23V29M46 23V29\" stroke=\"#A4B3BF\" stroke-width=\".8\"/>\n    <path d=\"M86 23L88 25M86 29L88 27\" stroke=\"#FFF6D4\" stroke-width=\"1.7\" stroke-linecap=\"round\"/>\n    </g></g></g></svg>",
+  "wagon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(1.12) translate(-45 -26)\"><g filter=\"url(#shadow)\"><g transform=\"translate(0 0)\">\n    <rect x=\"7\" y=\"10\" width=\"76\" height=\"32\" rx=\"7\" fill=\"#243442\" stroke=\"white\" stroke-width=\"2.4\"/>\n    <rect x=\"9\" y=\"12\" width=\"72\" height=\"28\" rx=\"5\" fill=\"url(#roof)\"/>\n    <path d=\"M17 13H73M17 39H73\" stroke=\"url(#paint)\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>\n    <rect x=\"29\" y=\"20\" width=\"31\" height=\"12\" rx=\"4\" fill=\"#D8E0E6\" stroke=\"#C3CED7\" stroke-width=\".7\"/>\n    <path d=\"M35 23V29M39 23V29M43 23V29M47 23V29M51 23V29M55 23V29\" stroke=\"#A4B3BF\" stroke-width=\".8\"/>\n    <path d=\"M16 18V34M74 18V34\" stroke=\"#D1DAE2\" stroke-width=\"1\"/>\n    </g></g></g></svg>",
+  "truck": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><clipPath id=\"piece\"><rect x=\"112\" y=\"0\" width=\"52\" height=\"66\"/></clipPath><g transform=\"translate(50 50) rotate(-90) scale(0.8) translate(-134 -33)\"><g clip-path=\"url(#piece)\"><g filter=\"url(#shadow)\">\n    <path d=\"M12 10H104V20H119V13Q119 9 125 9H146Q153 9 155 17V47Q153 55 146 55H125Q119 55 119 51V44H104V54H12Z\" fill=\"white\" stroke=\"white\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n    <rect x=\"94\" y=\"23\" width=\"40\" height=\"18\" rx=\"4\" fill=\"#566777\"/>\n    <path d=\"M28 10V54M38 10V54M126 10V54M145 11V53\" stroke=\"#1B2934\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n    <rect x=\"9\" y=\"11\" width=\"97\" height=\"42\" rx=\"4\" fill=\"#788B9B\"/>\n    <rect x=\"10\" y=\"12\" width=\"95\" height=\"40\" rx=\"3\" fill=\"url(#roof)\"/>\n    <path d=\"M17 17H97M17 47H97\" stroke=\"#D4DDE4\" stroke-width=\"1\"/>\n    <path d=\"M16 14V50\" stroke=\"#B5C2CE\" stroke-width=\"1.1\"/>\n    <path d=\"M11 16V20M11 44V48\" stroke=\"#EB6872\" stroke-width=\"2\"/>\n    <path d=\"M125 12H145Q151 12 153 19V45Q151 52 145 52H125Q120 52 120 47V17Q120 12 125 12Z\" fill=\"url(#paint)\" stroke=\"#314D4C\" stroke-width=\".8\"/>\n    <rect x=\"124\" y=\"18\" width=\"15\" height=\"28\" rx=\"4\" fill=\"url(#roof)\"/>\n    <path d=\"M141 16Q148 16 149 21V43Q148 48 141 48L139 42V22Z\" fill=\"url(#glass)\"/>\n    <path d=\"M143 20L146 23V40\" stroke=\"#839DAD\" stroke-width=\"1.2\" fill=\"none\" stroke-linecap=\"round\"/>\n    <path d=\"M151 18V23M151 41V46\" stroke=\"#FFF6D4\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n    <path d=\"M139 10V7M139 54V57\" stroke=\"#263D4A\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n    </g></g></g></svg>",
+  "trailer": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><clipPath id=\"piece\"><rect x=\"0\" y=\"0\" width=\"114\" height=\"66\"/></clipPath><g transform=\"translate(50 50) rotate(-90) scale(0.84) translate(-56 -32)\"><g clip-path=\"url(#piece)\"><g filter=\"url(#shadow)\">\n    <path d=\"M12 10H104V20H119V13Q119 9 125 9H146Q153 9 155 17V47Q153 55 146 55H125Q119 55 119 51V44H104V54H12Z\" fill=\"white\" stroke=\"white\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n    <rect x=\"94\" y=\"23\" width=\"40\" height=\"18\" rx=\"4\" fill=\"#566777\"/>\n    <path d=\"M28 10V54M38 10V54M126 10V54M145 11V53\" stroke=\"#1B2934\" stroke-width=\"7\" stroke-linecap=\"round\"/>\n    <rect x=\"9\" y=\"11\" width=\"97\" height=\"42\" rx=\"4\" fill=\"#788B9B\"/>\n    <rect x=\"10\" y=\"12\" width=\"95\" height=\"40\" rx=\"3\" fill=\"url(#roof)\"/>\n    <path d=\"M17 17H97M17 47H97\" stroke=\"#D4DDE4\" stroke-width=\"1\"/>\n    <path d=\"M16 14V50\" stroke=\"#B5C2CE\" stroke-width=\"1.1\"/>\n    <path d=\"M11 16V20M11 44V48\" stroke=\"#EB6872\" stroke-width=\"2\"/>\n    <path d=\"M125 12H145Q151 12 153 19V45Q151 52 145 52H125Q120 52 120 47V17Q120 12 125 12Z\" fill=\"url(#paint)\" stroke=\"#314D4C\" stroke-width=\".8\"/>\n    <rect x=\"124\" y=\"18\" width=\"15\" height=\"28\" rx=\"4\" fill=\"url(#roof)\"/>\n    <path d=\"M141 16Q148 16 149 21V43Q148 48 141 48L139 42V22Z\" fill=\"url(#glass)\"/>\n    <path d=\"M143 20L146 23V40\" stroke=\"#839DAD\" stroke-width=\"1.2\" fill=\"none\" stroke-linecap=\"round\"/>\n    <path d=\"M151 18V23M151 41V46\" stroke=\"#FFF6D4\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n    <path d=\"M139 10V7M139 54V57\" stroke=\"#263D4A\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n    </g></g></g></svg>"
+};
+const PZ_VEHICLE_PRESETS = {
+  light: {body:'#f8fafc', accent:'#48cfa5'},
+  dark: {body:'#fff6e6', accent:'#66f0b6'},
+  blue: {body:'#fff7eb', accent:'#ffac62'}
+};
+const pzVehicleCache = new Map();
+function pzHasVehiclePalette(type){ return Object.hasOwn(PZ_VEHICLE_SVG, type); }
+function pzVehiclePalette(){
+  return {body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value};
+}
+function pzSetVehiclePalette(palette){
+  for(const [key, id] of [['body','pzVehicleBody'], ['accent','pzVehicleAccent']]){
+    const hex = palette?.[key];
+    $(id).value = /^#[0-9a-f]{6}$/i.test(hex) ? hex : PZ_VEHICLE_PRESETS.light[key];
+  }
+  const {body, accent} = pzVehiclePalette();
+  $('pzVehiclePreset').value = Object.keys(PZ_VEHICLE_PRESETS).find(key => {
+    const preset = PZ_VEHICLE_PRESETS[key];
+    return preset.body === body && preset.accent === accent;
+  }) || 'custom';
+  pzVehicleCache.clear();
+}
+function pzVehicleShade(hex, target, amount){
+  const channels = hex.slice(1).match(/../g);
+  return '#' + channels.map((channel, i) => Math.round(parseInt(channel, 16) * (1 - amount) + target[i] * amount).toString(16).padStart(2, '0')).join('');
+}
+function pzVehicleImage(type){
+  if(!pzHasVehiclePalette(type)) return ANIM_SYSTEM_ICONS[type] || null;
+  if(!pzVehicleCache.has(type)){
+    const {body, accent} = pzVehiclePalette();
+    const svg = PZ_VEHICLE_SVG[type]
+      .replace('#FFFFFF', pzVehicleShade(body, [255,255,255], .45))
+      .replace('#F8FAFC', body)
+      .replace('#CCD5DF', pzVehicleShade(body, [55,77,98], .24))
+      .replaceAll('#48CFA5', accent);
+    pzVehicleCache.set(type, 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+  }
+  return pzVehicleCache.get(type);
+}
+function pzLegacyIconInverted(){
+  return !pzHasVehiclePalette(state.animSystemIcon) && !!$('invertIcons')?.checked;
+}
 // Která ikonka patří ke kterému druhu dopravy — při přepnutí dopravy se
 // ikonka vymění sama (pokud grafik nenahrál vlastní obrázek).
 // Motorka záměrně nemá ikonku — na mapě jen bod jako u pěší trasy.
@@ -4628,7 +4698,16 @@ function initAngleDial(){
 }
 
 function renderAnimSystemIconSelection(){
-  $$('.sys-icon-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.sysIcon === state.animSystemIcon));
+  $$('.sys-icon-btn').forEach(btn => {
+    const type = btn.dataset.sysIcon;
+    btn.classList.toggle('active', type === state.animSystemIcon);
+    if(pzHasVehiclePalette(type)) btn.querySelector('img').src = pzVehicleImage(type);
+  });
+  const pal = pzHasVehiclePalette(state.animSystemIcon);
+  $('pzVehiclePalette').hidden = !pal;
+  // vozidla se sadou barev mají karoserii a akcent; řada odstínů a inverze zůstávají pro auto
+  if($('animIconTintWrap')) $('animIconTintWrap').style.display = pal ? 'none' : '';
+  $('invertIcons').closest('label').style.display = pal ? 'none' : '';
 }
 
 function renderAnimIconPreview(){
@@ -4651,7 +4730,7 @@ function pzSyncAnimAngleBlock(){
 }
 function setAnimSystemIcon(type, options={}){
   state.animSystemIcon = ANIM_SYSTEM_ICONS[type] ? type : null;
-  state.animIconData = state.animSystemIcon ? ANIM_SYSTEM_ICONS[state.animSystemIcon] : null;
+  state.animIconData = pzVehicleImage(state.animSystemIcon);
   if($('animCustomIconUpload')) $('animCustomIconUpload').value = '';
   // A vehicle icon pointing north regardless of where it's going looks broken —
   // when the user picks a system icon, default to following the route.
@@ -7988,6 +8067,7 @@ function serializeProjectSnapshot(){
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
       animIconTint: state.animIconTint || null,
+      vehiclePalette: pzVehiclePalette(),
       animStart: $('animStart')?.value || '0',
       animDuration: $('animDuration')?.value || '8',
       cameraPitch: $('cameraPitch')?.value || '45',
@@ -8076,7 +8156,8 @@ function applyBasicProjectSnapshot(snapshot){
   syncSliderNumbers();
   if($('animEasing')) $('animEasing').value = ['linear','easeInOut','easeIn','easeOut'].includes(animation.animEasing) ? animation.animEasing : 'linear';
   state.animSystemIcon = animation.animSystemIcon && ANIM_SYSTEM_ICONS[animation.animSystemIcon] ? animation.animSystemIcon : null;
-  state.animIconData = state.animSystemIcon ? ANIM_SYSTEM_ICONS[state.animSystemIcon] : (animation.animIconData || null);
+  pzSetVehiclePalette(animation.vehiclePalette);
+  state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
   state.animIconTint = /^#[0-9a-f]{6}$/i.test(animation.animIconTint || '') ? animation.animIconTint : null;
   try{ pzSyncTintUi(); }catch(e){}
   renderAnimSystemIconSelection();
@@ -12560,8 +12641,8 @@ function finalAngle(progress){
    Vrstva je součást mapy, proto je i v exportu videa bez další práce. */
 const PZ_CONSIST = {
   // gap = vzdálenost středů v násobcích velikosti ikonky, half = půl délky kusu
-  train: [{img:'assets/sys_wagon.svg', gap:0.96, half:0.46}, {img:'assets/sys_wagon.svg', gap:0.96, half:0.46}],
-  truck: [{img:'assets/sys_trailer.svg', gap:0.58, half:0.44}]
+  train: [{type:'wagon', gap:0.91, half:0.43}, {type:'wagon', gap:0.91, half:0.43}],
+  truck: [{type:'trailer', gap:0.61, half:0.41}]
 };
 const _pzConsistImg = {};
 function pzConsistImage(src, inverted, tint){
@@ -12659,7 +12740,7 @@ function pzUpdateConsist(progress, opts){
   const route = state.routeCoords || [];
   const feats = [];
   if(spec && route.length > 1 && (opts?.size || state.animatedMarkerEl)){
-    const inverted = !!$('invertIcons')?.checked;
+    const inverted = pzLegacyIconInverted();
     const size = opts?.size || parseFloat(state.animatedMarkerEl.style.width) || parseInt($('animIconSize')?.value || '34', 10);
     const lead = pointAtProgress(route, progress) || route[0];
     // km na CSS pixel v místě soupravy (MapLibre: dlaždice 512 px)
@@ -12671,7 +12752,7 @@ function pzUpdateConsist(progress, opts){
     let d = pzProjectKm(coords, cum, lead, progress * total);
     const chord = spec.reduce((a, u) => a + u.gap, 0) * size * kmPerPx + spec[spec.length - 1].half * size * kmPerPx;
     spec.forEach((u, i) => {
-      const rec = pzConsistImage(u.img, inverted, pzAnimTint());
+      const rec = pzHasVehiclePalette(u.type) ? pzConsistImage(pzVehicleImage(u.type), false, '') : pzConsistImage(u.img, inverted, pzAnimTint());
       if(!rec.ready) return;
       if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
       d -= u.gap * size * kmPerPx;
@@ -12708,7 +12789,7 @@ function pzTintPixels(img, hex){
   }
   return img;
 }
-function pzAnimTint(){ return state.animSystemIcon && /^#[0-9a-f]{6}$/i.test(state.animIconTint || '') ? state.animIconTint : ''; }
+function pzAnimTint(){ return state.animSystemIcon && !pzHasVehiclePalette(state.animSystemIcon) && /^#[0-9a-f]{6}$/i.test(state.animIconTint || '') ? state.animIconTint : ''; }
 function pzTintedSrc(src, hex){
   if(!src || !hex) return src;
   const key = src + '|' + hex;
@@ -12757,7 +12838,8 @@ function animMarkerInnerHTML(){
 function createMarkerEl(type,size){
   const el = document.createElement('div');
   el.className = 'animated-marker';
-  if($('invertIcons')?.checked) el.classList.add('inverted');
+  el.classList.toggle('pz-colored-vehicle', pzHasVehiclePalette(state.animSystemIcon));
+  if(pzLegacyIconInverted()) el.classList.add('inverted');
   el.style.width = size + 'px'; el.style.height = size + 'px';
   el.innerHTML = animMarkerInnerHTML();
   el.dataset.iconSig = (state.animIconData || 'dot') + '|' + (state.animIconData ? pzAnimIconSrc().length : 0);
@@ -12800,7 +12882,7 @@ function ensureAnimMarker(point, angle, liftPx=0){
   const size = parseInt($('animIconSize')?.value || '34',10);
   const cameraFacing = !!($('followCamera')?.checked);
   const align = getAnimMarkerAlignment();
-  const inverted = !!($('invertIcons')?.checked);
+  const inverted = pzLegacyIconInverted();
   if(!state.animatedMarker || state.markerCameraMode !== align.key){
     if(state.animatedMarker){ state.animatedMarker.remove(); state.animatedMarker = null; state.animatedMarkerEl = null; }
     const el = createMarkerEl(getCurrentMoverType(), size); state.animatedMarkerEl = el;
@@ -12809,6 +12891,7 @@ function ensureAnimMarker(point, angle, liftPx=0){
     state.markerCameraMode = align.key;
   }
   state.animatedMarkerEl.style.width = size + 'px'; state.animatedMarkerEl.style.height = size + 'px';
+  state.animatedMarkerEl.classList.toggle('pz-colored-vehicle', pzHasVehiclePalette(state.animSystemIcon));
   state.animatedMarkerEl.classList.toggle('inverted', inverted);
   // Rebuild the icon when the selected icon changed (system ⇄ custom ⇄ dot)
   // without recreating the whole marker — otherwise switching e.g. to AUTO
@@ -15966,6 +16049,21 @@ function bindUI(){
   $$('.sys-icon-btn').forEach(btn => btn.addEventListener('click', ()=> setAnimSystemIcon(btn.dataset.sysIcon)));
   ['animDot','followCamera','showTrail','followCameraRotate'].forEach(id => $(id)?.addEventListener('change', refreshAnimatedMarkerPreview));
   $('animEasing')?.addEventListener('change', ()=>{ state.camSmoothedBearing = null; updateEasingPreview(); refreshAnimatedMarkerPreview(); });
+  function refreshVehicleColors(palette){
+    pzSetVehiclePalette(palette);
+    if(pzHasVehiclePalette(state.animSystemIcon)) state.animIconData = pzVehicleImage(state.animSystemIcon);
+    renderAnimSystemIconSelection();
+    renderAnimIconPreview();
+    refreshAnimatedMarkerPreview();
+  }
+  $('pzVehiclePreset').addEventListener('change', e => {
+    try{ window.__pzPushUndo?.(); }catch(err){}
+    const palette = PZ_VEHICLE_PRESETS[e.target.value];
+    if(palette) refreshVehicleColors(palette);
+    else $('pzVehicleBody').focus();
+  });
+  // input = barva se mění už při výběru v kapátku, change = potvrzení
+  ['pzVehicleBody','pzVehicleAccent'].forEach(id => { ['input','change'].forEach(ev => $(id).addEventListener(ev, () => refreshVehicleColors(pzVehiclePalette()))); });
   const setTint = hex => {
     state.animIconTint = hex || null;
     pzSyncTintUi();
@@ -15976,7 +16074,7 @@ function bindUI(){
   $$('#animIconTintRow .pz-tint-sw').forEach(b => b.addEventListener('click', () => { try{ window.__pzPushUndo?.(); }catch(e){} setTint(b.dataset.tint); }));
   $('animIconColor')?.addEventListener('input', e => setTint(e.target.value));
   $('invertIcons')?.addEventListener('change', ()=>{
-    if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('inverted', $('invertIcons').checked);
+    if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('inverted', pzLegacyIconInverted());
     refreshAnimatedMarkerPreview();
   });
   $('animManualAngle')?.addEventListener('input', ()=>{ syncAnimAngleInputs('range'); state.smoothAngle = null; });
@@ -16575,6 +16673,13 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Barvy vozidla": {cs:"Barvy vozidla",sk:"Farby vozidla",bg:"Цветове на превозното средство",hr:"Boje vozila",ro:"Culorile vehiculului",en:"Vehicle colours"},
+  "Pro světlý podklad": {cs:"Pro světlý podklad",sk:"Pre svetlý podklad",bg:"За светла основа",hr:"Za svijetlu podlogu",ro:"Pentru fundal deschis",en:"For a light map"},
+  "Pro tmavý podklad": {cs:"Pro tmavý podklad",sk:"Pre tmavý podklad",bg:"За тъмна основа",hr:"Za tamnu podlogu",ro:"Pentru fundal închis",en:"For a dark map"},
+  "Pro modrý podklad": {cs:"Pro modrý podklad",sk:"Pre modrý podklad",bg:"За синя основа",hr:"Za plavu podlogu",ro:"Pentru fundal albastru",en:"For a blue map"},
+  "Vlastní barvy": {cs:"Vlastní barvy",sk:"Vlastné farby",bg:"Собствени цветове",hr:"Vlastite boje",ro:"Culori proprii",en:"Custom colours"},
+  "Karoserie": {cs:"Karoserie",sk:"Karoséria",bg:"Каросерия",hr:"Karoserija",ro:"Caroserie",en:"Body"},
+  "Akcent": {cs:"Akcent",sk:"Akcent",bg:"Акцент",hr:"Akcent",ro:"Accent",en:"Accent"},
   "Vybráno {0} — Delete smaže, tažením posuneš všechny, Esc zruší výběr.": {cs:"Vybráno {0} — Delete smaže, tažením posuneš všechny, Esc zruší výběr.",sk:"Vybraté {0} — Delete zmaže, ťahaním posunieš všetky, Esc zruší výber.",bg:"Избрани {0} — Delete изтрива, с влачене местиш всички, Esc отменя избора.",hr:"Odabrano {0} — Delete briše, povlačenjem pomičeš sve, Esc poništava odabir.",ro:"Selectate {0} — Delete șterge, prin tragere le muți pe toate, Esc anulează selecția.",en:"{0} selected — Delete removes them, drag to move them all, Esc clears the selection."},
   "Výběr zrušen.": {cs:"Výběr zrušen.",sk:"Výber zrušený.",bg:"Изборът е отменен.",hr:"Odabir poništen.",ro:"Selecție anulată.",en:"Selection cleared."},
   "Smazáno {0} položek.": {cs:"Smazáno {0} položek.",sk:"Zmazaných {0} položiek.",bg:"Изтрити {0} елемента.",hr:"Obrisano stavki: {0}.",ro:"Șterse {0} elemente.",en:"Deleted {0} items."},
@@ -16608,6 +16713,13 @@ Object.assign(I18N, {
 });
 // Texty přímo v HTML bez data-i18n — překládá je pzTranslateTextNodes pro všechny jazyky.
 const PZ_LANG_TEXT = {
+  "TN červená": {sk:"TN červená",bg:"TN червено",hr:"TN crvena",ro:"Roșu TN",en:"TN red"},
+  "TN modrá": {sk:"TN modrá",bg:"TN синьо",hr:"TN plava",ro:"Albastru TN",en:"TN blue"},
+  "Modrá": {sk:"Modrá",bg:"Синьо",hr:"Plava",ro:"Albastru",en:"Blue"},
+  "Žlutá": {sk:"Žltá",bg:"Жълто",hr:"Žuta",ro:"Galben",en:"Yellow"},
+  "Zelená": {sk:"Zelená",bg:"Зелено",hr:"Zelena",ro:"Verde",en:"Green"},
+  "Bílá": {sk:"Biela",bg:"Бяло",hr:"Bijela",ro:"Alb",en:"White"},
+  "Graphite": {sk:"Graphite",bg:"Графит",hr:"Grafit",ro:"Grafit",en:"Graphite"},
   "Přidat ikonku / popisek do výběru": {sk:"Pridať ikonku / popis do výberu",bg:"Добави икона / надпис към избора",hr:"Dodaj ikonu / oznaku u odabir",ro:"Adaugă pictograma / eticheta la selecție",en:"Add icon / label to the selection"},
   "Vybrat ikonky a popisky obdélníkem": {sk:"Vybrať ikonky a popisy obdĺžnikom",bg:"Избери икони и надписи с правоъгълник",hr:"Odaberi ikone i oznake pravokutnikom",ro:"Selectează pictograme și etichete cu un dreptunghi",en:"Select icons and labels with a rectangle"},
   "Vybrat všechny ikonky a popisky": {sk:"Vybrať všetky ikonky a popisy",bg:"Избери всички икони и надписи",hr:"Odaberi sve ikone i oznake",ro:"Selectează toate pictogramele și etichetele",en:"Select all icons and labels"},
@@ -18064,6 +18176,7 @@ function pzColorFromName(v){
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
+    serializeProjectSnapshot, applyProjectSnapshot,
     get state(){ return state; }};
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
