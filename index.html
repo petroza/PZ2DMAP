@@ -14592,6 +14592,17 @@ async function exportBatchFormats(){
   if(!state.routeCoords.length && !cameraAnimReady()){ setStatus(t('Nejdřív najdi trasu nebo nastav kameru.'), 'error'); return; }
   const resSel = $('exportResolution'), fpsSel = $('exportFps');
   const origRes = resSel?.value, origFps = fpsSel?.value;
+  // Jiný poměr stran = jiný výřez. Dřív se 9:16 jen vyřízl ze středu záběru 16:9
+  // a z trasy Praha–Ostrava nebyl vidět ani začátek, ani cíl. Statickou trasu
+  // proto do každého jiného formátu doramujeme; formát se stejným poměrem jako
+  // grafikův výřez zůstane přesně, jak ho nastavil, a na konci se pohled vrátí.
+  const m = state.map;
+  const origCam = m ? {center: m.getCenter(), zoom: m.getZoom(), bearing: m.getBearing(), pitch: m.getPitch()} : null;
+  const origPan = state.screenPan ? {...state.screenPan} : null;
+  const origSize = getExportSize();
+  const origAspect = origSize.w / Math.max(1, origSize.h);
+  const canRefit = m && state.routeCoords.length > 1 && !cameraAnimReady() && !$('followCamera')?.checked;
+  const waitIdle = () => new Promise(res => { let ok = false; const fin = () => { if(!ok){ ok = true; res(); } }; m.once('idle', fin); setTimeout(fin, 4000); });
   let done = 0;
   for(let i=0;i<picks.length;i++){
     const f = picks[i];
@@ -14599,6 +14610,20 @@ async function exportBatchFormats(){
     if(resSel) resSel.value = f.res;
     if(fpsSel) fpsSel.value = f.fps;
     try{ updateExportFrame(); }catch(_e){}
+    if(canRefit){
+      try{
+        const sz = getExportSize();
+        if(Math.abs(sz.w / Math.max(1, sz.h) - origAspect) > 0.02){
+          const bounds = state.routeCoords.reduce((b,c)=>b.extend(c), new maplibregl.LngLatBounds(state.routeCoords[0], state.routeCoords[0]));
+          state.screenPan = {x:0, y:0};
+          m.fitBounds(bounds, {padding:getFitPadding(), duration:0, bearing: origCam.bearing, pitch: origCam.pitch});
+        } else {
+          if(origPan) state.screenPan = {...origPan};
+          m.jumpTo(origCam);
+        }
+        await waitIdle();
+      }catch(_e){}
+    }
     state._exportNameSuffix = f.tag;
     setStatus(t('Batch export') + ' ' + (i+1) + '/' + picks.length + ' · ' + f.label + ' …');
     // exportSelectedVideo() returns null when the user cancelled. The cancel flag itself
@@ -14613,6 +14638,7 @@ async function exportBatchFormats(){
   if(resSel) resSel.value = origRes;
   if(fpsSel) fpsSel.value = origFps;
   try{ updateExportFrame(); }catch(_e){}
+  if(canRefit){ try{ if(origPan) state.screenPan = {...origPan}; m.jumpTo(origCam); }catch(_e){} }
   setStatus(t('Batch export hotový') + ' · ' + done + '× ' + t('formát'));
 }
 
