@@ -26,7 +26,9 @@ http.createServer(async (req, res) => {
   }
   const rel = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
   const file = path.join(ROOT, rel);
-  if (!file.startsWith(ROOT) || /[\\/]\.(git|claude)[\\/]/.test(file)) { res.writeHead(403); return res.end(); }
+  // skryté složky se kontrolují jen v cestě uvnitř repozitáře — kopie repozitáře
+  // může sama ležet ve složce .claude/worktrees/…
+  if (!file.startsWith(ROOT) || /[\\/]\.(git|claude)[\\/]/.test(path.sep + path.relative(ROOT, file))) { res.writeHead(403); return res.end(); }
   try {
     const buf = await readFile(file);
     res.writeHead(200, {'content-type': TYPES[path.extname(file)] || 'application/octet-stream'});
