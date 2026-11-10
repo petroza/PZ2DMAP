@@ -228,12 +228,16 @@ input[type=color]:hover{border-color:var(--accent)}
 .anim-custom-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .anim-custom-actions .icon-preview-box{flex:0 0 48px}
 .anim-custom-actions .btn{flex:0 0 auto;min-width:0}
-.anim-sys-icon-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:4px}
-.sys-icon-btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:54px;padding:9px 8px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);color:var(--tx2);cursor:pointer;transition:.15s;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.anim-sys-icon-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:4px}
+/* stejné jednobarevné dlaždice jako výběr dopravy */
+.sys-icon-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);color:var(--tx2);cursor:pointer;transition:.15s;min-width:0}
 .sys-icon-btn:hover{border-color:var(--border-hi);background:var(--bg2)}
-.sys-icon-btn.active{border-color:var(--accent);background:rgba(230,57,70,.06);color:var(--accent)}
-.sys-icon-btn img{width:32px;height:32px;object-fit:contain;display:block;filter:invert(1)}
-.sys-icon-btn.active img{filter:invert(28%) sepia(96%) saturate(2194%) hue-rotate(338deg) brightness(94%) contrast(90%)}
+.sys-icon-btn.active{border-color:var(--accent);background:var(--accent);color:#fff}
+.sys-icon-btn .t-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.sys-icon-btn .t-icon svg{width:20px;height:20px}
+.sys-icon-btn.active .t-icon svg *[stroke]{stroke:#fff}
+.sys-icon-btn.active .t-icon svg *[fill]:not([fill="none"]){fill:#fff}
+.sys-icon-btn .t-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .anim-angle-grid{display:grid;grid-template-columns:96px minmax(0,1fr) 80px;gap:10px;align-items:center}
 .anim-angle-grid input{min-width:0}
 .angle-dial{width:96px;height:96px;padding:0;border-radius:50%;border:1px solid var(--border);background:radial-gradient(circle at 30% 25%,rgba(255,255,255,.04),transparent 60%),var(--bg2);cursor:grab;position:relative;transition:border-color .15s,box-shadow .15s;touch-action:none;display:block}
@@ -708,7 +712,6 @@ html:not([data-ui="light"]){color-scheme:dark}
 html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
 html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
 html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
-html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
 /* Užší desktop (981–1250 px): sedm tlačítek s popisky se nevešlo a „Projekt"
    (jediná cesta k uložení) zajel pod boční panel — popisky pryč, zůstanou ikony. */
 @media (min-width:981px) and (max-width:1250px){
@@ -1025,26 +1028,24 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       <div class="section anim-sys-icon-section" id="animationSystemIconsSection">
         <h3 data-i18n="Ikona objektu">Ikona objektu</h3>
         <div class="anim-sys-icon-grid">
-          <button type="button" class="sys-icon-btn" data-sys-icon="plane" title="Letadlo">
-            <img src="assets/sys_plane.svg" alt="">
-            <span data-i18n="Letadlo">Letadlo</span>
-          </button>
-          <button type="button" class="sys-icon-btn" data-sys-icon="car" title="Auto">
-            <img src="assets/sys_car.png" alt="" loading="lazy" decoding="async">
-            <span data-i18n="Auto">Auto</span>
-          </button>
-          <button type="button" class="sys-icon-btn" data-sys-icon="truck" title="Kamion"><img src="assets/sys_truck.svg" alt="" loading="lazy"><span>Kamion</span></button>
-          <button type="button" class="sys-icon-btn" data-sys-icon="train" title="Vlak"><img src="assets/sys_train.svg" alt="" loading="lazy"><span>Vlak</span></button>
-          <button type="button" class="sys-icon-btn" data-sys-icon="boat" title="Loď"><img src="assets/sys_boat.svg" alt="" loading="lazy"><span>Loď</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="car" data-from-mode="driving" title="Auto"><span class="t-icon"></span><span class="t-label" data-i18n="Auto">Auto</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="truck" data-from-mode="truck" title="Kamion"><span class="t-icon"></span><span class="t-label" data-i18n="Kamion">Kamion</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="train" data-from-mode="train" title="Vlak"><span class="t-icon"></span><span class="t-label" data-i18n="Vlak">Vlak</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="boat" data-from-mode="boat" title="Loď"><span class="t-icon"></span><span class="t-label" data-i18n="Loď">Loď</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="plane" data-from-mode="planeDirect" title="Letadlo"><span class="t-icon"></span><span class="t-label" data-i18n="Letadlo">Letadlo</span></button>
         </div>
-        <p class="hint" data-i18n="hint_anim_system_icons">Kliknutím vybereš vestavěnou animační ikonku.</p>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
         <input id="animIconSize" type="range" min="18" max="96" step="2" value="34">
+        <div id="pzWagonRow" style="margin-top:10px" hidden>
+          <label for="pzWagonCount"><span data-i18n="Počet vagonů">Počet vagonů</span> <span class="val" id="pzWagonCountVal">2</span></label>
+          <input id="pzWagonCount" type="range" min="0" max="8" step="1" value="2">
+        </div>
         <div id="pzVehiclePalette" style="margin-top:12px" hidden>
-          <label for="pzVehiclePreset" data-i18n="Barvy vozidla">Barvy vozidla</label>
+          <label for="pzVehiclePreset" data-i18n="Barva ikonky">Barva ikonky</label>
           <select id="pzVehiclePreset">
-            <option value="light" data-i18n="Pro světlý podklad">Pro světlý podklad</option>
-            <option value="dark" data-i18n="Pro tmavý podklad">Pro tmavý podklad</option>
+            <option value="auto" data-i18n="Automaticky podle podkladu" selected>Automaticky podle podkladu</option>
+            <option value="light" data-i18n="Světlá">Světlá</option>
+            <option value="dark" data-i18n="Tmavá">Tmavá</option>
             <option value="blue" data-i18n="Pro modrý podklad">Pro modrý podklad</option>
             <option value="custom" data-i18n="Vlastní barvy">Vlastní barvy</option>
           </select>
@@ -1052,20 +1053,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div><label for="pzVehicleBody" data-i18n="Karoserie">Karoserie</label><input type="color" id="pzVehicleBody" value="#f8fafc"></div>
             <div><label for="pzVehicleAccent" data-i18n="Akcent">Akcent</label><input type="color" id="pzVehicleAccent" value="#48cfa5"></div>
           </div>
-        </div>
-        <div id="animIconTintWrap">
-        <label style="margin-top:10px">Barva ikonky</label>
-        <div class="pz-tint-row" id="animIconTintRow">
-          <button type="button" class="pz-tint-sw pz-tint-orig active" data-tint="" title="Původní barva" style="background:conic-gradient(#3ECF9E 0 50%,#14171c 0)"></button>
-          <button type="button" class="pz-tint-sw" data-tint="#6B7480" title="Graphite" style="background:#6B7480"></button>
-          <button type="button" class="pz-tint-sw" data-tint="#F03B3B" title="TN červená" style="background:#F03B3B"></button>
-          <button type="button" class="pz-tint-sw" data-tint="#0D1767" title="TN modrá" style="background:#0D1767"></button>
-          <button type="button" class="pz-tint-sw" data-tint="#1F5FFF" title="Modrá" style="background:#1F5FFF"></button>
-          <button type="button" class="pz-tint-sw" data-tint="#FFD400" title="Žlutá" style="background:#FFD400"></button>
-          <button type="button" class="pz-tint-sw" data-tint="#1FA34A" title="Zelená" style="background:#1FA34A"></button>
-          <button type="button" class="pz-tint-sw" data-tint="#FFFFFF" title="Bílá" style="background:#FFFFFF"></button>
-          <input id="animIconColor" type="color" value="#f03b3b" title="Vlastní barva">
-        </div>
         </div>
         <label class="check" style="margin-top:10px"><input id="invertIcons" type="checkbox">  Invertovat ikonky (pro světlou mapu)</label>
 
@@ -1083,7 +1070,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
               </div>
             </div>
           </div>
-          <p class="hint" data-i18n="hint_anim_custom_icon">Nahraj PNG nebo SVG pro vlastní animační ikonku. Když ji smažeš, použije se bod.</p>
         </div>
 
         <div style="margin-top:12px;display:none" id="animAngleBlock">
@@ -4415,6 +4401,7 @@ const ANIM_SYSTEM_ICONS = {
   boat: 'assets/sys_boat.svg'
 };
 const PZ_VEHICLE_SVG = {
+  "car": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(1.2) translate(-40 -22)\"><g filter=\"url(#shadow)\">\n<path d=\"M47 6V3.6M47 38V40.4M22 6V4.4M22 38V39.6\" stroke=\"#263D4A\" stroke-width=\"2.4\" stroke-linecap=\"round\"/>\n<path d=\"M15 6H56Q71 7 74 22Q71 37 56 38H15Q6 38 6 29V15Q6 6 15 6Z\" fill=\"#243442\" stroke=\"white\" stroke-width=\"2.4\"/>\n<path d=\"M16 8H55Q69 9 72 22Q69 35 55 36H16Q8 36 8 28V16Q8 8 16 8Z\" fill=\"url(#roof)\"/>\n<path d=\"M14 9.6H54M14 34.4H54\" stroke=\"url(#paint)\" stroke-width=\"2.2\" stroke-linecap=\"round\"/>\n<path d=\"M49 12Q58 15 59 22Q58 29 49 32L45 28V16Z\" fill=\"url(#glass)\"/>\n<path d=\"M19 13L24 16V28L19 31Q16 22 19 13Z\" fill=\"url(#glass)\"/>\n<rect x=\"26\" y=\"13.5\" width=\"18\" height=\"17\" rx=\"4\" fill=\"url(#roof)\" stroke=\"#C6D0D9\" stroke-width=\".7\"/>\n<path d=\"M52 15Q55 17 56 20\" fill=\"none\" stroke=\"#88A4B4\" stroke-width=\"1.1\" stroke-linecap=\"round\"/>\n<path d=\"M69.5 14.5L71 17.5M69.5 29.5L71 26.5\" stroke=\"#FFF6D4\" stroke-width=\"1.7\" stroke-linecap=\"round\"/>\n<path d=\"M8.6 13V17M8.6 27V31\" stroke=\"#EB6872\" stroke-width=\"1.6\" stroke-linecap=\"round\"/>\n</g></g></svg>",
   "plane": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(0.76) translate(-70 -64)\"><g filter=\"url(#shadow)\" stroke-linejoin=\"round\">\n<path d=\"M18 61L9 39Q9 37 13 37L27 40L45 54L58 53L37 12Q36 9 40 9H47L80 51L107 50Q121 50 130 62Q132 64 130 66Q121 78 107 78L80 77L47 119H40Q36 119 37 116L58 75L45 74L27 88L13 91Q9 91 9 89L18 67Z\" fill=\"#415867\" stroke=\"#fff\" stroke-width=\"3.6\"/>\n<path d=\"M20 61L12 40L26 43L43 56L61 55L40 12H46L78 53L107 52Q120 52 128 64Q120 76 107 76L78 75L46 116H40L61 73L43 72L26 85L12 88L20 67Z\" fill=\"url(#roof)\"/>\n<path d=\"M12 40L16 49L24 47L22 42ZM12 88L16 79L24 81L22 86ZM40 12H46L52 20H44ZM40 116H46L52 108H44Z\" fill=\"url(#paint)\"/>\n<path d=\"M65 53L47 18M65 75L47 110\" fill=\"none\" stroke=\"#9BAEBB\" stroke-width=\"1\" opacity=\".7\"/>\n<rect x=\"62\" y=\"36\" width=\"23\" height=\"11\" rx=\"5.5\" fill=\"url(#roof)\" stroke=\"#778F9E\" stroke-width=\"1.3\"/>\n<rect x=\"62\" y=\"81\" width=\"23\" height=\"11\" rx=\"5.5\" fill=\"url(#roof)\" stroke=\"#778F9E\" stroke-width=\"1.3\"/>\n<path d=\"M23 61Q41 56 61 56H105Q118 56 125 64Q118 72 105 72H61Q41 72 23 67Q19 64 23 61Z\" fill=\"url(#roof)\"/>\n<path d=\"M32 60Q47 57 60 57H100M32 68Q47 71 60 71H100\" fill=\"none\" stroke=\"url(#paint)\" stroke-width=\"2\" stroke-linecap=\"round\"/>\n<path d=\"M111 57Q119 59 122 64Q119 69 111 71L109 68L115 64L109 60Z\" fill=\"url(#glass)\"/>\n</g></g></svg>",
   "boat": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(0.82) translate(-77 -35)\"><g filter=\"url(#shadow)\">\n<path d=\"M19 19 Q31 28 42 30 M19 51 Q31 42 42 40\" fill=\"none\" stroke=\"#FCFFFF\" stroke-width=\"2\" stroke-linecap=\"round\" opacity=\".85\"/>\n<path d=\"M39 16H80Q110 16 132 35Q110 54 80 54H39Q32 54 32 47V23Q32 16 39 16Z\" fill=\"#233845\" stroke=\"#fff\" stroke-width=\"2.6\"/>\n<path d=\"M40 19H80Q107 19 127 35Q107 51 80 51H40Q35 51 35 46V24Q35 19 40 19Z\" fill=\"url(#paint)\"/>\n<path d=\"M44 22H79Q105 22 122 35Q105 48 79 48H44Q38 48 38 43V27Q38 22 44 22Z\" fill=\"url(#roof)\"/>\n<path d=\"M44 28V42M48 27V43\" stroke=\"#B1C3CD\" stroke-width=\"1.3\" stroke-linecap=\"round\"/>\n<path d=\"M59 25H83Q92 25 101 35Q92 45 83 45H59Q55 45 55 41V29Q55 25 59 25Z\" fill=\"url(#glass)\"/>\n<path d=\"M61 28H80Q86 28 90 32V38Q86 42 80 42H61Q58 42 58 39V31Q58 28 61 28Z\" fill=\"url(#roof)\"/>\n<path d=\"M92 29Q96 32 98 35\" fill=\"none\" stroke=\"#8AA9B9\" stroke-width=\"1.3\" stroke-linecap=\"round\"/>\n<path d=\"M103 32L113 35L103 38\" fill=\"none\" stroke=\"#B1C3CD\" stroke-width=\"1.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>\n</g></g></svg>",
   "train": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(1) translate(-50 -26)\"><g filter=\"url(#shadow)\"><g transform=\"translate(0 0)\">\n    <path d=\"M13 10H64C75 10 85 16 91 23Q94 26 91 29C85 36 75 42 64 42H13Q7 42 7 36V16Q7 10 13 10Z\" fill=\"#243442\" stroke=\"white\" stroke-width=\"2.4\"/>\n    <path d=\"M14 12H62C74 12 83 18 89 26C83 34 74 40 62 40H14Q9 40 9 35V17Q9 12 14 12Z\" fill=\"url(#roof)\"/>\n    <path d=\"M17 13H60M17 39H60\" stroke=\"url(#paint)\" stroke-width=\"2.8\" stroke-linecap=\"round\"/>\n    <path d=\"M69 15Q79 18 83 26Q79 34 69 37L65 32Q70 26 65 20Z\" fill=\"url(#glass)\"/>\n    <path d=\"M72 18Q77 20 79 24\" fill=\"none\" stroke=\"#88A4B4\" stroke-width=\"1.2\" stroke-linecap=\"round\"/>\n    <rect x=\"28\" y=\"20\" width=\"25\" height=\"12\" rx=\"4\" fill=\"#DCE3E8\" stroke=\"#C6D0D9\" stroke-width=\".7\"/>\n    <path d=\"M34 23V29M38 23V29M42 23V29M46 23V29\" stroke=\"#A4B3BF\" stroke-width=\".8\"/>\n    <path d=\"M86 23L88 25M86 29L88 27\" stroke=\"#FFF6D4\" stroke-width=\"1.7\" stroke-linecap=\"round\"/>\n    </g></g></g></svg>",
@@ -4424,25 +4411,60 @@ const PZ_VEHICLE_SVG = {
 };
 const PZ_VEHICLE_PRESETS = {
   light: {body:'#f8fafc', accent:'#48cfa5'},
-  dark: {body:'#fff6e6', accent:'#66f0b6'},
+  dark: {body:'#27313d', accent:'#48cfa5'},
   blue: {body:'#fff7eb', accent:'#ffac62'}
 };
 const pzVehicleCache = new Map();
 function pzHasVehiclePalette(type){ return Object.hasOwn(PZ_VEHICLE_SVG, type); }
+// Automatická barva: na světlém podkladu tmavá ikona, na tmavém (satelit, tmavý
+// vzhled) světlá — grafik nemusí barvu hlídat při každém přepnutí podkladu.
+function pzBasemapIsDark(){
+  const key = $('baseStyle')?.value || '';
+  if(key === 'satellite' || key === 'hybrid') return true;
+  try{
+    const m = state.map, bg = (m.getStyle()?.layers || []).find(l => l.type === 'background');
+    const col = bg && m.getPaintProperty(bg.id, 'background-color');
+    const rgb = typeof col === 'string' ? pzCssColorToRgb(col) : null;
+    if(rgb) return (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255 < 0.42;
+  }catch(e){}
+  return false;
+}
+function pzCssColorToRgb(col){
+  let m = /^#([0-9a-f]{3,8})$/i.exec(col.trim());
+  if(m){ let h = m[1]; if(h.length < 6) h = h.split('').map(c => c + c).join(''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+  m = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i.exec(col);
+  if(m) return [+m[1], +m[2], +m[3]];
+  m = /hsla?\(\s*([\d.]+)[,\s]+([\d.]+)%[,\s]+([\d.]+)%/i.exec(col);
+  if(m){ const l = +m[3] / 100 * 255; return [l, l, l]; }
+  return null;
+}
+function pzAutoVehicleColors(){ return pzBasemapIsDark() ? PZ_VEHICLE_PRESETS.light : PZ_VEHICLE_PRESETS.dark; }
 function pzVehiclePalette(){
-  return {body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value};
+  return {body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto: state.vehicleAuto !== false};
 }
 function pzSetVehiclePalette(palette){
+  // bez uložené palety (nový nebo starší projekt) platí automatika
+  state.vehicleAuto = !palette || palette.auto === true || !/^#[0-9a-f]{6}$/i.test(palette.body || '');
+  const src = state.vehicleAuto ? pzAutoVehicleColors() : palette;
   for(const [key, id] of [['body','pzVehicleBody'], ['accent','pzVehicleAccent']]){
-    const hex = palette?.[key];
+    const hex = src?.[key];
     $(id).value = /^#[0-9a-f]{6}$/i.test(hex) ? hex : PZ_VEHICLE_PRESETS.light[key];
   }
-  const {body, accent} = pzVehiclePalette();
-  $('pzVehiclePreset').value = Object.keys(PZ_VEHICLE_PRESETS).find(key => {
+  const body = $('pzVehicleBody').value, accent = $('pzVehicleAccent').value;
+  $('pzVehiclePreset').value = state.vehicleAuto ? 'auto' : (Object.keys(PZ_VEHICLE_PRESETS).find(key => {
     const preset = PZ_VEHICLE_PRESETS[key];
     return preset.body === body && preset.accent === accent;
-  }) || 'custom';
+  }) || 'custom');
   pzVehicleCache.clear();
+}
+// Po změně podkladu nebo vzhledu: v automatice přebarvit ikonu, když se světlost změnila.
+function pzAutoVehicleRefresh(){
+  if(state.vehicleAuto === false) return;
+  const want = pzAutoVehicleColors();
+  if($('pzVehicleBody').value === want.body && $('pzVehicleAccent').value === want.accent) return;
+  pzSetVehiclePalette({auto:true});
+  if(pzHasVehiclePalette(state.animSystemIcon)) state.animIconData = pzVehicleImage(state.animSystemIcon);
+  try{ renderAnimIconPreview(); refreshAnimatedMarkerPreview(); }catch(e){}
 }
 function pzVehicleShade(hex, target, amount){
   const channels = hex.slice(1).match(/../g);
@@ -4696,16 +4718,20 @@ function initAngleDial(){
 }
 
 function renderAnimSystemIconSelection(){
-  $$('.sys-icon-btn').forEach(btn => {
-    const type = btn.dataset.sysIcon;
-    btn.classList.toggle('active', type === state.animSystemIcon);
-    if(pzHasVehiclePalette(type)) btn.querySelector('img').src = pzVehicleImage(type);
-  });
+  $$('.sys-icon-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.sysIcon === state.animSystemIcon));
   const pal = pzHasVehiclePalette(state.animSystemIcon);
   $('pzVehiclePalette').hidden = !pal;
-  // vozidla se sadou barev mají karoserii a akcent; řada odstínů a inverze zůstávají pro auto
-  if($('animIconTintWrap')) $('animIconTintWrap').style.display = pal ? 'none' : '';
+  $('pzWagonRow').hidden = state.animSystemIcon !== 'train';
+  // inverze má smysl jen pro vlastní nahraný obrázek a bod
   $('invertIcons').closest('label').style.display = pal ? 'none' : '';
+}
+// Výběr ikony objektu používá stejné jednobarevné piktogramy jako výběr dopravy.
+function pzFillSysIconButtons(){
+  $$('.sys-icon-btn').forEach(btn => {
+    const src = document.querySelector('.transport-btn[data-mode="' + btn.dataset.fromMode + '"] .t-icon svg');
+    const slot = btn.querySelector('.t-icon');
+    if(src && slot && !slot.firstChild) slot.appendChild(src.cloneNode(true));
+  });
 }
 
 function renderAnimIconPreview(){
@@ -4728,6 +4754,7 @@ function pzSyncAnimAngleBlock(){
 }
 function setAnimSystemIcon(type, options={}){
   state.animSystemIcon = ANIM_SYSTEM_ICONS[type] ? type : null;
+  if(state.vehicleAuto !== false) pzSetVehiclePalette({auto:true});
   state.animIconData = pzVehicleImage(state.animSystemIcon);
   if($('animCustomIconUpload')) $('animCustomIconUpload').value = '';
   // A vehicle icon pointing north regardless of where it's going looks broken —
@@ -5549,6 +5576,8 @@ function initMap(){
     initAutosave();
     setStatus(t('Mapa načtena.'));
     try{ pzInitMarquee(); }catch(_e){}
+    // automatická barva ikony podle světlosti podkladu (po každém dokreslení mapy; levné)
+    try{ state.map.on('idle', () => { try{ pzAutoVehicleRefresh(); }catch(_e){} }); pzAutoVehicleRefresh(); }catch(_e){}
     // Až teď je mapa i vrstvy připravené, takže sdílený stav jde bezpečně použít.
     try{ loadSharedProjectFromUrl(); }catch(_e){}
     // První spuštění (pohled se nikam nepohnul, žádný odkaz ani trasa): zarovnat
@@ -8064,7 +8093,7 @@ function serializeProjectSnapshot(){
       animIconData: state.animSystemIcon ? null : (state.animIconData || null),
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
-      animIconTint: state.animIconTint || null,
+      wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
       vehiclePalette: pzVehiclePalette(),
       animStart: $('animStart')?.value || '0',
       animDuration: $('animDuration')?.value || '8',
@@ -8156,8 +8185,7 @@ function applyBasicProjectSnapshot(snapshot){
   state.animSystemIcon = animation.animSystemIcon && ANIM_SYSTEM_ICONS[animation.animSystemIcon] ? animation.animSystemIcon : null;
   pzSetVehiclePalette(animation.vehiclePalette);
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
-  state.animIconTint = /^#[0-9a-f]{6}$/i.test(animation.animIconTint || '') ? animation.animIconTint : null;
-  try{ pzSyncTintUi(); }catch(e){}
+  if($('pzWagonCount')){ $('pzWagonCount').value = String(Math.max(0, Math.min(8, parseInt(animation.wagonCount ?? 2, 10) || 0))); $('pzWagonCountVal').textContent = $('pzWagonCount').value; }
   renderAnimSystemIconSelection();
   renderAnimIconPreview();
 
@@ -9827,7 +9855,7 @@ function reloadStyle(){
   state.map.once('style.load', () => {
     state.map.jumpTo({center, zoom, pitch, bearing});
     // „Načítám mapový podklad…" jinak visel ve stavovém řádku až do další akce.
-    state.map.once('idle', () => { try{ refreshAnimatedMarkerPreview(); }catch(e){} try{ if(/Načítám mapový podklad|Loading map base/.test($('statusBar')?.textContent || '')) setStatus(t('Mapový podklad načten.')); }catch(e){} });
+    state.map.once('idle', () => { try{ pzAutoVehicleRefresh(); }catch(e){} try{ refreshAnimatedMarkerPreview(); }catch(e){} try{ if(/Načítám mapový podklad|Loading map base/.test($('statusBar')?.textContent || '')) setStatus(t('Mapový podklad načten.')); }catch(e){} });
   });
   state.map.setStyle(allStyles[key] || allStyles.liberty || STYLES.liberty);
   setTimeout(updateExportFrame, 60);
@@ -12637,11 +12665,17 @@ function finalAngle(progress){
    v mapě — každý stojí na trase o kus dál za předchozím a natočí se podle své
    přední a zadní nápravy, takže se souprava v zatáčce „láme" jako skutečná.
    Vrstva je součást mapy, proto je i v exportu videa bez další práce. */
-const PZ_CONSIST = {
-  // gap = vzdálenost středů v násobcích velikosti ikonky, half = půl délky kusu
-  train: [{type:'wagon', gap:0.91, half:0.43}, {type:'wagon', gap:0.91, half:0.43}],
-  truck: [{type:'trailer', gap:0.61, half:0.41}]
-};
+// Rozměry v násobcích velikosti ikonky: rear = od středu vedoucího kusu k oji
+// (místo spojení), front = od středu vleku ke spojení vpředu, axle = od středu
+// vleku k zadní nápravě (ta drží stopu trasy), back = od středu ke spojení vzadu.
+function pzConsistSpec(){
+  if(state.animSystemIcon === 'train'){
+    const n = Math.max(0, Math.min(8, parseInt($('pzWagonCount')?.value ?? '2', 10) || 0));
+    return n ? {rear:0.455, units: Array.from({length:n}, () => ({type:'wagon', front:0.455, axle:0.30, back:0.455}))} : null;
+  }
+  if(state.animSystemIcon === 'truck') return {rear:0.21, units:[{type:'trailer', front:0.33, axle:0.20, back:0.40}]};
+  return null;
+}
 const _pzConsistImg = {};
 function pzConsistImage(src, inverted, tint){
   const key = src + (inverted ? '#inv' : '') + (tint ? '#' + tint : '');
@@ -12733,33 +12767,47 @@ function pzUpdateConsist(progress, opts){
     m._pzConsistHook = true;
     m.on('zoom', () => { if(state.map === m && state._pzConsistLast != null) try{ pzUpdateConsist(state._pzConsistLast); }catch(e){} });
   }
-  const spec = (progress != null && state.animSystemIcon) ? PZ_CONSIST[state.animSystemIcon] : null;
+  const spec = (progress != null && state.animSystemIcon) ? pzConsistSpec() : null;
   if(!opts) state._pzConsistLast = progress;
   const route = state.routeCoords || [];
   const feats = [];
   if(spec && route.length > 1 && (opts?.size || state.animatedMarkerEl)){
-    const inverted = pzLegacyIconInverted();
     const size = opts?.size || parseFloat(state.animatedMarkerEl.style.width) || parseInt($('animIconSize')?.value || '34', 10);
     const lead = pointAtProgress(route, progress) || route[0];
     // km na CSS pixel v místě soupravy (MapLibre: dlaždice 512 px)
     const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
-    // vagony jedou po trase zjednodušené zhruba na délku vozu; vzdálenost
-    // vedoucího kusu se přepočte na tuto cestu, aby souprava navazovala
-    const coords = pzConsistPath(route, size * kmPerPx * 0.7);
+    const U = size * kmPerPx;                         // délka jedné „velikosti ikonky" v km
+    // místní rovina v km (sever nahoře) — v ní se počítá pevné spojení kusů
+    const lat0 = lead[1] * Math.PI / 180, kx = 111.32 * Math.cos(lat0), ky = 110.57;
+    const toXY = c => [(c[0] - lead[0]) * kx, (c[1] - lead[1]) * ky];
+    const toLL = q => [lead[0] + q[0] / kx, lead[1] + q[1] / ky];
+    // zadní nápravy jedou po trase vyhlazené v měřítku vozu (klička menší než vůz se ignoruje)
+    const coords = pzConsistPath(route, U * 0.7);
     const {cum, total} = cumulativeRouteLengths(coords);
-    let d = pzProjectKm(coords, cum, lead, progress * total);
-    const chord = spec.reduce((a, u) => a + u.gap, 0) * size * kmPerPx + spec[spec.length - 1].half * size * kmPerPx;
-    spec.forEach((u, i) => {
-      const rec = pzHasVehiclePalette(u.type) ? pzConsistImage(pzVehicleImage(u.type), false, '') : pzConsistImage(u.img, inverted, pzAnimTint());
+    const len = spec.units.reduce((a, u) => a + u.front + u.back, spec.rear) * U;
+    const pathXY = d => toXY(pzPointAtKm(coords, cum, total, d, len));
+    // směr vedoucího kusu = stejný úhel, jakým je natočená jeho ikonka
+    const hd = pzAutoHeading(route, progress) * Math.PI / 180;
+    let hitch = [-Math.sin(hd) * spec.rear * U, -Math.cos(hd) * spec.rear * U];   // spojení za vedoucím kusem
+    let s = pzProjectKm(coords, cum, lead, progress * total);                     // kde na trase právě jsme
+    spec.units.forEach((u, i) => {
+      const rec = pzConsistImage(pzVehicleImage(u.type), false, '');
+      const L = (u.front + u.axle) * U;
+      // zadní náprava: bod trasy za spojením ve vzdálenosti L od něj (půlení intervalu)
+      let hi = s, lo = s - 3 * L - spec.rear * U;
+      const far = d => { const q = pathXY(d); return Math.hypot(q[0] - hitch[0], q[1] - hitch[1]) >= L; };
+      if(far(hi)) hi = lo;                      // trasa se vrací — vezmi bod vzadu
+      else if(!far(lo)) lo -= 6 * L;
+      for(let k = 0; k < 18 && hi !== lo; k++){ const mid = (hi + lo) / 2; if(far(mid)) lo = mid; else hi = mid; }
+      s = lo;
+      const axle = pathXY(s);
+      let vx = hitch[0] - axle[0], vy = hitch[1] - axle[1]; const vl = Math.hypot(vx, vy) || 1e-9; vx /= vl; vy /= vl;
+      // střed kusu leží PŘESNĚ „front" za spojením ve směru vozu → kusy na sebe vždy navazují
+      const mid = [hitch[0] - vx * u.front * U, hitch[1] - vy * u.front * U];
+      hitch = [mid[0] - vx * u.back * U, mid[1] - vy * u.back * U];
       if(!rec.ready) return;
       if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
-      d -= u.gap * size * kmPerPx;
-      const half = u.half * size * kmPerPx;
-      const front = pzPointAtKm(coords, cum, total, d + half, chord), back = pzPointAtKm(coords, cum, total, d - half, chord);
-      const mid = pzPointAtKm(coords, cum, total, d, chord);
-      const midLat = (front[1] + back[1]) / 2 * Math.PI / 180;
-      const rot = Math.atan2((front[0] - back[0]) * Math.cos(midLat), front[1] - back[1]) * 180 / Math.PI;
-      feats.push({type:'Feature', geometry:{type:'Point', coordinates:mid}, properties:{img:rec.id, rot, sz: size / 64, k:i}});
+      feats.push({type:'Feature', geometry:{type:'Point', coordinates:toLL(mid)}, properties:{img:rec.id, rot: Math.atan2(vx, vy) * 180 / Math.PI, sz: size / 64, k:i}});
     });
   }
   const data = {type:'FeatureCollection', features:feats};
@@ -12787,7 +12835,7 @@ function pzTintPixels(img, hex){
   }
   return img;
 }
-function pzAnimTint(){ return state.animSystemIcon && !pzHasVehiclePalette(state.animSystemIcon) && /^#[0-9a-f]{6}$/i.test(state.animIconTint || '') ? state.animIconTint : ''; }
+function pzAnimTint(){ return ''; }   // odstíny nahradila „Barva ikonky" (karoserie + akcent)
 function pzTintedSrc(src, hex){
   if(!src || !hex) return src;
   const key = src + '|' + hex;
@@ -12821,13 +12869,6 @@ function pzAccentSvg(src, hex){
   return p.then(txt => (txt && /#3ECF9E/i.test(txt)) ? ('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(txt.replace(PZ_ACCENT, hex))) : null);
 }
 function pzAnimIconSrc(){ return pzTintedSrc(state.animIconData, pzAnimTint()); }
-function pzSyncTintUi(){
-  const cur = (state.animIconTint || '').toUpperCase();
-  let matched = false;
-  document.querySelectorAll('#animIconTintRow .pz-tint-sw').forEach(b => { const on = (b.dataset.tint || '').toUpperCase() === cur; b.classList.toggle('active', on); if(on) matched = true; });
-  const inp = document.getElementById('animIconColor');
-  if(inp){ inp.classList.toggle('active', !!cur && !matched); if(cur && !matched) inp.value = cur.toLowerCase(); }
-}
 function animMarkerInnerHTML(){
   return state.animIconData
     ? `<img alt="" src="${escapeHtml(pzAnimIconSrc())}" style="width:100%;height:100%;object-fit:contain">`
@@ -13955,7 +13996,7 @@ function createNativeExportMarkers(exportMap){
       try{ const lp = arc3dLiftPx(point, progress); const off = Array.isArray(lp) ? lp : [0, -(lp || 0)]; temp.animatedMarker.setOffset(off); }catch(e){}
       temp.animatedMarker.setRotation(cameraFacingDisplayAngle(cameraFacing, finalAngle(progress)));
       temp.markerCameraMode = align.key;
-      try{ pzUpdateConsist(progress, {map: exportMap, size}); temp.consist = !!PZ_CONSIST[state.animSystemIcon]; }catch(e){}
+      try{ pzUpdateConsist(progress, {map: exportMap, size}); temp.consist = !!pzConsistSpec(); }catch(e){}
     }
   }
   return temp;
@@ -16056,21 +16097,15 @@ function bindUI(){
   }
   $('pzVehiclePreset').addEventListener('change', e => {
     try{ window.__pzPushUndo?.(); }catch(err){}
-    const palette = PZ_VEHICLE_PRESETS[e.target.value];
-    if(palette) refreshVehicleColors(palette);
-    else $('pzVehicleBody').focus();
+    const v = e.target.value;
+    if(v === 'auto') refreshVehicleColors({auto:true});
+    else if(PZ_VEHICLE_PRESETS[v]) refreshVehicleColors({...PZ_VEHICLE_PRESETS[v], auto:false});
+    else { state.vehicleAuto = false; $('pzVehicleBody').focus(); }
   });
   // input = barva se mění už při výběru v kapátku, change = potvrzení
-  ['pzVehicleBody','pzVehicleAccent'].forEach(id => { ['input','change'].forEach(ev => $(id).addEventListener(ev, () => refreshVehicleColors(pzVehiclePalette()))); });
-  const setTint = hex => {
-    state.animIconTint = hex || null;
-    pzSyncTintUi();
-    if(state.animatedMarkerEl) state.animatedMarkerEl.dataset.iconSig = '';
-    refreshAnimatedMarkerPreview();
-    if(hex && !state.animSystemIcon) setStatus(t('Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).'));
-  };
-  $$('#animIconTintRow .pz-tint-sw').forEach(b => b.addEventListener('click', () => { try{ window.__pzPushUndo?.(); }catch(e){} setTint(b.dataset.tint); }));
-  $('animIconColor')?.addEventListener('input', e => setTint(e.target.value));
+  ['pzVehicleBody','pzVehicleAccent'].forEach(id => { ['input','change'].forEach(ev => $(id).addEventListener(ev, () => refreshVehicleColors({body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto:false}))); });
+  pzFillSysIconButtons();
+  $('pzWagonCount')?.addEventListener('input', () => { $('pzWagonCountVal').textContent = $('pzWagonCount').value; refreshAnimatedMarkerPreview(); });
   $('invertIcons')?.addEventListener('change', ()=>{
     if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('inverted', pzLegacyIconInverted());
     refreshAnimatedMarkerPreview();
@@ -16671,6 +16706,10 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Automaticky podle podkladu": {cs:"Automaticky podle podkladu",sk:"Automaticky podľa podkladu",bg:"Автоматично според основата",hr:"Automatski prema podlozi",ro:"Automat după fundal",en:"Automatic for the basemap"},
+  "Počet vagonů": {cs:"Počet vagonů",sk:"Počet vagónov",bg:"Брой вагони",hr:"Broj vagona",ro:"Număr de vagoane",en:"Number of wagons"},
+  "Světlá": {cs:"Světlá",sk:"Svetlá",bg:"Светла",hr:"Svijetla",ro:"Deschisă",en:"Light"},
+  "Tmavá": {cs:"Tmavá",sk:"Tmavá",bg:"Тъмна",hr:"Tamna",ro:"Închisă",en:"Dark"},
   // [i18n:scena] překlady oblasti „scena" vkládej pod tento řádek
   // .
   // .
@@ -16703,7 +16742,6 @@ Object.assign(I18N, {
   // .
   // .
   // .
-  "Barvy vozidla": {cs:"Barvy vozidla",sk:"Farby vozidla",bg:"Цветове на превозното средство",hr:"Boje vozila",ro:"Culorile vehiculului",en:"Vehicle colours"},
   "Pro světlý podklad": {cs:"Pro světlý podklad",sk:"Pre svetlý podklad",bg:"За светла основа",hr:"Za svijetlu podlogu",ro:"Pentru fundal deschis",en:"For a light map"},
   "Pro tmavý podklad": {cs:"Pro tmavý podklad",sk:"Pre tmavý podklad",bg:"За тъмна основа",hr:"Za tamnu podlogu",ro:"Pentru fundal închis",en:"For a dark map"},
   "Pro modrý podklad": {cs:"Pro modrý podklad",sk:"Pre modrý podklad",bg:"За синя основа",hr:"Za plavu podlogu",ro:"Pentru fundal albastru",en:"For a blue map"},
