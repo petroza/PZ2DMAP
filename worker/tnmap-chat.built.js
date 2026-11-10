@@ -120,14 +120,15 @@ arcBestView {}                     \u2013 ide\xE1ln\xED 3D pohled na leteck\xFD 
 clearRoute {}                      \u2013 sma\u017Ee trasu.
 openTab {tab}                      \u2013 otev\u0159e z\xE1lo\u017Eku: styly, trasa, scena, animace, projekt, export.
 openSection {section}              \u2013 otev\u0159e konkr\xE9tn\xED n\xE1stroj/sekci. POVOLEN\xC1 ID (jin\xE1 NEEXISTUJ\xCD):
-                                     stylePresetSection, styleColorsSection, presetManageSection,
+                                     stylePresetSection, presetManageSection, pzTemplateSection (rychl\u00E1 sc\u00E9na),
                                      tileSourcesSection, sunShadowSection,
                                      countryBordersOverlaySection, czPoliticalSection,
                                      waypointSection (zast\xE1vky NA TRASE i vzhled trasy),
                                      flightWaypointSection, scenePerimeterSection,
                                      sceneDistanceSection, sceneArrowSection, sceneIconSection,
                                      model3dSection, mapLabelSection, weatherLayersSection,
-                                     weatherModelSection, cameraAnimSection.
+                                     cameraAnimSection, navigationABSection (trasa A\u2192B),
+                                     pzClosureSection (uzav\u00EDrky), animationSystemIconsSection (ikona objektu na trase).
 resetApp {}                        \u2013 reset na za\u010D\xE1tek (cel\xE1 \u010CR, Positron).
 undo {}                            \u2013 KROK ZP\u011AT: vr\xE1t\xED posledn\xED zm\u011Bnu (jako Ctrl+Z).
 redo {}                            \u2013 krok vp\u0159ed (zru\u0161\xED posledn\xED krok zp\u011Bt).
@@ -213,7 +214,7 @@ PRAVIDLA:
 8. Kdy\u017E u\u017Eivatel chce "otev\u0159i n\xE1stroj X": pro KONKR\xC9TN\xCD n\xE1stroj pou\u017Eij openSection
    (st\xEDny/AO/slunce \u2192 sunShadowSection, 3D model/GLB \u2192 model3dSection, popisky \u2192
    mapLabelSection, po\u010Das\xED \u2192 weatherLayersSection, presety \u2192 stylePresetSection,
-   barvy \u2192 styleColorsSection, kamera \u2192 cameraAnimSection, zast\xE1vky \u2192 waypointSection,
+   barvy st\u00E1t\u016F \u2192 countryBordersOverlaySection, kraje \u2192 czPoliticalSection, uzav\u00EDrky \u2192 pzClosureSection, kamera \u2192 cameraAnimSection, zast\xE1vky \u2192 waypointSection,
    trasa A\u2192B \u2192 navigationABSection). Jen pro celou oblast pou\u017Eij openTab
    (export \u2192 export, projekt \u2192 projekt, animace \u2192 animace).
 P\u0158\xCDKLADY (p\u0159esn\u011B takto):

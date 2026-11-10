@@ -19,12 +19,12 @@ async function scanAll(page){
     return out; });
   let all = await scan();
   for(const tb of ['scena', 'trasa', 'animace', 'export', 'styly']){
-    await page.click(`.tab-btn[data-tab="${tb}"]`); await page.waitForTimeout(250);
+    await page.click(`.tab-btn[data-tab="${tb}"]`); await page.mouse.move(1590, 940); await page.waitForTimeout(250);
     await page.evaluate(() => [...document.querySelectorAll('.section.collapsed h3')].filter(h => h.offsetParent).forEach(h => h.click()));
     for(let y = 0; y < 6; y++){ await page.evaluate(y => { document.querySelector('.sidebar-content').scrollTop = y * 700; }, y); await page.waitForTimeout(100); all = all.concat(await scan()); }
   }
-  await page.click('#projectPanelBtn'); await page.waitForTimeout(200); all = all.concat(await scan()); await page.keyboard.press('Escape');
-  await page.click('#shortcutsBtn'); await page.waitForTimeout(200); all = all.concat(await scan()); await page.keyboard.press('Escape');
+  await page.click('#projectPanelBtn'); await page.mouse.move(1590, 940); await page.waitForTimeout(200); all = all.concat(await scan()); await page.keyboard.press('Escape');
+  await page.click('#shortcutsBtn'); await page.mouse.move(1590, 940); await page.waitForTimeout(200); all = all.concat(await scan()); await page.keyboard.press('Escape');
   await page.click('.tnchat-fab'); await page.waitForTimeout(300); all = all.concat(await scan());
   return [...new Set(all)];
 }

@@ -295,6 +295,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .endpoint-shape .t-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .route-dot.dot-wp{background:var(--yellow);width:22px;height:22px;font-size:10px;border-width:1.5px}
 
+.maplibregl-marker.animated-marker,.maplibregl-marker:has(> .animated-marker){z-index:4}
 .animated-marker{position:absolute;pointer-events:none;display:flex;align-items:center;justify-content:center;transform-origin:center center;filter:drop-shadow(0 2px 2px rgba(0,0,0,.48)) drop-shadow(0 6px 8px rgba(0,0,0,.34))}
 .animated-marker svg,.animated-marker img{display:block}
 .animated-marker.inverted{filter:invert(1) hue-rotate(180deg) drop-shadow(0 2px 2px rgba(255,255,255,.28)) drop-shadow(0 6px 8px rgba(0,0,0,.38))}
@@ -319,13 +320,18 @@ input[type=color]:hover{border-color:var(--accent)}
 .settings-bar{position:sticky;bottom:0;z-index:6;padding:10px 12px;background:linear-gradient(transparent,var(--bg0) 35%);margin-top:auto}
 .settings-gear{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);color:var(--tx1);font:600 12px var(--font);cursor:pointer;transition:.15s;letter-spacing:.4px;text-transform:uppercase}
 .settings-gear:hover{background:var(--bg3);border-color:var(--accent);color:#fff}
-.settings-modal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(5,8,12,.62);backdrop-filter:blur(3px)}
+.settings-modal{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;background:rgba(5,8,12,.62);backdrop-filter:blur(3px)}
 .settings-modal[hidden]{display:none}
 .settings-card{width:min(440px,93vw);max-height:86vh;display:flex;flex-direction:column;background:var(--bg1);border:1px solid var(--border-hi);box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .settings-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border);font-size:14px}
 .settings-close{width:28px;height:28px;border:1px solid var(--border);background:var(--bg2);color:var(--tx1);font-size:18px;line-height:1;cursor:pointer}
 .settings-close:hover{border-color:var(--accent);color:#fff}
 .settings-body{padding:14px 16px;overflow:auto}
+.settings-status{position:sticky;top:-14px;z-index:2;margin:-14px -16px 12px;padding:9px 16px;font-size:12px;background:var(--bg2);border-bottom:1px solid var(--border);color:var(--tx1)}
+.settings-status::before{content:'';display:inline-block;width:6px;height:6px;margin-right:8px;vertical-align:middle;background:var(--green)}
+.settings-status.error{color:#ff9aa2;background:rgba(230,57,70,.12)}
+html[data-ui="light"] .settings-status.error{color:#b4232f}
+.settings-status.error::before{background:#f85149}
 .settings-sec{margin-bottom:18px}
 .settings-sec>h4{margin:0 0 9px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--accent)}
 .settings-sec .section{padding:0;background:none;border:none;margin:0}
@@ -401,7 +407,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .export-preview[hidden]{display:none}
 
 /* ===== FLOATING PLAYER ===== */
-.floating-player{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);z-index:60}
+.floating-player{position:absolute;bottom:max(54px, calc(var(--pz-status-h, 34px) + 22px));left:50%;transform:translateX(-50%);z-index:60}
 .floating-player .player-controls{margin-top:0;background:rgba(13,17,25,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:8px 16px;box-shadow:0 10px 32px rgba(0,0,0,.45)}
 .floating-player #animInfo{font-size:11px;color:var(--tx2);min-width:74px;text-align:right}
 
@@ -419,7 +425,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .lang-switcher-inline .lang-btn{width:26px;height:20px}
 .lang-switcher-inline .lang-btn img{width:18px;height:12px}
 .brand-search-bar{padding:8px 14px;border-bottom:1px solid var(--border);background:var(--bg0)}
-.shortcuts-panel{position:absolute;top:56px;right:14px;z-index:200;background:rgba(13,17,25,.96);backdrop-filter:blur(14px);border:1px solid var(--border-hi);border-radius:12px;padding:12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.5);min-width:280px}
+.shortcuts-panel{position:absolute;top:56px;right:14px;z-index:200;max-height:calc(100dvh - 70px);overflow:auto;background:rgba(13,17,25,.96);backdrop-filter:blur(14px);border:1px solid var(--border-hi);border-radius:12px;padding:12px 14px;box-shadow:0 12px 32px rgba(0,0,0,.5);min-width:280px}
 .shortcuts-panel[hidden]{display:none}
 .shortcuts-panel h4{font-size:12.5px;color:var(--tx1);margin:0 0 10px;font-weight:600}
 .sc-row{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--tx2);padding:3px 0}
@@ -513,7 +519,8 @@ input[type=color]:hover{border-color:var(--accent)}
     flex-wrap:wrap;gap:6px
   }
   .map-actions .map-action-btn{padding:9px 10px}
-  .map-actions .map-action-btn span{display:none}
+  .map-actions .map-action-btn span[data-i18n]{display:none}
+  .map-actions .map-action-btn{min-width:32px;min-height:32px;justify-content:center}
   .status-bar{
     left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));
     transform:none;max-width:none;padding:9px 12px;font-size:11.5px
@@ -695,6 +702,31 @@ html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
 html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
 html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
 html[data-ui="light"] .sys-icon-btn:not(.active) img{filter:none}
+/* Užší desktop (981–1250 px): sedm tlačítek s popisky se nevešlo a „Projekt"
+   (jediná cesta k uložení) zajel pod boční panel — popisky pryč, zůstanou ikony. */
+@media (min-width:981px) and (max-width:1250px){
+  .map-actions .map-action-btn span[data-i18n]{display:none}
+  .map-actions .map-action-btn{padding:8px 10px}
+}
+/* iPhone SE (320 px): sedm ikon se o pár px nevešlo vedle tlačítka Menu */
+@media (max-width:360px){
+  .map-actions{gap:3px}
+  .map-actions .map-action-btn{min-width:28px;padding:7px 5px}
+}
+/* Telefon na šířku: chat a nápověda měly jen pár desítek px výšky */
+@media (max-height:500px) and (max-width:980px){
+  .tnchat-fab{bottom:10px;right:10px;width:44px;height:44px}
+  .tnchat-panel{bottom:10px;right:64px;max-height:calc(100dvh - 20px)}
+}
+/* Světlý režim: bílý text při najetí byl na světlém pozadí nečitelný (1,2:1);
+   tlačítko Menu na telefonu mělo tmavý text na tmavém (1,1:1). */
+html[data-ui="light"] .map-actions .map-action-btn:hover,
+html[data-ui="light"] .settings-close:hover,
+html[data-ui="light"] .settings-gear:hover{color:var(--tx1)}
+html[data-ui="light"] .mobile-menu-btn{background:var(--bg1);color:var(--tx1)}
+html[data-ui="light"] .mobile-panel-open .mobile-menu-btn{color:var(--accent)}
+/* Panel Projekt se při otevřeném chatu odsune vedle něj (jinak zakryl jeho hlavičku) */
+@media (min-width:1150px){ .project-panel.beside-chat{right:calc(24px + min(380px, 100vw - 28px))} }
 /* Projekt: plovoucí panel pod horní lištou (dřív samostatná záložka) */
 .project-panel{position:absolute;top:56px;right:14px;z-index:210;width:min(380px,calc(100vw - 28px));max-height:calc(100dvh - 140px);overflow:auto;background:var(--bg1);border:1px solid var(--border-hi);box-shadow:0 12px 32px rgba(0,0,0,.45);padding:10px 12px 12px}
 .project-panel[hidden]{display:none}
@@ -839,7 +871,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       </div>
       <div class="section" id="politicalStylePanel" style="display:none">
         <h3 data-i18n="Politická mapa">Politická mapa</h3>
-        <p class="hint" style="margin-top:0" data-i18n="hint_political_style">Když je zvolený styl „Politická“, ovládání států světa a krajů ČR je přímo tady ve STYLU.</p>
+        <p class="hint" style="margin-top:0" data-i18n="hint_political_style">Barvení států a krajů ČR najdeš v záložce Scéna (sekce Hranice a barvy států a Kraje ČR) — funguje na každém podkladu.</p>
         <div id="politicalStylePanelMount"></div>
       </div>
       <div class="section" id="tileSourcesSection">
@@ -1224,14 +1256,14 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       </div>
 
       <div class="section" id="countryBordersOverlaySection">
-        <h3 data-i18n="Hranice států overlay">Hranice a barvy států</h3>
+        <h3 data-i18n="Hranice a barvy států">Hranice a barvy států</h3>
         <div class="control-step">
           <div class="control-step-title"><span class="control-step-number">1</span> Hranice států</div>
           <label class="check"><input id="showCountryBordersOverlay" type="checkbox"> Zobrazit hranice států</label>
           <details class="compact-details">
             <summary>Vzhled a rozsah hranic</summary>
             <div class="row">
-              <div><label data-i18n="Režim">Zobrazit</label><select id="countryBorderMode"><option value="all" selected data-i18n="Všechny státy">Všechny státy</option><option value="selected" data-i18n="Jen vybraný stát">Jen vybraný stát</option></select></div>
+              <div><label data-i18n="Rozsah hranic">Rozsah</label><select id="countryBorderMode"><option value="all" selected data-i18n="Všechny státy">Všechny státy</option><option value="selected" data-i18n="Jen vybraný stát">Jen vybraný stát</option></select></div>
               <div><label data-i18n="Vybraný stát">Vybraný stát</label><select id="countryFocusSelect"><option value="" data-i18n="Načítám…">Načítám…</option></select></div>
             </div>
             <div class="row">
@@ -1244,14 +1276,18 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <div id="worldPoliticalSection" class="control-step">
           <div class="control-step-title"><span class="control-step-number">2</span> Vybarvit stát</div>
-          <label data-i18n="Vyhledat stát">Najdi stát</label>
+          <label for="politicalCountrySearch" data-i18n="Najdi stát">Najdi stát</label>
           <div class="country-search-wrap"><input id="politicalCountrySearch" type="text" placeholder="Začni psát název…" autocomplete="off"><div class="nav-suggest" id="politicalCountrySearchSuggest" role="listbox"></div></div>
-          <label data-i18n="Stát">Nebo vyber ze seznamu</label>
+          <label for="politicalCountrySelect" data-i18n="Nebo vyber ze seznamu">Nebo vyber ze seznamu</label>
           <select id="politicalCountrySelect"><option value="" data-i18n="Načítám…">Načítám…</option></select>
           <div class="color-row" style="margin-top:10px"><input id="politicalCountryColor" type="color" value="#ff6b6b"><label data-i18n="Barva státu">Barva státu</label></div>
           <div class="control-actions">
-            <button type="button" class="btn btn-sm btn-primary" id="applyPoliticalCountryColorBtn" data-i18n="Barvit stát">Použít barvu</button>
+            <button type="button" class="btn btn-sm btn-primary" id="applyPoliticalCountryColorBtn" data-i18n="Barvit stát">Barvit stát</button>
             <button type="button" class="btn btn-sm" id="zoomToCountryBtn" data-i18n="Přiblížit stát">Přiblížit stát</button>
+          </div>
+          <div class="control-actions">
+            <button type="button" class="btn btn-sm" id="resetPoliticalCountryColorBtn" data-i18n="Zrušit barvu státu">Zrušit barvu státu</button>
+            <button type="button" class="btn btn-sm" id="clearPoliticalCountryColorsBtn" data-i18n="Zrušit všechny barvy">Zrušit všechny barvy</button>
           </div>
           <label class="check" style="margin-top:12px"><input id="showPoliticalCountries" type="checkbox"> Zobrazit vybarvené státy</label>
           <label class="check"><input id="paintPoliticalCountryOnClick" type="checkbox"> Rychlé barvení kliknutím do mapy</label>
@@ -1484,7 +1520,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <p class="hint" style="display:none" data-i18n="hint_export_visibility">Render běží přímo v prohlížeči. Během exportu nech okno viditelné a neminimalizuj ho — skryté okno prohlížeč uspí a render se zastaví. Obrazovka se po dobu renderu sama nevypne.</p>
         <p class="hint" style="display:none" data-i18n="hint_export_transparent">Vyexportuje jen trasu, objekty a popisky s alfa kanálem — ideální jako overlay vrstva do After Effects. Funguje pro PNG a PNG sekvenci; „Export video" v tomto režimu vyrobí balíček PNG + skript na MOV ProRes 4444 (s průhledností).</p>
       </div>
-      <div class="section">
+      <div class="section" id="exportActionsSection">
         <h3 data-i18n="Akce">Akce</h3>
         <div class="btns">
           <button type="button" class="btn btn-primary" id="exportVideoBtn" data-i18n="Export video">Export video</button>
@@ -1515,6 +1551,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
   <div class="settings-card">
     <div class="settings-head"><b><span data-i18n="Nastavení">Nastavení</span></b><button type="button" id="closeSettingsBtn" class="settings-close" aria-label="Zavřít">×</button></div>
     <div class="settings-body">
+      <div id="settingsStatus" class="settings-status" hidden role="status" aria-live="polite"></div>
       <div class="settings-sec">
         <h4>Pokročilé funkce</h4>
         <label class="check"><input id="advancedFeatures" type="checkbox"> Zobrazit pokročilé funkce</label>
@@ -1617,7 +1654,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <div style="margin-bottom:4px">Odkaz na rozdělanou práci (kolega ho otevře a načte se mu všechno):</div>
           <input id="shareProjectLink" type="text" readonly style="width:100%" onclick="this.select()">
         </div>
-        <p class="hint" data-i18n="hint_project">Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.</p>
+        <p class="hint" data-i18n="hint_project">Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Uložené projekty vidí všichni kolegové.</p>
         <div id="projectThumbWrap" style="margin-top:10px;display:none">
           <label data-i18n="Náhled projektu">Náhled projektu</label>
           <img id="projectThumbPreview" alt="" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
@@ -1778,7 +1815,7 @@ const I18N = {
   // had no data-i18n attribute at all, so they stayed Czech in every UI language
   // (reported repeatedly across Scene/Animation/Project/Export sections).
   'hint_preset_click':      {cs:'Kliknutím použiješ preset. Ukládá barvy, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí více presetů, Delete je smaže. Pravým tlačítkem duplikuješ nebo smažeš.',sk:'Kliknutím použiješ preset. Ukladá farby, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí viac presetov, Delete ich zmaže. Pravým tlačidlom duplikuješ alebo zmažeš.',bg:'С клик прилагаш пресет. Запазва цветове, интензивност и вкл/изкл слоеве. Ctrl+клик избира няколко пресета, Delete ги изтрива. С десен бутон дублираш или изтриваш.',hr:'Klikom primjenjuješ preset. Sprema boje, intenzitet i uključene/isključene slojeve. Ctrl+klik označava više preseta, Delete ih briše. Desnim klikom dupliciraš ili brišeš.',ro:'Cu un clic aplici presetarea. Salvează culorile, intensitatea și straturile activate/dezactivate. Ctrl+clic selectează mai multe presetări, Delete le șterge. Cu clic dreapta le duplici sau ștergi.'},
-  'hint_political_style':   {cs:'Když je zvolený styl „Politická", ovládání států světa a krajů ČR je přímo tady ve STYLU.',sk:'Keď je zvolený štýl „Politická", ovládanie štátov sveta a krajov ČR je priamo tu v ŠTÝLE.',bg:'Когато е избран стил „Политическа", управлението на държавите и областите на Чехия е точно тук в СТИЛ.',hr:'Kad je odabran stil „Politička", upravljanje državama svijeta i regijama ČR je izravno ovdje u STILU.',ro:'Când e ales stilul „Politică", controlul statelor lumii și regiunilor Cehiei este chiar aici, în STIL.'},
+  'hint_political_style':   {cs:'Barvení států a krajů ČR najdeš v záložce Scéna (sekce Hranice a barvy států a Kraje ČR) — funguje na každém podkladu.',sk:'Farbenie štátov a krajov ČR nájdeš v záložke Scéna (sekcie Hranice a farby štátov a Kraje ČR) — funguje na každom podklade.',bg:'Оцветяването на държави и области на Чехия е в раздела Сцена (секции Граници и цветове на държави и Области на ЧР) — работи върху всяка основа.',hr:'Bojanje država i regija ČR nalazi se na kartici Scena (odjeljci Granice i boje država i Regije ČR) — radi na svakoj podlozi.',ro:'Colorarea statelor și a regiunilor Cehiei este în fila Scenă (secțiunile Granițe și culori ale statelor și Regiunile Cehiei) — funcționează pe orice fundal.'},
   'hint_via_points':        {cs:'Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.',sk:'Pridaj zastávky medzi A a B. Trasa sa prepočíta automaticky.',bg:'Добави спирки между A и B. Маршрутът се преизчислява автоматично.',hr:'Dodaj stanice između A i B. Ruta se automatski preračunava.',ro:'Adaugă opriri între A și B. Traseul se recalculează automat.'},
   'hint_perimeter':         {cs:'Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.',sk:'Zadaj radius číselne, vyber metre/kilometre a klikni do mapy (tlačidlo svieti, kým je vkladanie zapnuté). Hotový perimeter vyberieš kliknutím priamo v mape: ťahom bodu A posunieš stred, bodom B meníš radius, kolieskom myši nad ním plynule zväčšuješ/zmenšuješ, Delete ho zmaže.',bg:'Въведи радиус числово, избери метри/километри и кликни в картата (бутонът свети, докато вмъкването е включено). Готовия периметър избираш с клик направо в картата: с точка A местиш центъра, с точка B променяш радиуса, с колелцето на мишката плавно увеличаваш/намаляваш, Delete го изтрива.',hr:'Unesi radijus brojčano, odaberi metre/kilometre i klikni na kartu (gumb svijetli dok je unos uključen). Gotov perimetar odabireš klikom izravno na karti: povlačenjem točke A pomičeš središte, točkom B mijenjaš radijus, kotačićem miša glatko povećavaš/smanjuješ, Delete ga briše.',ro:'Introdu raza numeric, alege metri/kilometri și dă clic pe hartă (butonul luminează cât timp inserarea e activă). Perimetrul gata îl selectezi cu clic direct pe hartă: trăgând punctul A muți centrul, cu punctul B schimbi raza, cu rotița mouse-ului deasupra mărești/micșorezi lin, Delete îl șterge.'},
   'hint_distance':          {cs:'Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.',sk:'Zapni režim, chyť mapu v bode A a ťahaj do bodu B. Hotovú vzdialenosť vyberieš kliknutím v mape, koncové body A/B môžeš presúvať a celú linku môžeš presunúť ťahaním za čiaru.',bg:'Включи режима, хвани картата в точка A и дърпай до точка B. Готовото разстояние избираш с клик в картата, крайните точки A/B могат да се местят, а цялата линия можеш да преместиш с дърпане на линията.',hr:'Uključi način rada, uhvati kartu u točki A i povuci do točke B. Gotovu udaljenost odabireš klikom na karti, krajnje točke A/B možeš povlačiti, a cijelu liniju možeš pomaknuti povlačenjem crte.',ro:'Activează modul, prinde harta în punctul A și trage până la punctul B. Distanța gata o selectezi cu clic pe hartă, punctele A/B pot fi trase, iar întreaga linie poate fi mutată trăgând de ea.'},
@@ -1789,7 +1826,7 @@ const I18N = {
   'hint_openweather':       {cs:'Globální teplotní/srážková/větrná mapa jako Windy (model OpenWeather). Stačí bezplatný klíč z openweathermap.org → API keys, vlož ho sem. Krytí ovládá všechny vrstvy počasí. Vrstvy se promítnou i do exportu videa.',sk:'Globálna teplotná/zrážková/veterná mapa ako Windy (model OpenWeather). Stačí bezplatný kľúč z openweathermap.org → API keys, vlož ho sem. Krytie ovláda všetky vrstvy počasia. Vrstvy sa premietnu aj do exportu videa.',bg:'Глобална температурна/валежна/ветрова карта като Windy (модел OpenWeather). Нужен е само безплатен ключ от openweathermap.org → API keys, постави го тук. Покритието управлява всички слоеве за времето. Слоевете се пренасят и в експорта на видео.',hr:'Globalna temperaturna/oborinska/vjetrovna karta poput Windyja (model OpenWeather). Dovoljan je besplatan ključ s openweathermap.org → API keys, umetni ga ovdje. Prekrivenost upravlja svim slojevima vremena. Slojevi se prenose i u izvoz videa.',ro:'Hartă globală de temperatură/precipitații/vânt ca Windy (model OpenWeather). E nevoie doar de o cheie gratuită de pe openweathermap.org → API keys, inserată aici. Acoperirea controlează toate straturile meteo. Straturile apar și în exportul video.'},
   'hint_rot_mode_summary':  {cs:'Rovně = pevná orientace. Natočit = rotace podle trasy + ruční korekce.',sk:'Rovno = pevná orientácia. Natočiť = rotácia podľa trasy + ručná korekcia.',bg:'Право = фиксирана ориентация. Завърти = завъртане по маршрута + ръчна корекция.',hr:'Ravno = fiksna orijentacija. Zakreni = rotacija prema ruti + ručna korekcija.',ro:'Drept = orientare fixă. Rotire = rotație după traseu + corecție manuală.'},
   'hint_obj_smooth':        {cs:'Změkčí pohyb objektu (auta) na trase s mnoha malými zatáčkami, aby se „neklepal". Vyšší hodnota = plynulejší, ale lehce zaostává za přesnou polohou.',sk:'Zmäkčí pohyb objektu (auta) na trase s mnohými malými zákrutami, aby sa „netriasol". Vyššia hodnota = plynulejšie, ale mierne zaostáva za presnou polohou.',bg:'Омекотява движението на обекта (колата) по маршрут с много малки завои, за да не „трепери". По-висока стойност = по-плавно, но леко изостава от точната позиция.',hr:'Ublažava kretanje objekta (auta) na ruti s mnogo malih zavoja, kako se ne bi „tresao". Veća vrijednost = glatkije, ali lagano kasni za točnom pozicijom.',ro:'Atenuează mișcarea obiectului (mașinii) pe un traseu cu multe curbe mici, ca să nu „tremure". Valoare mai mare = mai lin, dar rămâne puțin în urma poziției exacte.'},
-  'hint_project':           {cs:'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.',sk:'Projekt uloží trasu, vzhľad mapy, ikonky, popisky, animáciu aj politické farbenie. Záložky hore môžeš presúvať myšou.',bg:'Проектът запазва маршрута, изгледа на картата, иконите, надписите, анимацията и политическото оцветяване. Раздели горе можеш да местиш с мишката.',hr:'Projekt sprema rutu, izgled karte, ikone, oznake, animaciju i političko bojanje. Kartice gore možeš povlačiti mišem.',ro:'Proiectul salvează traseul, aspectul hărții, pictogramele, etichetele, animația și colorarea politică. Filele de sus pot fi trase cu mouse-ul.'},
+  'hint_project':           {cs:'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Uložené projekty vidí všichni kolegové.',sk:'Projekt uloží trasu, vzhľad mapy, ikonky, popisky, animáciu aj politické farbenie. Uložené projekty vidia všetci kolegovia.',bg:'Проектът запазва маршрута, изгледа на картата, иконите, надписите, анимацията и политическото оцветяване. Запазените проекти виждат всички колеги.',hr:'Projekt sprema rutu, izgled karte, ikone, oznake, animaciju i političko bojanje. Spremljene projekte vide svi kolege.',ro:'Proiectul salvează traseul, aspectul hărții, pictogramele, etichetele, animația și colorarea politică. Proiectele salvate sunt vizibile pentru toți colegii.'},
   'hint_batch_export':      {cs:'Vyrenderuje stejnou scénu/animaci do všech zaškrtnutých poměrů stran za sebou (každý soubor dostane příponu …-16x9, …-9x16). Použije aktuální formát videa i průhlednost. Jiný poměr stran než tvůj náhled se ořízne na střed.',sk:'Vyrenderuje rovnakú scénu/animáciu do všetkých zaškrtnutých pomerov strán za sebou (každý súbor dostane príponu …-16x9, …-9x16). Použije aktuálny formát videa aj priehľadnosť. Iný pomer strán ako tvoj náhľad sa orezá na stred.',bg:'Рендерира същата сцена/анимация във всички избрани съотношения последователно (всеки файл получава наставка …-16x9, …-9x16). Използва текущия видео формат и прозрачност. Друго съотношение от твоя преглед се изрязва в центъра.',hr:'Renderira istu scenu/animaciju u sve označene omjere slike zaredom (svaka datoteka dobiva nastavak …-16x9, …-9x16). Koristi trenutni format videa i prozirnost. Drugi omjer slike od tvog pregleda izrezuje se na sredinu.',ro:'Randează aceeași scenă/animație în toate rapoartele bifate, pe rând (fiecare fișier primește sufixul …-16x9, …-9x16). Folosește formatul video curent și transparența. Un alt raport de aspect decât previzualizarea ta este decupat central.'},
   'Zatím není přidaný žádný perimetr.': {cs:'Zatím není přidaný žádný perimetr.',sk:'Zatiaľ nie je pridaný žiadny perimeter.',bg:'Все още няма добавен периметър.',hr:'Još nije dodan nijedan perimetar.',ro:'Încă niciun perimetru adăugat.',en:'No perimeter added yet.'},
   'Zatím není přidaná žádná vzdálenost.': {cs:'Zatím není přidaná žádná vzdálenost.',sk:'Zatiaľ nie je pridaná žiadna vzdialenosť.',bg:'Все още няма добавено разстояние.',hr:'Još nije dodana nijedna udaljenost.',ro:'Încă nicio distanță adăugată.',en:'No distance added yet.'},
@@ -2027,6 +2064,8 @@ const I18N = {
   'Krytí': {cs:'Krytí',sk:'Krytie',bg:'Плътност',hr:'Neprozirnost',ro:'Opacitate',en:'Opacity'},
   'Nejdřív napiš místo události.': {cs:'Nejdřív napiš místo události.',sk:'Najprv napíš miesto udalosti.',bg:'Първо въведи мястото.',hr:'Najprije upiši mjesto događaja.',ro:'Scrie mai întâi locul evenimentului.',en:'Type the place of the event first.'},
   'Scéna připravena:': {cs:'Scéna připravena:',sk:'Scéna pripravená:',bg:'Сцената е готова:',hr:'Scena pripremljena:',ro:'Scenă pregătită:',en:'Scene ready:'},
+  'Projekt „{0}" už existuje. Přepsat ho?': {cs:'Projekt „{0}" už existuje. Přepsat ho?',sk:'Projekt „{0}" už existuje. Prepísať ho?',bg:'Проектът „{0}" вече съществува. Да бъде ли презаписан?',hr:'Projekt „{0}" već postoji. Prepisati ga?',ro:'Proiectul „{0}" există deja. Îl suprascrii?',en:'Project “{0}” already exists. Overwrite it?'},
+  'Uložení zrušeno — zvol jiný název projektu.': {cs:'Uložení zrušeno — zvol jiný název projektu.',sk:'Uloženie zrušené — zvoľ iný názov projektu.',bg:'Запазването е отменено — избери друго име.',hr:'Spremanje otkazano — odaberi drugi naziv.',ro:'Salvare anulată — alege alt nume.',en:'Save cancelled — choose a different project name.'},
   'Ikonka smazána.': {cs:'Ikonka smazána.',sk:'Ikonka zmazaná.',bg:'Иконата е изтрита.',hr:'Ikona obrisana.',ro:'Pictogramă ștearsă.'},
   'Táhneš ikonku.': {cs:'Táhneš ikonku.',sk:'Ťaháš ikonku.',bg:'Влачиш икона.',hr:'Povlačiš ikonu.',ro:'Tragi pictograma.'},
   'Ikonka přesunuta.': {cs:'Ikonka přesunuta.',sk:'Ikonka presunutá.',bg:'Иконата е преместена.',hr:'Ikona premještena.',ro:'Pictogramă mutată.'},
@@ -2212,7 +2251,7 @@ const I18N = {
   'Samostatná funkce pro Českou republiku. Kraj můžeš vybrat klikem nebo ve formuláři a obarvit libovolnou barvou.': {cs:'Samostatná funkce pro Českou republiku. Kraj můžeš vybrat klikem nebo ve formuláři a obarvit libovolnou barvou.',sk:'Samostatná funkcia pre Českú republiku. Kraj môžeš vybrať klikom alebo vo formulári a zafarbiť ľubovoľnou farbou.',bg:'Отделна функция за Чешката република. Можеш да избереш област с клик или във формуляра и да я оцветиш както пожелаеш.',hr:'Zasebna funkcija za Češku Republiku. Županiju možeš odabrati klikom ili u obrascu i obojiti bilo kojom bojom.',ro:'O funcție dedicată pentru Republica Cehă. Poți alege o regiune prin clic sau în formular și o poți colora oricum.',en:'A dedicated feature for the Czech Republic. You can choose a region by click or in the form and color it any way you want.'},
   'Kraje jsou dostupné jen pro ČR. Po kliknutí do mapy se synchronizuje formulářový výběr kraje.': {cs:'Kraje jsou dostupné jen pro ČR. Po kliknutí do mapy se synchronizuje formulářový výběr kraje.',sk:'Kraje sú dostupné len pre ČR. Po kliknutí do mapy sa synchronizuje formulárový výber kraja.',bg:'Областите са достъпни само за Чехия. След клик върху картата се синхронизира изборът на област във формуляра.',hr:'Županije su dostupne samo za Češku. Nakon klika na kartu sinkronizira se odabir županije u obrascu.',ro:'Regiunile sunt disponibile doar pentru Cehia. După un clic pe hartă, selecția regiunii din formular se sincronizează.',en:'Regions are available only for the Czech Republic. Clicking the map syncs the region selection in the form.'},
   'Vyber projekt…': {cs:'Vyber projekt…',sk:'Vyber projekt…',bg:'Избери проект…',hr:'Odaberi projekt…',ro:'Alege proiectul…',en:'Select project…'},
-  'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.': {cs:'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.',sk:'Projekt uloží trasu, vzhľad mapy, ikonky, popisky, animáciu aj politické farbenie. Záložky hore môžeš preťahovať myšou.',bg:'Проектът запазва маршрута, изгледа на картата, иконките, надписите, анимацията и политическото оцветяване. Разделите горе можеш да пренареждаш с мишката.',hr:'Projekt sprema rutu, izgled karte, ikone, oznake, animaciju i političko bojenje. Kartice gore možeš povlačiti mišem.',ro:'Proiectul salvează traseul, aspectul hărții, pictogramele, etichetele, animația și colorarea politică. Filele de sus pot fi reordonate cu mouse-ul.',en:'A project saves the route, map style, icons, labels, animation and political coloring. You can drag the tabs above to reorder them.'},
+  'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Uložené projekty vidí všichni kolegové.': {cs:'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Uložené projekty vidí všichni kolegové.',sk:'Projekt uloží trasu, vzhľad mapy, ikonky, popisky, animáciu aj politické farbenie. Záložky hore môžeš preťahovať myšou.',bg:'Проектът запазва маршрута, изгледа на картата, иконките, надписите, анимацията и политическото оцветяване. Разделите горе можеш да пренареждаш с мишката.',hr:'Projekt sprema rutu, izgled karte, ikone, oznake, animaciju i političko bojenje. Kartice gore možeš povlačiti mišem.',ro:'Proiectul salvează traseul, aspectul hărții, pictogramele, etichetele, animația și colorarea politică. Filele de sus pot fi reordonate cu mouse-ul.',en:'A project saves the route, map style, icons, labels, animation and political coloring. You can drag the tabs above to reorder them.'},
   'Načítám…': {cs:'Načítám…',sk:'Načítavam…',bg:'Зареждам…',hr:'Učitavam…',ro:'Se încarcă…',en:'Loading…'},
   '⎘ Duplikovat': {cs:'⎘ Duplikovat',sk:'⎘ Duplikovať',bg:'⎘ Дублирай',hr:'⎘ Dupliciraj',ro:'⎘ Duplică',en:'⎘ Duplicate'},
   '★ Nastavit jako výchozí': {cs:'★ Nastavit jako výchozí',sk:'★ Nastaviť ako predvolený',bg:'★ Задай като начален',hr:'★ Postavi kao zadano',ro:'★ Setează ca implicit',en:'★ Set as default'},
@@ -2297,7 +2336,7 @@ const EN_OVERRIDES = {
   "hint_sun_shadows": "The sun lights the walls of the 3D buildings and casts their shadows. Shadows are computed from building heights, so they appear at the zoom where the map has 3D buildings (roughly zoom 14 and closer). A lower sun means longer shadows. Renders into video too.",
   "hint_transit_zoom": "The metro draws at every zoom, each line in its own colour (A green, B yellow, C red). Tram lines only exist in the map data at closer zoom, so they will not draw in a whole-country view.",
   "hint_preset_click": "Click to apply a preset. Saves colors, intensity and enabled/disabled layers. Ctrl+click selects multiple presets, Delete removes them. Right-click to duplicate or delete.",
-  "hint_political_style": "When the \"Political\" style is selected, control of world countries and CZ regions is right here in STYLE.",
+  "hint_political_style": "Country and CZ-region colouring is in the Scene tab (sections Country borders & colours and CZ regions) — it works on any basemap.",
   "hint_via_points": "Add stops between A and B. The route recalculates automatically.",
   "hint_perimeter": "Enter a radius number, pick metres/kilometres and click the map (the button stays lit while inserting is on). Select a finished perimeter by clicking it on the map: dragging point A moves the centre, point B changes the radius, the mouse wheel over it smoothly grows/shrinks it, Delete removes it.",
   "hint_distance": "Turn on the mode, grab the map at point A and drag to point B. Select a finished distance by clicking it on the map; endpoints A/B can be dragged, and the whole line can be moved by dragging it.",
@@ -2308,7 +2347,7 @@ const EN_OVERRIDES = {
   "hint_openweather": "A global temperature/precipitation/wind map like Windy (OpenWeather model). Just paste a free key from openweathermap.org → API keys here. Coverage controls all weather layers. Layers appear in the video export too.",
   "hint_rot_mode_summary": "Straight = fixed orientation. Turn = rotation following the route + manual correction.",
   "hint_obj_smooth": "Softens the object's (car's) motion on a route with many small turns so it doesn't \"jitter\". A higher value is smoother but lags slightly behind the exact position.",
-  "hint_project": "A project saves the route, map appearance, icons, labels, animation and political colouring. The tabs above can be dragged with the mouse.",
+  "hint_project": "A project saves the route, map appearance, icons, labels, animation and political colouring. Saved projects are visible to all colleagues.",
   "hint_batch_export": "Renders the same scene/animation into every checked aspect ratio in sequence (each file gets a …-16x9, …-9x16 suffix). Uses the current video format and transparency. An aspect ratio other than your preview is centre-cropped.",
   "Zatím není přidaný žádný perimetr.": "No perimeter added yet.",
   "Zatím není přidaná žádná vzdálenost.": "No distance added yet.",
@@ -2399,7 +2438,7 @@ const EN_OVERRIDES = {
   "Popisek zkopírován. Ctrl+V ho vloží jako kopii.": "Label copied. Ctrl+V pastes it as a copy.",
   "Preset načten.": "Preset loaded.",
   "Preset nenalezen.": "Preset not found.",
-  "Preset použit.": "Preset applied.",
+  "Preset použit.": "Preset {0} applied.",
   "Preset přejmenován.": "Preset renamed.",
   "Preset přidán.": "Preset added.",
   "Preset smazán.": "Preset deleted.",
@@ -2759,8 +2798,18 @@ function setSrcData(src, data){
 const statusEl = $('statusBar');
 function setStatus(msg, type){
   if(!statusEl) return;
-  statusEl.innerHTML = '<span class="dot"></span>'+msg;
+  // Jen text, nikdy HTML: do stavu jdou i názvy projektů ze sdíleného odkazu
+  // a „Volby <img onerror=…>" by jinak spustil cizí skript u kolegy.
+  const dot = document.createElement('span'); dot.className = 'dot';
+  statusEl.replaceChildren(dot, document.createTextNode(String(msg == null ? '' : msg)));
   statusEl.classList.toggle('error', type === 'error');
+  // Zalomená hláška je vyšší — přehrávač nad ní se podle toho odsune (CSS --pz-status-h).
+  try{ requestAnimationFrame(() => document.documentElement.style.setProperty('--pz-status-h', (statusEl.offsetHeight || 34) + 'px')); }catch(_e){}
+  // Otevřené Nastavení zakrývá stavový řádek — hlášky (záloha, chyby) ukázat i v něm.
+  try{
+    const sp = document.getElementById('settingsPanel'), box = document.getElementById('settingsStatus');
+    if(sp && box && !sp.hidden){ box.textContent = String(msg == null ? '' : msg); box.hidden = false; box.classList.toggle('error', type === 'error'); }
+  }catch(_e){}
   // Keep the "insert" toggle buttons visually in sync with their mode. Hooked here
   // because every mode change is accompanied by a status update — one place covers all.
   try{ updateSceneAddButtonStates(); }catch(_e){}
@@ -3536,6 +3585,11 @@ async function syncProjectDBFromServer(){
     const merged = mergeServerIntoLocal(server, local);
     localStorage.setItem(PROJECT_DB_KEY, JSON.stringify(merged));
     refreshProjectSelect();
+    // Projekt, který je jen tady (zápis neprošel — výpadek sítě, ochrana dat na
+    // serveru), se dřív na server už nikdy nedostal. Sloučený seznam obsahuje vše
+    // ze serveru, takže jeho odeslání nic nesmaže.
+    const onServer = new Set(server.map(item => item?.id));
+    if(merged.some(item => item?.id && !onServer.has(item.id))) scheduleEntityPush('projects', merged, 1500);
   }catch(e){
     console.warn('Project sync unavailable', e);
     if(state.serverApiAvailable == null) state.serverApiAvailable = false;
@@ -3881,6 +3935,9 @@ function renderPresetTiles(){
     grid.appendChild(btn);
   });
   updatePresetTileActiveState();
+  // Dlaždice se překreslují i při synchronizaci (každou minutu) — tooltipy a
+  // názvy vestavěných presetů jinak v cizím jazyce spadly zpět do češtiny.
+  try{ if(typeof currentLang !== 'undefined' && currentLang !== 'cs') pzTranslateTextNodes(currentLang); }catch(e){}
 }
 function dbSavePreset(){
   const db = loadPresetDB();
@@ -4380,7 +4437,7 @@ const state = {
   mapObjectClipboard: null,
   clipboardPasteCount: 0,
   serverApiAvailable: null,
-  currentTab:'styly',
+  currentTab:'scena',
   geoDataLoading: null,
   countriesGeojson: null,
   countryBorderLinesGeojson: null,
@@ -4598,6 +4655,41 @@ function setTab(name){
 // Clicking the brand logo tidies the UI back to the starting state: jump to the first
 // tab, collapse every section, drop any armed insert/measure tool and close overlays.
 // It deliberately does NOT touch the route, scene objects, project or map view.
+// Výchozí výřez: země zvoleného jazyka uvnitř exportního rámečku (s rezervou
+// pro TV). Volá ho logo TN (reset) i první spuštění bez uloženého pohledu.
+function pzFrameHomeCountry(duration = 750){
+  try{
+    if(state.map){
+      state.screenPan = {x:0, y:0};
+      try{ updateExportFrame(); }catch(_e){}
+      // [[west, south], [east, north]] per UI language. 'en' has no single home
+      // country, so it frames Europe.
+      const HOME_BOUNDS = {
+        cs: [[12.00, 48.55], [18.95, 51.10]],   // Česko
+        sk: [[16.83, 47.73], [22.57, 49.62]],   // Slovensko
+        bg: [[22.35, 41.23], [28.61, 44.22]],   // Bulharsko
+        hr: [[13.49, 42.38], [19.45, 46.56]],   // Chorvatsko
+        ro: [[20.26, 43.62], [29.71, 48.27]],   // Rumunsko
+        en: [[-11.00, 35.00], [32.00, 60.00]]   // Evropa
+      };
+      const CZ = HOME_BOUNDS[String(typeof currentLang !== 'undefined' && currentLang || 'cs').toLowerCase()]
+                 || HOME_BOUNDS.cs;
+      let padding = 48;
+      const mapEl = $('map'), frame = $('exportFrame');
+      if(mapEl && frame && !frame.classList.contains('hidden')){
+        const mr = mapEl.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+        const insX = fr.width * 0.08, insY = fr.height * 0.08;   // TV-safe inset inside the frame
+        padding = {
+          left:   Math.max(0, (fr.left - mr.left) + insX),
+          right:  Math.max(0, (mr.right - fr.right) + insX),
+          top:    Math.max(0, (fr.top - mr.top) + insY),
+          bottom: Math.max(0, (mr.bottom - fr.bottom) + insY)
+        };
+      }
+      state.map.fitBounds(CZ, { padding, bearing:0, pitch:0, maxZoom:9, duration });
+    }
+  }catch(_e){}
+}
 function resetAppToStart(){
   try{ setTab('scena'); }catch(_e){}
   try{ pzToggleProjectPanel(false); }catch(_e){}
@@ -4628,39 +4720,7 @@ function resetAppToStart(){
   // slightly inset from the edges so nothing is clipped on a TV (title-safe), and level
   // the camera out. Switching the flag therefore also switches what "home" means —
   // a Slovak user resetting should land on Slovakia, not on Czechia.
-  const frameHomeCountry = () => {
-    try{
-      if(state.map){
-        state.screenPan = {x:0, y:0};
-        try{ updateExportFrame(); }catch(_e){}
-        // [[west, south], [east, north]] per UI language. 'en' has no single home
-        // country, so it frames Europe.
-        const HOME_BOUNDS = {
-          cs: [[12.00, 48.55], [18.95, 51.10]],   // Česko
-          sk: [[16.83, 47.73], [22.57, 49.62]],   // Slovensko
-          bg: [[22.35, 41.23], [28.61, 44.22]],   // Bulharsko
-          hr: [[13.49, 42.38], [19.45, 46.56]],   // Chorvatsko
-          ro: [[20.26, 43.62], [29.71, 48.27]],   // Rumunsko
-          en: [[-11.00, 35.00], [32.00, 60.00]]   // Evropa
-        };
-        const CZ = HOME_BOUNDS[String(typeof currentLang !== 'undefined' && currentLang || 'cs').toLowerCase()]
-                   || HOME_BOUNDS.cs;
-        let padding = 48;
-        const mapEl = $('map'), frame = $('exportFrame');
-        if(mapEl && frame && !frame.classList.contains('hidden')){
-          const mr = mapEl.getBoundingClientRect(), fr = frame.getBoundingClientRect();
-          const insX = fr.width * 0.08, insY = fr.height * 0.08;   // TV-safe inset inside the frame
-          padding = {
-            left:   Math.max(0, (fr.left - mr.left) + insX),
-            right:  Math.max(0, (mr.right - fr.right) + insX),
-            top:    Math.max(0, (fr.top - mr.top) + insY),
-            bottom: Math.max(0, (mr.bottom - fr.bottom) + insY)
-          };
-        }
-        state.map.fitBounds(CZ, { padding, bearing:0, pitch:0, maxZoom:9, duration:750 });
-      }
-    }catch(_e){}
-  };
+  const frameHomeCountry = () => pzFrameHomeCountry(750);
   if(switchedStyle){
     // Runs after reloadStyle's own once('style.load'); the defer lets its camera
     // restore happen first so ours is the final word.
@@ -4668,7 +4728,7 @@ function resetAppToStart(){
   } else {
     frameHomeCountry();
   }
-  setStatus(t('Aplikace resetována na začátek — sekce sbaleny.'));
+  setStatus(t('Aplikace vrácena na začátek.'));
 }
 
 // Sections in the Trasa tab only make sense for some transport modes:
@@ -4784,6 +4844,7 @@ function isAccordionDefaultOpen(section, idx){
   // takže kdo si to jednou sbalí, zůstane mu to sbalené.
   const pane = section.closest('.tab-pane');
   if(!pane) return false;
+  if(section.id === 'exportActionsSection') return true;   // tlačítka exportu mají být hned vidět
   return pane.querySelector(':scope > .section') === section;
 }
 
@@ -4857,6 +4918,15 @@ function initTabs(){
   applySavedTabOrder();
   let saved = localStorage.getItem('map60_tab') || 'scena';
   if(saved === 'projekt') saved = 'scena';
+  // Jednorázově po přestavbě karet: kdo naposledy skončil na Stylu (dřív první
+  // karta), začne na Scéně, kde je teď většina denní práce.
+  try{
+    if(!localStorage.getItem('pzTabsV2Migrated')){
+      localStorage.setItem('pzTabsV2Migrated', '1');
+      localStorage.removeItem('map60_tab_order_v1');
+      if(saved === 'styly') saved = 'scena';
+    }
+  }catch(e){}
   // Don't dump the user into animation/scene/export settings on a fresh start
   // when there's nothing to animate yet — start them on the route tab instead.
   if(['animace','export'].includes(saved) && !(state.routeCoords && state.routeCoords.length)){
@@ -5364,6 +5434,14 @@ function initMap(){
     setStatus(t('Mapa načtena.'));
     // Až teď je mapa i vrstvy připravené, takže sdílený stav jde bezpečně použít.
     try{ loadSharedProjectFromUrl(); }catch(_e){}
+    // První spuštění (pohled se nikam nepohnul, žádný odkaz ani trasa): zarovnat
+    // zemi do exportního rámečku jako logo TN — výchozí zoom 7 ořízl Plzeň.
+    try{
+      const c = state.map.getCenter();
+      const untouched = Math.abs(c.lng - 15.5) < 0.01 && Math.abs(c.lat - 49.8) < 0.01 && Math.abs(state.map.getZoom() - 7) < 0.01;
+      const hasShare = /[?&]share=/.test(location.search);
+      if(untouched && !hasShare && !(state.routeCoords && state.routeCoords.length)) setTimeout(() => pzFrameHomeCountry(0), 80);
+    }catch(_e){}
   });
   state.map.on('style.load', () => {
     state.originalRoadWidthPaints = {};
@@ -7020,7 +7098,8 @@ function getCzRegionNameById(id){
 
 function getCountryNameById(id){
   const feature = (state.countriesGeojson?.features || []).find(f => f?.properties?.__appId === id);
-  return feature?.properties?.__appName || '';
+  const en = feature?.properties?.__appName || '';
+  return en ? pzCountryLocalName(feature.properties.__appIso, en) : '';
 }
 
 function syncCountrySelects(id=''){
@@ -7056,7 +7135,7 @@ function handlePoliticalCountryPaintClick(e){
   const feature = getPoliticalCountryFeatureAtPoint(e.point);
   if(!feature) return false;
   const id = feature.properties.__appId;
-  const countryName = feature.properties.__appName || getCountryNameById(id) || 'stát';
+  const countryName = getCountryNameById(id) || feature.properties.__appName || 'stát';
   syncCountrySelects(id);
   if(!$('showPoliticalCountries')?.checked) $('showPoliticalCountries').checked = true;
   if(Object.prototype.hasOwnProperty.call(state.countryColorMap, id)){
@@ -7314,10 +7393,44 @@ async function fetchGeoJsonWithFallback(urls){
   throw lastError || new Error('GeoJSON fetch failed');
 }
 
+// Názvy států v jazyce aplikace (zdroj GISCO je má jen anglicky — grafik
+// hledal „Německo" a nenašel). Anglický název zůstává prohledávatelný.
+const PZ_ISO_FIX = {EL:'GR', UK:'GB', XK:'XK'};
+const _pzRegionNames = {};
+function pzCountryLocalName(iso, fallback){
+  const lang = (typeof currentLang !== 'undefined' && currentLang) || 'cs';
+  if(lang === 'en' || !iso) return fallback;
+  let code = String(iso).toUpperCase(); code = PZ_ISO_FIX[code] || code;
+  if(!/^[A-Z]{2}$/.test(code)) return fallback;
+  try{
+    const dn = _pzRegionNames[lang] || (_pzRegionNames[lang] = new Intl.DisplayNames([lang], {type:'region'}));
+    const n = dn.of(code);
+    return (n && n !== code) ? n : fallback;
+  }catch(e){ return fallback; }
+}
+function pzCountryListItems(){
+  return (state.countriesGeojson?.features || [])
+    .map(f => {
+      const en = f.properties.__appName, iso = f.properties.__appIso || '';
+      return {id:f.properties.__appId, name:pzCountryLocalName(iso, en), nameEn:en, iso};
+    })
+    .filter(item => item.id && item.name)
+    .sort((a,b)=> String(a.name).localeCompare(String(b.name), (typeof currentLang !== 'undefined' && currentLang) || 'cs'));
+}
+// Pořadí výsledků: přesná shoda > začíná na > slovo začíná na > obsahuje; kratší dřív.
+function pzCountryRank(item, q){
+  const nq = normalizeLoose(q); if(!nq) return 0;
+  let best = 9;
+  [item.name, item.nameEn, item.iso].forEach(v => {
+    const n = normalizeLoose(v || ''); if(!n) return;
+    const r = n === nq ? 0 : n.startsWith(nq) ? 1 : n.split(/[\s\-(),]+/).some(w => w.startsWith(nq)) ? 2 : n.includes(nq) ? 3 : 9;
+    if(r < best) best = r;
+  });
+  return best;
+}
+
 function populateCountrySelects(){
-  const list = (state.countriesGeojson?.features || [])
-    .map(f => ({id:f.properties.__appId, name:f.properties.__appName, iso:f.properties.__appIso || ''}))
-    .sort((a,b)=> String(a.name).localeCompare(String(b.name), 'cs'));
+  const list = pzCountryListItems();
 
   const borderSel = $('countryFocusSelect');
   if(borderSel){
@@ -7336,7 +7449,7 @@ function populateCountrySelects(){
   if(politicalSel){
     const cur = politicalSel.value;
     const searchTerm = $('politicalCountrySearch')?.value || '';
-    const filtered = list.filter(item => matchesNormalizedSearch(item.name + ' ' + item.iso, searchTerm));
+    const filtered = list.filter(item => matchesNormalizedSearch(item.name + ' ' + item.nameEn + ' ' + item.iso, searchTerm));
     politicalSel.innerHTML = '<option value="">' + (filtered.length ? t('Vyber stát…') : t('Žádný stát')) + '</option>';
     filtered.forEach(item => {
       const opt = document.createElement('option');
@@ -7353,13 +7466,13 @@ function populateCountrySelects(){
 const _countrySuggestState = { debounce: null, items: [], activeIdx: -1 };
 
 function getCountrySearchItems(query=''){
-  const list = (state.countriesGeojson?.features || [])
-    .map(f => ({id:f.properties.__appId, name:f.properties.__appName, iso:f.properties.__appIso || ''}))
-    .filter(item => item.id && item.name)
-    .sort((a,b)=> String(a.name).localeCompare(String(b.name), 'cs'));
   const q = String(query || '').trim();
   if(!q) return [];
-  return list.filter(item => matchesNormalizedSearch(item.name + ' ' + item.iso, q)).slice(0, 12);
+  return pzCountryListItems()
+    .map(item => ({item, r:pzCountryRank(item, q)}))
+    .filter(x => x.r < 9)
+    .sort((a,b) => a.r - b.r || a.item.name.length - b.item.name.length || a.item.name.localeCompare(b.item.name, 'cs'))
+    .slice(0, 12).map(x => x.item);
 }
 
 function closeCountrySuggest(){
@@ -7477,6 +7590,15 @@ function requestGeoData(){
 document.addEventListener('click', e => {
   if(e.target.closest?.('#politicalStylePanel > h3, #countryBordersOverlaySection > h3, #czPoliticalSection > h3')) requestGeoData();
 }, true);
+// Sekce obnovená jako rozbalená (z minula) se neotevírá kliknutím — data stáhnout
+// po načtení stránky, jinak v ní zůstaly seznamy na „Načítám…".
+window.addEventListener('load', () => setTimeout(() => {
+  try{
+    const open = ['countryBordersOverlaySection','czPoliticalSection','politicalStylePanel']
+      .some(id => { const el = $(id); return el && !el.classList.contains('collapsed') && !(id === 'politicalStylePanel' && el.style.display === 'none'); });
+    if(open) requestGeoData();
+  }catch(e){}
+}, 1200));
 document.addEventListener('change', e => {
   if(/^(showPoliticalCountries|showCzRegions|showCountryBordersOverlay|countryFocusSelect|politicalCountrySelect|czRegionSelect)$/.test(e.target?.id || '')) requestGeoData();
 }, true);
@@ -7539,12 +7661,18 @@ function getOverlayBeforeId(){
 // zbytečně zakryly mapu (zůstává jim hranice). Na „Politické" plocha jako dřív.
 function pzRegionFillOpacity(op){
   const ids = Object.entries(state.czRegionColorMap || {}).filter(([id, c]) => id && c).map(([id]) => id);
-  if(($('baseStyle')?.value || '') === 'political' || !ids.length) return op;
+  if(($('baseStyle')?.value || '') === 'political') return op;
+  // Na běžném podkladu bez obarvených položek nic nezakrývat (dřív celá mapa
+  // dostala šedý závoj).
+  if(!ids.length) return 0;
   return ['match', ['get', '__appId'], ids, op, 0];
 }
 function pzCountryFillOpacity(op){
   const ids = Object.entries(state.countryColorMap || {}).filter(([id, c]) => id && c).map(([id]) => id);
-  if(($('baseStyle')?.value || '') === 'political' || !ids.length) return op;
+  if(($('baseStyle')?.value || '') === 'political') return op;
+  // Na běžném podkladu bez obarvených položek nic nezakrývat (dřív celá mapa
+  // dostala šedý závoj).
+  if(!ids.length) return 0;
   return ['match', ['get', '__appId'], ids, op, 0];
 }
 function buildMatchColorExpression(mapObj, defaultColor){
@@ -8135,12 +8263,14 @@ function refreshProjectThumbnail(){
     try{
       const src = m.getCanvas();
       if(src && src.width && src.height){
-        const w = 220;
+        // 440 px: náhled v panelu Projekt je ~360 px široký, 220 px bylo rozmazané
+        const w = 440;
         const h = Math.max(1, Math.round(src.height / src.width * w));
         const c = document.createElement('canvas');
         c.width = w; c.height = h;
-        c.getContext('2d').drawImage(src, 0, 0, w, h);
-        _projThumbCache = c.toDataURL('image/jpeg', 0.62);
+        const cx = c.getContext('2d'); cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+        cx.drawImage(src, 0, 0, w, h);
+        _projThumbCache = c.toDataURL('image/jpeg', 0.7);
         _projThumbSig = sig;
       }
     }catch(e){}
@@ -8193,7 +8323,7 @@ async function shareCurrentProject(){
   }catch(e){
     setStatus('Odkaz se nepodařilo vytvořit: ' + (e.message || e), 'error');
   }finally{
-    if(btn){ btn.disabled = false; btn.textContent = 'Odeslat link'; }
+    if(btn){ btn.disabled = false; btn.textContent = t('Odeslat link'); }
   }
 }
 // Otevřel někdo sdílený odkaz? Načti stav a ukliď parametr z URL, ať se
@@ -8221,11 +8351,19 @@ function saveCurrentProject(){
   const name = ($('projectName')?.value || '').trim() || ('Projekt ' + new Date().toLocaleString('cs-CZ'));
   const db = loadProjectDB().map(normalizeProjectEntry);
   const selectedId = getSelectedProjectId();
-  // Match the SELECTED project by id first. Only when nothing is selected do we
-  // upsert by name — otherwise a same-named-but-different project earlier in the
-  // list could be silently overwritten with this project's data.
-  let existingIdx = selectedId ? db.findIndex(item => item.id === selectedId) : -1;
-  if(existingIdx < 0) existingIdx = db.findIndex(item => item.name === name);
+  // Uložit = přepsat VYBRANÝ projekt, jen když se nezměnil název. Jiný název je
+  // „uložit jako" (nový projekt) — dřív se vybraný projekt tiše přejmenoval
+  // a přepsal. Název, který už má jiný projekt (třeba kolegy), se přepíše jen
+  // po potvrzení.
+  const selIdx = selectedId ? db.findIndex(item => item.id === selectedId) : -1;
+  let existingIdx = (selIdx >= 0 && db[selIdx].name === name) ? selIdx : -1;
+  if(existingIdx < 0){
+    const sameName = db.findIndex(item => item.name === name);
+    if(sameName >= 0){
+      if(!confirm(t('Projekt „{0}" už existuje. Přepsat ho?', name))){ setStatus(t('Uložení zrušeno — zvol jiný název projektu.')); return; }
+      existingIdx = sameName;
+    }
+  }
   const base = existingIdx >= 0 ? db[existingIdx] : {id:'proj_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6), createdAt:Date.now()};
   const entry = {
     ...base,
@@ -8281,17 +8419,17 @@ function applyPoliticalCountryColor(){
 
 function resetPoliticalCountryColor(){
   const id = $('politicalCountrySelect')?.value || $('countryFocusSelect')?.value;
-  if(!id){ setStatus('Vyber stát.'); return; }
+  if(!id){ setStatus(t('Vyber stát.')); return; }
   syncCountrySelects(id);
   delete state.countryColorMap[id];
   applyMapTweaks();
-  setStatus('Barva státu resetována.');
+  setStatus(t('Barva státu zrušena.'));
 }
 
 function clearPoliticalCountryColors(){
   state.countryColorMap = {};
   applyMapTweaks();
-  setStatus('Všechny barvy států resetovány.');
+  setStatus(t('Všechny barvy států zrušeny.'));
 }
 
 function applyCzRegionColor(){
@@ -9501,18 +9639,9 @@ function applyPreset(name){
 
 
 
-function initPoliticalStylePanel(){
-  const mount = $('politicalStylePanelMount');
-  const czSection = $('czPoliticalSection');
-  // worldPoliticalSection ("Státy světa") stays a normal always-visible section
-  // in the Styl tab so the user can colour countries by click over ANY basemap
-  // (the political fill is an overlay). Only the CZ-regions block lives in the
-  // political-only panel.
-  // Kraje ČR teď zůstávají vždy viditelné v záložce Styl: barvení krajů funguje
-  // na každém vektorovém podkladu (vyplní se jen obarvené kraje) a grafik je na
-  // Positronu dřív vůbec nenašel — sekce se ukazovala jen u podkladu „Politická".
-  if(!mount || !czSection) return;
-}
+// Panel u podkladu „Politická" už jen odkazuje na Scénu, kde je barvení států
+// a krajů (funguje na každém podkladu). Nic se do něj nepřesouvá.
+function initPoliticalStylePanel(){}
 
 function updateStylePanelVisibility(){
   const key = $('baseStyle')?.value || 'liberty';
@@ -9559,7 +9688,10 @@ function reloadStyle(){
   const allStyles = getAllStyles();
   if(key === 'political' && $('showPoliticalCountries')) $('showPoliticalCountries').checked = true;
   const rasterOnlyStyles = ['satellite','hybrid','osmStandard','openTopo','cyclOsm','cartoVoyager','esriTerrain','osmHot'];
-  if(rasterOnlyStyles.includes(key) && $('showPoliticalCountries')) $('showPoliticalCountries').checked = false;
+  // Na satelitu apod. vypnout výplň států jen tehdy, když žádný stát obarvený
+  // není — jinak by grafik o rozdělanou práci přišel přepnutím podkladu.
+  const anyCountryPainted = Object.values(state.countryColorMap || {}).some(Boolean);
+  if(rasterOnlyStyles.includes(key) && $('showPoliticalCountries') && !anyCountryPainted) $('showPoliticalCountries').checked = false;
   setStatus(t('Načítám mapový podklad…'));
   showMapLoading();
   const center = state.map.getCenter();
@@ -9567,12 +9699,14 @@ function reloadStyle(){
   const pitch = state.map.getPitch();
   const bearing = state.map.getBearing();
   try{ if(state.map.getTerrain?.()) state.map.setTerrain(null); }catch(e){}
-  state.map.setStyle(allStyles[key] || allStyles.liberty || STYLES.liberty);
+  // Posluchač registrovat PŘED setStyle: u stylu z mezipaměti může style.load
+  // proběhnout hned, a pak stavový řádek zůstal na „Načítám…" a zmizely vagony.
   state.map.once('style.load', () => {
     state.map.jumpTo({center, zoom, pitch, bearing});
     // „Načítám mapový podklad…" jinak visel ve stavovém řádku až do další akce.
     state.map.once('idle', () => { try{ refreshAnimatedMarkerPreview(); }catch(e){} try{ if(/Načítám mapový podklad|Loading map base/.test($('statusBar')?.textContent || '')) setStatus(t('Mapový podklad načten.')); }catch(e){} });
   });
+  state.map.setStyle(allStyles[key] || allStyles.liberty || STYLES.liberty);
   setTimeout(updateExportFrame, 60);
   setTimeout(wakePoliticalStyle, 30);
 }
@@ -9651,7 +9785,10 @@ try{
   window.addEventListener('pagehide', ()=>tnFlushUsage(true));
   document.addEventListener('visibilitychange', ()=>{ if(document.hidden) tnFlushUsage(true); });
 }catch(_e){}
-function openSettings(){ const p=$('settingsPanel'); if(!p) return; refreshSettingsStats(); p.hidden=false; }
+function openSettings(){ const p=$('settingsPanel'); if(!p) return; refreshSettingsStats();
+  const box=$('settingsStatus'); if(box){ box.hidden=true; box.textContent=''; }   // stará hláška z mapy sem nepatří
+  try{ pzToggleProjectPanel(false); }catch(_e){}
+  p.hidden=false; }
 function closeSettings(){ const p=$('settingsPanel'); if(p) p.hidden=true; }
 function setLightMapMode(on){
   const sel=$('baseStyle'); if(!sel){ setStatus(t('Světlý režim není dostupný pro tento podklad.')); return; }
@@ -10290,6 +10427,7 @@ function removeManualViaPoint(idx, reason='remove'){
   renderWaypointList();
   refreshManualViaMarkers();
   if(state.pointA && state.pointB) findRoute();
+  else if(state.pointA) rebuildCustomPreview();   // rozkreslená vlastní trasa: čára bez smazaného bodu
   else redrawRoute();
   if(reason === 'undo') setStatus(t('Vrácen poslední krok vlastní trasy.'));
   else if(reason === 'ctrl-marker') setStatus(t('Bod trasy smazán.'));
@@ -11080,6 +11218,19 @@ function getPlaceZoom(item){
   return 13;
 }
 
+// Max. přiblížení při zarovnání na obrys místa. Stát/kraj má obrys přesný,
+// takže strop „zoom 4" (dřív) z Česka udělal pohled na půl Evropy.
+function getPlaceFitMaxZoom(item){
+  const key = String(item?.addresstype || item?.type || '').toLowerCase();
+  if(/country|state|region|province|county/.test(key)) return 11;
+  return getPlaceZoom(item);
+}
+// Obrys přes půl zeměkoule (Francie se zámořím, Rusko přes datovou hranici)
+// k zarovnání nepoužít — vyletí se na střed místa.
+function placeBoundsUsable(b){
+  if(!b || b.isEmpty()) return false;
+  return Math.abs(b.getEast() - b.getWest()) < 60 && Math.abs(b.getNorth() - b.getSouth()) < 40;
+}
 function getBoundsFromPlaceItem(item){
   const bb = item?.boundingbox;
   if(!Array.isArray(bb) || bb.length !== 4) return null;
@@ -11225,8 +11376,8 @@ function focusPlaceResult(item){
   if(!isFinite(point[0]) || !isFinite(point[1])){ setStatus(t('Místo nenalezeno.'), 'error'); return; }
   state.screenPan = {x:0, y:0};
   const bounds = getBoundsFromPlaceItem(item);
-  if(bounds && !bounds.isEmpty()){
-    state.map.fitBounds(bounds, {padding:getFitPadding(), duration:900, maxZoom:getPlaceZoom(item)});
+  if(placeBoundsUsable(bounds)){
+    state.map.fitBounds(bounds, {padding:getFitPadding(), duration:900, maxZoom:getPlaceFitMaxZoom(item)});
   }else{
     state.map.flyTo({center:point, zoom:getPlaceZoom(item), duration:900});
   }
@@ -11400,8 +11551,8 @@ function pickNavSuggest(id, idx){
   try {
     state.screenPan = {x:0, y:0};
     const bounds = (typeof getBoundsFromPlaceItem === 'function') ? getBoundsFromPlaceItem(item) : null;
-    if(bounds && !bounds.isEmpty && !bounds.isEmpty()){
-      state.map.fitBounds(bounds, { padding: (typeof getFitPadding === 'function' ? getFitPadding() : 60), duration: 700, maxZoom: (typeof getPlaceZoom === 'function' ? getPlaceZoom(item) : 13) });
+    if(placeBoundsUsable(bounds)){
+      state.map.fitBounds(bounds, { padding: getFitPadding(), duration: 700, maxZoom: getPlaceFitMaxZoom(item) });
     } else {
       state.map.flyTo({ center: lngLat, zoom: (typeof getPlaceZoom === 'function' ? getPlaceZoom(item) : 13), duration: 700 });
     }
@@ -11794,6 +11945,9 @@ function getGhostRouteCoords(){
 }
 
 function redrawRoute(){
+  // Bez trasy nesmí zůstat objekt na mapě — ani když se styl zrovna dočítá
+  // (krok zpět během načítání dlaždic dřív nechal vozidlo viset).
+  if(!state.routeCoords?.length){ try{ removeAnimMarker(); }catch(e){} }
   if(!state.map?.isStyleLoaded()) return;
   ensureRouteSources();
   setSrcData(state.map.getSource('route-ghost'), ghostRouteFC(getGhostRouteCoords()));
@@ -11894,6 +12048,9 @@ function restoreAnimationState(elapsed, wasPlaying){
 
 async function findRoute(){
   state._pzLastRouteOk = false;
+  // Výchozí Auto bez zvolené ikonky jezdilo jako tečka — ikonku k dopravě
+  // doplnit (vlastní nahraný obrázek zůstává).
+  try{ if(!state.animSystemIcon && !state.animIconData) pzMatchIconToMode(); }catch(_e){}
   try{ tnBump('routes', 1); }catch(_e){}
   // Dismiss any open autocomplete dropdown — covers all entry points (the
   // "Najít trasu" button, Enter in a field, programmatic calls).
@@ -12171,7 +12328,10 @@ function finalAngle(progress){
   // Ruční korekce jen pro vlastní nahraný obrázek — jeho „předek" může mířit kamkoli.
   const custom = !!state.animIconData && !state.animSystemIcon;
   const manual = custom ? getManualAnimAngle() : 0;
-  return getPathFollowBaseAngle(moverType) + pzAutoHeading(state.routeCoords, progress) + getFollowOffset(moverType) + manual;
+  // Vlastní obrázek nemá nos natočený jako vestavěné auto/letadlo — základní
+  // úhel 0, směr si grafik doladí ručním úhlem.
+  const base = custom ? 0 : getPathFollowBaseAngle(moverType);
+  return base + pzAutoHeading(state.routeCoords, progress) + getFollowOffset(moverType) + manual;
 }
 
 
@@ -12980,7 +13140,13 @@ function seekAnimationToTime(elapsed){
   setAnimProgress(p);
 }
 function pauseAnimation(){ state.animPlaying = false; cancelAnimationFrame(state.animFrame); setStatus(t('Animace pozastavena.')); }
-function stopAnimation(){ state.animPlaying = false; cancelAnimationFrame(state.animFrame); state.animElapsed = 0; state.camSmoothedBearing = null; redrawRoute(); removeAnimMarker(); applyCameraAnimProgress(0); updateReadouts(); setStatus(t('Animace zastavena.')); }
+function stopAnimation(){
+  state.animPlaying = false; cancelAnimationFrame(state.animFrame); state.animElapsed = 0; state.camSmoothedBearing = null;
+  redrawRoute(); applyCameraAnimProgress(0); updateReadouts();
+  // Objekt zůstane stát na startu (dřív zmizel a grafik nevěděl, kde je).
+  try{ refreshAnimatedMarkerPreview(); }catch(e){ removeAnimMarker(); }
+  setStatus(t('Animace zastavena.'));
+}
 
 async function handleFileToDataUrl(file){
   return new Promise((resolve,reject)=>{ const fr = new FileReader(); fr.onload = ()=>resolve(fr.result); fr.onerror = reject; fr.readAsDataURL(file); });
@@ -13100,7 +13266,13 @@ function downloadBlob(filename, blob){
 }
 
 function slugifyName(name){
+  // Pozor: z výsledku jsou klíče uložených sekcí a id států bez ISO kódu — neměnit.
   return (name || 'map-export').toString().trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'map-export';
+}
+// Název souboru exportu: diakritiku převést, ne zahodit („Světlá" dřív dalo „sv-tl").
+function pzFileSlug(name){
+  return String(name || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') || 'tnmap';
 }
 
 function getExportCrop(){
@@ -14282,7 +14454,9 @@ async function exportRecordedVideo({ mimeCandidates, extension, startStatusKey, 
 // nothing to do with what's being exported.
 function getExportBaseName(){
   const proj = ($('projectName')?.value || '').trim();
-  let base = proj ? slugifyName(proj) : slugifyName((($('presetName')?.value || '').trim()) || 'pz-map');
+  // Bez názvu projektu: tnmap-RRRRMMDD-HHMM (název presetu typu „Světlá" nic neříkal).
+  const d = new Date(), z = n => String(n).padStart(2, '0');
+  let base = proj ? pzFileSlug(proj) : ('tnmap-' + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()));
   // During a multi-format batch export each output gets the aspect tagged on so the
   // downloaded files don't collide (project-16x9.mp4, project-9x16.mp4, …).
   if(state._exportNameSuffix) base += '-' + state._exportNameSuffix;
@@ -15186,16 +15360,28 @@ const PZ_EN_PREFIX = [
 function pzTranslateTextNodes(lang){
   const root = document.body;
   const enOf = key => PZ_EN_TEXT[key] || (typeof EN_OVERRIDES !== 'undefined' && EN_OVERRIDES[key]) || (PZ_EN_PREFIX.find(([p]) => key.startsWith(p)) || [])[1];
+  // Překlad původního českého textu do zvoleného jazyka. Pro ostatní jazyky
+  // než EN se dřív vracela čeština i tam, kde překlad existoval (druhý průchod
+  // přepsal texty, které už přeložila applyLang).
+  const LT = (typeof PZ_LANG_TEXT !== 'undefined') ? PZ_LANG_TEXT : {};
+  const tr = key => {
+    if(lang === 'cs') return null;
+    const ok = v => (v && !/\{\d\}/.test(v)) ? v : null;
+    if(lang === 'en') return ok(enOf(key)) || ok(LT[key]?.en) || ok(I18N[key]?.en) || null;
+    return ok(LT[key]?.[lang]) || ok(I18N[key]?.[lang]) || null;
+  };
+  const known = key => !!(LT[key] || enOf(key) || (I18N[key] && typeof I18N[key] === 'object'));
   // titulky a placeholdery (tooltipy tlačítek, ikon, polí uzavírek…)
-  root.querySelectorAll('[title],[placeholder]').forEach(el => {
+  root.querySelectorAll('[title],[placeholder],[aria-label]').forEach(el => {
     if(el.closest('.maplibregl-marker,.tnchat-panel')) return;
-    ['title','placeholder'].forEach(a => {
-      const store = 'pzCs' + a;
+    ['title','placeholder','aria-label'].forEach(a => {
+      const store = 'pzCs' + a.replace('-', '');
       const cs = el.dataset[store] != null ? el.dataset[store] : el.getAttribute(a);
       if(!cs) return;
-      const en = enOf(cs.trim()); if(!en) return;
+      const key = cs.trim();
+      if(!known(key)) return;
       if(el.dataset[store] == null) el.dataset[store] = cs;
-      el.setAttribute(a, lang === 'en' ? en : cs);
+      el.setAttribute(a, tr(key) || cs);
     });
   });
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode: n =>
@@ -15203,11 +15389,11 @@ function pzTranslateTextNodes(lang){
   for(let n = w.nextNode(); n; n = w.nextNode()){
     const raw = n.__pzCs != null ? n.__pzCs : n.textContent;
     const key = raw.trim(); if(!key) continue;
-    const en = enOf(key);
-    if(!en) continue;
+    if(!known(key)) continue;
     if(n.__pzCs == null) n.__pzCs = raw;
     const lead = raw.match(/^\s*/)[0], trail = raw.match(/\s*$/)[0];
-    n.textContent = lang === 'en' ? (lead + en + trail) : n.__pzCs;
+    const out = tr(key);
+    n.textContent = out ? (lead + out + trail) : n.__pzCs;
   }
 }
 
@@ -15222,21 +15408,52 @@ function pzSetUiTheme(mode){
     b.title = (typeof currentLang !== 'undefined' && currentLang === 'en' && PZ_EN_TEXT[cs]) || cs; }
 }
 // Panel Projekt (uložit / otevřít / sdílet) — dřív samostatná záložka s deseti prvky.
+// Píše uživatel do pole? Posuvník, zaškrtávátko nebo tlačítko se nepočítá —
+// po posunutí jezdce musí Ctrl+Z, R nebo ? fungovat dál.
+const PZ_NON_TEXT_INPUTS = new Set(['range','checkbox','radio','button','submit','reset','color','file','image']);
+function pzIsTextEntry(el){
+  if(!el) return false;
+  if(el.isContentEditable) return true;
+  const tag = (el.tagName || '').toLowerCase();
+  if(tag === 'textarea' || tag === 'select') return true;   // výběr: písmena hledají položku
+  if(tag === 'input') return !PZ_NON_TEXT_INPUTS.has((el.type || 'text').toLowerCase());
+  return false;
+}
 function pzToggleProjectPanel(open){
   const p = $('projectPanel'), b = $('projectPanelBtn'); if(!p) return;
   const show = open == null ? p.hidden : !!open;
   p.hidden = !show;
   b?.classList.toggle('active-panel', show);
-  if(show){ try{ $('shortcutsPanel').hidden = true; }catch(e){} setTimeout(() => $('projectName')?.focus(), 0); }
+  if(show){
+    try{ $('shortcutsPanel').hidden = true; }catch(e){}
+    pzPlaceProjectPanel();
+    // Bez automatického fokusu: na telefonu by vyskočila klávesnice a dokud je
+    // fokus v názvu, pozastaví se synchronizace projektů. Při otevření dotáhnout
+    // aktuální seznam ze serveru (kolegové mezitím mohli něco uložit).
+    try{ syncProjectDBFromServer(); }catch(e){}
+  }
+}
+// Při otevřeném chatu se panel odsune vedle něj (na širších obrazovkách), jinak
+// by zakryl hlavičku chatu i jeho křížek.
+function pzPlaceProjectPanel(){
+  const p = $('projectPanel'); if(!p) return;
+  p.classList.toggle('beside-chat', !!document.querySelector('.tnchat-panel.open'));
 }
 function bindUI(){
   $('projectPanelBtn')?.addEventListener('click', e => { e.stopPropagation(); pzToggleProjectPanel(); });
   $('projectPanelClose')?.addEventListener('click', () => pzToggleProjectPanel(false));
-  document.addEventListener('mousedown', e => {
+  $('projectName')?.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); saveCurrentProject(); } });
+  // Zavření klikem mimo: capture fáze, ať ho nezastaví prvky, které si mousedown
+  // pohltí (značky na mapě, táhla), a pointerdown, ať funguje i na dotyk.
+  document.addEventListener('pointerdown', e => {
     const p = $('projectPanel'); if(!p || p.hidden) return;
     if(e.target.closest('#projectPanel,#projectPanelBtn,.settings-modal')) return;
     pzToggleProjectPanel(false);
-  });
+  }, true);
+  try{
+    const chat = document.querySelector('.tnchat-panel');
+    if(chat) new MutationObserver(pzPlaceProjectPanel).observe(chat, {attributes:true, attributeFilter:['class']});
+  }catch(e){}
   pzSetUiTheme(document.documentElement.dataset.ui === 'light' ? 'light' : 'dark');
   document.getElementById('uiThemeBtn')?.addEventListener('click', () =>
     pzSetUiTheme(document.documentElement.dataset.ui === 'light' ? 'dark' : 'light'));
@@ -15489,8 +15706,7 @@ function bindUI(){
   updateCustomExportResolutionVisibility();
   window.addEventListener('resize', updateExportFrame);
   document.addEventListener('keydown', e => {
-    const tag = (e.target?.tagName || '').toLowerCase();
-    const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable;
+    const typing = pzIsTextEntry(e.target);
     const mod = e.ctrlKey || e.metaKey;
     if(e.key === 'Escape'){
       const sp = $('settingsPanel'); if(sp && !sp.hidden){ sp.hidden = true; return; }
@@ -15508,8 +15724,9 @@ function bindUI(){
       return;
     }
     if(!typing && e.key === '?'){
+      if(!$('settingsPanel')?.hidden) return;
       const p = $('shortcutsPanel');
-      if(p){ p.hidden = !p.hidden; e.preventDefault(); }
+      if(p){ p.hidden = !p.hidden; e.preventDefault(); if(!p.hidden) pzToggleProjectPanel(false); }
       return;
     }
     if(!typing){
@@ -15549,8 +15766,12 @@ function bindUI(){
           if(deleteSelectedMapObject()) e.preventDefault();
           return;
         }
-        const isCustomRouteEdit = state.addingFlightPoint || state.currentTransportMode === 'planeCustom';
+        // Na Trase smaže Backspace poslední zastávku / bod v každém režimu (nápověda
+        // v Zastávkách to slibuje), u vlastního letu i mimo záložku.
+        const onRouteTab = typeof isRouteTabActive === 'function' && isRouteTabActive();
+        const isCustomRouteEdit = state.addingFlightPoint || state.currentTransportMode === 'planeCustom' || onRouteTab;
         if(isCustomRouteEdit && state.manualViaPoints.length){
+          try{ window.__pzPushUndo?.(); }catch(err){}
           e.preventDefault();
           removeManualViaPoint(state.manualViaPoints.length - 1, 'undo');
         }
@@ -15923,9 +16144,16 @@ function bindUI(){
   });
   $('paintCzRegionOnClick')?.addEventListener('change', () => {
     syncPoliticalPaintModes('region');
+    // Stejně jako u států: kraje musí být vidět, jinak první klik nic netrefí.
+    if($('paintCzRegionOnClick').checked){
+      if($('showCzRegions') && !$('showCzRegions').checked){ $('showCzRegions').checked = true; $('showCzRegions').dispatchEvent(new Event('change', {bubbles:true})); }
+      requestGeoData(); ensureOverlaySetup(); applyMapTweaks();
+    }
     setStatus($('paintCzRegionOnClick').checked ? 'Klikni do mapy na kraj a obarví se.' : 'Barvení kraje klikem vypnuto.');
   });
   $('applyPoliticalCountryColorBtn')?.addEventListener('click', applyPoliticalCountryColor);
+  $('resetPoliticalCountryColorBtn')?.addEventListener('click', resetPoliticalCountryColor);
+  $('clearPoliticalCountryColorsBtn')?.addEventListener('click', clearPoliticalCountryColors);
   $('applyCzRegionColorBtn')?.addEventListener('click', applyCzRegionColor);
   $('resetPoliticalSelectionBtn')?.addEventListener('click', resetPoliticalSelection);
   $('clearPoliticalPaintingBtn')?.addEventListener('click', clearPoliticalPainting);
@@ -16001,6 +16229,109 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 
 // I18N a EN_OVERRIDES (data překladů) přesunuta do assets/js/i18n.js (načítá se před tímto skriptem)
 
+// Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
+// zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
+Object.assign(I18N, {
+  "Hranice a barvy států": {cs:"Hranice a barvy států",sk:"Hranice a farby štátov",bg:"Граници и цветове на държави",hr:"Granice i boje država",ro:"Granițe și culori ale statelor",en:"Country borders & colours"},
+  "Rozsah hranic": {cs:"Rozsah",sk:"Rozsah",bg:"Обхват",hr:"Opseg",ro:"Extindere",en:"Extent"},
+  "Najdi stát": {cs:"Najdi stát",sk:"Nájdi štát",bg:"Намери държава",hr:"Pronađi državu",ro:"Găsește statul",en:"Find a country"},
+  "Nebo vyber ze seznamu": {cs:"Nebo vyber ze seznamu",sk:"Alebo vyber zo zoznamu",bg:"Или избери от списъка",hr:"Ili odaberi s popisa",ro:"Sau alege din listă",en:"Or pick from the list"},
+  "Zrušit barvu státu": {cs:"Zrušit barvu státu",sk:"Zrušiť farbu štátu",bg:"Премахни цвета на държавата",hr:"Ukloni boju države",ro:"Elimină culoarea statului",en:"Clear country colour"},
+  "Zrušit všechny barvy": {cs:"Zrušit všechny barvy",sk:"Zrušiť všetky farby",bg:"Премахни всички цветове",hr:"Ukloni sve boje",ro:"Elimină toate culorile",en:"Clear all colours"},
+  "Barva státu zrušena.": {cs:"Barva státu zrušena.",sk:"Farba štátu zrušená.",bg:"Цветът на държавата е премахнат.",hr:"Boja države uklonjena.",ro:"Culoarea statului a fost eliminată.",en:"Country colour cleared."},
+  "Všechny barvy států zrušeny.": {cs:"Všechny barvy států zrušeny.",sk:"Všetky farby štátov zrušené.",bg:"Всички цветове на държави са премахнати.",hr:"Sve boje država uklonjene.",ro:"Toate culorile statelor au fost eliminate.",en:"All country colours cleared."},
+  "Vyber stát.": {cs:"Vyber stát.",sk:"Vyber štát.",bg:"Избери държава.",hr:"Odaberi državu.",ro:"Alege un stat.",en:"Pick a country."},
+  "Zobrazit hranice států nad mapou": {cs:"Zobrazit hranice států nad mapou",sk:"Zobraziť hranice štátov nad mapou",bg:"Покажи границите на държавите над картата",hr:"Prikaži granice država iznad karte",ro:"Afișează granițele statelor peste hartă",en:"Show country borders above the map"},
+  "Zobrazit vybarvené státy": {cs:"Zobrazit vybarvené státy",sk:"Zobraziť vyfarbené štáty",bg:"Покажи оцветените държави",hr:"Prikaži obojene države",ro:"Afișează statele colorate",en:"Show coloured countries"},
+  "Barvit stát kliknutím do mapy": {cs:"Barvit stát kliknutím do mapy",sk:"Farbiť štát kliknutím do mapy",bg:"Оцвети държава с клик в картата",hr:"Oboji državu klikom na kartu",ro:"Colorează un stat cu clic pe hartă",en:"Colour a country by clicking the map"},
+  "Zobrazit kraje ČR": {cs:"Zobrazit kraje ČR",sk:"Zobraziť kraje ČR",bg:"Покажи областите на ЧР",hr:"Prikaži regije ČR",ro:"Afișează regiunile Cehiei",en:"Show Czech regions"},
+  "Barvit kraj kliknutím do mapy": {cs:"Barvit kraj kliknutím do mapy",sk:"Farbiť kraj kliknutím do mapy",bg:"Оцвети област с клик в картата",hr:"Oboji regiju klikom na kartu",ro:"Colorează o regiune cu clic pe hartă",en:"Colour a region by clicking the map"},
+  "Odeslat link": {cs:"Odeslat link",sk:"Odoslať link",bg:"Изпрати линк",hr:"Pošalji poveznicu",ro:"Trimite linkul",en:"Send link"},
+  "Aplikace vrácena na začátek.": {cs:"Aplikace vrácena na začátek.",sk:"Aplikácia vrátená na začiatok.",bg:"Приложението е върнато в началото.",hr:"Aplikacija vraćena na početak.",ro:"Aplicația a revenit la început.",en:"App reset to the start."},
+  "Bod přidán ({0}). Pravým tlačítkem ukonči (poslední = cíl).": {cs:"Bod přidán ({0}). Pravým tlačítkem ukonči (poslední = cíl).",sk:"Bod pridaný ({0}). Pravým tlačidlom ukonči (posledný = cieľ).",bg:"Точката е добавена ({0}). С десен бутон приключи (последната = цел).",hr:"Točka dodana ({0}). Desnom tipkom završi (zadnja = cilj).",ro:"Punct adăugat ({0}). Clic dreapta pentru a termina (ultimul = destinația).",en:"Point added ({0}). Right-click to finish (last = destination)."},
+  "Projekt — uložit, otevřít, sdílet": {cs:"Projekt — uložit, otevřít, sdílet",sk:"Projekt — uložiť, otvoriť, zdieľať",bg:"Проект — запази, отвори, сподели",hr:"Projekt — spremi, otvori, podijeli",ro:"Proiect — salvează, deschide, partajează",en:"Project — save, open, share"},
+  "Projekt": {cs:"Projekt",sk:"Projekt",bg:"Проект",hr:"Projekt",ro:"Proiect",en:"Project"},
+});
+// Texty přímo v HTML bez data-i18n — překládá je pzTranslateTextNodes pro všechny jazyky.
+const PZ_LANG_TEXT = {
+  "Scéna": {sk:"Scéna",bg:"Сцена",hr:"Scena",ro:"Scenă",en:"Scene"},
+  "Presety barev platí jen pro vektorové podklady (Positron, Liberty…). Satelitní a další rastrové podklady se barvit nedají.": {sk:"Presety farieb platia len pre vektorové podklady (Positron, Liberty…). Satelitné a ďalšie rastrové podklady sa farbiť nedajú.",bg:"Цветовите пресети важат само за векторни основи (Positron, Liberty…). Сателитните и другите растерни основи не могат да се оцветяват.",hr:"Predlošci boja vrijede samo za vektorske podloge (Positron, Liberty…). Satelitske i ostale rasterske podloge ne mogu se bojati.",ro:"Preseturile de culori se aplică doar fundalurilor vectoriale (Positron, Liberty…). Fundalurile din satelit și alte fundaluri raster nu pot fi colorate.",en:"Colour presets apply only to vector basemaps (Positron, Liberty…). Satellite and other raster basemaps cannot be recoloured."},
+  "Politická mapa": {sk:"Politická mapa",bg:"Политическа карта",hr:"Politička karta",ro:"Hartă politică",en:"Political map"},
+  "Pozadí / pevnina": {sk:"Pozadie / pevnina",bg:"Фон / суша",hr:"Pozadina / kopno",ro:"Fundal / uscat",en:"Background / land"},
+  "Parky a zeleň": {sk:"Parky a zeleň",bg:"Паркове и зеленина",hr:"Parkovi i zelenilo",ro:"Parcuri și spații verzi",en:"Parks and greenery"},
+  "Půda (tráva, pole, lesy)": {sk:"Pôda (tráva, polia, lesy)",bg:"Терен (трева, поля, гори)",hr:"Tlo (trava, polja, šume)",ro:"Teren (iarbă, câmpuri, păduri)",en:"Land cover (grass, fields, forests)"},
+  "Plochy (letiště, průmysl, obchody)": {sk:"Plochy (letiská, priemysel, obchody)",bg:"Площи (летища, промишленост, магазини)",hr:"Površine (zračne luke, industrija, trgovine)",ro:"Suprafețe (aeroporturi, industrie, magazine)",en:"Areas (airports, industry, shops)"},
+  "Letiště a letištní plochy": {sk:"Letiská a letiskové plochy",bg:"Летища и летищни площи",hr:"Zračne luke i aerodromske površine",ro:"Aeroporturi și suprafețe aeroportuare",en:"Airports and airfields"},
+  "Obdélníčky s čísly silnic": {sk:"Obdĺžniky s číslami ciest",bg:"Табелки с номера на пътища",hr:"Pločice s brojevima cesta",ro:"Plăcuțe cu numerele drumurilor",en:"Road number shields"},
+  "Železnice": {sk:"Železnice",bg:"Железници",hr:"Željeznice",ro:"Căi ferate",en:"Railways"},
+  "MHD – tramvaje a zastávky (celá ČR)": {sk:"MHD – električky a zastávky (celá ČR)",bg:"Градски транспорт – трамваи и спирки (цяла ЧР)",hr:"Javni prijevoz – tramvaji i stanice (cijela ČR)",ro:"Transport public – tramvaie și stații (toată Cehia)",en:"Public transport – trams and stops (all of CZ)"},
+  "Velikost a průhlednost vrstev": {sk:"Veľkosť a priehľadnosť vrstiev",bg:"Размер и прозрачност на слоевете",hr:"Veličina i prozirnost slojeva",ro:"Dimensiunea și transparența straturilor",en:"Layer size and transparency"},
+  "Ambientní okluze (AO)": {sk:"Ambientná oklúzia (AO)",bg:"Амбиентна оклузия (AO)",hr:"Ambijentalna okluzija (AO)",ro:"Ocluzie ambientală (AO)",en:"Ambient occlusion (AO)"},
+  "Síla AO": {sk:"Sila AO",bg:"Сила на AO",hr:"Jačina AO",ro:"Intensitate AO",en:"AO strength"},
+  "Automatické měkké zastínění u paty budov a v mezerách mezi nimi — dodá 3D budovám hloubku bez slunce. Funguje samo od přiblížení s 3D budovami (zhruba zoom 14) a renderuje se i do videa.": {sk:"Automatické mäkké tienenie pri päte budov a v medzerách medzi nimi — dodá 3D budovám hĺbku bez slnka. Funguje samo od priblíženia s 3D budovami (zhruba zoom 14) a renderuje sa aj do videa.",bg:"Автоматично меко засенчване в основата на сградите и между тях — придава дълбочина на 3D сградите без слънце. Работи само при приближение с 3D сгради (около zoom 14) и се рендерира и във видеото.",hr:"Automatsko meko sjenčanje u podnožju zgrada i u razmacima među njima — 3D zgradama daje dubinu bez sunca. Radi samo od približavanja s 3D zgradama (oko zooma 14) i renderira se i u video.",ro:"Umbrire moale automată la baza clădirilor și în spațiile dintre ele — dă adâncime clădirilor 3D fără soare. Funcționează de la sine la apropierea cu clădiri 3D (aproximativ zoom 14) și se randează și în video.",en:"Automatic soft shading at the foot of buildings and in the gaps between them — gives 3D buildings depth without the sun. Works on its own once zoomed in to 3D buildings (about zoom 14) and is rendered into the video too."},
+  "Loď": {sk:"Loď",bg:"Кораб",hr:"Brod",ro:"Vapor",en:"Boat"},
+  "Kam míří vlastní obrázek": {sk:"Kam mieri vlastný obrázok",bg:"Накъде сочи собственото изображение",hr:"Kamo pokazuje vlastita slika",ro:"Încotro indică imaginea proprie",en:"Where the custom image points"},
+  "Ikona se natáčí po směru trasy sama. Tímhle jen řekneš, kam na tvém obrázku míří předek (0° = nahoru, 90° = doprava).": {sk:"Ikona sa natáča po smere trasy sama. Týmto len povieš, kam na tvojom obrázku mieri predok (0° = hore, 90° = doprava).",bg:"Иконата сама се завърта по посоката на маршрута. Тук само казваш накъде сочи предницата на твоето изображение (0° = нагоре, 90° = надясно).",hr:"Ikona se sama okreće u smjeru rute. Ovime samo kažeš kamo na tvojoj slici pokazuje prednji dio (0° = gore, 90° = desno).",ro:"Pictograma se rotește singură după direcția traseului. Aici doar spui încotro indică partea din față a imaginii tale (0° = sus, 90° = dreapta).",en:"The icon turns along the route by itself. Here you only say where the front of your image points (0° = up, 90° = right)."},
+  "Ikona se natáčí po směru jízdy / letu automaticky.": {sk:"Ikona sa natáča po smere jazdy / letu automaticky.",bg:"Иконата се завърта автоматично по посоката на движение / полета.",hr:"Ikona se automatski okreće u smjeru vožnje / leta.",ro:"Pictograma se rotește automat după direcția de mers / zbor.",en:"The icon turns automatically in the direction of travel / flight."},
+  "Zastávky na trase": {sk:"Zastávky na trase",bg:"Спирки по маршрута",hr:"Stajališta na ruti",ro:"Opriri pe traseu",en:"Stops on the route"},
+  "Síla glow": {sk:"Sila žiary",bg:"Сила на сиянието",hr:"Jačina sjaja",ro:"Intensitatea strălucirii",en:"Glow strength"},
+  "Koncové body (A/B)": {sk:"Koncové body (A/B)",bg:"Крайни точки (A/B)",hr:"Krajnje točke (A/B)",ro:"Puncte de capăt (A/B)",en:"End points (A/B)"},
+  "Rychlá scéna": {sk:"Rýchla scéna",bg:"Бърза сцена",hr:"Brza scena",ro:"Scenă rapidă",en:"Quick scene"},
+  "Zadej místo a klikni na typ události: ikonka, popisek, případně perimetr a výřez se připraví naráz. Všechno pak jde upravit nebo vrátit Ctrl+Z.": {sk:"Zadaj miesto a klikni na typ udalosti: ikonka, popis, prípadne perimeter a výrez sa pripravia naraz. Všetko potom ide upraviť alebo vrátiť Ctrl+Z.",bg:"Въведи място и кликни типа събитие: иконата, надписът, евентуално периметърът и изгледът се подготвят наведнъж. Всичко после може да се промени или върне с Ctrl+Z.",hr:"Upiši mjesto i klikni vrstu događaja: ikona, oznaka, eventualno perimetar i izrez pripreme se odjednom. Sve se zatim može urediti ili vratiti s Ctrl+Z.",ro:"Introdu locul și apasă tipul evenimentului: pictograma, eticheta, eventual perimetrul și cadrul se pregătesc deodată. Totul se poate apoi edita sau anula cu Ctrl+Z.",en:"Enter a place and click the event type: icon, label, perimeter if needed and framing are prepared at once. Everything can then be edited or undone with Ctrl+Z."},
+  "Místo": {sk:"Miesto",bg:"Място",hr:"Mjesto",ro:"Loc",en:"Place"},
+  "Požár": {sk:"Požiar",bg:"Пожар",hr:"Požar",ro:"Incendiu",en:"Fire"},
+  "Výbuch": {sk:"Výbuch",bg:"Експлозия",hr:"Eksplozija",ro:"Explozie",en:"Explosion"},
+  "Zásah": {sk:"Zásah",bg:"Намеса",hr:"Intervencija",ro:"Intervenție",en:"Police action"},
+  "Záchranáři": {sk:"Záchranári",bg:"Спасители",hr:"Spasioci",ro:"Salvatori",en:"Rescuers"},
+  "Povodeň": {sk:"Povodeň",bg:"Наводнение",hr:"Poplava",ro:"Inundație",en:"Flood"},
+  "Varování": {sk:"Varovanie",bg:"Предупреждение",hr:"Upozorenje",ro:"Avertizare",en:"Warning"},
+  "Strana čtverečku i styl platí pro nový popisek a mění vybraný.": {sk:"Strana štvorčeka aj štýl platia pre nový popis a menia vybraný.",bg:"Страната на квадратчето и стилът важат за новия надпис и променят избрания.",hr:"Strana kvadratića i stil vrijede za novu oznaku i mijenjaju odabranu.",ro:"Latura pătrățelului și stilul se aplică etichetei noi și o modifică pe cea selectată.",en:"The square side and style apply to a new label and change the selected one."},
+  "Vestavěné ikony": {sk:"Vstavané ikony",bg:"Вградени икони",hr:"Ugrađene ikone",ro:"Pictograme integrate",en:"Built-in icons"},
+  "Záchranka": {sk:"Záchranka",bg:"Линейка",hr:"Hitna pomoć",ro:"Ambulanță",en:"Ambulance"},
+  "Uzavírky": {sk:"Uzávierky",bg:"Затваряния",hr:"Zatvaranja",ro:"Închideri",en:"Closures"},
+  "Silnice / dálnice": {sk:"Cesta / diaľnica",bg:"Път / магистрала",hr:"Cesta / autocesta",ro:"Drum / autostradă",en:"Road / motorway"},
+  "Přes (nepovinné)": {sk:"Cez (nepovinné)",bg:"През (по избор)",hr:"Preko (neobavezno)",ro:"Prin (opțional)",en:"Via (optional)"},
+  "Objížďka přes (nepovinné)": {sk:"Obchádzka cez (nepovinné)",bg:"Обиколен път през (по избор)",hr:"Obilaznica preko (neobavezno)",ro:"Ocolire prin (opțional)",en:"Detour via (optional)"},
+  "Vyznačit uzavírku": {sk:"Vyznačiť uzávierku",bg:"Отбележи затварянето",hr:"Označi zatvaranje",ro:"Marchează închiderea",en:"Mark closure"},
+  "do (nepovinné)": {sk:"do (nepovinné)",bg:"до (по избор)",hr:"do (neobavezno)",ro:"până la (opțional)",en:"to (optional)"},
+  "Vyznačit uzavírku metra": {sk:"Vyznačiť uzávierku metra",bg:"Отбележи затваряне на метрото",hr:"Označi zatvaranje metroa",ro:"Marchează închiderea metroului",en:"Mark metro closure"},
+  "Smazat uzavírky": {sk:"Zmazať uzávierky",bg:"Изтрий затварянията",hr:"Obriši zatvaranja",ro:"Șterge închiderile",en:"Delete closures"},
+  "Silnice: úsek se najde po skutečné silnici. Když vede jinudy než chceš (např. ne po dálnici), přidej bod „Přes\". Metro: jedna stanice, nebo úsek mezi dvěma stanicemi.": {sk:"Cesta: úsek sa nájde po skutočnej ceste. Keď vedie inde, než chceš (napr. nie po diaľnici), pridaj bod „Cez\". Metro: jedna stanica alebo úsek medzi dvoma stanicami.",bg:"Път: отсечката се намира по реалния път. Ако минава другаде, отколкото искаш (напр. не по магистралата), добави точка „През\". Метро: една спирка или отсечка между две спирки.",hr:"Cesta: dionica se pronalazi po stvarnoj cesti. Ako vodi druguda nego što želiš (npr. ne autocestom), dodaj točku „Preko\". Metro: jedna stanica ili dionica između dviju stanica.",ro:"Drum: tronsonul se găsește pe drumul real. Dacă trece pe altundeva decât vrei (de ex. nu pe autostradă), adaugă un punct „Prin\". Metrou: o stație sau tronsonul dintre două stații.",en:"Road: the section follows the real road. If it goes another way than you want (e.g. not along the motorway), add a \"Via\" point. Metro: one station, or the section between two stations."},
+  "Rádius": {sk:"Polomer",bg:"Радиус",hr:"Radijus",ro:"Rază",en:"Radius"},
+  "Natáhni bod A → B přímo v mapě.": {sk:"Natiahni bod A → B priamo v mape.",bg:"Изтегли точка A → B направо в картата.",hr:"Povuci točku A → B izravno na karti.",ro:"Trage punctul A → B direct pe hartă.",en:"Drag point A → B directly on the map."},
+  "Kraje ČR": {sk:"Kraje ČR",bg:"Области на ЧР",hr:"Regije ČR",ro:"Regiunile Cehiei",en:"Czech regions"},
+  "Krytí vrstev počasí": {sk:"Krytie vrstiev počasia",bg:"Плътност на слоевете за времето",hr:"Prozirnost slojeva vremena",ro:"Opacitatea straturilor meteo",en:"Weather layer opacity"},
+  "Nahrát GLB soubor": {sk:"Nahrať súbor GLB",bg:"Качи GLB файл",hr:"Učitaj GLB datoteku",ro:"Încarcă fișier GLB",en:"Upload GLB file"},
+  "Měřítko": {sk:"Mierka",bg:"Мащаб",hr:"Mjerilo",ro:"Scară",en:"Scale"},
+  "Výška": {sk:"Výška",bg:"Височина",hr:"Visina",ro:"Înălțime",en:"Height"},
+  "Otočení Y": {sk:"Otočenie Y",bg:"Завъртане Y",hr:"Rotacija Y",ro:"Rotație Y",en:"Rotation Y"},
+  "Náklon X": {sk:"Náklon X",bg:"Наклон X",hr:"Nagib X",ro:"Înclinare X",en:"Tilt X"},
+  "Náklon Z": {sk:"Náklon Z",bg:"Наклон Z",hr:"Nagib Z",ro:"Înclinare Z",en:"Tilt Z"},
+  "Přichytit k povrchu (postavit na zem)": {sk:"Prichytiť k povrchu (postaviť na zem)",bg:"Прилепи към повърхността (постави на земята)",hr:"Prilijepi uz površinu (postavi na tlo)",ro:"Fixează pe suprafață (așază pe sol)",en:"Snap to surface (stand on the ground)"},
+  "Vrhat stín (slunce táhneš přímo v mapě)": {sk:"Vrhať tieň (slnko ťaháš priamo v mape)",bg:"Хвърляй сянка (слънцето се влачи в картата)",hr:"Baci sjenu (sunce povlačiš izravno na karti)",ro:"Aruncă umbră (soarele se trage direct pe hartă)",en:"Cast a shadow (drag the sun directly on the map)"},
+  "Rozostření stínu": {sk:"Rozostrenie tieňa",bg:"Размазване на сянката",hr:"Zamućenje sjene",ro:"Estomparea umbrei",en:"Shadow blur"},
+  "Připnout na trasu (následuje animaci)": {sk:"Pripnúť na trasu (nasleduje animáciu)",bg:"Закачи към маршрута (следва анимацията)",hr:"Prikvači na rutu (prati animaciju)",ro:"Atașează la traseu (urmează animația)",en:"Pin to the route (follows the animation)"},
+  "Statická": {sk:"Statická",bg:"Статична",hr:"Statična",ro:"Statică",en:"Static"},
+  "Vlastní šířka (px)": {sk:"Vlastná šírka (px)",bg:"Собствена ширина (px)",hr:"Vlastita širina (px)",ro:"Lățime proprie (px)",en:"Custom width (px)"},
+  "Vlastní výška (px)": {sk:"Vlastná výška (px)",bg:"Собствена височина (px)",hr:"Vlastita visina (px)",ro:"Înălțime proprie (px)",en:"Custom height (px)"},
+  "Ruční rozměr 64–8192 px. Liché hodnoty se kvůli videokodeku automaticky zaokrouhlí dolů na sudé.": {sk:"Ručný rozmer 64–8192 px. Nepárne hodnoty sa kvôli videokodeku automaticky zaokrúhlia nadol na párne.",bg:"Ръчен размер 64–8192 px. Нечетните стойности автоматично се закръглят надолу до четни заради видеокодека.",hr:"Ručna veličina 64–8192 px. Neparne vrijednosti zbog videokodeka automatski se zaokružuju naniže na parne.",ro:"Dimensiune manuală 64–8192 px. Valorile impare se rotunjesc automat în jos la pare din cauza codecului video.",en:"Manual size 64–8192 px. Odd values are automatically rounded down to even because of the video codec."},
+  "Formát videa": {sk:"Formát videa",bg:"Формат на видеото",hr:"Format videa",ro:"Format video",en:"Video format"},
+  "Hranice států": {cs:"Hranice států",sk:"Hranice štátov",bg:"Граници на държави",hr:"Granice država",ro:"Granițele statelor",en:"Country borders"},
+  "Vybarvit stát": {cs:"Vybarvit stát",sk:"Vyfarbiť štát",bg:"Оцвети държава",hr:"Oboji državu",ro:"Colorează un stat",en:"Colour a country"},
+  "Zobrazit hranice států": {cs:"Zobrazit hranice států",sk:"Zobraziť hranice štátov",bg:"Покажи границите на държавите",hr:"Prikaži granice država",ro:"Afișează granițele statelor",en:"Show country borders"},
+  "Vzhled a rozsah hranic": {cs:"Vzhled a rozsah hranic",sk:"Vzhľad a rozsah hraníc",bg:"Вид и обхват на границите",hr:"Izgled i opseg granica",ro:"Aspectul și extinderea granițelor",en:"Border style and extent"},
+  "Další nastavení výplně": {cs:"Další nastavení výplně",sk:"Ďalšie nastavenia výplne",bg:"Още настройки на запълването",hr:"Dodatne postavke ispune",ro:"Alte setări de umplere",en:"More fill settings"},
+  "Rychlé barvení kliknutím do mapy": {cs:"Rychlé barvení kliknutím do mapy",sk:"Rýchle farbenie kliknutím do mapy",bg:"Бързо оцветяване с клик в картата",hr:"Brzo bojanje klikom na kartu",ro:"Colorare rapidă cu clic pe hartă",en:"Quick colouring by clicking the map"},
+  "Mapa": {cs:"Mapa",sk:"Mapa",bg:"Карта",hr:"Karta",ro:"Hartă",en:"Map"},
+  "Světlý režim mapy (světlý podklad)": {cs:"Světlý režim mapy (světlý podklad)",sk:"Svetlý režim mapy (svetlý podklad)",bg:"Светъл режим на картата (светла основа)",hr:"Svijetli način karte (svijetla podloga)",ro:"Mod luminos al hărții (fundal deschis)",en:"Light map mode (light basemap)"},
+  "Jazyky / vlajky": {cs:"Jazyky / vlajky",sk:"Jazyky / vlajky",bg:"Езици / знамена",hr:"Jezici / zastave",ro:"Limbi / steaguri",en:"Languages / flags"},
+  "Zaškrtnuté vlajky se zobrazí nahoře. Výchozí je čeština.": {cs:"Zaškrtnuté vlajky se zobrazí nahoře. Výchozí je čeština.",sk:"Zaškrtnuté vlajky sa zobrazia hore. Predvolená je čeština.",bg:"Отметнатите знамена се показват горе. По подразбиране е чешки.",hr:"Označene zastave prikazuju se gore. Zadani jezik je češki.",ro:"Steagurile bifate apar sus. Implicit este ceha.",en:"Ticked flags are shown at the top. Czech is the default."},
+  "Odkaz na rozdělanou práci (kolega ho otevře a načte se mu všechno):": {cs:"Odkaz na rozdělanou práci (kolega ho otevře a načte se mu všechno):",sk:"Odkaz na rozpracovanú prácu (kolega ho otvorí a načíta sa mu všetko):",bg:"Връзка към започнатата работа (колегата я отваря и всичко се зарежда):",hr:"Poveznica na započeti rad (kolega je otvori i sve mu se učita):",ro:"Link către lucrul început (colegul îl deschide și i se încarcă totul):",en:"Link to the work in progress (a colleague opens it and everything loads):"},
+  "Tloušťka": {cs:"Tloušťka",sk:"Hrúbka",bg:"Дебелина",hr:"Debljina",ro:"Grosime",en:"Width"},
+  "Krytí": {cs:"Krytí",sk:"Krytie",bg:"Плътност",hr:"Prozirnost",ro:"Opacitate",en:"Opacity"},
+  "Krytí výplně": {cs:"Krytí výplně",sk:"Krytie výplne",bg:"Плътност на запълването",hr:"Prozirnost ispune",ro:"Opacitatea umplerii",en:"Fill opacity"},
+};
+
 Object.keys(I18N).forEach(key => {
   if (!I18N[key] || typeof I18N[key] !== 'object') return;
   if (!Object.prototype.hasOwnProperty.call(I18N[key], 'en')) {
@@ -16017,7 +16348,9 @@ function t(key, ...args) {
     if(currentLang === 'en'){
       try{ const en = (typeof EN_OVERRIDES !== 'undefined' && EN_OVERRIDES[key]) || (typeof PZ_EN_TEXT !== 'undefined' && PZ_EN_TEXT[key]); if(en){ let tx = en; args.forEach((a, i) => { tx = tx.replace(`{${i}}`, a); }); return tx; } }catch(e){}
     }
-    return key;
+    // i bez překladu dosadit parametry (dřív se ukazovalo doslova „({0})")
+    let tx = key; args.forEach((a, i) => { tx = tx.replace(`{${i}}`, a); });
+    return tx;
   }
   let text = entry[currentLang] || entry['cs'] || key;
   args.forEach((a, i) => { text = text.replace(`{${i}}`, a); });
@@ -16281,7 +16614,7 @@ function applyLang(lang) {
   // Update additional static texts not marked by data-i18n
   const staticTextSelectors = {
     '#politicalStylePanel h3': 'Politická mapa',
-    '#countryBordersOverlaySection > h3': 'Hranice států overlay',
+    '#countryBordersOverlaySection > h3': 'Hranice a barvy států',
     '#worldPoliticalSection > h3': 'Státy světa',
     '#czPoliticalSection > h3': 'Kraje ČR',
     '#projectPanel .project-panel-head b': 'Projekt'
@@ -16352,13 +16685,13 @@ function applyLang(lang) {
       label.textContent = t(key);
     }
   };
-  setNearestLabel('countryBorderMode', 'Režim');
+  setNearestLabel('countryBorderMode', 'Rozsah hranic');
   setNearestLabel('countryFocusSelect', 'Vybraný stát');
   setNearestLabel('countryBorderColor', 'Barva hranic');
   setNearestLabel('countryBorderWidth', 'Tloušťka');
   setNearestLabel('countryBorderOpacity', 'Krytí');
-  setNearestLabel('politicalCountrySearch', 'Vyhledat stát');
-  setNearestLabel('politicalCountrySelect', 'Stát');
+  setNearestLabel('politicalCountrySearch', 'Najdi stát');
+  setNearestLabel('politicalCountrySelect', 'Nebo vyber ze seznamu');
   setNearestLabel('politicalCountryColor', 'Barva státu');
   setNearestLabel('politicalCountryDefaultColor', 'Výchozí barva');
   setNearestLabel('politicalFillOpacity', 'Krytí výplně');
@@ -16377,31 +16710,44 @@ function applyLang(lang) {
   }
 
   const countryFocus = document.getElementById('countryFocusSelect');
-  if (countryFocus && countryFocus.options.length && !countryFocus.value) {
+  if (countryFocus && countryFocus.options.length === 1 && !countryFocus.value) {
     countryFocus.options[0].textContent = t('Načítám…');
   }
   const politicalCountrySelect = document.getElementById('politicalCountrySelect');
-  if (politicalCountrySelect && politicalCountrySelect.options.length && !politicalCountrySelect.value) {
+  if (politicalCountrySelect && politicalCountrySelect.options.length === 1 && !politicalCountrySelect.value) {
     politicalCountrySelect.options[0].textContent = t('Načítám…');
   }
   const czRegionSelect = document.getElementById('czRegionSelect');
-  if (czRegionSelect && czRegionSelect.options.length && !czRegionSelect.value) {
+  if (czRegionSelect && czRegionSelect.options.length === 1 && !czRegionSelect.value) {
     czRegionSelect.options[0].textContent = t('Načítám…');
   }
 
   const projectSelect = document.getElementById('savedProjectSelect');
   if (projectSelect && projectSelect.options[0]) projectSelect.options[0].textContent = t('Vyber projekt…');
+  // seznamy států a krajů v novém jazyce (názvy států i úvodní položka)
+  try{ if(state.countriesGeojson) populateCountrySelects(); if(state.czRegionsGeojson) populateCzRegionSelect(); }catch(e){}
+  try{ pzRenderClosureList(); }catch(e){}
 
-  const staticSmallTexts = Array.from(document.querySelectorAll('#countryBordersOverlaySection .small, #worldPoliticalSection .small, #czPoliticalSection .small, .tab-pane[data-pane="projekt"] .hint'));
-  staticSmallTexts.forEach(el => {
-    const txt = (el.textContent || '').trim();
-    if (txt.startsWith('Přesnější křivky')) el.textContent = t('Přesnější křivky berou detailnější zdroj GISCO 2024.');
-    else if (txt.startsWith('Pro čistou politickou mapu')) el.textContent = t('Pro čistou politickou mapu přepni podklad na „Politická“. Státy můžeš obarvovat klikem nebo výběrem ve formuláři.');
-    else if (txt.startsWith('Klikem do mapy obarvíš právě')) el.textContent = t('Klikem do mapy obarvíš právě vybraný stát. Když je zapnuté barvení krajů a klikneš v ČR do kraje, má kraj přednost.');
-    else if (txt.startsWith('Samostatná funkce pro Českou republiku')) el.textContent = t('Samostatná funkce pro Českou republiku. Kraj můžeš vybrat klikem nebo ve formuláři a obarvit libovolnou barvou.');
-    else if (txt.startsWith('Kraje jsou dostupné jen pro ČR')) el.textContent = t('Kraje jsou dostupné jen pro ČR. Po kliknutí do mapy se synchronizuje formulářový výběr kraje.');
-    else if (txt.startsWith('Projekt uloží trasu')) el.textContent = t('Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Záložky nahoře můžeš přetahovat myší.');
+  // Původní český text si pamatujeme — po přepnutí do jiného jazyka už text
+  // česky nezačíná a další přepnutí ho dřív nenašlo (zůstal v prvním jazyce).
+  const SMALL_KEYS = [
+    'Přesnější křivky berou detailnější zdroj GISCO 2024.',
+    'Pro čistou politickou mapu přepni podklad na „Politická“. Státy můžeš obarvovat klikem nebo výběrem ve formuláři.',
+    'Klikem do mapy obarvíš právě vybraný stát. Když je zapnuté barvení krajů a klikneš v ČR do kraje, má kraj přednost.',
+    'Samostatná funkce pro Českou republiku. Kraj můžeš vybrat klikem nebo ve formuláři a obarvit libovolnou barvou.',
+    'Kraje jsou dostupné jen pro ČR. Po kliknutí do mapy se synchronizuje formulářový výběr kraje.'
+  ];
+  document.querySelectorAll('#countryBordersOverlaySection .small, #worldPoliticalSection .small, #czPoliticalSection .small').forEach(el => {
+    if(el.children.length) return;
+    if(el.dataset.pzSmallKey == null){
+      const txt = (el.textContent || '').trim();
+      const key = SMALL_KEYS.find(k => txt.startsWith(k.slice(0, 24)));
+      if(!key) return;
+      el.dataset.pzSmallKey = key;
+    }
+    el.textContent = t(el.dataset.pzSmallKey);
   });
+
 
   // Změna jazyka nesmí znovu otevřít našeptávač (překryl by záložky).
   if (state.placeSearchResults?.length && !document.getElementById('placeSearchResults')?.hidden) {
@@ -16522,8 +16868,16 @@ document.addEventListener('keydown', e => {
     redoStack.length = 0; // a new user action invalidates the redo branch
     updateUndoBtn();
   }
+  // Snímky shodné s aktuálním stavem přeskočit — vznikají třeba z kliknutí do
+  // mapy, které nakonec nic nezměnilo (posun mapy na Trase). Dřív pak první
+  // Ctrl+Z „nic neudělal".
+  function dropSameAsCurrent(stack){
+    const cur = JSON.stringify(snapshotNow());
+    while(stack.length && JSON.stringify(stack[stack.length - 1]) === cur) stack.pop();
+  }
   function doUndo(){
-    if(!undoStack.length) return;
+    dropSameAsCurrent(undoStack);
+    if(!undoStack.length){ updateUndoBtn(); return; }
     const snap = undoStack.pop();
     const current = snapshotNow();
     if(current){ redoStack.push(current); if(redoStack.length > UNDO_LIMIT) redoStack.shift(); }
@@ -16536,7 +16890,8 @@ document.addEventListener('keydown', e => {
     updateUndoBtn();
   }
   function doRedo(){
-    if(!redoStack.length) return;
+    dropSameAsCurrent(redoStack);
+    if(!redoStack.length){ updateUndoBtn(); return; }
     const snap = redoStack.pop();
     const current = snapshotNow();
     if(current){ undoStack.push(current); if(undoStack.length > UNDO_LIMIT) undoStack.shift(); }
@@ -16564,7 +16919,8 @@ document.addEventListener('keydown', e => {
     'clearSceneArrowsBtn','clearSceneDistancesBtn','clearScenePerimetersBtn',
     'deleteMapLabelBtn','deleteSceneArrowBtn','deleteSceneDistanceBtn','deleteSceneIconBtn','deleteScenePerimeterBtn',
     'updateMapLabelBtn','updateSceneArrowBtn','updateSceneDistanceBtn','updateSceneIconBtn','updateScenePerimeterBtn',
-    'pzClRoadBtn','pzClMetroBtn','pzClClearBtn','placeSearchBtn'
+    'pzClRoadBtn','pzClMetroBtn','pzClClearBtn','placeSearchBtn',
+    'resetPoliticalCountryColorBtn','clearPoliticalCountryColorsBtn'
   ]);
   // Volba druhu dopravy trasu hned přepočítá — snímek musí vzniknout PŘED tím.
   const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove';
@@ -16583,6 +16939,20 @@ document.addEventListener('keydown', e => {
     const el = e.target;
     if(!(el instanceof HTMLInputElement)) return;
     if((el.type === 'range' || el.type === 'color') && el.closest('.sidebar')) pushUndo();
+  }, true);
+  // Zaškrtávátka (Invertovat ikonky, vrstvy…) a nahrání souboru: snímek před
+  // změnou. U zaškrtávátka se hodnota mění už před událostí click, proto
+  // pointerdown (myš/dotyk) a mezerník (klávesnice).
+  const isUndoableToggle = el => el instanceof HTMLInputElement && (el.type === 'checkbox' || el.type === 'radio') && el.closest('.sidebar');
+  document.addEventListener('pointerdown', (e) => {
+    const lab = e.target?.closest?.('label');
+    const el = e.target instanceof HTMLInputElement ? e.target : lab?.querySelector('input[type=checkbox],input[type=radio],input[type=file]');
+    if(isUndoableToggle(el)) pushUndo();
+  }, true);
+  document.addEventListener('keydown', (e) => { if(e.key === ' ' && isUndoableToggle(e.target)) pushUndo(); }, true);
+  document.addEventListener('click', (e) => {
+    const el = e.target;
+    if(el instanceof HTMLInputElement && el.type === 'file' && el.closest('.sidebar') && el.id !== 'backupImportFile') pushUndo();
   }, true);
 
   // Also snapshot on map clicks that may mutate state (adding route points,
@@ -16629,8 +16999,9 @@ document.addEventListener('keydown', e => {
   // Keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl+Y / Ctrl+Shift+Z = redo,
   // R = refresh, Space = play/pause animation (when not typing)
   document.addEventListener('keydown', (e) => {
-    const tag = (e.target?.tagName || '').toLowerCase();
-    const isTyping = ['input','textarea','select'].includes(tag) || e.target?.isContentEditable;
+    const isTyping = pzIsTextEntry(e.target);
+    // Mezerník na zaškrtávátku / tlačítku / výběru má svou vlastní funkci.
+    const nativeSpace = !!e.target?.closest?.('button,select,a,input[type=checkbox],input[type=radio],summary,[role=button]');
     if((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')){
       if(isTyping) return;
       e.preventDefault();
@@ -16642,7 +17013,7 @@ document.addEventListener('keydown', e => {
     } else if(!isTyping && (e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey){
       // avoid hijacking browser reload (Ctrl+R); only bare R
       if(refreshBtn){ e.preventDefault(); refreshBtn.click(); }
-    } else if(!isTyping && (e.key === ' ' || e.code === 'Space') && !e.ctrlKey && !e.metaKey && !e.altKey){
+    } else if(!isTyping && !nativeSpace && (e.key === ' ' || e.code === 'Space') && !e.ctrlKey && !e.metaKey && !e.altKey){
       e.preventDefault();
       if(state.animPlaying) pauseAnimation(); else playAnimation();
     }
@@ -16769,8 +17140,14 @@ document.addEventListener('keydown', e => {
   const TOOL_MODES = ['driving','truck','moto','train','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
 
   function toolOpenSection(sectionId, open = true){
-    const sec = $(sectionId);
+    let sec = $(sectionId);
     if(!sec) return {ok:false, error:'Sekce ' + sectionId + ' neexistuje.'};
+    // Krok uvnitř sekce (např. worldPoliticalSection) → otevřít celou sekci.
+    if(!sec.classList.contains('section')) sec = sec.closest('.section') || sec;
+    // Sekce na jiné záložce: nejdřív na ni přepnout, jinak se otevře „naslepo".
+    const pane = sec.closest('.tab-pane')?.dataset?.pane;
+    if(open && pane && pane !== state.currentTab){ try{ setTab(pane); }catch(e){} }
+    if(sec.closest('.settings-modal') && open){ try{ openSettings(); }catch(e){} }
     try{ setAccordionOpen(sec, !!open, null, false); }catch(e){ return {ok:false, error:String(e)}; }
     try{ sec.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
     return {ok:true, section:sectionId, open:!!open};
@@ -17133,7 +17510,12 @@ async function pzApplyTemplate(id, btn){
     await new Promise(res => {
       let done = false; const fin = () => { if(!done){ done = true; res(); } };
       state.map.once('moveend', fin); setTimeout(fin, 2500);
-      state.map.flyTo({center:[ll.lng, ll.lat], zoom: tp.zoom, padding: getFitPadding(), duration: 900});
+      // padding ve flyTo zůstává na mapě natrvalo a rozhodí pozdější zarovnání
+      // (fitBounds, export). Střed výřezu se proto posune přes offset a padding se vynuluje.
+      const fp = getFitPadding();
+      state.screenPan = {x:0, y:0};
+      state.map.flyTo({center:[ll.lng, ll.lat], zoom: tp.zoom, padding:{top:0,right:0,bottom:0,left:0},
+        offset:[Math.round((fp.left - fp.right) / 2), Math.round((fp.top - fp.bottom) / 2)], duration: 900});
     });
     if(tp.radius) createScenePerimeterAt(ll, {radiusMeters: tp.radius, unit:'m', silent:true});
     createSceneIconAt(ll, {data: pzIconDataUrl(tp.icon), silent:true});
@@ -17238,6 +17620,11 @@ function pzColorFromName(v){
     })(v);
 }
 
+  // Háček pro automatické testy (tests/14_fixes.test.js) — funkce appky jsou
+  // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
+  window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
+    syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName,
+    get state(){ return state; }};
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
     version: 1,
@@ -17939,12 +18326,12 @@ function pzColorFromName(v){
 }
 @media (min-width:761px) and (max-width:980px){
   .map-source-watermark{bottom:52px}
-  .floating-player{bottom:80px}
+  .floating-player{bottom:max(80px, calc(var(--pz-status-h, 34px) + 48px))}
   .tnchat-fab{bottom:136px}
   .tnchat-panel{bottom:196px}
 }
 @media (max-width:760px){
-  .floating-player{bottom:92px}
+  .floating-player{bottom:max(92px, calc(var(--pz-status-h, 34px) + 52px))}
   .tnchat-fab{bottom:154px;right:12px;width:50px;height:50px}
   .tnchat-panel{bottom:214px;max-height:calc(100dvh - 280px)}
 }
@@ -18051,6 +18438,8 @@ function pzColorFromName(v){
     [/^(otevri |prepni na |jdi na )?(zalozku )?(trasa|trasu)$/, 'Otevírám trasu.', [{tool:'openTab', args:{tab:'trasa'}, label:'Trasa'}]],
     [/^(otevri |prepni na |jdi na )?(zalozku )?(scena|scenu)$/, 'Otevírám scénu.', [{tool:'openTab', args:{tab:'scena'}, label:'Scéna'}]],
     [/^(otevri |prepni na |jdi na )?(zalozku )?(animace|animaci)$/, 'Otevírám animaci.', [{tool:'openTab', args:{tab:'animace'}, label:'Animace'}]],
+    [/^(otevri |prepni na |jdi na |ukaz )?(zalozku |panel )?(projekt|projekty|ulozene projekty)$/, 'Otevírám projekty.', [{tool:'openTab', args:{tab:'projekt'}, label:'Projekt'}]],
+    [/^(otevri |prepni na |jdi na )?(zalozku )?(styl|styly|vzhled)$/, 'Otevírám styl.', [{tool:'openTab', args:{tab:'styly'}, label:'Styl'}]],
     [/^(ukaz )?celou trasu$|^doramuj trasu$/, 'Ukazuji celou trasu.', [{tool:'fitRoute', label:'Celá trasa'}]],
     [/^(ukaz )?(cele cesko|celou cr|celou ceskou republiku)$/, 'Ukazuji celé Česko.', [{tool:'gotoPlace', args:{query:'Česko'}, label:'Česko'}]],
     [/^(smaz|zrus|vymaz) (uzavirky|vyluky|vsechny uzavirky)$/, 'Mažu uzavírky.', [{tool:'clearClosures', label:'Smazání uzavírek'}]],
