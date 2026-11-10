@@ -372,6 +372,14 @@ input[type=color]:hover{border-color:var(--accent)}
 /* křížek u vybraného popisku — dřív šel popisek smazat jen nezřejmým Esc + Delete; do exportu se nekreslí */
 .map-label-del{display:none;position:absolute;top:-11px;right:-11px;width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;background:#e63946;color:#fff;font:700 14px/1 sans-serif;cursor:pointer;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.35);z-index:2}
 .map-label-marker.selected .map-label-del{display:grid}
+/* Styly popisků v barvách TV Nova (manuál: navy #0D1767, červená #F03B3B). Export
+   kreslí bublinu i čtvereček podle vypočtených stylů, takže platí i ve videu/PNG. */
+.map-label-marker[data-lstyle="navy"] .map-label-bubble{background:#0D1767;color:#fff;border-color:#0D1767}
+.map-label-marker[data-lstyle="navy"] .map-label-square{background:#F03B3B}
+.map-label-marker[data-lstyle="red"] .map-label-bubble{background:#F03B3B;color:#fff;border-color:#F03B3B}
+.map-label-marker[data-lstyle="red"] .map-label-square{background:#0D1767}
+.map-label-marker[data-lstyle="dark"] .map-label-bubble{background:#000;color:#fff;border-color:#000}
+.map-label-marker[data-lstyle="dark"] .map-label-square{background:#F03B3B}
 .map-label-del:hover{background:#c1121f}
 .map-label-marker.selected .map-label-square{box-shadow:0 0 0 2px rgba(38,208,196,.35),0 1px 6px rgba(0,0,0,.24)}
 .map-label-row.active{border-color:var(--accent);background:rgba(230,57,70,.06)}
@@ -1214,8 +1222,14 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <div class="row">
           <div><label data-i18n="Červený čtvereček">Červený čtvereček</label><select id="mapLabelSide"><option value="right" selected data-i18n="Vpravo">Vpravo</option><option value="left" data-i18n="Vlevo">Vlevo</option></select></div>
-          <div class="small" style="display:flex;align-items:end">U nového i vybraného popisku můžeš přepnout stranu čtverečku.</div>
+          <div><label>Styl</label><select id="mapLabelStyle">
+            <option value="classic" selected>Bílý (klasický)</option>
+            <option value="navy">Nova modrý</option>
+            <option value="red">Nova červený (breaking)</option>
+            <option value="dark">Černý</option>
+          </select></div>
         </div>
+        <div class="small" style="margin:-4px 0 8px">Strana čtverečku i styl platí pro nový popisek a mění vybraný.</div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addMapLabelBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
           <button type="button" class="btn btn-sm" id="updateMapLabelBtn" data-i18n="Upravit vybraný">Upravit vybraný</button>
@@ -7776,7 +7790,7 @@ function serializeProjectSnapshot(){
     // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
     // as the same .glb is loaded again; within a session it survives undo/redo + project switch).
     model3d: (state.model3d && state.model3d.lngLat) ? (m=>({lngLat:m.lngLat, altitude:m.altitude, scale:m.scale, sizeMeters:m.sizeMeters, rotationDeg:m.rotationDeg, rotX:m.rotX, rotZ:m.rotZ, upAxis:m.upAxis, snapSurface:m.snapSurface, followRoute:m.followRoute, shadowOn:m.shadowOn, shadowBlur:m.shadowBlur, sun:m.sun}))(state.model3d) : null,
-    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
+    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     animation: {
       currentRotMode: state.currentRotMode,
       animIconSize: $('animIconSize')?.value || '34',
@@ -7909,7 +7923,7 @@ function applyBasicProjectSnapshot(snapshot){
       model3dClear();
     }
   }catch(_e){}
-  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, silent:true}));
+  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true}));
   if(state.mapLabels.length){
     const lastSize = state.mapLabels[state.mapLabels.length - 1].size || state.mapLabelGlobalSize || 28;
     applyMapLabelSizeToAll(lastSize);
@@ -10499,11 +10513,11 @@ function deleteSceneIcon(id){
   setStatus(t('Ikonka smazána.'));
 }
 
-function createMapLabelElement(text, size, side='right'){
+function createMapLabelElement(text, size, side='right', style='classic'){
   const el = document.createElement('div');
   el.className = 'map-label-marker';
   el.innerHTML = `<span class="map-label-content"><span class="map-label-bubble"></span><span class="map-label-square"></span><button type="button" class="map-label-del" title="Smazat popisek" aria-label="Smazat popisek">×</button></span>`;
-  applyMapLabelStyle(el, {text, size, side});
+  applyMapLabelStyle(el, {text, size, side, style});
   return el;
 }
 
@@ -10514,6 +10528,7 @@ function applyMapLabelStyle(el, data){
   const size = Math.max(14, parseInt(data.size || 28, 10));
   const side = data.side === 'left' ? 'left' : 'right';
   el.dataset.side = side;
+  el.dataset.lstyle = ['navy','red','dark'].includes(data.style) ? data.style : 'classic';
   el.style.setProperty('--label-size', size + 'px');
   el.style.setProperty('--label-dot-size', Math.max(10, Math.round(size * 0.55)) + 'px');
 }
@@ -10544,6 +10559,7 @@ function selectMapLabel(id, syncInputs=true){
     if($('mapLabelText')) $('mapLabelText').value = item.text || '';
     if($('mapLabelSize')) $('mapLabelSize').value = String(state.mapLabelGlobalSize || item.size || 28);
     if($('mapLabelSide')) $('mapLabelSide').value = item.side === 'left' ? 'left' : 'right';
+    if($('mapLabelStyle')) $('mapLabelStyle').value = item.style || 'classic';
   }
   updateReadouts();
   refreshMapLabelSelection();
@@ -10705,10 +10721,11 @@ function addMapLabelAt(lngLatObj, options={}){
   const sizeVal = Math.max(14, Math.min(80, parseInt(options.size ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
   state.mapLabelGlobalSize = sizeVal;
   const sideVal = (options.side ?? $('mapLabelSide')?.value) === 'left' ? 'left' : 'right';
+  const styleVal = String(options.style ?? $('mapLabelStyle')?.value ?? 'classic');
   const ll = normalizeLngLatInput(lngLatObj);
   const lngLat = [ll.lng, ll.lat];
   const id = 'label_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
-  const el = createMapLabelElement(textVal, sizeVal, sideVal);
+  const el = createMapLabelElement(textVal, sizeVal, sideVal, styleVal);
   el.title = 'Klikni pro přepsání, přetáhni za čtvereček/prostor popisku pro posun';
   el.querySelector('.map-label-del')?.addEventListener('mousedown', ev => ev.stopPropagation());
   el.querySelector('.map-label-del')?.addEventListener('click', ev => {
@@ -10740,7 +10757,7 @@ function addMapLabelAt(lngLatObj, options={}){
     renderMapLabelList();
     setStatus(t('Popisek přesunut.'));
   });
-  const item = {id, text:textVal, size:sizeVal, side:sideVal, lngLat, marker};
+  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker};
   state.mapLabels.push(item);
   selectMapLabel(id);
   renderMapLabelList();
@@ -10755,6 +10772,7 @@ function updateMapLabel(id, updates={}){
   if(updates.text != null) item.text = updates.text;
   if(updates.size != null) item.size = Math.max(14, parseInt(updates.size, 10) || 28);
   if(updates.side != null) item.side = updates.side === 'left' ? 'left' : 'right';
+  if(updates.style != null) item.style = String(updates.style);
   applyMapLabelStyle(item.marker?.getElement?.(), item);
   renderMapLabelList();
 }
@@ -10865,6 +10883,7 @@ function copySelectedMapObject(){
       text: selected.item.text,
       size: selected.item.size,
       side: selected.item.side,
+      style: selected.item.style,
       lngLat: selected.item.lngLat.slice()
     };
     state.clipboardPasteCount = 0;
@@ -10899,7 +10918,7 @@ function duplicateSelectedMapObject(){
   }
   if(selected.type === 'mapLabel'){
     const lngLat = offsetLngLat(selected.item.lngLat, 30, 26);
-    addMapLabelAt(lngLat, {text:selected.item.text, size:selected.item.size, side:selected.item.side, silent:true});
+    addMapLabelAt(lngLat, {text:selected.item.text, size:selected.item.size, side:selected.item.side, style:selected.item.style, silent:true});
     setStatus(t('Popisek duplikován.'));
     return true;
   }
@@ -10931,7 +10950,7 @@ function pasteClipboardMapObject(){
     return true;
   }
   if(clip.type === 'mapLabel'){
-    addMapLabelAt(lngLat, {text:clip.text, size:clip.size, side:clip.side, silent:true});
+    addMapLabelAt(lngLat, {text:clip.text, size:clip.size, side:clip.side, style:clip.style, silent:true});
     setStatus(t('Popisek vložen jako kopie.'));
     return true;
   }
@@ -13309,7 +13328,7 @@ function createNativeExportMarkers(exportMap){
   });
   (state.mapLabels || []).forEach(item => {
     if(!item?.lngLat) return;
-    const el = createMapLabelElement(item.text || 'Popisek', item.size || state.mapLabelGlobalSize || 28, item.side || 'right');
+    const el = createMapLabelElement(item.text || 'Popisek', item.size || state.mapLabelGlobalSize || 28, item.side || 'right', item.style || 'classic');
     const marker = new maplibregl.Marker({element:el, anchor:'center'}).setLngLat(item.lngLat).addTo(exportMap);
     temp.mapLabels.push({...item, marker});
   });
@@ -15058,6 +15077,8 @@ function setupWeatherUI(){
 // Místo desítek ručních zásahů v HTML: projdi textové uzly panelu a přelož
 // přesné české texty podle slovníku; originál si pamatuj, ať jde přepnout zpět.
 const PZ_EN_TEXT = {
+  "Styl": "Style", "Bílý (klasický)": "White (classic)", "Nova modrý": "Nova blue", "Nova červený (breaking)": "Nova red (breaking)", "Černý": "Black",
+  "Strana čtverečku i styl platí pro nový popisek a mění vybraný.": "Square side and style apply to new labels and change the selected one.",
   "Čistá navigační": "Clean navigation", "Turistická": "Hiking", "Letecká olivová": "Aviation olive",
   "Navigační světlá": "Navigation light", "Městská tmavá": "City dark", "Zpravodajská modrá": "News blue",
   "Ostrá modrá": "Sharp blue", "Ostrá bílá": "Sharp white",
@@ -15796,6 +15817,10 @@ function bindUI(){
   $('mapLabelSide')?.addEventListener('change', ()=>{
     const item = getMapLabelById(state.selectedMapLabelId);
     if(item) updateMapLabel(item.id, {side: $('mapLabelSide')?.value || item.side});
+  });
+  $('mapLabelStyle')?.addEventListener('change', ()=>{
+    const item = getMapLabelById(state.selectedMapLabelId);
+    if(item){ try{ window.__pzPushUndo?.(); }catch(e){} updateMapLabel(item.id, {style: $('mapLabelStyle')?.value || 'classic'}); }
   });
   $('savePresetBtn')?.addEventListener('click', dbSavePreset);
   $('updatePresetBtn')?.addEventListener('click', dbUpdatePreset);
