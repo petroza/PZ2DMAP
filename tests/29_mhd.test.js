@@ -31,6 +31,7 @@ const {check, done, open, tab} = require('./lib');
   check(r.ok === false && /Tramvají to nejde/.test(r.error), 'tramvaj mimo koleje řekne proč nejde');
   // přehrání: souprava jede po trase
   await route('Zličín', 'Háje', 'metro');
+  await page.waitForFunction(() => { const F = window.__pzFns, m = window.__tnMap; F.setAnimProgress(0.5); return (m.getSource('pz-souprava')?.serialize?.().data?.features || []).length === 2; }, null, {timeout: 15000, polling: 500}).catch(() => {});
   const ride = await page.evaluate(() => { const F = window.__pzFns, m = window.__tnMap; F.setAnimProgress(0.5); const f = m.getSource('pz-souprava')?.serialize?.().data?.features || []; return f.length; });
   check(ride === 2, 'metro jede jako souprava (2 vlečené vozy)');
   check(!errors.length, 'bez chyb v konzoli ' + errors.join(' | '));

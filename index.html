@@ -1036,6 +1036,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <div class="anim-sys-icon-grid">
           <button type="button" class="sys-icon-btn" data-sys-icon="car" data-from-mode="driving" title="Auto"><span class="t-icon"></span><span class="t-label" data-i18n="Auto">Auto</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="truck" data-from-mode="truck" title="Kamion"><span class="t-icon"></span><span class="t-label" data-i18n="Kamion">Kamion</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="lorry" title="Nákladní auto"><span class="t-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3.5 3h9c.83 0 1.5.67 1.5 1.5V16H3.5C2.67 16 2 15.33 2 14.5v-10C2 3.67 2.67 3 3.5 3Zm11.5 4h3.2c.45 0 .87.2 1.15.55l2.3 2.85c.22.27.35.6.35.95v3.65c0 .55-.45 1-1 1H15V7Zm1.6 1.6v2.6h3.9l-2.1-2.6h-1.8ZM6.5 15.2a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Zm11 0a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z"/></svg></span><span class="t-label" data-i18n="Nákladní">Nákladní</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="train" data-from-mode="train" title="Vlak"><span class="t-icon"></span><span class="t-label" data-i18n="Vlak">Vlak</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="boat" data-from-mode="boat" title="Loď"><span class="t-icon"></span><span class="t-label" data-i18n="Loď">Loď</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="plane" data-from-mode="planeDirect" title="Letadlo"><span class="t-icon"></span><span class="t-label" data-i18n="Letadlo">Letadlo</span></button>
@@ -1048,7 +1049,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
         <input id="animIconSize" type="range" min="18" max="96" step="2" value="34">
-        <label class="check" id="pzTrailerRow" style="margin-top:10px" hidden><input id="pzTrailerOn" type="checkbox" checked> <span data-i18n="S návěsem">S návěsem</span></label>
         <div id="pzWagonRow" style="margin-top:10px" hidden>
           <label for="pzWagonCount"><span data-i18n="Počet vagonů">Počet vagonů</span> <span class="val" id="pzWagonCountVal">2</span></label>
           <input id="pzWagonCount" type="range" min="0" max="8" step="1" value="2">
@@ -4265,6 +4265,7 @@ const ANIM_SYSTEM_ICONS = {
   plane: 'assets/sys_plane.svg',
   car: 'assets/sys_car.png',
   truck: 'assets/sys_tractor.svg',   // tahač; návěs za ním kreslí pzUpdateConsist
+  lorry: 'assets/vehicles/nakladni.webp',
   train: 'assets/sys_train.svg',
   boat: 'assets/sys_boat.svg',
   bus: 'assets/vehicles/autobus-mhd.webp',
@@ -4285,6 +4286,7 @@ const PZ_SPRITES = {
   // dílů (středy měchů / točnice) od přídě; axle = zadní náprava vlečeného dílu
   car:       {src:'assets/vehicles/auto.webp',        len:40},
   truck:     {src:'assets/vehicles/kamion.webp',      len:66, pieces:[0, 210, 900], axle:{1:758}},
+  lorry:     {src:'assets/vehicles/nakladni.webp',    len:44},   // nákladní auto (kabina + skříň, z obrázku kamionu)
   train:     {src:'assets/vehicles/vlak.webp',        len:108, pieces:[0, 327.5, 602.5, 900], repeat:true},
   boat:      {src:'assets/vehicles/lod.webp',         len:54},
   metro:     {src:'assets/vehicles/metro.webp',       len:108, pieces:[0, 312, 582, 900]},
@@ -4665,7 +4667,6 @@ function renderAnimSystemIconSelection(){
   // realistické obrázky nemají barevné vrstvy — barva jen u kreslených (vlak, letadlo)
   $('pzVehiclePalette').hidden = !pal || pzIsSprite(state.animSystemIcon);
   $('pzWagonRow').hidden = state.animSystemIcon !== 'train';
-  if($('pzTrailerRow')) $('pzTrailerRow').hidden = state.animSystemIcon !== 'truck';
   // inverze má smysl jen pro vlastní nahraný obrázek a bod
   $('invertIcons').closest('label').style.display = pal ? 'none' : '';
 }
@@ -7673,7 +7674,6 @@ function serializeProjectSnapshot(){
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
       wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
-      trailer: $('pzTrailerOn') ? !!$('pzTrailerOn').checked : true,
       vehiclePalette: pzVehiclePalette(),
       animStart: $('animStart')?.value || '0',
       animDuration: $('animDuration')?.value || '8',
@@ -7777,9 +7777,9 @@ function applyBasicProjectSnapshot(snapshot){
   state._animTimingPrev = animTiming();
   state.animElapsed = Math.min(state.animElapsed || 0, state._animTimingPrev.total);
   state.animSystemIcon = animation.animSystemIcon && ANIM_SYSTEM_ICONS[animation.animSystemIcon] ? animation.animSystemIcon : null;
+  if(state.animSystemIcon === 'truck' && animation.trailer === false) state.animSystemIcon = 'lorry';   // starší projekt: kamion bez návěsu
   pzSetVehiclePalette(animation.vehiclePalette);
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
-  if($('pzTrailerOn')) $('pzTrailerOn').checked = animation.trailer !== false;
   if($('pzWagonCount')){ $('pzWagonCount').value = String(Math.max(0, Math.min(8, parseInt(animation.wagonCount ?? 2, 10) || 0))); $('pzWagonCountVal').textContent = $('pzWagonCount').value; }
   renderAnimSystemIconSelection();
   renderAnimIconPreview();
@@ -12862,14 +12862,33 @@ function finalAngle(progress){
 // v místě trati vzdáleném o rozvor, střed vozu mezi nimi a natočení podle nich.
 // Další vůz navazuje přes spřáhla (vzdálenost podvozků přes spoj), takže vozy
 // jdou za sebou a v zatáčce se k sobě jen lehce natočí — jako skutečný vlak.
-const PZ_RAIL_TYPES = new Set(['train', 'metro', 'tram']);
-function pzIsRail(type){ return PZ_RAIL_TYPES.has(type) && !!PZ_SPRITE_GEO[type] && !!PZ_SPRITE_IMG[type]; }
+// Platí pro každé vozidlo z obrázku (auto, bus, kamion, vlak, metro, tramvaj…).
+// Průběh animace = poloha PŘÍDĚ: na startu je příď přesně v bodě A a zbytek
+// vozidla je schovaný za maskou (vyjíždí z bodu A), v cíli příď zastaví přesně
+// v bodě B. Nic tak nestojí „zaparkované" před startem ani nepřečnívá za cíl.
+function pzIsRail(type){ return !!PZ_SPRITES[type] && !!PZ_SPRITE_GEO[type] && !!PZ_SPRITE_IMG[type]; }
 let _pzRailCache = null;
+// Ořez čtverce obrázku [0,1]² polorovinami a + bx·x + by·y ≥ 0 (Sutherland–Hodgman).
+// null = nic se neořezává, [] = celý díl je schovaný.
+function pzClipSquare(planes){
+  let poly = [[0, 0], [1, 0], [1, 1], [0, 1]], cut = false;
+  for(const [a, bx, by] of planes){
+    const f = q => a + bx * q[0] + by * q[1], out = [];
+    for(let i = 0; i < poly.length; i++){
+      const P = poly[i], Q = poly[(i + 1) % poly.length], fp = f(P), fq = f(Q);
+      if(fp >= 0) out.push(P);
+      if((fp >= 0) !== (fq >= 0)){ const t = fp / (fp - fq); out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]); }
+      if(fp < 0) cut = true;
+    }
+    poly = out; if(!poly.length) return [];
+  }
+  return cut ? poly : null;
+}
 function pzRailPose(progress){
   const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
   if(!pzIsRail(type) || !m || !route || route.length < 2) return null;
   const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
-  const zoom = m.getZoom(), key = progress + '|' + zoom + '|' + sizePx + '|' + route.length + '|' + type + '|' + ($('pzWagonCount')?.value || '');
+  const zoom = m.getZoom(), key = [progress, zoom, sizePx, route.length, type, $('pzWagonCount')?.value || ''].join('|');
   if(_pzRailCache && _pzRailCache.key === key && _pzRailCache.route === route) return _pzRailCache.pose;
   const {cum, total} = cumulativeRouteLengths(route);
   const lead = pointAtProgress(route, progress) || route[0];
@@ -12888,30 +12907,69 @@ function pzRailPose(progress){
     for(let i = 0; i < 22; i++){ const mid = (hi + lo) / 2, q = at(mid); if(Math.hypot(q[0] - Q[0], q[1] - Q[1]) >= L) lo = mid; else hi = mid; }
     return lo;
   };
+  // maska: za bodem A (proti směru trasy na startu) a za bodem B nic není vidět
+  const unit = v => { const l = Math.hypot(v[0], v[1]) || 1e-9; return [v[0] / l, v[1] / l]; };
+  const ds = Math.min(total * 0.5, Math.max(U * 0.3, 1e-4));
+  const A = at(0), tA = unit([at(ds)[0] - A[0], at(ds)[1] - A[1]]);
+  const B = at(total), tB = unit([B[0] - at(total - ds)[0], B[1] - at(total - ds)[1]]);
+  const clipOf = (c, f, side, sc) => {
+    const pp = [f[1], -f[0]], planes = [];
+    const dot = (u, v) => u[0] * v[0] + u[1] * v[1];
+    // bod obrázku (x, y) ∈ [0,1]² → c + (0,5 − y)·side·f + (x − 0,5)·side·p
+    const plane = (O, t, sgn) => {
+      const k0 = dot([c[0] - O[0], c[1] - O[1]], t), kf = dot(f, t) * side, kp = dot(pp, t) * side;
+      // sgn·((q − O)·t) ≥ 0 lineárně v x, y
+      planes.push([sgn * (k0 + 0.5 * kf - 0.5 * kp), sgn * kp, -sgn * kf]);
+    };
+    if(sc < side * 1.5) plane(A, tA, 1);
+    if(sc > total - side * 1.5) plane(B, tB, -1);
+    return planes.length ? pzClipSquare(planes) : null;
+  };
   const pose = [];
-  // vedoucí vůz: přední podvozek je tam, kam podle průběhu dojela souprava
-  const bL = 0.36;                                  // podvozek ±36 % délky od středu vozu
-  let sF = progress * total + bL * U;               // přední podvozek mírně před „bodem jízdy"
-  let F = at(sF), sR = back(F, sF, 2 * bL * U), R = at(sR);
-  const push = (F, R) => { const c = [(F[0] + R[0]) / 2, (F[1] + R[1]) / 2]; pose.push({c: toLL(c), xy: c, rot: Math.atan2(F[0] - R[0], F[1] - R[1]) * 180 / Math.PI, dir: [F[0] - R[0], F[1] - R[1]]}); };
-  push(F, R);
-  // vagony: přední spřáhlo PŘESNĚ v zadním spřáhle předchozího vozu (souprava se nerozpojí),
-  // zadní podvozek na trati → vůz jede po kolejích a v zatáčce se jen zalomí v kloubu
-  const lp = pose[0], ld = Math.hypot(lp.dir[0], lp.dir[1]) || 1e-9;
-  let hitch = [lp.xy[0] - lp.dir[0] / ld * spec.rear * U, lp.xy[1] - lp.dir[1] / ld * spec.rear * U];
-  let sPrev = sR;
+  const d = progress * total;                         // příď
+  const bL = 0.36;                                    // náprava/podvozek ±36 % délky od středu
+  const sF = d - 0.5 * U + bL * U;
+  const F = at(sF), sR = back(F, sF, 2 * bL * U), R = at(sR);
+  {
+    const c = [(F[0] + R[0]) / 2, (F[1] + R[1]) / 2], f = unit([F[0] - R[0], F[1] - R[1]]);
+    pose.push({c: toLL(c), xy: c, rot: Math.atan2(f[0], f[1]) * 180 / Math.PI, dir: f, clip: clipOf(c, f, U, d - 0.5 * U)});
+  }
+  // vagony / návěs: přední spřáhlo PŘESNĚ v zadním spřáhle předchozího dílu (nerozpojí se),
+  // zadní náprava/podvozek na trati → v zatáčce se díl jen zalomí v kloubu
+  const lp = pose[0];
+  let hitch = [lp.xy[0] - lp.dir[0] * spec.rear * U, lp.xy[1] - lp.dir[1] * spec.rear * U];
+  let sPrev = sR, hidden = lp.clip && !lp.clip.length;
   spec.units.forEach(u => {
-    const b = Math.min(u.front, u.back) * 0.72;      // podvozek ±b od středu vagonu
-    const L = (u.front + b) * U;                       // od spřáhla k zadnímu podvozku
-    const sR2 = back(hitch, Math.min(sPrev, progress * total), L), R2 = at(sR2);
-    let vx = hitch[0] - R2[0], vy = hitch[1] - R2[1]; const vl = Math.hypot(vx, vy) || 1e-9; vx /= vl; vy /= vl;
-    const c = [hitch[0] - vx * u.front * U, hitch[1] - vy * u.front * U];
-    pose.push({c: toLL(c), xy: c, rot: Math.atan2(vx, vy) * 180 / Math.PI, dir: [vx, vy], scale: u.scale, type: u.type});
-    hitch = [c[0] - vx * u.back * U, c[1] - vy * u.back * U];
+    if(hidden) return;                                 // díly za úplně schovaným jsou schované taky
+    const ax = u.axle != null ? u.axle : Math.min(u.front, u.back) * 0.72;
+    const L = (u.front + ax) * U;                      // od spřáhla k zadní nápravě
+    const sR2 = back(hitch, Math.min(sPrev, d), L), R2 = at(sR2);
+    const f = unit([hitch[0] - R2[0], hitch[1] - R2[1]]);
+    const c = [hitch[0] - f[0] * u.front * U, hitch[1] - f[1] * u.front * U];
+    const side = (u.scale || 1) * U, clip = clipOf(c, f, side, sR2 + ax * U);
+    if(clip && !clip.length){ hidden = true; return; }
+    pose.push({c: toLL(c), xy: c, rot: Math.atan2(f[0], f[1]) * 180 / Math.PI, dir: f, scale: u.scale, type: u.type, clip, unit: u});
+    hitch = [c[0] - f[0] * u.back * U, c[1] - f[1] * u.back * U];
     sPrev = sR2;
   });
   _pzRailCache = {key, route, pose};
   return pose;
+}
+// Maska vedoucího dílu (HTML značka): ořez v souřadnicích prvku + údaj pro export.
+function pzApplyLeadClip(el, pose){
+  if(!el) return;
+  const c = pose && pose[0] ? pose[0].clip : null;
+  if(!c){ if(el.style.clipPath){ el.style.clipPath = ''; } delete el.dataset.pzClip; return; }
+  const pts = c.length ? c : [[0, 0], [0, 0], [0, 0]];
+  el.style.clipPath = 'polygon(' + pts.map(q => (q[0] * 100).toFixed(2) + '% ' + (q[1] * 100).toFixed(2) + '%').join(',') + ')';
+  el.dataset.pzClip = JSON.stringify(pts);
+}
+// Ořezaný obrázek dílu pro vrstvu soupravy (průhledné, co je za maskou).
+function pzClippedImage(rec, poly){
+  const src = rec.data, W = src.width, H = src.height, out = new ImageData(new Uint8ClampedArray(src.data), W, H);
+  const n = poly.length, inside = (x, y) => { for(let i = 0; i < n; i++){ const P = poly[i], Q = poly[(i + 1) % n]; if((Q[0] - P[0]) * (y - P[1]) - (Q[1] - P[1]) * (x - P[0]) < 0) return false; } return true; };
+  for(let y = 0; y < H; y++) for(let x = 0; x < W; x++){ if(!inside((x + 0.5) / W, (y + 0.5) / H)) out.data[(y * W + x) * 4 + 3] = 0; }
+  return out;
 }
 // Vozidlo z obrázku míří po trase pod sebou: směr = tětiva trasy přes jeho délku
 // (příď i záď leží na lince). Průměr přes ±2 km (pzAutoHeading) ho na klikaté
@@ -12956,7 +13014,6 @@ function pzConsistSpec(){
       const n = Math.max(0, Math.min(8, parseInt($('pzWagonCount')?.value ?? '2', 10) || 0));
       return n ? {rear:g.rear, units:Array.from({length:n}, (_, i) => g.units[Math.min(i, g.units.length - 1)])} : null;
     }
-    if(state.animSystemIcon === 'truck' && $('pzTrailerOn') && !$('pzTrailerOn').checked) return null;   // nákladní auto bez návěsu
     return {rear:g.rear, units:g.units};
   }
   if(g && !g.units.length) return null;
@@ -13079,12 +13136,20 @@ function pzUpdateConsist(progress, opts){
     const pathXY = d => toXY(pzPointAtKm(coords, cum, total, d, len));
     // směr vedoucího kusu = stejný úhel, jakým je natočená jeho ikonka
     const railPose = pzRailPose(progress);
+    // obrázky všech dílů načíst hned — i těch, které na startu schovává maska
+    spec.units.forEach(u => { try{ pzConsistImage(pzVehicleImage(u.type), false, ''); }catch(e){} });
     if(railPose){
       railPose.slice(1).forEach((pt, i) => {
-        const u = spec.units[i], rec = pzConsistImage(pzVehicleImage(u.type), false, '');
+        const u = pt.unit || spec.units[i], rec = pzConsistImage(pzVehicleImage(u.type), false, '');
         if(!rec.ready) return;
         if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
-        feats.push({type:'Feature', geometry:{type:'Point', coordinates:pt.c}, properties:{img:rec.id, rot: pt.rot, sz: size * (u.scale || 1) / 64, k:i}});
+        let img = rec.id;
+        if(pt.clip){
+          // díl vyjíždějící z bodu A / zajíždějící do B: obrázek ořezaný maskou
+          img = 'pzclip-' + i; const data = pzClippedImage(rec, pt.clip);
+          try{ if(m.hasImage(img)) m.updateImage(img, data); else m.addImage(img, data, {pixelRatio: 256 / 64}); }catch(e){ img = rec.id; }
+        }
+        feats.push({type:'Feature', geometry:{type:'Point', coordinates:pt.c}, properties:{img, rot: pt.rot, sz: size * (u.scale || 1) / 64, k:i}});
       });
     }
     const hd = pzLeadHeading(progress) * Math.PI / 180;
@@ -13868,6 +13933,7 @@ function setAnimProgress(progress){
     { const rp = (animDot && point) ? pzRailPose(eased) : null; if(rp) mPoint = rp[0].c; }
     if(animDot && point) ensureAnimMarker(mPoint, finalAngle(eased), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
     try{ pzUpdateConsist(animDot && point ? eased : null); }catch(e){}
+    try{ pzApplyLeadClip(state.animatedMarkerEl, animDot && point ? pzRailPose(eased) : null); }catch(e){}
     try{ pzUpdateBeacons(state.animatedMarkerEl, eased); }catch(e){}
     // A GLB model pinned to the route follows the animation (position + heading).
     if(state.model3d?.followRoute && model3dHasModel() && mPoint){ state.model3d.lngLat = mPoint; state.model3d.rotationLive = (typeof routeAngle === 'function' ? pzAutoHeading(state.routeCoords, eased) : 0) + (state.model3d.rotationDeg || 0); state.map?.triggerRepaint?.(); }
@@ -14525,6 +14591,7 @@ function createNativeExportMarkers(exportMap){
       temp.animatedMarker.setRotation(cameraFacingDisplayAngle(cameraFacing, finalAngle(progress)));
       temp.markerCameraMode = align.key;
       try{ pzUpdateConsist(progress, {map: exportMap, size}); temp.consist = !!pzConsistSpec(); }catch(e){}
+      try{ pzApplyLeadClip(el, pzRailPose(progress)); }catch(e){}
       try{ pzUpdateBeacons(el, progress); }catch(e){}
     }
   }
@@ -15045,7 +15112,22 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
   const outScaleX = crop.outW / crop.w;
   const outScaleY = crop.outH / crop.h;
 
+  // Maska vedoucího dílu (vyjíždí z bodu A): stejný ořez jako clip-path v náhledu.
   async function drawElement(el, isAnimMarker){
+    const clip = isAnimMarker && el?.dataset?.pzClip ? JSON.parse(el.dataset.pzClip) : null;
+    if(!clip) return drawElementRaw(el, isAnimMarker);
+    const rect = el.getBoundingClientRect();
+    const w = rect.width * scaleX * outScaleX, h = rect.height * scaleY * outScaleY;
+    const cx = (((rect.left - mapRect.left) * scaleX) - crop.x) * outScaleX + w / 2, cy = (((rect.top - mapRect.top) * scaleY) - crop.y) * outScaleY + h / 2;
+    let rot = 0; try{ rot = (state.animatedMarker?.getRotation?.() || 0) * Math.PI / 180; }catch(e){}
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(rot);
+    ctx.beginPath(); clip.forEach((q, i) => { const x = (q[0] - 0.5) * w, y = (q[1] - 0.5) * h; if(i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.closePath();
+    ctx.rotate(-rot); ctx.translate(-cx, -cy);
+    ctx.clip();
+    try{ await drawElementRaw(el, isAnimMarker); } finally { ctx.restore(); }
+  }
+  async function drawElementRaw(el, isAnimMarker){
     if(!el) return;
     const rect = el.getBoundingClientRect();
     const x = (rect.left - mapRect.left) * scaleX;
@@ -16188,6 +16270,8 @@ const PZ_EN_TEXT = {
   "Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)": "Truck — route along roads (ignores truck restrictions)",
   "Loď — trasa po řekách a kanálech ČR": "Boat — route along Czech rivers and canals",
   "Vlak — trasa po železniční síti ČR": "Train — route along the Czech railway network",
+  "Metro — trasa po linkách A, B, C v Praze": "Metro — route along Prague lines A, B, C",
+  "Tramvaj — trasa po tramvajových tratích (Praha, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)": "Tram — route along tram lines (Prague, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)",
   "Loď": "Boat",
   "Metro — linky se kreslí ve svých barvách A/B/C": "Metro — lines are drawn in their A/B/C colours",
   "Náhled křivky rychlosti": "Speed curve preview",
@@ -16239,7 +16323,7 @@ const PZ_EN_TEXT = {
   'Vrhat stíny budov':'Cast building shadows', 'Hranice států':'Country borders', 'Vybarvit stát':'Colour a country',
   'Další nastavení výplně':'More fill settings', 'Průhlednost':'Opacity',
   'Světlá':'Light', 'Světlá – kontrast':'Light – contrast', 'Světlá – výrazná':'Light – bold',
-  'Kamion':'Truck', 'Motorka':'Motorbike', 'Vlak':'Train', 'Loď':'Boat',
+  'Kamion':'Truck', 'Nákladní auto':'Lorry', 'Nákladní':'Lorry', 'Motorka':'Motorbike', 'Vlak':'Train', 'Loď':'Boat',
   'Měřítko':'Scale', 'Velikost':'Size', 'Osa nahoru':'Up axis', 'Nahrát GLB soubor':'Upload GLB file',
   'Ikona se natáčí po směru jízdy / letu automaticky.':'The icon turns along the direction of travel automatically.',
   'Kam míří vlastní obrázek':'Where your image points', 'Síla glow':'Glow strength'
@@ -16556,7 +16640,6 @@ function bindUI(){
   ['pzVehicleBody','pzVehicleAccent'].forEach(id => { ['input','change'].forEach(ev => $(id).addEventListener(ev, () => refreshVehicleColors({body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto:false}))); });
   pzFillSysIconButtons();
   try{ pzLoadSprites(); }catch(e){}
-  $('pzTrailerOn')?.addEventListener('change', () => refreshAnimatedMarkerPreview());
   $('pzWagonCount')?.addEventListener('input', () => { $('pzWagonCountVal').textContent = $('pzWagonCount').value; refreshAnimatedMarkerPreview(); });
   $('invertIcons')?.addEventListener('change', ()=>{
     if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('inverted', pzLegacyIconInverted());
@@ -17221,12 +17304,13 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Nákladní auto": {cs:"Nákladní auto",sk:"Nákladné auto",bg:"Товарен автомобил",hr:"Teretno vozilo",ro:"Camion",en:"Lorry"},
+  "Nákladní": {cs:"Nákladní",sk:"Nákladné",bg:"Товарен",hr:"Teretno",ro:"Camion",en:"Lorry"},
   "Tramvaj": {cs:"Tramvaj",sk:"Električka",bg:"Трамвай",hr:"Tramvaj",ro:"Tramvai",en:"Tram"},
   "linka": {cs:"linka",sk:"linka",bg:"линия",hr:"linija",ro:"linia",en:"line"},
   "Start i cíl jsou ve stejné stanici metra. Zadej jinou stanici.": {cs:"Start i cíl jsou ve stejné stanici metra. Zadej jinou stanici.",sk:"Štart aj cieľ sú v rovnakej stanici metra. Zadaj inú stanicu.",bg:"Началото и целта са в една и съща метростанция. Избери друга станция.",hr:"Početak i cilj su na istoj stanici metroa. Upiši drugu stanicu.",ro:"Startul și destinația sunt în aceeași stație de metrou. Alege altă stație.",en:"Start and destination are the same metro station. Pick another station."},
   "Metrem to nejde — metro jezdí jen v Praze. Napiš stanici (např. Anděl) nebo klikni blízko ní.": {cs:"Metrem to nejde — metro jezdí jen v Praze. Napiš stanici (např. Anděl) nebo klikni blízko ní.",sk:"Metrom to nejde — metro jazdí len v Prahe. Napíš stanicu (napr. Anděl) alebo klikni blízko nej.",bg:"С метро не става — метрото е само в Прага. Напиши станция (напр. Anděl) или кликни близо до нея.",hr:"Metroom ne ide — metro vozi samo u Pragu. Upiši stanicu (npr. Anděl) ili klikni blizu nje.",ro:"Cu metroul nu se poate — metroul circulă doar în Praga. Scrie o stație (ex. Anděl) sau dă clic lângă ea.",en:"Not possible by metro — the metro only runs in Prague. Type a station (e.g. Anděl) or click near one."},
   "Tramvají to nejde — bod je daleko od tramvajové tratě. Klikni blíž ke kolejím.": {cs:"Tramvají to nejde — bod je daleko od tramvajové tratě. Klikni blíž ke kolejím.",sk:"Električkou to nejde — bod je ďaleko od električkovej trate. Klikni bližšie ku koľajam.",bg:"С трамвай не става — точката е далеч от трамвайната линия. Кликни по-близо до релсите.",hr:"Tramvajem ne ide — točka je daleko od tramvajske pruge. Klikni bliže tračnicama.",ro:"Cu tramvaiul nu se poate — punctul e departe de linia de tramvai. Dă clic mai aproape de șine.",en:"Not possible by tram — the point is far from a tram line. Click closer to the tracks."},
-  "S návěsem": {cs:"S návěsem",sk:"S návesom",bg:"С ремарке",hr:"S poluprikolicom",ro:"Cu semiremorcă",en:"With trailer"},
   "Policie": {cs:"Policie",sk:"Polícia",bg:"Полиция",hr:"Policija",ro:"Poliție",en:"Police"},
   "Sanitka": {cs:"Sanitka",sk:"Sanitka",bg:"Линейка",hr:"Hitna",ro:"Ambulanță",en:"Ambulance"},
   "Metro": {cs:"Metro",sk:"Metro",bg:"Метро",hr:"Metro",ro:"Metrou",en:"Metro"},
@@ -17414,6 +17498,8 @@ Object.assign(I18N, {
   "Přepnout na tmavý režim aplikace": {cs:"Přepnout na tmavý režim aplikace",sk:"Prepnúť na tmavý režim aplikácie",bg:"Превключи към тъмен режим на приложението",hr:"Prebaci na tamni način aplikacije",ro:"Comută pe modul întunecat al aplicației",en:"Switch the app to dark mode"},
   "Přetáhni na konkrétní čas": {cs:"Přetáhni na konkrétní čas",sk:"Potiahni na konkrétny čas",bg:"Плъзни до конкретно време",hr:"Povuci na određeno vrijeme",ro:"Trage la un moment anume",en:"Drag to a specific time"},
   "Loď — trasa po řekách a kanálech ČR": {cs:"Loď — trasa po řekách a kanálech ČR",sk:"Loď — trasa po riekach a kanáloch ČR",bg:"Кораб — маршрут по реките и каналите на Чехия",hr:"Brod — ruta po rijekama i kanalima Češke",ro:"Navă — traseu pe râurile și canalele Cehiei",en:"Boat — route along Czech rivers and canals"},
+  "Metro — trasa po linkách A, B, C v Praze": {cs:"Metro — trasa po linkách A, B, C v Praze",sk:"Metro — trasa po linkách A, B, C v Prahe",bg:"Метро — маршрут по линии A, B, C в Прага",hr:"Metro — ruta po linijama A, B, C u Pragu",ro:"Metrou — traseu pe liniile A, B, C din Praga",en:"Metro — route along Prague lines A, B, C"},
+  "Tramvaj — trasa po tramvajových tratích (Praha, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)": {cs:"Tramvaj — trasa po tramvajových tratích (Praha, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)",sk:"Električka — trasa po električkových tratiach (Praha, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)",bg:"Трамвай — маршрут по трамвайните линии (Прага, Бърно, Острава, Пилзен, Оломоуц, Либерец, Мост)",hr:"Tramvaj — ruta po tramvajskim prugama (Prag, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)",ro:"Tramvai — traseu pe liniile de tramvai (Praga, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)",en:"Tram — route along tram lines (Prague, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)"},
   "Vlak — trasa po železniční síti ČR": {cs:"Vlak — trasa po železniční síti ČR",sk:"Vlak — trasa po železničnej sieti ČR",bg:"Влак — маршрут по железопътната мрежа на Чехия",hr:"Vlak — ruta po željezničkoj mreži Češke",ro:"Tren — traseu pe rețeaua feroviară a Cehiei",en:"Train — route along the Czech rail network"},
   "Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)": {cs:"Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)",sk:"Kamión — trasa po cestách (bez ohľadu na zákazy pre nákladné autá)",bg:"Камион — маршрут по пътищата (без оглед на забраните за товарни автомобили)",hr:"Kamion — ruta po cestama (bez obzira na zabrane za teretna vozila)",ro:"Camion — traseu pe șosele (fără a ține cont de restricțiile pentru camioane)",en:"Truck — route by road (ignoring truck restrictions)"},
   "Metro — linky se kreslí ve svých barvách A/B/C": {cs:"Metro — linky se kreslí ve svých barvách A/B/C",sk:"Metro — linky sa kreslia vo svojich farbách A/B/C",bg:"Метро — линиите се чертаят в своите цветове A/B/C",hr:"Metro — linije se crtaju u svojim bojama A/B/C",ro:"Metrou — liniile se desenează în culorile lor A/B/C",en:"Metro — lines are drawn in their A/B/C colours"},

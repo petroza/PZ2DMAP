@@ -127,7 +127,8 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   await page.evaluate(() => { const e = document.getElementById('animStart'); e.value = '10'; e.dispatchEvent(new Event('input', {bubbles:true})); });
   await page.evaluate(() => window.__pzFns.seekAnimationToTime(9.5)); await page.waitForTimeout(150);
   s = await o.st();
-  const atStart = await page.evaluate(() => { const m = window.__pzFns.state.animatedMarker?.getLngLat(); return m ? Math.hypot(m.lng - 14.42, m.lat - 50.08) < 0.01 : false; });
+  // příď stojí v bodě A (střed vozidla je o půl délky za ním, schovaný maskou)
+  const atStart = await page.evaluate(() => { const st = window.__pzFns.state, mk = st.animatedMarker, map = window.__tnMap; if(!mk) return false; const a = map.project(mk.getLngLat()), b = map.project([14.42, 50.08]); return Math.hypot(a.x - b.x, a.y - b.y) <= (parseFloat(st.animatedMarkerEl.style.width) || 30) * 0.6 + 2; });
   check(/ \/ 11\.0 s$/.test(s.info) && atStart, 'prodleva 10 s + délka 1 s: během prodlevy objekt stojí na startu (' + s.info + ')');
   await page.click('#animPlayBtn');
   check(await o.playing(false) && near((await o.st()).elapsed, 11, 0.001), 'animace s dlouhou prodlevou doběhne');

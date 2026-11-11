@@ -20,12 +20,15 @@ const ROAD = [[14.42,50.08],[14.5,50.06],[14.55,50.02],[14.52,49.98],[14.6,49.95
 
   // mezera ve spojích podél celé trasy (v násobcích velikosti vedoucího dílu)
   const gaps = () => page.evaluate(() => {
-    const m = window.__tnMap, F = window.__pzFns, st = F.state, out = {max:0, missing:0};
+    const m = window.__tnMap, F = window.__pzFns, st = F.state, out = {max:0, missing:0, masked:0};
     const dir = deg => [Math.sin(deg * Math.PI / 180), -Math.cos(deg * Math.PI / 180)];
     for(let k = 0; k <= 40; k++){
       const p = k / 40; F.setAnimProgress(p);
       const spec = F.pzConsistSpec(), f = m.getSource('pz-souprava')?.serialize?.().data?.features || [];
-      if(!spec || f.length !== spec.units.length){ out.missing++; continue; }
+      // na startu vyjíždí souprava z bodu A — díly za ním schovává maska
+      const rp = F.pzRailPose(st._pzConsistLast), shown = rp ? rp.length - 1 : spec?.units.length;   // _pzConsistLast = průběh po easingu
+      if(!spec || f.length !== shown){ out.missing++; continue; }
+      if(shown < spec.units.length) out.masked++;
       const size = parseFloat(st.animatedMarkerEl.style.width);
       let prev = {c: m.project(st.animatedMarker.getLngLat()), rot: (F.pzLeadHeading ? F.pzLeadHeading(p) : F.pzAutoHeading(st.routeCoords, p)), back: spec.rear};
       f.forEach((x, i) => {
@@ -40,7 +43,7 @@ const ROAD = [[14.42,50.08],[14.5,50.06],[14.55,50.02],[14.52,49.98],[14.6,49.95
     await pick(t);
     const units = await page.evaluate(() => window.__pzFns.pzConsistSpec()?.units.length || 0);
     const g = await gaps();
-    check(units === n && g.missing === 0 && g.max < 0.03, `${t}: ${units} vlečených dílů, žádné rozpojení (největší mezera ${g.max.toFixed(3)})`);
+    check(units === n && g.missing === 0 && g.max < 0.03, `${t}: ${units} vlečených dílů, žádné rozpojení (největší mezera ${g.max.toFixed(3)}, chybí ${g.missing}, maska ${g.masked})`);
   }
   // vlak: počet vagonů
   await page.evaluate(() => { const e = document.getElementById('pzWagonCount'); e.value = '5'; e.dispatchEvent(new Event('input', {bubbles:true})); });
