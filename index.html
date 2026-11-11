@@ -747,19 +747,14 @@ html[data-ui="light"] .mobile-panel-open .mobile-menu-btn{color:var(--accent)}
 @media (max-width:760px){.project-panel{top:52px;right:8px;left:8px;width:auto}}
 /* Pokročilé funkce: schované, dokud je grafik nezapne v Nastavení (nebo je projekt nepoužívá) */
 html:not(.pz-adv) .pz-adv-only:not(.pz-adv-inuse){display:none!important}
-.pz-tpl-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:10px}
-.pz-tpl-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px;border:1px solid var(--border);background:var(--bg2);color:var(--tx1);font:700 9.5px var(--font);letter-spacing:.2px;text-transform:uppercase;cursor:pointer;min-width:0}
-.pz-tpl-btn img{width:28px;height:28px}
-.pz-tpl-btn:hover{border-color:var(--accent);background:var(--bg3)}
-.pz-tpl-btn:disabled{opacity:.5;cursor:wait}
 .pz-tint-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 2px}
 .pz-tint-sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);padding:0;cursor:pointer;background:var(--bg3);color:var(--tx2);font:700 11px var(--font);line-height:1}
 .pz-tint-sw:hover{border-color:var(--border-hi)}
 .pz-tint-sw.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
 #animIconColor{width:32px;height:26px;padding:0;border:2px solid var(--border);border-radius:6px;background:none;cursor:pointer}
 #animIconColor.active{border-color:var(--accent)}
-/* přetažení dlaždice / ikonky do mapy; pan-y = svislý tah dál posouvá panel */
-.pz-tpl-btn,.pz-icon-pick{touch-action:pan-y;cursor:grab}
+/* přetažení ikonky z palety do mapy; pan-y = svislý tah dál posouvá panel */
+.pz-icon-pick{touch-action:pan-y;cursor:grab}
 .pz-drag-ghost{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;z-index:1000;opacity:.55;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5));transition:opacity .12s}
 .pz-drag-ghost.ok{opacity:1}
 body.pz-dragging,body.pz-dragging *{cursor:grabbing!important;user-select:none}
@@ -1149,15 +1144,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     </div>
 
     <div class="tab-pane active" data-pane="scena">
-      <div class="section" id="pzTemplateSection">
-        <h3>Rychlá scéna</h3>
-        <p class="hint" style="margin:0 0 8px">Zadej místo a klikni na typ události — nebo dlaždici rovnou přetáhni do mapy na místo, kam patří. Ikonka, popisek, případně perimetr se připraví naráz. Všechno jde upravit nebo vrátit Ctrl+Z.</p>
-        <div class="row">
-          <div><label>Místo</label><input id="pzTplPlace" type="text" placeholder="např. Humpolec, D1 km 90"></div>
-          <div><label>Text popisku</label><input id="pzTplText" type="text" placeholder="nepovinné"></div>
-        </div>
-        <div class="pz-tpl-grid" id="pzTplGrid"></div>
-      </div>
       <div class="section" id="mapLabelSection">
         <h3 data-i18n="Popisky">Popisky</h3>
         <div class="row">
@@ -1173,34 +1159,28 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <option value="dark">Černý</option>
           </select></div>
         </div>
-        <div class="small" style="margin:-4px 0 8px">Strana čtverečku i styl platí pro nový popisek a mění vybraný.</div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addMapLabelBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateMapLabelBtn" data-i18n="Upravit vybraný">Upravit vybraný</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteMapLabelBtn" data-i18n="Smazat vybraný">Smazat vybraný</button>
           <button type="button" class="btn btn-sm btn-danger" id="clearMapLabelsBtn" data-i18n="Smazat vše">Smazat vše</button>
         </div>
         <div id="mapLabelList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_labels">Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.</p>
       </div>
 
       <div class="section" id="sceneIconSection">
-        <h3 data-i18n="Ikonky ve scéně">Ikonky ve scéně</h3>
-        <div class="row">
-          <div><label data-i18n="Upload ikonky">Upload ikonky</label><input id="sceneIconUpload" type="file" accept="image/*"></div>
-          <div><label data-i18n="Velikost (ik)">Velikost <span class="val" id="sceneIconSizeVal">44 px</span></label><input id="sceneIconSize" type="range" min="16" max="96" step="2" value="44"></div>
-        </div>
+        <h3 data-i18n="Ikonky">Ikonky</h3>
+        <div class="pz-icon-size"><label data-i18n="Velikost (ik)">Velikost <span class="val" id="sceneIconSizeVal">44 px</span></label><input id="sceneIconSize" type="range" min="16" max="96" step="2" value="44"></div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addSceneIconBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateSceneIconBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneIconBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearSceneIconsBtn" data-i18n="Smazat ikonky">Smazat ikonky</button>
-        </div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
-          <div id="sceneIconPreview" class="icon-preview-box"></div>
-          <span class="small">Nahraj PNG/SVG, pak klikni do mapy. Vybranou ikonku můžeš i zpětně upravit nebo přesunout.</span>
+          <button type="button" class="btn btn-sm btn-danger" id="clearSceneIconsBtn" data-i18n="Smazat vše">Smazat vše</button>
         </div>
         <div id="sceneIconList" class="wp-list"></div>
+        <details class="compact-details">
+          <summary data-i18n="Vlastní ikonka">Vlastní ikonka</summary>
+          <div class="pz-icon-upload">
+            <div id="sceneIconPreview" class="icon-preview-box"></div>
+            <input id="sceneIconUpload" type="file" accept="image/*" aria-label="Vlastní ikonka">
+          </div>
+        </details>
       </div>
 
       <div class="section" id="sceneArrowSection">
@@ -1211,12 +1191,9 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addSceneArrowBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateSceneArrowBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneArrowBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearSceneArrowsBtn" data-i18n="Smazat šipky">Smazat šipky</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearSceneArrowsBtn" data-i18n="Smazat vše">Smazat vše</button>
         </div>
         <div id="sceneArrowList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_arrow">Zapni režim a klikni do mapy dvakrát: první klik = začátek (ocas), druhý = hrot. Šipku vybereš kliknutím na ni, pak táhni za body T/H = posun konců. Barva a tloušťka se vztahují na vybranou. Vyrenderuje se i do videa.</p>
       </div>
       <div class="section" id="pzClosureSection">
         <h3>Uzavírky</h3>
@@ -1243,7 +1220,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       </div>
 
       <div class="section" id="scenePerimeterSection">
-        <h3 data-i18n="Perimetr / radius jako vrstva">Perimetr / radius jako vrstva</h3>
+        <h3 data-i18n="Perimetr">Perimetr</h3>
         <div class="row">
           <div><label data-i18n="Rádius">Rádius</label><input id="scenePerimeterRadius" type="number" min="0.001" step="0.1" value="100"></div>
           <div><label data-i18n="Jednotka">Jednotka</label><select id="scenePerimeterUnit"><option value="km" selected data-i18n="kilometry">kilometry</option><option value="m" data-i18n="metry">metry</option></select></div>
@@ -1254,32 +1231,26 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addScenePerimeterBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
-          <button type="button" class="btn btn-sm" id="updateScenePerimeterBtn" data-i18n="Upravit vybraný">Upravit vybraný</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteScenePerimeterBtn" data-i18n="Smazat vybraný">Smazat vybraný</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearScenePerimetersBtn" data-i18n="Smazat perimetry">Smazat perimetry</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearScenePerimetersBtn" data-i18n="Smazat vše">Smazat vše</button>
         </div>
         <div id="scenePerimeterList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_perimeter">Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.</p>
       </div>
 
       <div class="section" id="sceneDistanceSection">
-        <h3 data-i18n="Vzdálenost jako vrstva">Vzdálenost jako vrstva</h3>
+        <h3 data-i18n="Vzdálenost">Vzdálenost</h3>
         <div class="row">
           <div><label data-i18n="Jednotka">Jednotka</label><select id="sceneDistanceUnit"><option value="km" selected data-i18n="kilometry">kilometry</option><option value="m" data-i18n="metry">metry</option></select></div>
           <div><label>Tloušťka <span class="val" id="sceneDistanceWidthVal">3 px</span></label><input id="sceneDistanceWidth" type="range" min="1" max="12" step="0.5" value="3"></div>
         </div>
         <div class="row">
           <div class="color-row"><input id="sceneDistanceColor" type="color" value="#ffd400"><label data-i18n="Barva linky">Barva linky</label></div>
-          <div class="small" id="sceneDistanceInfo" style="display:flex;align-items:end">Natáhni bod A → B přímo v mapě.</div>
+          <div class="small" id="sceneDistanceInfo" style="display:flex;align-items:end"></div>
         </div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addSceneDistanceBtn" data-i18n="Natáhni A → B">Natáhni A → B</button>
-          <button type="button" class="btn btn-sm" id="updateSceneDistanceBtn" data-i18n="Upravit vybranou">Upravit vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteSceneDistanceBtn" data-i18n="Smazat vybranou">Smazat vybranou</button>
-          <button type="button" class="btn btn-sm btn-danger" id="clearSceneDistancesBtn" data-i18n="Smazat vzdálenosti">Smazat vzdálenosti</button>
+          <button type="button" class="btn btn-sm btn-danger" id="clearSceneDistancesBtn" data-i18n="Smazat vše">Smazat vše</button>
         </div>
         <div id="sceneDistanceList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_distance">Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.</p>
       </div>
 
       <div class="section" id="countryBordersOverlaySection">
@@ -1652,6 +1623,14 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sg-third sg-third-h2"></div>
     <div class="sg-center"></div>
   </div></div>
+  <div id="pzMultiBar" class="pz-multi-bar" role="toolbar" aria-label="Vybrané objekty" hidden>
+    <span class="pz-multi-n"><b id="pzMultiCount">0</b> <span data-i18n="vybráno">vybráno</span></span>
+    <button type="button" data-act="row" title="Zarovnat do řady" aria-label="Zarovnat do řady"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 12h18"/><rect x="5" y="8" width="4" height="8" fill="currentColor" stroke="none"/><rect x="11" y="6" width="4" height="12" fill="currentColor" stroke="none"/><rect x="17" y="9" width="3" height="6" fill="currentColor" stroke="none"/></svg></button>
+    <button type="button" data-act="col" title="Zarovnat do sloupce" aria-label="Zarovnat do sloupce"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v18"/><rect x="8" y="5" width="8" height="4" fill="currentColor" stroke="none"/><rect x="6" y="11" width="12" height="4" fill="currentColor" stroke="none"/><rect x="9" y="17" width="6" height="3" fill="currentColor" stroke="none"/></svg></button>
+    <button type="button" data-act="dup" title="Duplikovat (Ctrl+D)" aria-label="Duplikovat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5.5A1.5 1.5 0 0 1 6.5 4H15"/></svg></button>
+    <button type="button" data-act="del" class="danger" title="Smazat (Delete)" aria-label="Smazat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+    <button type="button" data-act="close" title="Zrušit výběr (Esc)" aria-label="Zrušit výběr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>
   <div class="map-actions">
     <button id="projectPanelBtn" class="map-action-btn" type="button" title="Projekt — uložit, otevřít, sdílet" aria-label="Projekt" aria-expanded="false" aria-controls="projectPanel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -1716,9 +1695,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sc-row"><kbd>Esc</kbd><span data-i18n="sc_esc">Ukončit vkládání</span></div>
     <div class="sc-row"><kbd>Delete</kbd><span data-i18n="sc_delete">Smazat vybraný objekt</span></div>
     <div class="sc-row"><kbd>Ctrl+C/V/D</kbd><span data-i18n="sc_copy">Kopírovat / vložit / duplikovat</span></div>
-    <div class="sc-row"><kbd>Ctrl+klik</kbd><span>Přidat ikonku / popisek do výběru</span></div>
-    <div class="sc-row"><kbd>Alt+táhnout</kbd><span>Vybrat ikonky a popisky obdélníkem</span></div>
-    <div class="sc-row"><kbd>Ctrl+A</kbd><span>Vybrat všechny ikonky a popisky</span></div>
+    <div class="sc-row"><kbd>Ctrl+klik</kbd><span data-i18n="sc_multi_click">Přidat objekt do výběru</span></div>
+    <div class="sc-row"><kbd>Alt+táhnout</kbd><span data-i18n="sc_multi_rect">Vybrat objekty obdélníkem</span></div>
+    <div class="sc-row"><kbd>Ctrl+A</kbd><span data-i18n="sc_multi_all">Vybrat všechny objekty scény</span></div>
+    <div class="sc-row"><kbd>← ↑ ↓ →</kbd><span data-i18n="sc_nudge">Posunout vybrané (Shift = 10 px)</span></div>
     <div class="sc-row"><kbd>Ctrl+klik do mapy</kbd><span data-i18n="sc_via">Přidat zastávku na trase</span></div>
     <div class="sc-row"><kbd>Pravé tl. / Ctrl+táhnout</kbd><span data-i18n="sc_orbit">Naklonit a otočit (3D / glóbus)</span></div>
     <div class="sc-row"><kbd>Shift+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
@@ -1774,7 +1754,6 @@ const I18N = {
   'Zastávky na trase':  {cs:'Zastávky na trase',sk:'Zastávky na trase',bg:'Спирки по маршрута',hr:'Stanice na ruti',ro:'Opriri pe traseu'},
   'Naklikaná cesta': {cs:'Naklikaná cesta',sk:'Nakliknutá cesta',bg:'Ръчно зададен маршрут',hr:'Ručna putanja',ro:'Traseu manual'},
   'Vzhled trasy':      {cs:'Vzhled trasy',sk:'Vzhľad trasy',bg:'Вид на маршрута',hr:'Izgled rute',ro:'Aspect traseu'},
-  'Ikonky ve scéně':   {cs:'Ikonky',sk:'Ikonky',bg:'Икони',hr:'Ikone',ro:'Pictograme'},
   'Popisky':           {cs:'Popisky',sk:'Popisky',bg:'Надписи',hr:'Oznake',ro:'Etichete'},
   'Režim natočení':    {cs:'Režim natočení',sk:'Režim natočenia',bg:'Режим на завъртане',hr:'Način rotacije',ro:'Mod rotație'},
   'Parametry animace': {cs:'Parametry animace',sk:'Parametre animácie',bg:'Параметри на анимацията',hr:'Parametri animacije',ro:'Parametri animație'},
@@ -1807,7 +1786,6 @@ const I18N = {
   'Hledat':            {cs:'Hledat',sk:'Hľadať',bg:'Търси',hr:'Traži',ro:'Caută'},
   'Barva trasy':       {cs:'Barva trasy',sk:'Farba trasy',bg:'Цвят на маршрута',hr:'Boja rute',ro:'Culoare traseu'},
   'Glow / stopa':      {cs:'Glow / stopa',sk:'Žiara / stopa',bg:'Сияние / следа',hr:'Sjaj / trag',ro:'Strălucire / urmă'},
-  'Upload ikonky':     {cs:'Upload ikonky',sk:'Nahrať ikonku',bg:'Качване на икона',hr:'Učitaj ikonu',ro:'Încarcă pictogramă'},
   'Text popisku':      {cs:'Text popisku',sk:'Text popisku',bg:'Текст на надписа',hr:'Tekst oznake',ro:'Text etichetă'},
   'Červený čtvereček': {cs:'Červený čtvereček',sk:'Červený štvorček',bg:'Червен квадрат',hr:'Crveni kvadratić',ro:'Pătrat roșu'},
   'Rozlišení':         {cs:'Rozlišení',sk:'Rozlíšenie',bg:'Резолюция',hr:'Rezolucija',ro:'Rezoluție'},
@@ -1870,22 +1848,14 @@ const I18N = {
   'hint_preset_click':      {cs:'Kliknutím použiješ preset. Ukládá barvy, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí více presetů, Delete je smaže. Pravým tlačítkem duplikuješ nebo smažeš.',sk:'Kliknutím použiješ preset. Ukladá farby, intenzitu a zapnuté/vypnuté vrstvy. Ctrl+klik označí viac presetov, Delete ich zmaže. Pravým tlačidlom duplikuješ alebo zmažeš.',bg:'С клик прилагаш пресет. Запазва цветове, интензивност и вкл/изкл слоеве. Ctrl+клик избира няколко пресета, Delete ги изтрива. С десен бутон дублираш или изтриваш.',hr:'Klikom primjenjuješ preset. Sprema boje, intenzitet i uključene/isključene slojeve. Ctrl+klik označava više preseta, Delete ih briše. Desnim klikom dupliciraš ili brišeš.',ro:'Cu un clic aplici presetarea. Salvează culorile, intensitatea și straturile activate/dezactivate. Ctrl+clic selectează mai multe presetări, Delete le șterge. Cu clic dreapta le duplici sau ștergi.'},
   'hint_political_style':   {cs:'Barvení států a krajů ČR najdeš v záložce Scéna (sekce Hranice a barvy států a Kraje ČR) — funguje na každém podkladu.',sk:'Farbenie štátov a krajov ČR nájdeš v záložke Scéna (sekcie Hranice a farby štátov a Kraje ČR) — funguje na každom podklade.',bg:'Оцветяването на държави и области на Чехия е в раздела Сцена (секции Граници и цветове на държави и Области на ЧР) — работи върху всяка основа.',hr:'Bojanje država i regija ČR nalazi se na kartici Scena (odjeljci Granice i boje država i Regije ČR) — radi na svakoj podlozi.',ro:'Colorarea statelor și a regiunilor Cehiei este în fila Scenă (secțiunile Granițe și culori ale statelor și Regiunile Cehiei) — funcționează pe orice fundal.'},
   'hint_via_points':        {cs:'Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.',sk:'Pridaj zastávky medzi A a B. Trasa sa prepočíta automaticky.',bg:'Добави спирки между A и B. Маршрутът се преизчислява автоматично.',hr:'Dodaj stanice između A i B. Ruta se automatski preračunava.',ro:'Adaugă opriri între A și B. Traseul se recalculează automat.'},
-  'hint_perimeter':         {cs:'Zadej radius číselně, vyber metry/kilometry a klikni do mapy (tlačítko svítí, dokud je vkládání zapnuté). Hotový perimetr vybereš kliknutím přímo v mapě: tahem bodu A posuneš střed, bodem B měníš radius, kolečkem myši nad ním plynule zvětšuješ/zmenšuješ, Delete ho smaže.',sk:'Zadaj radius číselne, vyber metre/kilometre a klikni do mapy (tlačidlo svieti, kým je vkladanie zapnuté). Hotový perimeter vyberieš kliknutím priamo v mape: ťahom bodu A posunieš stred, bodom B meníš radius, kolieskom myši nad ním plynule zväčšuješ/zmenšuješ, Delete ho zmaže.',bg:'Въведи радиус числово, избери метри/километри и кликни в картата (бутонът свети, докато вмъкването е включено). Готовия периметър избираш с клик направо в картата: с точка A местиш центъра, с точка B променяш радиуса, с колелцето на мишката плавно увеличаваш/намаляваш, Delete го изтрива.',hr:'Unesi radijus brojčano, odaberi metre/kilometre i klikni na kartu (gumb svijetli dok je unos uključen). Gotov perimetar odabireš klikom izravno na karti: povlačenjem točke A pomičeš središte, točkom B mijenjaš radijus, kotačićem miša glatko povećavaš/smanjuješ, Delete ga briše.',ro:'Introdu raza numeric, alege metri/kilometri și dă clic pe hartă (butonul luminează cât timp inserarea e activă). Perimetrul gata îl selectezi cu clic direct pe hartă: trăgând punctul A muți centrul, cu punctul B schimbi raza, cu rotița mouse-ului deasupra mărești/micșorezi lin, Delete îl șterge.'},
-  'hint_distance':          {cs:'Zapni režim, chyť mapu v bodě A a táhni do bodu B. Hotovou vzdálenost vybereš kliknutím v mapě, koncové body A/B můžeš přetahovat a celou linku můžeš přesunout tažením za čáru.',sk:'Zapni režim, chyť mapu v bode A a ťahaj do bodu B. Hotovú vzdialenosť vyberieš kliknutím v mape, koncové body A/B môžeš presúvať a celú linku môžeš presunúť ťahaním za čiaru.',bg:'Включи режима, хвани картата в точка A и дърпай до точка B. Готовото разстояние избираш с клик в картата, крайните точки A/B могат да се местят, а цялата линия можеш да преместиш с дърпане на линията.',hr:'Uključi način rada, uhvati kartu u točki A i povuci do točke B. Gotovu udaljenost odabireš klikom na karti, krajnje točke A/B možeš povlačiti, a cijelu liniju možeš pomaknuti povlačenjem crte.',ro:'Activează modul, prinde harta în punctul A și trage până la punctul B. Distanța gata o selectezi cu clic pe hartă, punctele A/B pot fi trase, iar întreaga linie poate fi mutată trăgând de ea.'},
-  'hint_arrow':             {cs:'Zapni režim a klikni do mapy dvakrát: první klik = začátek (ocas), druhý = hrot. Šipku vybereš kliknutím na ni, pak táhni za body T/H = posun konců. Barva a tloušťka se vztahují na vybranou. Vyrenderuje se i do videa.',sk:'Zapni režim a klikni do mapy dvakrát: prvý klik = začiatok (chvost), druhý = hrot. Šípku vyberieš kliknutím na ňu, potom ťahaj za body T/H = posun koncov. Farba a hrúbka sa vzťahujú na vybranú. Vyrenderuje sa aj do videa.',bg:'Включи режима и кликни в картата два пъти: първи клик = начало (опашка), втори = връх. Стрелката избираш с клик върху нея, после дърпай точките T/H = местене на краищата. Цветът и дебелината важат за избраната. Ще се визуализира и във видеото.',hr:'Uključi način rada i klikni na kartu dvaput: prvi klik = početak (rep), drugi = vrh. Strelicu odabireš klikom na nju, zatim povuci točke T/H = pomak krajeva. Boja i debljina odnose se na odabranu. Renderirat će se i u video.',ro:'Activează modul și dă clic pe hartă de două ori: primul clic = început (coadă), al doilea = vârf. Săgeata se selectează cu clic pe ea, apoi tragi punctele T/H = mutarea capetelor. Culoarea și grosimea se aplică celei selectate. Se va reda și în video.'},
   'hint_3d_model':          {cs:'Nahraj .glb (binární glTF). Když model leží na boku, přepni „Osa nahoru" (glTF=Y, Blender/CAD=Z). Otočení Y = směr, Náklon X/Z = naklonění. „Přichytit k povrchu" ho postaví na zem. Umístěný model přesuneš tažením za modrý bod přímo v mapě. Zapni „Vrhat stín" a táhni žluté slunce — stín se podle něj otáčí a prodlužuje. Vše se vyrenderuje i do videa. Pro 3D pohled nakloň mapu nebo zapni glóbus.',sk:'Nahraj .glb (binárny glTF). Keď model leží na boku, prepni „Os nahor" (glTF=Y, Blender/CAD=Z). Otočenie Y = smer, Náklon X/Z = naklonenie. „Prichytiť k povrchu" ho postaví na zem. Umiestnený model presunieš ťahaním za modrý bod priamo v mape. Zapni „Vrhať tieň" a ťahaj žlté slnko — tieň sa podľa neho otáča a predlžuje. Všetko sa vyrenderuje aj do videa. Pre 3D pohľad naklop mapu alebo zapni glóbus.',bg:'Качи .glb (двоичен glTF). Ако моделът лежи настрани, превключи „Ос нагоре" (glTF=Y, Blender/CAD=Z). Завъртане Y = посока, Наклон X/Z = накланяне. „Залепи за повърхността" го поставя на земята. Поставения модел местиш с дърпане на синята точка направо в картата. Включи „Хвърляй сянка" и дърпай жълтото слънце — сянката се завърта и удължава според него. Всичко се визуализира и във видеото. За 3D изглед наклони картата или включи глобус.',hr:'Učitaj .glb (binarni glTF). Kad model leži na boku, prebaci „Os prema gore" (glTF=Y, Blender/CAD=Z). Rotacija Y = smjer, Nagib X/Z = naginjanje. „Prihvati na površinu" postavlja ga na tlo. Postavljeni model pomičeš povlačenjem plave točke izravno na karti. Uključi „Baci sjenu" i povuci žuto sunce — sjena se okreće i produljuje prema njemu. Sve se renderira i u video. Za 3D pogled nagni kartu ili uključi globus.',ro:'Încarcă .glb (glTF binar). Dacă modelul stă pe o parte, comută „Axa în sus" (glTF=Y, Blender/CAD=Z). Rotația Y = direcție, Înclinare X/Z = înclinare. „Lipește de suprafață" îl așază pe sol. Modelul plasat îl muți trăgând punctul albastru direct pe hartă. Activează „Aruncă umbră" și trage soarele galben — umbra se rotește și se alungește după el. Totul se va reda și în video. Pentru vedere 3D, înclină harta sau activează globul.'},
-  'hint_labels':            {cs:'Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.',sk:'Klikni na popisok a vyberieš ho. Klikom na popisok ho rovno prepíšeš, Enter uloží. Popisok môžeš aj presunúť; veľkostný slider mení všetky popisky naraz.',bg:'Кликни върху надпис, за да го избереш. С клик върху него го редактираш веднага, Enter записва. Надписа можеш и да местиш; плъзгачът за размер променя всички надписи наведнъж.',hr:'Klikni na oznaku i odabireš je. Klikom na oznaku je odmah uređuješ, Enter sprema. Oznaku možeš i povući; klizač veličine mijenja sve oznake odjednom.',ro:'Dă clic pe etichetă pentru a o selecta. Cu clic pe etichetă o rescrii direct, Enter salvează. Eticheta poate fi și trasă; cursorul de dimensiune schimbă toate etichetele deodată.'},
   'hint_weather_radar':     {cs:'Radar srážek je živý (RainViewer, ~10min). Satelitní oblačnost je nejnovější denní snímek z NASA GIBS (viditelné pásmo – nejlépe přes den; v noci je tmavý).',sk:'Radar zrážok je živý (RainViewer, ~10min). Satelitná oblačnosť je najnovšia denná snímka z NASA GIBS (viditeľné pásmo – najlepšie cez deň; v noci je tmavá).',bg:'Радарът за валежи е на живо (RainViewer, ~10 мин). Спътниковата облачност е най-новото дневно изображение от NASA GIBS (видим диапазон – най-добре през деня; през нощта е тъмно).',hr:'Radar oborina je uživo (RainViewer, ~10 min). Satelitska naoblaka je najnovija dnevna snimka NASA GIBS (vidljivi pojas – najbolje danju; noću je taman).',ro:'Radarul de precipitații este live (RainViewer, ~10 min). Norii din satelit sunt cea mai recentă imagine de zi de la NASA GIBS (banda vizibilă – cel mai bine ziua; noaptea e întunecat).'},
   'hint_openweather':       {cs:'Globální teplotní/srážková/větrná mapa jako Windy (model OpenWeather). Stačí bezplatný klíč z openweathermap.org → API keys, vlož ho sem. Krytí ovládá všechny vrstvy počasí. Vrstvy se promítnou i do exportu videa.',sk:'Globálna teplotná/zrážková/veterná mapa ako Windy (model OpenWeather). Stačí bezplatný kľúč z openweathermap.org → API keys, vlož ho sem. Krytie ovláda všetky vrstvy počasia. Vrstvy sa premietnu aj do exportu videa.',bg:'Глобална температурна/валежна/ветрова карта като Windy (модел OpenWeather). Нужен е само безплатен ключ от openweathermap.org → API keys, постави го тук. Покритието управлява всички слоеве за времето. Слоевете се пренасят и в експорта на видео.',hr:'Globalna temperaturna/oborinska/vjetrovna karta poput Windyja (model OpenWeather). Dovoljan je besplatan ključ s openweathermap.org → API keys, umetni ga ovdje. Prekrivenost upravlja svim slojevima vremena. Slojevi se prenose i u izvoz videa.',ro:'Hartă globală de temperatură/precipitații/vânt ca Windy (model OpenWeather). E nevoie doar de o cheie gratuită de pe openweathermap.org → API keys, inserată aici. Acoperirea controlează toate straturile meteo. Straturile apar și în exportul video.'},
   'hint_rot_mode_summary':  {cs:'Rovně = pevná orientace. Natočit = rotace podle trasy + ruční korekce.',sk:'Rovno = pevná orientácia. Natočiť = rotácia podľa trasy + ručná korekcia.',bg:'Право = фиксирана ориентация. Завърти = завъртане по маршрута + ръчна корекция.',hr:'Ravno = fiksna orijentacija. Zakreni = rotacija prema ruti + ručna korekcija.',ro:'Drept = orientare fixă. Rotire = rotație după traseu + corecție manuală.'},
   'hint_obj_smooth':        {cs:'Změkčí pohyb objektu (auta) na trase s mnoha malými zatáčkami, aby se „neklepal". Vyšší hodnota = plynulejší, ale lehce zaostává za přesnou polohou.',sk:'Zmäkčí pohyb objektu (auta) na trase s mnohými malými zákrutami, aby sa „netriasol". Vyššia hodnota = plynulejšie, ale mierne zaostáva za presnou polohou.',bg:'Омекотява движението на обекта (колата) по маршрут с много малки завои, за да не „трепери". По-висока стойност = по-плавно, но леко изостава от точната позиция.',hr:'Ublažava kretanje objekta (auta) na ruti s mnogo malih zavoja, kako se ne bi „tresao". Veća vrijednost = glatkije, ali lagano kasni za točnom pozicijom.',ro:'Atenuează mișcarea obiectului (mașinii) pe un traseu cu multe curbe mici, ca să nu „tremure". Valoare mai mare = mai lin, dar rămâne puțin în urma poziției exacte.'},
   'hint_project':           {cs:'Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Uložené projekty vidí všichni kolegové.',sk:'Projekt uloží trasu, vzhľad mapy, ikonky, popisky, animáciu aj politické farbenie. Uložené projekty vidia všetci kolegovia.',bg:'Проектът запазва маршрута, изгледа на картата, иконите, надписите, анимацията и политическото оцветяване. Запазените проекти виждат всички колеги.',hr:'Projekt sprema rutu, izgled karte, ikone, oznake, animaciju i političko bojanje. Spremljene projekte vide svi kolege.',ro:'Proiectul salvează traseul, aspectul hărții, pictogramele, etichetele, animația și colorarea politică. Proiectele salvate sunt vizibile pentru toți colegii.'},
   'hint_batch_export':      {cs:'Vyrenderuje stejnou scénu/animaci do všech zaškrtnutých poměrů stran za sebou (každý soubor dostane příponu …-16x9, …-9x16). Použije aktuální formát videa i průhlednost. Jiný poměr stran než tvůj náhled se ořízne na střed.',sk:'Vyrenderuje rovnakú scénu/animáciu do všetkých zaškrtnutých pomerov strán za sebou (každý súbor dostane príponu …-16x9, …-9x16). Použije aktuálny formát videa aj priehľadnosť. Iný pomer strán ako tvoj náhľad sa orezá na stred.',bg:'Рендерира същата сцена/анимация във всички избрани съотношения последователно (всеки файл получава наставка …-16x9, …-9x16). Използва текущия видео формат и прозрачност. Друго съотношение от твоя преглед се изрязва в центъра.',hr:'Renderira istu scenu/animaciju u sve označene omjere slike zaredom (svaka datoteka dobiva nastavak …-16x9, …-9x16). Koristi trenutni format videa i prozirnost. Drugi omjer slike od tvog pregleda izrezuje se na sredinu.',ro:'Randează aceeași scenă/animație în toate rapoartele bifate, pe rând (fiecare fișier primește sufixul …-16x9, …-9x16). Folosește formatul video curent și transparența. Un alt raport de aspect decât previzualizarea ta este decupat central.'},
-  'Zatím není přidaný žádný perimetr.': {cs:'Zatím není přidaný žádný perimetr.',sk:'Zatiaľ nie je pridaný žiadny perimeter.',bg:'Все още няма добавен периметър.',hr:'Još nije dodan nijedan perimetar.',ro:'Încă niciun perimetru adăugat.',en:'No perimeter added yet.'},
-  'Zatím není přidaná žádná vzdálenost.': {cs:'Zatím není přidaná žádná vzdálenost.',sk:'Zatiaľ nie je pridaná žiadna vzdialenosť.',bg:'Все още няма добавено разстояние.',hr:'Još nije dodana nijedna udaljenost.',ro:'Încă nicio distanță adăugată.',en:'No distance added yet.'},
   'Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.': {cs:'Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.',sk:'Zatiaľ žiadne body. Ctrl + klik pridáva bod. Ctrl + klik na existujúci bod ho zmaže. Backspace vráti posledný krok.',bg:'Все още няма точки. Ctrl + клик добавя точка. Ctrl + клик върху съществуваща точка я изтрива. Backspace връща последната стъпка.',hr:'Još nema točaka. Ctrl + klik dodaje točku. Ctrl + klik na postojeću točku je briše. Backspace vraća zadnji korak.',ro:'Încă niciun punct. Ctrl + clic adaugă un punct. Ctrl + clic pe un punct existent îl șterge. Backspace anulează ultimul pas.',en:'No points yet. Ctrl+click adds a point. Ctrl+click on an existing point deletes it. Backspace undoes the last step.'},
-  'Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.': {cs:'Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.',sk:'Zatiaľ žiadne ikonky. Nahraj ikonku a klikni do mapy.',bg:'Все още няма икони. Качи икона и кликни в картата.',hr:'Još nema ikona. Učitaj ikonu i klikni na kartu.',ro:'Încă nicio pictogramă. Încarcă o pictogramă și dă clic pe hartă.',en:'No icons yet. Upload an icon and click the map.'},
-  'Zatím žádné popisky. Zadej text a klikni do mapy.': {cs:'Zatím žádné popisky. Zadej text a klikni do mapy.',sk:'Zatiaľ žiadne popisky. Zadaj text a klikni do mapy.',bg:'Все още няма надписи. Въведи текст и кликни в картата.',hr:'Još nema oznaka. Unesi tekst i klikni na kartu.',ro:'Încă nicio etichetă. Introdu textul și dă clic pe hartă.',en:'No labels yet. Type text and click the map.'},
 
   // Buttons
   'Načíst styl':     {cs:'Načíst styl',sk:'Načítať štýl',bg:'Зареди стил',hr:'Učitaj stil',ro:'Încarcă stil'},
@@ -1900,11 +1870,6 @@ const I18N = {
   '+ Bod letu klikem':  {cs:'+ Bod letu klikem',sk:'+ Bod letu kliknutím',bg:'+ Точка с клик',hr:'+ Točka klikom',ro:'+ Punct cu click'},
   'Smazat body':     {cs:'Smazat body',sk:'Zmazať body',bg:'Изтрий точки',hr:'Obriši točke',ro:'Șterge puncte'},
   'Klikni do mapy':  {cs:'Klikni do mapy',sk:'Klikni do mapy',bg:'Кликни в картата',hr:'Klikni na kartu',ro:'Click pe hartă'},
-  'Upravit vybranou':{cs:'Upravit vybranou',sk:'Upraviť vybranú',bg:'Редактирай избрана',hr:'Uredi odabranu',ro:'Editează selectata'},
-  'Smazat vybranou': {cs:'Smazat vybranou',sk:'Zmazať vybranú',bg:'Изтрий избрана',hr:'Obriši odabranu',ro:'Șterge selectata'},
-  'Smazat ikonky':   {cs:'Smazat ikonky',sk:'Zmazať ikonky',bg:'Изтрий икони',hr:'Obriši ikone',ro:'Șterge pictograme'},
-  'Upravit vybraný': {cs:'Upravit vybraný',sk:'Upraviť vybraný',bg:'Редактирай избран',hr:'Uredi odabrani',ro:'Editează selectat'},
-  'Smazat vybraný':  {cs:'Smazat vybraný',sk:'Zmazať vybraný',bg:'Изтрий избран',hr:'Obriši odabrani',ro:'Șterge selectat'},
   'Smazat vše':      {cs:'Smazat vše',sk:'Zmazať všetko',bg:'Изтрий всичко',hr:'Obriši sve',ro:'Șterge tot'},
   'Formát videa': {cs:'Formát videa',sk:'Formát videa',bg:'Видео формат',hr:'Format videa',ro:'Format video'},
   'MP4 / H.264': {cs:'MP4 / H.264',sk:'MP4 / H.264',bg:'MP4 / H.264',hr:'MP4 / H.264',ro:'MP4 / H.264'},
@@ -1988,30 +1953,12 @@ const I18N = {
                       hr:'Samo za način „Prilagođeni let". Klikom dodaješ točke. Već dodanu točku možeš povući.',
                       ro:'Doar pentru modul „Zbor personalizat". Click pentru a adăuga puncte. Punctele adăugate pot fi trase.',
                       md:'Doar pentru modul „Zbor personalizat". Click pentru a adăuga puncte. Punctele adăugate pot fi trase.'},
-  'hint_scene_icon': {cs:'Nahraj PNG/SVG, pak klikni do mapy. Vybranou ikonku můžeš i zpětně upravit nebo přesunout.',
-                      sk:'Nahraj PNG/SVG, potom klikni do mapy. Vybranú ikonku môžeš aj spätne upraviť alebo presunúť.',
-                      bg:'Качи PNG/SVG, после кликни в картата. Можеш да редактираш или местиш избрана икона.',
-                      hr:'Učitaj PNG/SVG, zatim klikni na kartu. Odabranu ikonu možeš naknadno urediti ili premjestiti.',
-                      ro:'Încarcă PNG/SVG, apoi click pe hartă. Pictograma selectată poate fi editată sau mutată.',
-                      md:'Încarcă PNG/SVG, apoi click pe hartă. Pictograma selectată poate fi editată sau mutată.'},
-  'hint_label':      {cs:'Klikni na popisek a vybereš ho. Klikem na popisek ho rovnou přepíšeš, Enter uloží. Popisek můžeš i přetáhnout; velikostní slider mění všechny popisky najednou.',
-                      sk:'Klikni na popisok a vyberieš ho. Potom ho môžeš na mape pretiahnuť, zmeniť text alebo veľkosť.',
-                      bg:'Кликни върху надпис, за да го избереш. После можеш да го влачиш, промениш текста или размера.',
-                      hr:'Klikni na oznaku da je odabereš. Zatim je možeš povući, promijeniti tekst ili veličinu.',
-                      ro:'Click pe etichetă pentru a o selecta. Apoi o poți trage, schimba textul sau dimensiunea.',
-                      md:'Click pe etichetă pentru a o selecta. Apoi o poți trage, schimba textul sau dimensiunea.'},
   'hint_rotation':   {cs:'Rovně = pevná orientace. Natočit = rotace podle trasy + ruční korekce.',
                       sk:'Rovno = pevná orientácia. Plynulo = vyhladená rotácia po trase.',
                       bg:'Право = фиксирана ориентация. Плавно = изгладена ротация.',
                       hr:'Ravno = fiksna orijentacija. Glatko = zaglađena rotacija.',
                       ro:'Drept = orientare fixă. Lin = rotație netezită.',
                       md:'Drept = orientare fixă. Lin = rotație netezită.'},
-  'hint_label_side': {cs:'U nového i vybraného popisku můžeš přepnout stranu čtverečku.',
-                      sk:'U nového aj vybraného popisku môžeš prepnúť stranu štvorčeka.',
-                      bg:'При нов или избран надпис можеш да смениш страната на квадрата.',
-                      hr:'Kod nove ili odabrane oznake možeš promijeniti stranu kvadratića.',
-                      ro:'La etichetă nouă sau selectată poți schimba partea pătratului.',
-                      md:'La etichetă nouă sau selectată poți schimba partea pătratului.'},
   'hint_anim_system_icons': {cs:'Kliknutím vybereš vestavěnou animační ikonku.',
                       sk:'Kliknutím vyberieš vstavanú animačnú ikonku.',
                       bg:'С клик избираш вградена иконка за анимация.',
@@ -2109,14 +2056,10 @@ const I18N = {
   'Zdroj smazán.': {cs:'Zdroj smazán.',sk:'Zdroj zmazaný.',bg:'Източникът е изтрит.',hr:'Izvor obrisan.',ro:'Sursă ștearsă.'},
   'Zadej URL šablonu dlaždice.': {cs:'Zadej URL šablonu dlaždice.',sk:'Zadaj URL šablónu dlaždice.',bg:'Въведи URL шаблон за плочка.',hr:'Upiši URL predložak pločice.',ro:'Introdu URL-ul șablonului.'},
   'Nejdřív nahraj ikonku.': {cs:'Nejdřív nahraj ikonku.',sk:'Najskôr nahraj ikonku.',bg:'Първо качи икона.',hr:'Prvo učitaj ikonu.',ro:'Mai întâi încarcă o pictogramă.'},
-  'Nejdřív vyber ikonku.': {cs:'Nejdřív vyber ikonku.',sk:'Najskôr vyber ikonku.',bg:'Първо избери икона.',hr:'Prvo odaberi ikonu.',ro:'Mai întâi selectează pictograma.'},
-  'Ikonka upravena.': {cs:'Ikonka upravena.',sk:'Ikonka upravená.',bg:'Иконата е редактирана.',hr:'Ikona uređena.',ro:'Pictogramă editată.'},
   'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.': {cs:'Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.',sk:'Ikonka vybraná. Delete zmaže, Ctrl+D duplikuje, ťahom posunieš.',bg:'Иконата е избрана. Delete изтрива, Ctrl+D дублира, плъзни за преместване.',hr:'Ikona odabrana. Delete briše, Ctrl+D duplicira, povuci za pomak.',ro:'Pictogramă selectată. Delete șterge, Ctrl+D duplică, trage pentru mutare.'},
   'Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.': {cs:'Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.',sk:'Prepíš text popisu: Enter uloží, Esc zruší. Zmazať: červený krížik pri popise.',bg:'Промени текста: Enter запазва, Esc отказва. Изтриване: Esc и после Delete.',hr:'Prepiši tekst oznake: Enter sprema, Esc odustaje. Brisanje: Esc pa Delete.',ro:'Rescrie textul etichetei: Enter salvează, Esc anulează. Ștergere: Esc apoi Delete.'},
   'Krytí výplně': {cs:'Krytí výplně',sk:'Krytie výplne',bg:'Плътност на запълването',hr:'Neprozirnost ispune',ro:'Opacitatea umplerii',en:'Fill opacity'},
   'Krytí': {cs:'Krytí',sk:'Krytie',bg:'Плътност',hr:'Neprozirnost',ro:'Opacitate',en:'Opacity'},
-  'Nejdřív napiš místo události.': {cs:'Nejdřív napiš místo události.',sk:'Najprv napíš miesto udalosti.',bg:'Първо въведи мястото.',hr:'Najprije upiši mjesto događaja.',ro:'Scrie mai întâi locul evenimentului.',en:'Type the place of the event first.'},
-  'Scéna připravena:': {cs:'Scéna připravena:',sk:'Scéna pripravená:',bg:'Сцената е готова:',hr:'Scena pripremljena:',ro:'Scenă pregătită:',en:'Scene ready:'},
   'Projekt „{0}" už existuje. Přepsat ho?': {cs:'Projekt „{0}" už existuje. Přepsat ho?',sk:'Projekt „{0}" už existuje. Prepísať ho?',bg:'Проектът „{0}" вече съществува. Да бъде ли презаписан?',hr:'Projekt „{0}" već postoji. Prepisati ga?',ro:'Proiectul „{0}" există deja. Îl suprascrii?',en:'Project “{0}” already exists. Overwrite it?'},
   'Uložení zrušeno — zvol jiný název projektu.': {cs:'Uložení zrušeno — zvol jiný název projektu.',sk:'Uloženie zrušené — zvoľ iný názov projektu.',bg:'Запазването е отменено — избери друго име.',hr:'Spremanje otkazano — odaberi drugi naziv.',ro:'Salvare anulată — alege alt nume.',en:'Save cancelled — choose a different project name.'},
   'Ikonka smazána.': {cs:'Ikonka smazána.',sk:'Ikonka zmazaná.',bg:'Иконата е изтрита.',hr:'Ikona obrisana.',ro:'Pictogramă ștearsă.'},
@@ -2170,8 +2113,6 @@ const I18N = {
   'Nejdřív nastav body A a B, pak přidávej průjezdné body trasy.': {cs:'Nejdřív nastav body A a B, pak přidávej průjezdné body trasy.',sk:'Najskôr nastav body A a B, potom pridávaj priejazdné body trasy.',bg:'Първо задай точки A и B, после добавяй междинни точки.',hr:'Prvo postavi točke A i B, zatim dodaj međutočke.',ro:'Mai întâi setează A și B, apoi adaugă puncte intermediare.'},
   'Klikni do mapy pro přidání bodu letu. Backspace vrací poslední bod, Ctrl + klik na bod ho smaže.': {cs:'Klikni do mapy pro přidání bodu letu. Backspace vrací poslední bod, Ctrl + klik na bod ho smaže.',sk:'Klikni do mapy pre pridanie bodu letu. Backspace vráti posledný bod, Ctrl + klik na bod ho zmaže.',bg:'Кликни в картата за добавяне на точка за полет. Backspace връща последната точка, Ctrl + клик я изтрива.',hr:'Klikni na kartu za dodavanje točke leta. Backspace vraća zadnju točku, Ctrl + klik briše.',ro:'Click pe hartă pentru punct de zbor. Backspace anulează ultimul, Ctrl + click îl șterge.'},
   'Body letu smazány.': {cs:'Body letu smazány.',sk:'Body letu zmazané.',bg:'Точките за полет са изтрити.',hr:'Točke leta obrisane.',ro:'Punctele de zbor șterse.'},
-  'Ikonka načtena — klikni do mapy pro vložení nebo ji použij na vybranou ikonku.': {cs:'Ikonka načtena — klikni do mapy pro vložení nebo ji použij na vybranou ikonku.',sk:'Ikonka načítaná — klikni do mapy pre vloženie alebo ju použi na vybranú ikonku.',bg:'Иконата е заредена — кликни в картата или я приложи на избрана икона.',hr:'Ikona učitana — klikni na kartu ili je primijeni na odabranu ikonu.',ro:'Pictogramă încărcată — click pe hartă sau aplică-o pe pictograma selectată.'},
-  'Nejdřív nahraj ikonku přes "Upload ikonky".': {cs:'Nejdřív nahraj ikonku přes "Upload ikonky".',sk:'Najskôr nahraj ikonku cez "Nahrať ikonku".',bg:'Първо качи икона чрез "Качване на икона".',hr:'Prvo učitaj ikonu putem "Učitaj ikonu".',ro:'Mai întâi încarcă o pictogramă prin "Încarcă pictogramă".'},
 
   // Dynamic strings with interpolation
   'Preset přidán.':   {cs:'Preset {0} přidán.',sk:'Preset {0} pridaný.',bg:'Пресет {0} е добавен.',hr:'Preset {0} dodan.',ro:'Preset {0} adăugat.'},
@@ -2217,8 +2158,6 @@ const I18N = {
   'Export už běží — počkej na dokončení.': {cs:'Export už běží — počkej na dokončení.',sk:'Export už beží — počkaj na dokončenie.',bg:'Експортът вече върви — изчакай да завърши.',hr:'Izvoz već traje — pričekaj da završi.',ro:'Exportul rulează deja — așteaptă finalizarea.'},
   'URL musí začínat http:// nebo https://': {cs:'URL musí začínat http:// nebo https://',sk:'URL musí začínať http:// alebo https://',bg:'URL трябва да започва с http:// или https://',hr:'URL mora počinjati s http:// ili https://',ro:'URL-ul trebuie să înceapă cu http:// sau https://'},
   // Misc
-  'čtverec vlevo':  {cs:'čtverec vlevo',sk:'štvorec vľavo',bg:'квадрат вляво',hr:'kvadratić lijevo',ro:'pătrat stânga'},
-  'čtverec vpravo': {cs:'čtverec vpravo',sk:'štvorec vpravo',bg:'квадрат вдясно',hr:'kvadratić desno',ro:'pătrat dreapta'},
   'Popisek':        {cs:'Popisek',sk:'Popisok',bg:'Надпис',hr:'Oznaka',ro:'Etichetă'},
   'Ikonka':         {cs:'Ikonka',sk:'Ikonka',bg:'Икона',hr:'Ikona',ro:'Pictogramă'},
   'Základní styly': {cs:'Základní styly',sk:'Základné štýly',bg:'Основни стилове',hr:'Osnovni stilovi',ro:'Stiluri de bază'},
@@ -2332,21 +2271,16 @@ const I18N = {
   'Barvit kraj': {cs:'Barvit kraj',sk:'Farbiť kraj',bg:'Оцвети областта',hr:'Oboji županiju',ro:'Colorează regiunea',en:'Color region'},
   'Reset výběru': {cs:'Reset výběru',sk:'Reset výberu',bg:'Нулирай избора',hr:'Poništi odabir',ro:'Resetează selecția',en:'Reset selection'},
   'Reset všeho': {cs:'Reset všeho',sk:'Reset všetkého',bg:'Нулирай всичко',hr:'Poništi sve',ro:'Resetează tot',en:'Reset all'},
-  'Perimetr / radius jako vrstva': {cs:'Perimetr / radius',sk:'Perimeter / radius',bg:'Периметър / радиус',hr:'Perimetar / radijus',ro:'Perimetru / rază',en:'Perimeter / radius'},
   'Rádius': {cs:'Rádius',sk:'Rádius',bg:'Радиус',hr:'Radijus',ro:'Rază',en:'Radius'},
   'Jednotka': {cs:'Jednotka',sk:'Jednotka',bg:'Единица',hr:'Jedinica',ro:'Unitate',en:'Unit'},
   'kilometry': {cs:'kilometry',sk:'kilometre',bg:'километри',hr:'kilometri',ro:'kilometri',en:'kilometers'},
   'metry': {cs:'metry',sk:'metre',bg:'метри',hr:'metri',ro:'metri',en:'meters'},
   'Barva vrstvy': {cs:'Barva vrstvy',sk:'Farba vrstvy',bg:'Цвят на слоя',hr:'Boja sloja',ro:'Culoarea stratului',en:'Layer color'},
-  'Smazat perimetry': {cs:'Smazat perimetry',sk:'Zmazať perimetre',bg:'Изтрий периметрите',hr:'Obriši perimetre',ro:'Șterge perimetrele',en:'Delete perimeters'},
-  'Vzdálenost jako vrstva': {cs:'Vzdálenost',sk:'Vzdialenosť',bg:'Разстояние',hr:'Udaljenost',ro:'Distanță',en:'Distance'},
   'Barva linky': {cs:'Barva linky',sk:'Farba linky',bg:'Цвят на линията',hr:'Boja linije',ro:'Culoarea liniei',en:'Line color'},
   'Natáhni A → B': {cs:'Natáhni A → B',sk:'Natiahni A → B',bg:'Изтегли A → B',hr:'Povuci A → B',ro:'Trage A → B',en:'Drag A → B'},
-  'Smazat vzdálenosti': {cs:'Smazat vzdálenosti',sk:'Zmazať vzdialenosti',bg:'Изтрий разстоянията',hr:'Obriši udaljenosti',ro:'Șterge distanțele',en:'Delete distances'},
   'Šipky': {cs:'Šipky',sk:'Šípky',bg:'Стрелки',hr:'Strelice',ro:'Săgeți',en:'Arrows'},
   'Barva šipky': {cs:'Barva šipky',sk:'Farba šípky',bg:'Цвят на стрелка',hr:'Boja strelice',ro:'Culoare săgeată',en:'Arrow color'},
   'Tloušťka šipky': {cs:'Tloušťka šipky',sk:'Hrúbka šípky',bg:'Дебелина на стрелка',hr:'Debljina strelice',ro:'Grosime săgeată',en:'Arrow width'},
-  'Smazat šipky': {cs:'Smazat šipky',sk:'Zmazať šípky',bg:'Изтрий стрелки',hr:'Obriši strelice',ro:'Șterge săgeți',en:'Delete arrows'},
   'Projekty': {cs:'Projekty',sk:'Projekty',bg:'Проекти',hr:'Projekti',ro:'Proiecte',en:'Projects'},
   'Název projektu': {cs:'Název projektu',sk:'Názov projektu',bg:'Име на проекта',hr:'Naziv projekta',ro:'Numele proiectului',en:'Project name'},
   'Uložit projekt': {cs:'Uložit projekt',sk:'Uložiť projekt',bg:'Запази проекта',hr:'Spremi projekt',ro:'Salvează proiectul',en:'Save project'},
@@ -2391,22 +2325,14 @@ const EN_OVERRIDES = {
   "hint_preset_click": "Click to apply a preset. Saves colors, intensity and enabled/disabled layers. Ctrl+click selects multiple presets, Delete removes them. Right-click to duplicate or delete.",
   "hint_political_style": "Country and CZ-region colouring is in the Scene tab (sections Country borders & colours and CZ regions) — it works on any basemap.",
   "hint_via_points": "Add stops between A and B. The route recalculates automatically.",
-  "hint_perimeter": "Enter a radius number, pick metres/kilometres and click the map (the button stays lit while inserting is on). Select a finished perimeter by clicking it on the map: dragging point A moves the centre, point B changes the radius, the mouse wheel over it smoothly grows/shrinks it, Delete removes it.",
-  "hint_distance": "Turn on the mode, grab the map at point A and drag to point B. Select a finished distance by clicking it on the map; endpoints A/B can be dragged, and the whole line can be moved by dragging it.",
-  "hint_arrow": "Turn on the mode and click the map twice: first click = start (tail), second = tip. Select an arrow by clicking it, then drag the T/H points to move the ends. Colour and thickness apply to the selected arrow. It renders into video too.",
   "hint_3d_model": "Upload a .glb (binary glTF). If the model lies on its side, toggle \"Up axis\" (glTF=Y, Blender/CAD=Z). Y rotation = heading, X/Z tilt = leaning. \"Snap to surface\" plants it on the ground. Drag the blue point on the map to move a placed model. Turn on \"Cast shadow\" and drag the yellow sun — the shadow rotates and lengthens accordingly. Everything renders into video too. Tilt the map or turn on the globe for a 3D view.",
-  "hint_labels": "Click a label to select it. Clicking a label lets you retype it directly, Enter saves. Labels can be dragged too; the size slider changes all labels at once.",
   "hint_weather_radar": "The precipitation radar is live (RainViewer, ~10 min). Cloud cover is the latest daily NASA GIBS pass (visible band — best during the day; dark at night).",
   "hint_openweather": "A global temperature/precipitation/wind map like Windy (OpenWeather model). Just paste a free key from openweathermap.org → API keys here. Coverage controls all weather layers. Layers appear in the video export too.",
   "hint_rot_mode_summary": "Straight = fixed orientation. Turn = rotation following the route + manual correction.",
   "hint_obj_smooth": "Softens the object's (car's) motion on a route with many small turns so it doesn't \"jitter\". A higher value is smoother but lags slightly behind the exact position.",
   "hint_project": "A project saves the route, map appearance, icons, labels, animation and political colouring. Saved projects are visible to all colleagues.",
   "hint_batch_export": "Renders the same scene/animation into every checked aspect ratio in sequence (each file gets a …-16x9, …-9x16 suffix). Uses the current video format and transparency. An aspect ratio other than your preview is centre-cropped.",
-  "Zatím není přidaný žádný perimetr.": "No perimeter added yet.",
-  "Zatím není přidaná žádná vzdálenost.": "No distance added yet.",
   "Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.": "No points yet. Ctrl+click adds a point. Ctrl+click on an existing point deletes it. Backspace undoes the last step.",
-  "Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.": "No icons yet. Upload an icon and click the map.",
-  "Zatím žádné popisky. Zadej text a klikni do mapy.": "No labels yet. Type text and click the map.",
   "btn_undo": "Undo",
   "btn_redo": "Redo",
   "btn_refresh": "Refresh",
@@ -2453,12 +2379,10 @@ const EN_OVERRIDES = {
   "Hledám trasu…": "Searching route…",
   "Ikonka": "Icon",
   "Ikonka duplikována.": "Icon duplicated.",
-  "Ikonka načtena — klikni do mapy pro vložení nebo ji použij na vybranou ikonku.": "Icon loaded — click on the map to place it, or apply it to the selected icon.",
   "Ikonka přesunuta.": "Icon moved.",
   "Ikonka vybrána. Delete smaže, Ctrl+D duplikuje, tahem posuneš.": "Icon selected. Delete removes it, Ctrl+D duplicates, drag to move.",
   "Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.": "Type the label text: Enter saves, Esc cancels. Delete: red cross next to the label.",
   "Ikonka smazána.": "Icon deleted.",
-  "Ikonka upravena.": "Icon updated.",
   "Ikonka vložena do mapy.": "Icon placed on the map.",
   "Ikonka vložena jako kopie.": "Icon pasted as a copy.",
   "Ikonka zkopírována. Ctrl+V ji vloží jako kopii.": "Icon copied. Ctrl+V pastes it as a copy.",
@@ -2470,15 +2394,12 @@ const EN_OVERRIDES = {
   "Nastav body A a B, pak drž Ctrl a klikáním do mapy přidávej průjezdné body.": "Set points A and B, then hold Ctrl and click on the map to add waypoints.",
   "Načítám mapový podklad…": "Loading map base…",
   "Mapový podklad načten.": "Map base loaded.",
-  "Žádné šipky.": "No arrows.",
   "Žádné uzavírky.": "No closures.",
-  "Natáhni bod A → B přímo v mapě.": "Drag from point A to B directly on the map.",
   "Presety barev platí jen pro vektorové podklady (Positron, Liberty…). Satelitní a další rastrové podklady se barvit nedají.": "Colour presets apply only to vector base maps (Positron, Liberty…). Satellite and other raster base maps cannot be recoloured.",
   "Nejdřív klikem vyber objekt na mapě.": "First, click to select an object on the map.",
   "Nejdřív nahraj ikonku.": "Upload an icon first.",
   "Nejdřív najdi trasu.": "Find a route first.",
   "Nejdřív nastav body A a B, pak přidávej průjezdné body trasy.": "First set points A and B, then add route waypoints.",
-  "Nejdřív vyber ikonku.": "Select an icon first.",
   "Nejdřív vyber popisek.": "Select a label first.",
   "Název nemůže být prázdný.": "The name cannot be empty.",
   "Popisek": "Label",
@@ -2523,8 +2444,6 @@ const EN_OVERRIDES = {
   "Zdroj přejmenován.": "Source renamed.",
   "Zdroj smazán.": "Source deleted.",
   "Základní styly": "Base styles",
-  "čtverec vlevo": "square on left",
-  "čtverec vpravo": "square on right",
   "Styl": "Style",
   "Trasa": "Route",
   "Scéna": "Scene",
@@ -2542,7 +2461,6 @@ const EN_OVERRIDES = {
   "Zastávky na trase": "Stops on route",
   "Naklikaná cesta": "Manual route",
   "Vzhled trasy": "Route appearance",
-  "Ikonky ve scéně": "Icons in scene",
   "Popisky": "Labels",
   "Režim natočení": "Rotation mode",
   "Parametry animace": "Animation settings",
@@ -2571,7 +2489,6 @@ const EN_OVERRIDES = {
   "Hledat": "Search",
   "Barva trasy": "Route color",
   "Glow / stopa": "Glow / trail",
-  "Upload ikonky": "Upload icon",
   "Text popisku": "Label text",
   "Červený čtvereček": "Red square",
   "Rozlišení": "Resolution",
@@ -2623,11 +2540,6 @@ const EN_OVERRIDES = {
   "+ Bod letu klikem": "+ Add flight point by click",
   "Smazat body": "Delete points",
   "Klikni do mapy": "Click on map",
-  "Upravit vybranou": "Edit selected",
-  "Smazat vybranou": "Delete selected",
-  "Smazat ikonky": "Delete icons",
-  "Upravit vybraný": "Edit selected",
-  "Smazat vybraný": "Delete selected",
   "Smazat vše": "Delete all",
   "Export video": "Export video",
   "Screenshot PNG": "PNG screenshot",
@@ -2647,10 +2559,7 @@ const EN_OVERRIDES = {
   "hint_preset": "Click to apply a preset. Custom presets are numbered automatically and get a random icon.",
   "hint_waypoint": "Add stops between A and B. The route recalculates automatically.",
   "hint_flight": "Only for “Custom flight” mode. Click to add flight points. Existing points can be dragged on the map.",
-  "hint_scene_icon": "Upload PNG/SVG, then click on the map. The selected icon can be edited or moved later.",
-  "hint_label": "Click a label to select it. Then you can drag it on the map or change its text and size.",
   "hint_rotation": "Straight = fixed orientation. Rotate = follows the route with optional manual offset.",
-  "hint_label_side": "For a new or selected label you can switch the side of the square.",
   "hint_anim_custom_icon": "Upload PNG or SVG for a custom animation icon.",
   "hint_anim_angle": "In Straight mode you set a fixed angle. In Rotate mode you add an angle offset to the route.",
   "hint_export_video_format": "If the browser cannot export MP4 directly, the app downloads a PNG sequence + FFmpeg script.",
@@ -2874,6 +2783,8 @@ function updateSceneAddButtonStates(){
   set(document.getElementById('addScenePerimeterBtn'), state.addingScenePerimeter);
   set(document.getElementById('addSceneDistanceBtn'), state.addingSceneDistance);
   set(document.getElementById('addSceneArrowBtn'), state.addingSceneArrow);
+  set(document.getElementById('addSceneIconBtn'), state.addingSceneIcon);
+  set(document.getElementById('addMapLabelBtn'), state.addingMapLabel);
   // Zelený roh = do této sekce teď půjde klik do mapy (zapnuté vkládání).
   // Dřív svítil u každé sekce, do které grafik jen klikl, a nic neříkal.
   try{
@@ -5640,7 +5551,7 @@ function initMap(){
     updateMapSourceWatermark();
     initAutosave();
     setStatus(t('Mapa načtena.'));
-    try{ pzInitMarquee(); }catch(_e){}
+    try{ pzInitMarquee(); pzInitMultiBar(); }catch(_e){}
     // automatická barva ikony podle světlosti podkladu (po každém dokreslení mapy; levné)
     try{ state.map.on('idle', () => { try{ pzAutoVehicleRefresh(); }catch(_e){} }); pzAutoVehicleRefresh(); }catch(_e){}
     // Až teď je mapa i vrstvy připravené, takže sdílený stav jde bezpečně použít.
@@ -6094,6 +6005,7 @@ function ensureScenePerimeterSources(m){
     'circle-stroke-color':'#ffffff',
     'circle-stroke-width':3
   }});
+  pzEnsureMultiHighlight(m, 'scene-perimeters', false);
   initScenePerimeterMapInteractions(m);
 }
 function isScenePerimeterMapInteractive(){
@@ -6120,10 +6032,13 @@ function initScenePerimeterMapInteractions(m){
   const feature = ev => ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle' && f?.properties?.id) || ev?.features?.find?.(f => f?.properties?.id) || null;
 
   function selectFromMap(ev, options={}){
+    if(pzMultiSkipLayerPress(ev)) return null;
     // The A/B edit handles stay grabbable even while "insert" mode is armed, so you
     // can resize/move a freshly-placed perimeter without first turning insert off.
     const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle');
     if((!isScenePerimeterMapInteractive() || state.addingScenePerimeter) && !onHandle) return null;
+    // šipka nebo vzdálenost ležící uvnitř kruhu má přednost — jinak by nešla chytit
+    if(!onHandle && ev?.point && (pickSceneArrowFeatureAt(ev.point) || pickSceneDistanceFeatureAt(ev.point))) return null;
     const f = feature(ev);
     const id = f?.properties?.id || null;
     if(!id) return null;
@@ -6191,6 +6106,9 @@ function initScenePerimeterMapInteractions(m){
     // new perimeter) — this is what makes "place then immediately drag to edit" work.
     const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle');
     if(state.addingScenePerimeter && !onHandle) return;
+    if(pzMultiSkipLayerPress(ev)) return;
+    if(isScenePerimeterMapInteractive() && pzGroupLayerDragStart(ev, 'p:' + (feature(ev)?.properties?.id || ''))) return;
+    try{ window.__pzPushUndo?.(); }catch(e){}
     const picked = selectFromMap(ev, {silent:true});
     const item = picked?.item;
     if(!item) return;
@@ -6309,7 +6227,7 @@ function redrawScenePerimeters(){
   (state.scenePerimeters || []).forEach(item => {
     if(!item?.lngLat || !(Number(item.radiusMeters) > 0)) return;
     const selected = item.id === state.selectedScenePerimeterId;
-    const props = {id:item.id, color:item.color || '#ffd400', fillOpacity:Number(item.opacity ?? 0.12), selected};
+    const props = {id:item.id, color:item.color || '#ffd400', fillOpacity:Number(item.opacity ?? 0.12), selected, multi:pzIsMulti('p:' + item.id)};
     rings.push({type:'Feature', geometry:{type:'Polygon', coordinates:[scenePerimeterCirclePolygon(item.lngLat, item.radiusMeters, 144)]}, properties:props});
     centers.push({type:'Feature', geometry:{type:'Point', coordinates:item.lngLat}, properties:props});
     if(selected){
@@ -6329,16 +6247,13 @@ function renderScenePerimeterList(){
   const list = $('scenePerimeterList'); if(!list) return;
   list.innerHTML = '';
   if(!state.scenePerimeters.length){
-    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím není přidaný žádný perimetr.')) + '</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné perimetry.')) + '</div>';
     return;
   }
   state.scenePerimeters.forEach((item, idx) => {
-    const row = document.createElement('div');
-    row.className = 'wp-item scene-perimeter-row' + (item.id === state.selectedScenePerimeterId ? ' active' : '');
-    row.innerHTML = `<span class="wp-badge">${idx+1}</span><span class="color-dot" style="background:${escapeHtml(item.color || '#ffd400')}"></span><div style="flex:1;min-width:0"><div style="font-weight:700">${escapeHtml(scenePerimeterLabelText(item))}</div><div class="small">${Number(item.lngLat?.[1] || 0).toFixed(5)}, ${Number(item.lngLat?.[0] || 0).toFixed(5)} · průhlednost ${Math.round((Number(item.opacity ?? 0.12))*100)} %</div></div><button class="btn-remove" type="button" title="Smazat">×</button>`;
-    row.addEventListener('click', ev => { if(ev.target.closest('.btn-remove')) return; selectScenePerimeter(item.id); });
-    row.querySelector('.btn-remove').addEventListener('click', ev => { ev.stopPropagation(); deleteScenePerimeter(item.id); });
-    list.appendChild(row);
+    list.appendChild(pzSceneRow({key:'p:' + item.id, kind:'perimeter', item}, 'scene-perimeter-row', item.id === state.selectedScenePerimeterId, idx,
+      `<span class="color-dot" style="background:${escapeHtml(item.color || '#ffd400')}"></span>`,
+      scenePerimeterLabelText(item), ''));
   });
 }
 function selectScenePerimeter(id, syncInputs=true){
@@ -6403,6 +6318,7 @@ function deleteScenePerimeter(id){
   renderScenePerimeterList();
   redrawScenePerimeters();
   refreshSceneEditMarkers(false);
+  setStatus(t('Perimetr smazán.'));
 }
 function clearScenePerimeters(silent=false){
   state.scenePerimeters = [];
@@ -6425,6 +6341,19 @@ function updateScenePerimeterOpacityReadout(){
 // That keeps the head/shaft proportions correct and the thickness equal to the chosen
 // px width at any zoom. It is recomputed on map move (and per export frame) so it stays
 // a constant on-screen size. Plain GeoJSON → renders on the live map AND in the export.
+// Čárkovaný obrys kolem vrstev ve vícenásobném výběru (šipka, perimetr, vzdálenost)
+// — stejný vzhled jako rámeček kolem vybraných ikonek. Polygon: obrys odsazený ven,
+// čára: linka po obou stranách.
+function pzEnsureMultiHighlight(m, source, isLine){
+  const id = source + '-multi';
+  try{
+    if(!m.getSource(source) || m.getLayer(id)) return;
+    const filter = ['==', ['get','multi'], true];
+    const geo = isLine ? {'line-gap-width': ['+', ['coalesce',['get','width'],3], 9]} : {'line-offset': -5};
+    m.addLayer({id: id + '-bg', type:'line', source, filter, layout:{'line-join':'round'}, paint:{'line-color':'#ffffff', 'line-width':3.5, 'line-opacity':0.9, ...geo}});
+    m.addLayer({id, type:'line', source, filter, layout:{'line-join':'round'}, paint:{'line-color':'#F03B3B', 'line-width':2, 'line-dasharray':[2,1.5], ...geo}});
+  }catch(e){}
+}
 function ensureSceneArrowSources(m){
   if(!m || !m.isStyleLoaded || !m.isStyleLoaded()) return;
   if(!m.getSource('scene-arrows')) m.addSource('scene-arrows', {type:'geojson', data: emptyFC()});
@@ -6434,6 +6363,7 @@ function ensureSceneArrowSources(m){
   if(!m.getLayer('scene-arrows-fill')) m.addLayer({id:'scene-arrows-fill', type:'fill', source:'scene-arrows',
     filter:['==',['get','kind'],'fill'],
     paint:{'fill-color':['coalesce',['get','color'],'#e22d2d'],'fill-opacity':['coalesce',['get','op'],1]}});
+  pzEnsureMultiHighlight(m, 'scene-arrows', false);
   try{ pzBindArrowBodyDrag(m); }catch(e){}
 }
 function getSceneArrowById(id){ return state.sceneArrows.find(a => a.id === id) || null; }
@@ -6483,7 +6413,7 @@ function setSceneArrowData(){
     const sel = a.id === state.selectedSceneArrowId;
     const w = Math.max(2, Number(a.width) || 6) + (sel ? 1.5 : 0);
     const fill = sceneArrowPolygon(a.tail, a.head, w, 0, scale);
-    if(fill) feats.push({type:'Feature', properties:{kind:'fill', id:a.id, color:a.color || '#e22d2d'}, geometry:{type:'Polygon', coordinates:[fill]}});
+    if(fill) feats.push({type:'Feature', properties:{kind:'fill', id:a.id, color:a.color || '#e22d2d', multi:pzIsMulti('a:' + a.id)}, geometry:{type:'Polygon', coordinates:[fill]}});
   });
   // Rubber-band preview while placing the second point.
   if(state.addingSceneArrow && state.sceneArrowDraft && state.sceneArrowPreview){
@@ -6527,18 +6457,12 @@ function syncSceneArrowInputs(a){
 function renderSceneArrowList(){
   const box = $('sceneArrowList'); if(!box) return;
   box.innerHTML = '';
-  if(!state.sceneArrows.length){ box.innerHTML = '<div class="small" style="opacity:.6;padding:4px 2px">' + escapeHtml(t('Žádné šipky.')) + '</div>'; return; }
+  if(!state.sceneArrows.length){ box.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné šipky.')) + '</div>'; return; }
   state.sceneArrows.forEach((a, idx) => {
-    const row = document.createElement('div');
-    row.className = 'wp-item' + (a.id === state.selectedSceneArrowId ? ' active' : '');
     const km = haversineKm(a.tail, a.head);
-    row.innerHTML = `<span class="small">Šipka ${idx+1} · ${km >= 10 ? Math.round(km) : km.toFixed(1)} km</span>`;
-    const del = document.createElement('button');
-    del.className = 'btn-remove'; del.type = 'button'; del.textContent = '×'; del.title = t('Smazat');
-    del.addEventListener('click', ev => { ev.stopPropagation(); deleteSceneArrow(a.id); });
-    row.appendChild(del);
-    row.addEventListener('click', ()=> selectSceneArrow(a.id));
-    box.appendChild(row);
+    box.appendChild(pzSceneRow({key:'a:' + a.id, kind:'arrow', item:a}, 'scene-arrow-row', a.id === state.selectedSceneArrowId, idx,
+      `<span class="color-dot" style="background:${escapeHtml(a.color || '#e22d2d')}"></span>`,
+      t('Šipka') + ' ' + (idx + 1), (km >= 10 ? Math.round(km) : km.toFixed(1).replace('.', ',')) + ' km'));
   });
 }
 function selectSceneArrow(id, syncInputs=true){
@@ -6589,6 +6513,7 @@ function deleteSceneArrow(id){
   if(state.selectedSceneArrowId === id) state.selectedSceneArrowId = null;
   renderSceneArrowList();
   redrawSceneArrows();
+  setStatus(t('Šipka smazána.'));
 }
 function clearSceneArrows(silent=false){
   state.sceneArrows = [];
@@ -6626,10 +6551,14 @@ function pzBindArrowBodyDrag(m){
     setTimeout(() => { state.ignoreNextMapClick = false; }, 120);
   };
   const start = ev => {
-    if(state.addingSceneArrow || state.measureMode !== 'off' || state.draggingScenePerimeter) return;
+    if(state.addingSceneArrow || state.measureMode !== 'off' || state.draggingScenePerimeter || state.draggingSceneDistance) return;
     if(ev.originalEvent?.target?.closest?.('.scene-edit-handle')) return;   // úchyt T/H se táhne sám
+    if(pzMultiSkipLayerPress(ev)) return;
     const f = pickSceneArrowFeatureAt(ev.point); if(!f) return;
     const a = getSceneArrowById(f.properties.id); if(!a) return;
+    if(pzGroupLayerDragStart(ev, 'a:' + a.id)) return;
+    // posun šipky, která nebyla předem vybraná, by jinak nešel vrátit
+    try{ window.__pzPushUndo?.(); }catch(e){}
     if(state.selectedSceneArrowId !== a.id) selectSceneArrow(a.id);
     drag = {id:a.id, start:[ev.lngLat.lng, ev.lngLat.lat], tail:a.tail.slice(), head:a.head.slice(), moved:false};
     state.draggingViaPoint = true; state.ignoreNextMapClick = true;
@@ -6694,6 +6623,7 @@ function ensureSceneDistanceSources(m){
     'circle-stroke-color':['case',['boolean',['get','selected'],false],'#ffffff','#1a1d24'],
     'circle-stroke-width':['case',['boolean',['get','selected'],false],3,2]
   }});
+  pzEnsureMultiHighlight(m, 'scene-distances', true);
   initSceneDistanceMapInteractions(m);
 }
 function isSceneDistanceMapInteractive(){
@@ -6827,6 +6757,7 @@ function initSceneDistanceMapInteractions(m){
   }
 
   function selectFromMap(ev, options={}){
+    if(pzMultiSkipLayerPress(ev)) return null;
     if(!isSceneDistanceMapInteractive() || state.addingSceneDistance) return null;
     const f = feature(ev);
     const id = f?.properties?.id;
@@ -6877,6 +6808,9 @@ function initSceneDistanceMapInteractions(m){
     if(state.draggingSceneDistance || state.addingSceneDistance || state.measureMode !== 'off') return;
     const f = feature(ev);
     if(!f?.properties?.id) return;
+    if(pzMultiSkipLayerPress(ev)) return;
+    if(isSceneDistanceMapInteractive() && pzGroupLayerDragStart(ev, 'd:' + f.properties.id)) return;
+    try{ window.__pzPushUndo?.(); }catch(e){}
     const item = selectFromMap(ev, {silent:true});
     if(!item) return;
     const pointKey = f.properties.point === 'A' ? 'a' : (f.properties.point === 'B' ? 'b' : null);
@@ -6937,7 +6871,7 @@ function redrawSceneDistances(){
   (state.sceneDistances || []).forEach(item => {
     if(!item?.a || !item?.b) return;
     const selected = item.id === state.selectedSceneDistanceId;
-    const props = {id:item.id, color:item.color || '#ffd400', width:Number(item.width || 3), selected};
+    const props = {id:item.id, color:item.color || '#ffd400', width:Number(item.width || 3), selected, multi:pzIsMulti('d:' + item.id)};
     const parts=sceneDistanceLineParts(item);
     if(parts.length) lines.push({
       type:'Feature',
@@ -6957,16 +6891,13 @@ function renderSceneDistanceList(){
   const list = $('sceneDistanceList'); if(!list) return;
   list.innerHTML = '';
   if(!state.sceneDistances.length){
-    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím není přidaná žádná vzdálenost.')) + '</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné vzdálenosti.')) + '</div>';
     return;
   }
   state.sceneDistances.forEach((item, idx) => {
-    const row = document.createElement('div');
-    row.className = 'wp-item scene-distance-row' + (item.id === state.selectedSceneDistanceId ? ' active' : '');
-    row.innerHTML = `<span class="wp-badge">${idx+1}</span><span class="color-dot" style="background:${escapeHtml(item.color || '#ffd400')}"></span><div style="flex:1;min-width:0"><div style="font-weight:700">${escapeHtml(sceneDistanceLabelText(item))}</div><div class="small">A ${Number(item.a?.[1] || 0).toFixed(5)}, ${Number(item.a?.[0] || 0).toFixed(5)} · B ${Number(item.b?.[1] || 0).toFixed(5)}, ${Number(item.b?.[0] || 0).toFixed(5)}</div></div><button class="btn-remove" type="button" title="Smazat">×</button>`;
-    row.addEventListener('click', ev => { if(ev.target.closest('.btn-remove')) return; selectSceneDistance(item.id); });
-    row.querySelector('.btn-remove').addEventListener('click', ev => { ev.stopPropagation(); deleteSceneDistance(item.id); });
-    list.appendChild(row);
+    list.appendChild(pzSceneRow({key:'d:' + item.id, kind:'distance', item}, 'scene-distance-row', item.id === state.selectedSceneDistanceId, idx,
+      `<span class="color-dot" style="background:${escapeHtml(item.color || '#ffd400')}"></span>`,
+      sceneDistanceLabelText(item), ''));
   });
 }
 function selectSceneDistance(id, syncInputs=true){
@@ -7040,6 +6971,7 @@ function deleteSceneDistance(id){
   renderSceneDistanceList();
   redrawSceneDistances();
   refreshSceneEditMarkers(false);
+  setStatus(t('Vzdálenost smazána.'));
 }
 function clearSceneDistances(silent=false){
   state.sceneDistances = [];
@@ -7060,7 +6992,7 @@ function updateSceneDistanceWidthReadout(){
 function updateSceneDistanceInfo(item){
   const el = $('sceneDistanceInfo');
   if(!el) return;
-  el.textContent = item ? sceneDistanceLabelText(item) : 'Natáhni bod A → B přímo v mapě.';
+  el.textContent = item ? sceneDistanceLabelText(item) : '';
 }
 
 // Zapsat vlastnost, která tam UŽ JE, není zadarmo: MapLibre si vrstvu označí jako
@@ -9969,7 +9901,7 @@ function tnClientId(){
 function tnUserName(){ try{ return (localStorage.getItem('tnmap_user')||'').slice(0,40); }catch(_e){ return ''; } }
 const tnPending = {seconds:0, exports:0, routes:0, chat:0};
 function tnBump(kind, n){ if(kind in tnPending) tnPending[kind] += (n||1); }
-// Počet použití funkce (tlačítko, režim, šablona, nástroj asistenta) — odchází
+// Počet použití funkce (tlačítko, režim, nástroj asistenta) — odchází
 // spolu se statistikou. Slouží k rozhodnutí, co se používá a co je zbytečné.
 const tnFeatPending = {};
 function tnFeature(key){
@@ -9982,7 +9914,6 @@ try{
     const el = e.target?.closest?.('button,[role="button"],.preset-card,input[type="checkbox"]'); if(!el) return;
     if(el.closest('.tnchat-panel')) return;
     if(el.matches('.transport-btn')) return tnFeature('mode:' + (el.dataset.mode || ''));
-    if(el.matches('.pz-tpl-btn')) return tnFeature('tpl:' + (el.dataset.tpl || ''));
     if(el.matches('.tab-btn')) return tnFeature('tab:' + (el.dataset.tab || ''));
     if(el.matches('.sys-icon-btn')) return tnFeature('icon:' + (el.dataset.sysIcon || ''));
     if(el.matches('.preset-card')) return tnFeature('preset');
@@ -10576,6 +10507,7 @@ function model3dClear(){
 
 function onMapClick(e){
   if(state.ignoreNextMapClick){ state.ignoreNextMapClick = false; return; }
+  if(pzMultiMapClick(e)) return;
   if(state.addingModel3d){ model3dPlaceAt(e.lngLat); return; }
   if(state.draggingViaPoint || state.draggingScenePerimeter || state.draggingSceneDistance || state.drawingSceneDistance) return;
   if(state.measureMode && state.measureMode !== 'off'){ handleMeasureClick([e.lngLat.lng, e.lngLat.lat]); return; }
@@ -10586,13 +10518,13 @@ function onMapClick(e){
     const distanceFeature = pickSceneDistanceFeatureAt(e.point);
     if(distanceFeature?.properties?.id){ selectSceneDistance(distanceFeature.properties.id, true); return; }
   }
-  if(isScenePerimeterMapInteractive()){
-    const perimeterFeature = pickScenePerimeterFeatureAt(e.point);
-    if(perimeterFeature?.properties?.id){ selectScenePerimeter(perimeterFeature.properties.id, true); return; }
-  }
   if(isSceneArrowMapInteractive()){
     const arrowFeature = pickSceneArrowFeatureAt(e.point);
     if(arrowFeature?.properties?.id){ selectSceneArrow(arrowFeature.properties.id, true); return; }
+  }
+  if(isScenePerimeterMapInteractive()){
+    const perimeterFeature = pickScenePerimeterFeatureAt(e.point);
+    if(perimeterFeature?.properties?.id){ selectScenePerimeter(perimeterFeature.properties.id, true); return; }
   }
   if(state.addingSceneIcon){ addSceneIcon(e.lngLat); return; }
   if(state.addingMapLabel){ addMapLabelAt(e.lngLat); return; }
@@ -10871,20 +10803,35 @@ function selectSceneIcon(id, syncInputs=true){
   refreshSceneIconSelection();
 }
 
+// Jednotný řádek seznamu objektů scény (ikonky, popisky, šipky, perimetry, vzdálenosti):
+// klik vybere, Ctrl+klik přidá do skupiny, × smaže (s krokem zpět).
+function pzSceneRow(x, cls, active, idx, mediaHtml, title, sub){
+  const row = document.createElement('div');
+  row.className = 'wp-item ' + cls + (active ? ' active' : '') + (pzIsMulti(x.key) ? ' pz-multi-row' : '');
+  row.dataset.pzKey = x.key;
+  row.innerHTML = `<span class="wp-badge">${idx+1}</span>${mediaHtml || ''}<div style="flex:1;min-width:0"><div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(title)}</div>${sub ? `<div class="small">${escapeHtml(sub)}</div>` : ''}</div><button class="btn-remove" type="button">×</button>`;
+  const del = row.querySelector('.btn-remove');
+  del.title = t('Smazat'); del.setAttribute('aria-label', t('Smazat'));
+  row.addEventListener('click', ev => {
+    if(ev.target.closest('.btn-remove')) return;
+    pzMultiClear(true);
+    pzSelectSingleByKey(x.key);
+    setStatus(t('Vybráno. Tažením nebo šipkami posuneš, Delete smaže, Ctrl+D duplikuje.'));
+  });
+  del.addEventListener('click', ev => { ev.stopPropagation(); try{ window.__pzPushUndo?.(); }catch(e){} pzObjDelete(x); });
+  return row;
+}
 function renderSceneIconList(){
   const list = $('sceneIconList'); if(!list) return;
   list.innerHTML = '';
   if(!state.sceneIcons.length){
-    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné ikonky. Nahraj ikonku a klikni do mapy.')) + '</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné ikonky.')) + '</div>';
     return;
   }
   state.sceneIcons.forEach((item, idx) => {
-    const row = document.createElement('div');
-    row.className = 'wp-item scene-icon-row' + (item.id === state.selectedSceneIconId ? ' active' : '');
-    row.innerHTML = `<span class="wp-badge">${idx+1}</span><div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto"><img src="${escapeHtml(item.data)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div><div style="flex:1;min-width:0"><div style="font-weight:700" data-i18n-tpl='icon'>${t('Ikonka')} ${idx+1}</div><div class="small">${item.size}px</div></div><button class="btn-remove" type="button" title="Smazat">×</button>`;
-    row.addEventListener('click', ev => { if(ev.target.closest('.btn-remove')) return; selectSceneIcon(item.id); });
-    row.querySelector('.btn-remove').addEventListener('click', ev => { ev.stopPropagation(); deleteSceneIcon(item.id); });
-    list.appendChild(row);
+    list.appendChild(pzSceneRow({key:'i:' + item.id, kind:'icon', item}, 'scene-icon-row', item.id === state.selectedSceneIconId, idx,
+      `<div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:0 0 auto"><img src="${escapeHtml(item.data)}" alt="" style="max-width:100%;max-height:100%;object-fit:contain"></div>`,
+      t('Ikonka') + ' ' + (idx + 1), item.size + ' px'));
   });
 }
 
@@ -10903,35 +10850,90 @@ function updateSceneIcon(id, updates={}){
   renderSceneIconList();
 }
 
-function applySelectedSceneIconChanges(){
-  const item = getSceneIconById(state.selectedSceneIconId);
-  if(!item){ setStatus(t('Nejdřív vyber ikonku.')); return; }
-  updateSceneIcon(item.id, {
-    size: $('sceneIconSize')?.value || item.size,
-    data: state.sceneIconData || item.data
-  });
-  setStatus(t('Ikonka upravena.'));
-}
-
 // ===== Vícenásobný výběr grafiky na mapě (jako v grafickém editoru) =====
-// Ctrl/Cmd+klik přidá nebo odebere ikonku či popisek z výběru, Alt+tažení
-// vybere obdélníkem, Ctrl+A vybere všechno. Delete smaže vybrané, tažením
-// kterékoli vybrané položky se posune celá skupina. Esc / klik do mapy výběr zruší.
+// Platí pro všechno, co grafik do scény vkládá: ikonky, popisky, šipky, perimetry
+// i vzdálenosti. Ctrl/Cmd+klik přidá nebo odebere objekt z výběru, Alt+tažení
+// vybere obdélníkem, Ctrl+A vybere všechno. Delete smaže vybrané, tažením kterékoli
+// vybrané položky se posune celá skupina, šipky na klávesnici posouvají po 1 px
+// (se Shift po 10 px), Ctrl+C/V/D kopíruje celou skupinu. Esc / klik do mapy výběr zruší.
 state.multiSel = new Set();
 function pzMultiAll(){
   return [
     ...(state.sceneIcons || []).map(item => ({key:'i:' + item.id, kind:'icon', item})),
-    ...(state.mapLabels || []).map(item => ({key:'l:' + item.id, kind:'label', item}))
+    ...(state.mapLabels || []).map(item => ({key:'l:' + item.id, kind:'label', item})),
+    ...(state.sceneArrows || []).map(item => ({key:'a:' + item.id, kind:'arrow', item})),
+    ...(state.scenePerimeters || []).map(item => ({key:'p:' + item.id, kind:'perimeter', item})),
+    ...(state.sceneDistances || []).map(item => ({key:'d:' + item.id, kind:'distance', item}))
   ];
 }
+// Ikonky a popisky jsou značky (DOM), šipky / perimetry / vzdálenosti vrstvy mapy.
+// Tyhle dvě funkce je sjednocují: objekt = seznam bodů [lng, lat], které jdou posunout.
+function pzObjPts(x){
+  const it = x.item;
+  if(x.kind === 'icon' || x.kind === 'label'){
+    const ll = it.marker?.getLngLat?.();
+    return [ll ? [ll.lng, ll.lat] : it.lngLat.slice()];
+  }
+  if(x.kind === 'arrow') return [it.tail.slice(), it.head.slice()];
+  if(x.kind === 'perimeter') return [it.lngLat.slice()];
+  return [it.a.slice(), it.b.slice()];
+}
+function pzObjSetPts(x, pts){
+  const it = x.item;
+  if(x.kind === 'icon' || x.kind === 'label'){ it.lngLat = pts[0]; it.marker?.setLngLat?.(pts[0]); }
+  else if(x.kind === 'arrow'){ it.tail = pts[0]; it.head = pts[1]; }
+  else if(x.kind === 'perimeter'){ it.lngLat = pts[0]; }
+  else { it.a = pts[0]; it.b = pts[1]; }
+}
+// Posun objektů o pixely obrazovky (drží rozestupy tak, jak je grafik vidí).
+function pzObjsShiftPx(objs, dx, dy){
+  const m = state.map; if(!m) return;
+  objs.forEach(o => pzObjSetPts(o.x, o.px.map(p => { const ll = m.unproject([p.x + dx, p.y + dy]); return [ll.lng, ll.lat]; })));
+}
+function pzObjsWithPx(list){
+  const m = state.map;
+  return list.map(x => ({x, px: pzObjPts(x).map(p => m.project(p))}));
+}
+let _pzMultiRedrawRAF = 0, _pzMultiRedrawKinds = null;
+function pzMultiRedrawLayers(kinds, now){
+  const run = ks => {
+    try{ if(!ks || ks.has('arrow')) redrawSceneArrows(); }catch(e){}
+    try{ if(!ks || ks.has('perimeter')) redrawScenePerimeters(); }catch(e){}
+    try{ if(!ks || ks.has('distance')) redrawSceneDistances(); }catch(e){}
+  };
+  if(now){ run(kinds); return; }
+  if(!_pzMultiRedrawKinds) _pzMultiRedrawKinds = new Set();
+  (kinds || ['arrow','perimeter','distance']).forEach(k => _pzMultiRedrawKinds.add(k));
+  if(_pzMultiRedrawRAF) return;
+  _pzMultiRedrawRAF = requestAnimationFrame(() => { _pzMultiRedrawRAF = 0; const ks = _pzMultiRedrawKinds; _pzMultiRedrawKinds = null; run(ks); });
+}
+function pzMultiRenderLists(){
+  try{ renderSceneIconList(); }catch(e){}
+  try{ renderMapLabelList(); }catch(e){}
+  try{ renderSceneArrowList(); }catch(e){}
+  try{ renderScenePerimeterList(); }catch(e){}
+  try{ renderSceneDistanceList(); }catch(e){}
+}
+function pzIsMulti(key){ return !state._exporting && !!state.multiSel?.has(key); }
 function pzMultiPrune(){
   const keys = new Set(pzMultiAll().map(x => x.key));
   [...state.multiSel].forEach(k => { if(!keys.has(k)) state.multiSel.delete(k); });
 }
 function pzMultiSelected(){ pzMultiPrune(); return pzMultiAll().filter(x => state.multiSel.has(x.key)); }
+let _pzMultiDrawn = new Set();
 function pzMultiRefresh(){
   pzMultiPrune();
   pzMultiAll().forEach(x => x.item.marker?.getElement?.()?.classList.toggle('pz-multi', state.multiSel.has(x.key)));
+  // Vrstvy překreslit jen tam, kde se výběr změnil: po setData mapa chvíli nevrací
+  // objekty pod kurzorem a rychlý další Ctrl+klik by šipku „nenašel“.
+  const now = new Set([...state.multiSel].filter(k => 'apd'.includes(k[0])));
+  const kinds = new Set();
+  [...now].filter(k => !_pzMultiDrawn.has(k)).concat([..._pzMultiDrawn].filter(k => !now.has(k)))
+    .forEach(k => kinds.add({a:'arrow', p:'perimeter', d:'distance'}[k[0]]));
+  _pzMultiDrawn = now;
+  if(kinds.size) pzMultiRedrawLayers(kinds, true);
+  pzMultiRenderLists();
+  pzMultiBarUpdate();
 }
 function pzMultiStatus(){
   const n = state.multiSel.size;
@@ -10947,87 +10949,230 @@ function pzMultiKeyOfEl(el){
   const x = pzMultiAll().find(x => x.item.marker?.getElement?.() === el);
   return x ? x.key : null;
 }
-function pzMultiToggleEl(el){
-  const key = pzMultiKeyOfEl(el); if(!key) return false;
+function pzMultiClearSingles(){
+  try{ clearSceneIconSelection(); }catch(e){}
+  try{ clearMapLabelSelection(); }catch(e){}
+  try{ clearSceneArrowSelection(); }catch(e){}
+  try{ clearScenePerimeterSelection(); }catch(e){}
+  try{ clearSceneDistanceSelection(); }catch(e){}
+}
+function pzSelectSingleByKey(key){
+  const id = String(key || '').slice(2);
+  if(key[0] === 'i') selectSceneIcon(id);
+  else if(key[0] === 'l') selectMapLabel(id);
+  else if(key[0] === 'a') selectSceneArrow(id);
+  else if(key[0] === 'p') selectScenePerimeter(id);
+  else if(key[0] === 'd') selectSceneDistance(id);
+}
+function pzMultiToggleKey(key){
+  if(!key) return false;
   // první Ctrl+klik převezme i dosud vybranou položku (klasický výběr jedné věci)
   if(!state.multiSel.size){
     if(state.selectedSceneIconId) state.multiSel.add('i:' + state.selectedSceneIconId);
     if(state.selectedMapLabelId) state.multiSel.add('l:' + state.selectedMapLabelId);
+    if(state.selectedSceneArrowId) state.multiSel.add('a:' + state.selectedSceneArrowId);
+    if(state.selectedScenePerimeterId) state.multiSel.add('p:' + state.selectedScenePerimeterId);
+    if(state.selectedSceneDistanceId) state.multiSel.add('d:' + state.selectedSceneDistanceId);
   }
   if(state.multiSel.has(key)) state.multiSel.delete(key); else state.multiSel.add(key);
-  try{ clearSceneIconSelection(); }catch(e){}
-  try{ clearMapLabelSelection(); }catch(e){}
-  pzMultiRefresh(); pzMultiStatus();
-  if(!state.multiSel.size) setStatus(t('Výběr zrušen.'));
+  pzMultiClearSingles();
+  pzMultiRefresh();
+  if(state.multiSel.size) pzMultiStatus(); else setStatus(t('Výběr zrušen.'));
   return true;
+}
+function pzMultiToggleEl(el){ return pzMultiToggleKey(pzMultiKeyOfEl(el)); }
+function pzMultiSetKeys(keys){
+  state.multiSel.clear();
+  (keys || []).forEach(k => { if(k) state.multiSel.add(k); });
+  pzMultiClearSingles();
+  pzMultiRefresh();
 }
 function pzMultiSelectAll(){
   const all = pzMultiAll(); if(!all.length) return false;
-  all.forEach(x => state.multiSel.add(x.key));
-  try{ clearSceneIconSelection(); }catch(e){}
-  try{ clearMapLabelSelection(); }catch(e){}
-  pzMultiRefresh(); pzMultiStatus();
+  pzMultiSetKeys(all.map(x => x.key));
+  pzMultiStatus();
   return true;
+}
+function pzObjDelete(x){
+  if(x.kind === 'icon') deleteSceneIcon(x.item.id);
+  else if(x.kind === 'label') deleteMapLabel(x.item.id);
+  else if(x.kind === 'arrow') deleteSceneArrow(x.item.id);
+  else if(x.kind === 'perimeter') deleteScenePerimeter(x.item.id);
+  else deleteSceneDistance(x.item.id);
 }
 function pzMultiDelete(){
   const sel = pzMultiSelected(); if(!sel.length) return false;
-  sel.forEach(x => { if(x.kind === 'icon') deleteSceneIcon(x.item.id); else deleteMapLabel(x.item.id); });
+  sel.forEach(pzObjDelete);
   state.multiSel.clear();
+  pzMultiRefresh();
   setStatus(t('Smazáno {0} položek.', sel.length));
   return true;
 }
-let _pzGroupDrag = null;
+
+// ---- společný posun skupiny -------------------------------------------------
+// Tažení začíná buď na značce (ikonka / popisek — táhne ji MapLibre a ostatní ji
+// následují), nebo na vrstvě mapy (šipka / perimetr / vzdálenost — táhneme sami).
+let _pzGroup = null;
+function pzGroupBegin(skipMarker){
+  const list = pzMultiSelected().filter(x => !(skipMarker && x.item.marker === skipMarker));
+  _pzGroup = {marker: skipMarker || null, objs: pzObjsWithPx(list), kinds: new Set(list.map(x => x.kind)), moved:false};
+  return _pzGroup;
+}
+function pzGroupApply(dx, dy){
+  const g = _pzGroup; if(!g) return;
+  if(Math.abs(dx) + Math.abs(dy) > 0.5) g.moved = true;
+  pzObjsShiftPx(g.objs, dx, dy);
+  pzMultiRedrawLayers(g.kinds);
+}
+function pzGroupFinish(){
+  const g = _pzGroup; if(!g) return null;
+  _pzGroup = null;
+  pzMultiRedrawLayers(g.kinds, true);
+  try{ scheduleSceneLayerRedraw('group-move'); }catch(e){}
+  pzMultiRefresh();
+  if(g.moved){
+    state._pzGroupDragAt = Date.now();
+    setStatus(t('Posunuto {0} položek.', g.objs.length + (g.marker ? 1 : 0)));
+  }
+  return g;
+}
 function pzGroupDragStart(marker){
   const key = pzMultiKeyOfEl(marker.getElement());
-  if(!key || !state.multiSel.has(key) || state.multiSel.size < 2){ if(key && !state.multiSel.has(key)) pzMultiClear(true); _pzGroupDrag = null; return false; }
+  if(!key || !state.multiSel.has(key) || state.multiSel.size < 2){
+    // tažení jedné věci (i jediné „vybrané“ z Ctrl+kliku) = obyčejný posun bez skupiny
+    if(state.multiSel.size) pzMultiClear(true);
+    _pzGroup = null; return false;
+  }
   // výchozí bod z okamžiku stisku myši — dragstart přichází až po prvním
   // pohybu, kdy je značka už o kus posunutá (skupina by zaostávala)
   const pre = state._pzPreDrag && state._pzPreDrag.el === marker.getElement() ? state._pzPreDrag.ll : marker.getLngLat();
-  const m = state.map, p0 = m.project(pre);
-  _pzGroupDrag = {marker, p0, others: pzMultiSelected().filter(x => x.item.marker !== marker).map(x => ({x, p: m.project(x.item.marker.getLngLat())}))};
+  const g = pzGroupBegin(marker);
+  g.p0 = state.map.project(pre);
   return true;
 }
 function pzGroupDrag(marker){
-  const g = _pzGroupDrag; if(!g || g.marker !== marker) return;
-  const m = state.map, p = m.project(marker.getLngLat()), dx = p.x - g.p0.x, dy = p.y - g.p0.y;
-  g.others.forEach(o => o.x.item.marker.setLngLat(m.unproject([o.p.x + dx, o.p.y + dy])));
+  const g = _pzGroup; if(!g || g.marker !== marker) return;
+  const p = state.map.project(marker.getLngLat());
+  pzGroupApply(p.x - g.p0.x, p.y - g.p0.y);
 }
 function pzGroupDragEnd(){
-  const g = _pzGroupDrag;
-  if(!g) return false;
+  const g = _pzGroup;
+  if(!g || !g.marker) return false;
   pzGroupDrag(g.marker);   // poslední krok tažení (událost drag nemusí přijít)
-  _pzGroupDrag = null;
-  g.others.forEach(o => { const ll = o.x.item.marker.getLngLat(); o.x.item.lngLat = [ll.lng, ll.lat]; });
-  try{ renderSceneIconList(); }catch(e){}
-  try{ renderMapLabelList(); }catch(e){}
-  pzMultiRefresh();
-  setStatus(t('Posunuto {0} položek.', g.others.length + 1));
+  g.moved = true;
+  pzGroupFinish();
   return true;
 }
+// Ctrl/Cmd při stisku na vrstvě = výběr (ne tažení); během tažení skupiny se
+// další vrstvy pod kurzorem nesmí chytit taky.
+function pzMultiSkipLayerPress(ev){
+  const oe = ev?.originalEvent;
+  return !!_pzGroup || !!(oe && (oe.ctrlKey || oe.metaKey));
+}
+function pzGroupLayerDragStart(ev, key){
+  const m = state.map;
+  if(!m || !key || _pzGroup || !ev?.point) return false;
+  if(state.multiSel.size < 2 || !state.multiSel.has(key)){
+    // tažení jedné věci mimo skupinu = obyčejný posun; skupina se tím ruší (jako u ikonek)
+    if(state.multiSel.size) pzMultiClear(true);
+    return false;
+  }
+  try{ window.__pzPushUndo?.(); }catch(e){}
+  const p0 = {x: ev.point.x, y: ev.point.y};
+  pzGroupBegin(null);
+  state.draggingViaPoint = true; state.ignoreNextMapClick = true;
+  try{ ev.preventDefault?.(); ev.originalEvent?.preventDefault?.(); m.dragPan.disable(); m.dragRotate.disable(); }catch(e){}
+  m.getCanvas().style.cursor = 'grabbing';
+  let ended = false;
+  const move = e2 => { if(e2?.point) pzGroupApply(e2.point.x - p0.x, e2.point.y - p0.y); };
+  const end = () => {
+    if(ended) return; ended = true;
+    m.off('mousemove', move); m.off('touchmove', move);
+    try{ m.dragPan.enable(); m.dragRotate.enable(); }catch(e){}
+    m.getCanvas().style.cursor = '';
+    state.draggingViaPoint = false;
+    const g = pzGroupFinish();
+    // stisk bez pohybu = obyčejný klik: vybere jen tuhle věc (jako v editoru)
+    if(g && !g.moved){ pzMultiClear(true); pzSelectSingleByKey(key); }
+    state._pzMultiClickGuard = Date.now();
+    setTimeout(() => { state.ignoreNextMapClick = false; }, 120);
+  };
+  m.on('mousemove', move); m.on('touchmove', move);
+  m.once('mouseup', end); m.once('touchend', end);
+  window.addEventListener('mouseup', end, {once:true});
+  window.addEventListener('touchend', end, {once:true});
+  return true;
+}
+// Která šipka / vzdálenost / perimetr leží pod bodem (pro Ctrl+klik do mapy).
+function pzMultiPickLayerKeyAt(point){
+  const a = pickSceneArrowFeatureAt(point);
+  if(a?.properties?.id) return 'a:' + a.properties.id;
+  if(isSceneDistanceMapInteractive()){
+    const d = pickSceneDistanceFeatureAt(point);
+    if(d?.properties?.id) return 'd:' + d.properties.id;
+  }
+  if(isScenePerimeterMapInteractive()){
+    const p = pickScenePerimeterFeatureAt(point);
+    if(p?.properties?.id) return 'p:' + p.properties.id;
+  }
+  return null;
+}
+function pzMultiMapClick(e){
+  const oe = e?.originalEvent;
+  if(!oe || !(oe.ctrlKey || oe.metaKey)) return false;
+  if(Object.values(SCENE_ADD_FLAGS).some(f => state[f]) || (state.measureMode && state.measureMode !== 'off')) return false;
+  const key = pzMultiPickLayerKeyAt(e.point); if(!key) return false;
+  state._pzMultiClickGuard = Date.now();
+  return pzMultiToggleKey(key);
+}
+const PZ_MARKER_SEL = '.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker';
 // Ctrl/Cmd+klik na ikonku nebo popisek: přidat do výběru (capture — dřív než
 // vlastní klik značky, který by otevřel úpravu textu nebo vybral jen ji).
 document.addEventListener('click', e => {
-  const el = e.target?.closest?.('.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker');
+  const el = e.target?.closest?.(PZ_MARKER_SEL);
   if(!el) return;
+  // klik, kterým končí tažení skupiny, nesmí výběr zrušit ani otevřít přepis popisku
+  if(Date.now() - (state._pzGroupDragAt || 0) < 250){ e.stopPropagation(); e.preventDefault(); return; }
   if(e.ctrlKey || e.metaKey){
     if(pzMultiToggleEl(el)){ e.stopPropagation(); e.preventDefault(); }
     return;
   }
-  // obyčejný klik na nevybranou položku výběr zruší (jako v editoru)
-  const key = pzMultiKeyOfEl(el);
-  if(state.multiSel.size && (!key || !state.multiSel.has(key))) pzMultiClear(true);
+  // obyčejný klik vybere jen tuhle věc (jako v editoru)
+  if(state.multiSel.size) pzMultiClear(true);
 }, true);
 // Poloha značky v okamžiku stisku (pro přesný posun skupiny)
 document.addEventListener('mousedown', e => {
-  const el = e.target?.closest?.('.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker');
+  const el = e.target?.closest?.(PZ_MARKER_SEL);
   if(!el){ state._pzPreDrag = null; return; }
   const x = pzMultiAll().find(x => x.item.marker?.getElement?.() === el);
   state._pzPreDrag = x ? {el, ll: x.item.marker.getLngLat()} : null;
 }, true);
 // Ctrl+klik na značku nesmí zároveň přidat zastávku trasy (mapa dostane mousedown)
 document.addEventListener('mousedown', e => {
-  if((e.ctrlKey || e.metaKey) && e.target?.closest?.('.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker')) state._pzMultiClickGuard = Date.now();
+  if((e.ctrlKey || e.metaKey) && e.target?.closest?.(PZ_MARKER_SEL)) state._pzMultiClickGuard = Date.now();
 }, true);
+// Ctrl+klik na řádek v seznamu sekce přidá / odebere položku z výběru stejně jako v mapě.
+document.addEventListener('click', e => {
+  if(!(e.ctrlKey || e.metaKey)) return;
+  const row = e.target?.closest?.('.wp-item[data-pz-key]');
+  if(!row || e.target.closest('.btn-remove')) return;
+  e.stopPropagation(); e.preventDefault();
+  pzMultiToggleKey(row.dataset.pzKey);
+}, true);
+// Protíná úsečka obdélník? (šipky a vzdálenosti se do výběru počítají, i když
+// obdélník zasáhne jen jejich část)
+function pzSegHitsRect(a, b, x1, y1, x2, y2){
+  const inside = p => p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2;
+  if(inside(a) || inside(b)) return true;
+  let t0 = 0, t1 = 1; const dx = b.x - a.x, dy = b.y - a.y;
+  const clip = (p, q) => { if(p === 0) return q >= 0; const r = q / p; if(p < 0){ if(r > t1) return false; if(r > t0) t0 = r; } else { if(r < t0) return false; if(r < t1) t1 = r; } return true; };
+  return clip(-dx, a.x - x1) && clip(dx, x2 - a.x) && clip(-dy, a.y - y1) && clip(dy, y2 - a.y);
+}
+function pzObjInRect(x, x1, y1, x2, y2){
+  const px = pzObjPts(x).map(p => state.map.project(p));
+  if(px.length === 2) return pzSegHitsRect(px[0], px[1], x1, y1, x2, y2);
+  return px[0].x >= x1 && px[0].x <= x2 && px[0].y >= y1 && px[0].y <= y2;
+}
 // Alt+tažení po mapě: výběr obdélníkem
 function pzInitMarquee(){
   const m = state.map; if(!m || m._pzMarquee) return; m._pzMarquee = true;
@@ -11052,18 +11197,89 @@ function pzInitMarquee(){
       const x1 = Math.min(x0, ev.clientX - r.left), x2 = Math.max(x0, ev.clientX - r.left);
       const y1 = Math.min(y0, ev.clientY - r.top), y2 = Math.max(y0, ev.clientY - r.top);
       if(x2 - x1 < 4 && y2 - y1 < 4) return;
-      if(!add) state.multiSel.clear();
-      pzMultiAll().forEach(x => { const p = m.project(x.item.marker.getLngLat()); if(p.x >= x1 && p.x <= x2 && p.y >= y1 && p.y <= y2) state.multiSel.add(x.key); });
-      try{ clearSceneIconSelection(); }catch(e){}
-      try{ clearMapLabelSelection(); }catch(e){}
+      const keys = add ? [...state.multiSel] : [];
+      pzMultiAll().forEach(x => { if(pzObjInRect(x, x1, y1, x2, y2)) keys.push(x.key); });
       state._pzMultiClickGuard = Date.now();
-      pzMultiRefresh();
-      if(state.multiSel.size) pzMultiStatus(); else setStatus(t('V obdélníku není žádná ikonka ani popisek.'));
+      pzMultiSetKeys(keys);
+      if(state.multiSel.size) pzMultiStatus(); else setStatus(t('V obdélníku není žádný objekt.'));
     };
     document.addEventListener('mousemove', move, true); document.addEventListener('mouseup', up, true);
   }, true);
-  // klik do prázdné mapy výběr zruší
-  m.on('click', () => { if(Date.now() - (state._pzMultiClickGuard || 0) > 300) pzMultiClear(true); });
+  // klik do prázdné mapy výběr zruší (Ctrl+klik ne — ten výběr skládá nebo přidává zastávku)
+  m.on('click', e => {
+    const oe = e.originalEvent;
+    if(oe && (oe.ctrlKey || oe.metaKey)) return;
+    if(Date.now() - (state._pzMultiClickGuard || 0) <= 300 || !state.multiSel.size) return;
+    const before = $('statusBar')?.textContent;
+    pzMultiClear(true);
+    // hláška „Vybráno N…“ by po zrušení výběru lhala; jinou (novější) hlášku nepřepisovat
+    setTimeout(() => { if($('statusBar')?.textContent === before) setStatus(t('Výběr zrušen.')); }, 0);
+  });
+}
+
+// ---- posun šipkami na klávesnici, zarovnání --------------------------------
+// Vybrané objekty: skupina, jinak jedna obyčejně vybraná věc (bod trasy sem nepatří).
+function pzSelectionEntries(){
+  const multi = pzMultiSelected(); if(multi.length) return multi;
+  const s = getSelectedMapObject();
+  const kind = s && {sceneIcon:'icon', mapLabel:'label', sceneArrow:'arrow', scenePerimeter:'perimeter', sceneDistance:'distance'}[s.type];
+  if(!kind) return [];
+  return pzMultiAll().filter(x => x.kind === kind && x.item === s.item);
+}
+function pzAfterObjsMoved(list){
+  pzMultiRedrawLayers(new Set(list.map(x => x.kind)), true);
+  clearTimeout(state._pzMovedListTimer);
+  state._pzMovedListTimer = setTimeout(pzMultiRenderLists, 250);   // souřadnice v seznamech
+}
+let _pzNudgeAt = 0;
+function pzNudgeSelection(dx, dy){
+  const sel = pzSelectionEntries(); if(!sel.length || !state.map) return false;
+  // jedna série stisků = jeden krok zpět (ne čtyřicet kroků po pixelu)
+  if(Date.now() - _pzNudgeAt > 900) try{ window.__pzPushUndo?.(); }catch(e){}
+  _pzNudgeAt = Date.now();
+  pzObjsShiftPx(pzObjsWithPx(sel), dx, dy);
+  pzAfterObjsMoved(sel);
+  setStatus(sel.length > 1 ? t('Posunuto {0} položek.', sel.length) : t('Posunuto šipkami. Se Shift po 10 px.'));
+  return true;
+}
+document.addEventListener('keydown', e => {
+  const d = {ArrowLeft:[-1, 0], ArrowRight:[1, 0], ArrowUp:[0, -1], ArrowDown:[0, 1]}[e.key];
+  if(!d || e.ctrlKey || e.metaKey || e.altKey) return;
+  const el = e.target, tag = (el?.tagName || '').toLowerCase();
+  // v polích, posuvnících a výběrech mají šipky vlastní význam
+  if(pzIsTextEntry(el) || tag === 'input' || tag === 'select' || el?.closest?.('[role="slider"],[role="listbox"],.anim-angle-dial')) return;
+  const k = e.shiftKey ? 10 : 1;
+  if(pzNudgeSelection(d[0] * k, d[1] * k)){ e.preventDefault(); e.stopPropagation(); }
+}, true);
+// Zarovnání skupiny na jednu linii: 'row' = vedle sebe ve stejné výšce, 'col' = pod sebou.
+function pzMultiAlign(mode){
+  const sel = pzMultiSelected(), m = state.map;
+  if(sel.length < 2 || !m){ setStatus(t('Zarovnat jdou aspoň dvě vybrané věci (Ctrl+klik).')); return false; }
+  try{ window.__pzPushUndo?.(); }catch(e){}
+  const ax = mode === 'row' ? 'y' : 'x';
+  const objs = pzObjsWithPx(sel).map(o => ({...o, c: o.px.reduce((s, p) => s + p[ax], 0) / o.px.length}));
+  const target = (Math.min(...objs.map(o => o.c)) + Math.max(...objs.map(o => o.c))) / 2;
+  objs.forEach(o => pzObjsShiftPx([o], ax === 'x' ? target - o.c : 0, ax === 'y' ? target - o.c : 0));
+  pzAfterObjsMoved(sel);
+  setStatus(mode === 'row' ? t('Zarovnáno do řady ({0}).', sel.length) : t('Zarovnáno do sloupce ({0}).', sel.length));
+  return true;
+}
+// Lišta nad mapou, když je vybráno víc věcí: počet + zarovnat / duplikovat / smazat.
+function pzMultiBarUpdate(){
+  const bar = $('pzMultiBar'); if(!bar) return;
+  const n = state.multiSel.size;
+  bar.hidden = n < 2;
+  const c = $('pzMultiCount'); if(c) c.textContent = String(n);
+}
+function pzInitMultiBar(){
+  const bar = $('pzMultiBar'); if(!bar || bar._pzReady) return; bar._pzReady = true;
+  bar.addEventListener('click', e => {
+    const act = e.target?.closest?.('button')?.dataset?.act; if(!act) return;
+    if(act === 'row' || act === 'col') pzMultiAlign(act);
+    else if(act === 'dup'){ try{ window.__pzPushUndo?.(); }catch(err){} duplicateSelectedMapObject(); }
+    else if(act === 'del'){ try{ window.__pzPushUndo?.(); }catch(err){} pzMultiDelete(); }
+    else if(act === 'close') pzMultiClear();
+  });
 }
 
 function deleteSceneIcon(id){
@@ -11132,16 +11348,12 @@ function renderMapLabelList(){
   const list = $('mapLabelList'); if(!list) return;
   list.innerHTML = '';
   if(!state.mapLabels.length){
-    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné popisky. Zadej text a klikni do mapy.')) + '</div>';
+    list.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné popisky.')) + '</div>';
     return;
   }
   state.mapLabels.forEach((item, idx) => {
-    const row = document.createElement('div');
-    row.className = 'wp-item map-label-row' + (item.id === state.selectedMapLabelId ? ' active' : '');
-    row.innerHTML = `<span class="wp-badge">${idx+1}</span><div style="flex:1;min-width:0"><div style="font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(item.text || t('Popisek'))}</div><div class="small">${item.size}px · ${item.side === 'left' ? t('čtverec vlevo') : t('čtverec vpravo')}</div></div><button class="btn-remove" type="button" title="Smazat">×</button>`;
-    row.addEventListener('click', ev => { if(ev.target.closest('.btn-remove')) return; selectMapLabel(item.id); });
-    row.querySelector('.btn-remove').addEventListener('click', ev => { ev.stopPropagation(); deleteMapLabel(item.id); });
-    list.appendChild(row);
+    list.appendChild(pzSceneRow({key:'l:' + item.id, kind:'label', item}, 'map-label-row', item.id === state.selectedMapLabelId, idx, '',
+      item.text || t('Popisek'), item.size + ' px'));
   });
 }
 
@@ -11370,6 +11582,7 @@ function clearMapLabels(){
   state.mapLabels = [];
   state.selectedMapLabelId = null;
   renderMapLabelList();
+  pzMultiRefresh();
   setStatus(t('Všechny popisky smazány.'));
 }
 
@@ -11401,127 +11614,75 @@ function getSelectedMapObject(){
   return null;
 }
 
+// ---- schránka: kopírování, vložení a duplikace (jedna věc i celá skupina) ----
+// Popis objektu bez značek mapy; při vložení se celá skupina posune o stejný počet
+// pixelů, takže rozestupy zůstanou.
+function pzObjDescribe(x){
+  const it = x.item, pts = pzObjPts(x);
+  if(x.kind === 'icon') return {kind:'icon', data:it.data, size:it.size, pts};
+  if(x.kind === 'label') return {kind:'label', text:it.text, size:it.size, side:it.side, style:it.style, pts};
+  if(x.kind === 'arrow') return {kind:'arrow', color:it.color, width:it.width, pts};
+  if(x.kind === 'perimeter') return {kind:'perimeter', radiusMeters:it.radiusMeters, unit:it.unit, color:it.color, opacity:it.opacity, pts};
+  return {kind:'distance', unit:it.unit, color:it.color, width:it.width, pts};
+}
+function pzObjCreate(d, dx, dy){
+  const p = d.pts.map(q => offsetLngLat(q, dx, dy));
+  let item = null, pre = '';
+  if(d.kind === 'icon'){ pre = 'i:'; item = createSceneIconAt(p[0], {data:d.data, size:d.size, silent:true}); }
+  else if(d.kind === 'label'){ pre = 'l:'; item = addMapLabelAt(p[0], {text:d.text, size:d.size, side:d.side, style:d.style, silent:true}); }
+  else if(d.kind === 'arrow'){ pre = 'a:'; item = createSceneArrow(p[0], p[1], {color:d.color, width:d.width, silent:true}); }
+  else if(d.kind === 'perimeter'){ pre = 'p:'; item = createScenePerimeterAt(p[0], {radiusMeters:d.radiusMeters, unit:d.unit, color:d.color, opacity:d.opacity, silent:true}); }
+  else if(d.kind === 'distance'){ pre = 'd:'; item = createSceneDistance(p[0], p[1], {unit:d.unit, color:d.color, width:d.width, silent:true}); }
+  return item ? pre + item.id : null;
+}
+// Vloží kopie; jedna zůstane vybraná obyčejně (jde hned upravit), skupina jako skupina.
+function pzObjsPaste(descs, dx, dy){
+  const keys = descs.map(d => pzObjCreate(d, dx, dy)).filter(Boolean);
+  if(keys.length > 1) pzMultiSetKeys(keys);
+  else if(state.multiSel.size) pzMultiClear(true);
+  return keys;
+}
+const PZ_CLIP_MSG = {
+  copy: {icon:'Ikonka zkopírována. Ctrl+V ji vloží jako kopii.', label:'Popisek zkopírován. Ctrl+V ho vloží jako kopii.', arrow:'Šipka zkopírována. Ctrl+V ji vloží jako kopii.', perimeter:'Perimetr zkopírován. Ctrl+V ho vloží jako kopii.', distance:'Vzdálenost zkopírována. Ctrl+V ji vloží jako kopii.'},
+  dup: {icon:'Ikonka duplikována.', label:'Popisek duplikován.', arrow:'Šipka duplikována.', perimeter:'Perimetr duplikován.', distance:'Vzdálenost duplikována.'},
+  paste: {icon:'Ikonka vložena jako kopie.', label:'Popisek vložen jako kopie.', arrow:'Šipka vložena jako kopie.', perimeter:'Perimetr vložen jako kopie.', distance:'Vzdálenost vložena jako kopie.'}
+};
 function copySelectedMapObject(){
-  const selected = getSelectedMapObject();
-  if(!selected){
-    setStatus(t('Nejdřív klikem vyber objekt na mapě.'));
+  const sel = pzSelectionEntries();
+  if(!sel.length){
+    // bod trasy kopírovat nejde — nehlásit „vyber objekt“, když vybraný je
+    if(!getSelectedMapObject()) setStatus(t('Nejdřív klikem vyber objekt na mapě.'));
     return false;
   }
-  if(selected.type === 'sceneIcon'){
-    state.mapObjectClipboard = {
-      type:'sceneIcon',
-      data: selected.item.data,
-      size: selected.item.size,
-      lngLat: selected.item.lngLat.slice()
-    };
-    state.clipboardPasteCount = 0;
-    setStatus(t('Ikonka zkopírována. Ctrl+V ji vloží jako kopii.'));
-    return true;
-  }
-  if(selected.type === 'scenePerimeter'){
-    state.mapObjectClipboard = {
-      type:'scenePerimeter',
-      radiusMeters: selected.item.radiusMeters,
-      unit: selected.item.unit,
-      color: selected.item.color,
-      opacity: selected.item.opacity,
-      lngLat: selected.item.lngLat.slice()
-    };
-    state.clipboardPasteCount = 0;
-    setStatus(t('Perimetr zkopírován. Ctrl+V ho vloží jako kopii.'));
-    return true;
-  }
-  if(selected.type === 'sceneDistance'){
-    state.mapObjectClipboard = {
-      type:'sceneDistance',
-      a:selected.item.a.slice(),
-      b:selected.item.b.slice(),
-      unit:selected.item.unit,
-      color:selected.item.color,
-      width:selected.item.width
-    };
-    state.clipboardPasteCount = 0;
-    setStatus(t('Vzdálenost zkopírována. Ctrl+V ji vloží jako kopii.'));
-    return true;
-  }
-  if(selected.type === 'mapLabel'){
-    state.mapObjectClipboard = {
-      type:'mapLabel',
-      text: selected.item.text,
-      size: selected.item.size,
-      side: selected.item.side,
-      style: selected.item.style,
-      lngLat: selected.item.lngLat.slice()
-    };
-    state.clipboardPasteCount = 0;
-    setStatus(t('Popisek zkopírován. Ctrl+V ho vloží jako kopii.'));
-    return true;
-  }
-  return false;
+  state.mapObjectClipboard = {items: sel.map(pzObjDescribe)};
+  state.clipboardPasteCount = 0;
+  setStatus(sel.length > 1 ? t('Zkopírováno {0} položek. Ctrl+V je vloží jako kopie.', sel.length) : t(PZ_CLIP_MSG.copy[sel[0].kind]));
+  return true;
 }
 
 function duplicateSelectedMapObject(){
-  const selected = getSelectedMapObject();
-  if(!selected){
-    setStatus(t('Nejdřív klikem vyber objekt na mapě.'));
+  const sel = pzSelectionEntries();
+  if(!sel.length){
+    if(!getSelectedMapObject()) setStatus(t('Nejdřív klikem vyber objekt na mapě.'));
     return false;
   }
-  if(selected.type === 'sceneIcon'){
-    const lngLat = offsetLngLat(selected.item.lngLat, 30, 26);
-    createSceneIconAt(lngLat, {data:selected.item.data, size:selected.item.size, silent:true});
-    setStatus(t('Ikonka duplikována.'));
-    return true;
-  }
-  if(selected.type === 'scenePerimeter'){
-    const lngLat = offsetLngLat(selected.item.lngLat, 30, 26);
-    createScenePerimeterAt(lngLat, {radiusMeters:selected.item.radiusMeters, unit:selected.item.unit, color:selected.item.color, opacity:selected.item.opacity, silent:true});
-    setStatus(t('Perimetr duplikován.'));
-    return true;
-  }
-  if(selected.type === 'sceneDistance'){
-    createSceneDistance(offsetLngLat(selected.item.a, 30, 26), offsetLngLat(selected.item.b, 30, 26), {unit:selected.item.unit, color:selected.item.color, width:selected.item.width, silent:true});
-    setStatus(t('Vzdálenost duplikována.'));
-    return true;
-  }
-  if(selected.type === 'mapLabel'){
-    const lngLat = offsetLngLat(selected.item.lngLat, 30, 26);
-    addMapLabelAt(lngLat, {text:selected.item.text, size:selected.item.size, side:selected.item.side, style:selected.item.style, silent:true});
-    setStatus(t('Popisek duplikován.'));
-    return true;
-  }
-  return false;
+  const kind = sel[0].kind;
+  const keys = pzObjsPaste(sel.map(pzObjDescribe), 30, 26);
+  setStatus(keys.length > 1 ? t('Duplikováno {0} položek.', keys.length) : t(PZ_CLIP_MSG.dup[kind]));
+  return true;
 }
 
 function pasteClipboardMapObject(){
   const clip = state.mapObjectClipboard;
-  if(!clip){
+  if(!clip?.items?.length){
     setStatus(t('Schránka je prázdná. Nejdřív dej Ctrl+C na vybraném objektu.'));
     return false;
   }
   state.clipboardPasteCount = (state.clipboardPasteCount || 0) + 1;
   const step = state.clipboardPasteCount;
-  const lngLat = offsetLngLat(clip.lngLat, 26 * step, 22 * step);
-  if(clip.type === 'sceneIcon'){
-    createSceneIconAt(lngLat, {data:clip.data, size:clip.size, silent:true});
-    setStatus(t('Ikonka vložena jako kopie.'));
-    return true;
-  }
-  if(clip.type === 'scenePerimeter'){
-    createScenePerimeterAt(lngLat, {radiusMeters:clip.radiusMeters, unit:clip.unit, color:clip.color, opacity:clip.opacity, silent:true});
-    setStatus(t('Perimetr vložen jako kopie.'));
-    return true;
-  }
-  if(clip.type === 'sceneDistance'){
-    createSceneDistance(offsetLngLat(clip.a, 26 * step, 22 * step), offsetLngLat(clip.b, 26 * step, 22 * step), {unit:clip.unit, color:clip.color, width:clip.width, silent:true});
-    setStatus(t('Vzdálenost vložena jako kopie.'));
-    return true;
-  }
-  if(clip.type === 'mapLabel'){
-    addMapLabelAt(lngLat, {text:clip.text, size:clip.size, side:clip.side, style:clip.style, silent:true});
-    setStatus(t('Popisek vložen jako kopie.'));
-    return true;
-  }
-  return false;
+  const keys = pzObjsPaste(clip.items, 26 * step, 22 * step);
+  setStatus(keys.length > 1 ? t('Vloženo {0} položek.', keys.length) : t(PZ_CLIP_MSG.paste[clip.items[0].kind]));
+  return true;
 }
 
 function deleteSelectedMapObject(){
@@ -13937,6 +14098,7 @@ function clearSceneIcons(){
   state.selectedSceneIconId = null;
   state.addingSceneIcon = false;
   renderSceneIconList();
+  pzMultiRefresh();
   setStatus(t('Scénické ikonky smazány.'));
 }
 
@@ -14218,7 +14380,9 @@ function prepareExportSceneLayers(){
   // renders in the video exactly like in the live preview (pose comes from the shared
   // plane3dLayer.cur updated by setAnimProgress each frame).
   try{ if(exportUses3dPlane()) ensurePlane3dLayer(); }catch(e){}
-  ['scene-perimeter-centers-circle','scene-perimeter-handles-circle','scene-distance-points-circle']
+  ['scene-perimeter-centers-circle','scene-perimeter-handles-circle','scene-distance-points-circle',
+   // rámečky vícenásobného výběru jsou jen pomůcka při úpravách
+   'scene-arrows-multi-bg','scene-arrows-multi','scene-perimeters-multi-bg','scene-perimeters-multi','scene-distances-multi-bg','scene-distances-multi']
     .forEach(id => safeSetLayout(id, 'visibility', 'none'));
 }
 // True when the mover renders as the 3D plane mesh (globe + 3D arc + an icon selected),
@@ -16278,7 +16442,6 @@ function setupWeatherUI(){
 const PZ_EN_TEXT = {
   "Projekt — uložit, otevřít, sdílet": "Project — save, open, share",
   "Styl": "Style", "Bílý (klasický)": "White (classic)", "Nova modrý": "Nova blue", "Nova červený (breaking)": "Nova red (breaking)", "Černý": "Black",
-  "Strana čtverečku i styl platí pro nový popisek a mění vybraný.": "Square side and style apply to new labels and change the selected one.",
   "Čistá navigační": "Clean navigation", "Turistická": "Hiking", "Letecká olivová": "Aviation olive",
   "Navigační světlá": "Navigation light", "Městská tmavá": "City dark", "Zpravodajská modrá": "News blue",
   "Ostrá modrá": "Sharp blue", "Ostrá bílá": "Sharp white",
@@ -16286,12 +16449,8 @@ const PZ_EN_TEXT = {
   "Pokročilé funkce": "Advanced features",
   "Zobrazit pokročilé funkce": "Show advanced features",
   "3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba.": "3D model, sun and shadows, custom map sources, extra base maps (Bright, OSM, OpenTopo, CyclOSM), statistics and app self-check. Not needed for daily graphics.",
-  "Rychlá scéna": "Quick scene",
-  "Zadej místo a klikni na typ události — nebo dlaždici rovnou přetáhni do mapy na místo, kam patří. Ikonka, popisek, případně perimetr se připraví naráz. Všechno jde upravit nebo vrátit Ctrl+Z.": "Enter a place and click an event type — or drag a tile straight onto the map where it belongs. Icon, label and perimeter where relevant are set up at once. Everything can be edited or undone with Ctrl+Z.",
   "Text popisku": "Label text",
-  "nepovinné": "optional",
-  "např. Humpolec, D1 km 90": "e.g. Humpolec, D1 km 90",
-  "Nehoda": "Accident", "Zásah": "Police", "Záchranáři": "Rescue",
+  "Nehoda": "Accident",
   "Krytí výplně": "Fill opacity",
   "Mapa načtena.": "Map loaded.",
   "Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)": "Truck — route along roads (ignores truck restrictions)",
@@ -16322,7 +16481,6 @@ const PZ_EN_TEXT = {
   "Zobrazit hranice států nad mapou": "Show country borders above the map",
   "Zobrazit vybarvené státy": "Show coloured countries",
   "Barvit stát kliknutím do mapy": "Colour a country by clicking the map",
-  "Vestavěné ikony": "Built-in icons",
   "Místo": "Place",
   "Výbuch": "Explosion",
   "Požár": "Fire",
@@ -16337,7 +16495,7 @@ const PZ_EN_TEXT = {
   "Pravé tl. / Ctrl+táhnout": "Right btn / Ctrl+drag",
   "Shift+táhnout": "Shift+drag",
   "Silnice: úsek se najde po skutečné silnici. Když vede jinudy než chceš (např. ne po dálnici), přidej bod „Přes\". Metro: jedna stanice, nebo úsek mezi dvěma stanicemi.": "Road: the section follows the actual road. If it goes a different way than you want (e.g. not along the motorway), add a “Via” point. Metro: one station, or a section between two stations.",
-  'Tloušťka':'Width', 'Natáhni bod A → B přímo v mapě.':'Drag from point A to B directly on the map.',
+  'Tloušťka':'Width',
   'Uzavírky':'Closures', 'Silnice / dálnice':'Road / motorway', 'Od':'From', 'Do':'To',
   'Přes (nepovinné)':'Via (optional)', 'Objížďka přes (nepovinné)':'Detour via (optional)',
   'Vyznačit uzavírku':'Mark closure', 'Metro':'Metro', 'Linka':'Line', 'Stanice od':'Station from',
@@ -16352,7 +16510,6 @@ const PZ_EN_TEXT = {
   'Další nastavení výplně':'More fill settings', 'Průhlednost':'Opacity',
   'Světlá':'Light', 'Světlá – kontrast':'Light – contrast', 'Světlá – výrazná':'Light – bold',
   'Kamion':'Truck', 'Motorka':'Motorbike', 'Vlak':'Train', 'Loď':'Boat',
-  'Ikonky ve scéně':'Scene icons', 'Upload ikonky':'Upload icon', 'Smazat ikonky':'Clear icons',
   'Měřítko':'Scale', 'Velikost':'Size', 'Osa nahoru':'Up axis', 'Nahrát GLB soubor':'Upload GLB file',
   'Ikona se natáčí po směru jízdy / letu automaticky.':'The icon turns along the direction of travel automatically.',
   'Kam míří vlastní obrázek':'Where your image points', 'Síla glow':'Glow strength'
@@ -16466,7 +16623,6 @@ function bindUI(){
   // Až po vyhodnocení celého skriptu: PZ_ICON_SET je const definovaná níž než
   // volání bindUI() a přístup k ní dřív by skončil v temporal dead zone.
   setTimeout(() => { try{ pzBuildIconPalette(); }catch(e){ console.warn('icon palette', e); } }, 0);
-  setTimeout(() => { try{ pzBuildTemplates(); }catch(e){ console.warn('templates', e); } }, 0);
   pzApplyAdvanced();
   $('advancedFeatures')?.addEventListener('change', e => { pzApplyAdvanced(e.target.checked);
     setStatus(e.target.checked ? 'Pokročilé funkce zobrazeny.' : 'Pokročilé funkce skryty.'); });
@@ -17026,11 +17182,6 @@ function bindUI(){
     const on = armSceneAddMode('perimeter');
     setStatus(on ? t('Klikni do mapy pro vložení perimetru. Lze vložit opakovaně.') : t('Vkládání perimetru vypnuto.'));
   });
-  $('updateScenePerimeterBtn')?.addEventListener('click', updateSelectedScenePerimeter);
-  $('deleteScenePerimeterBtn')?.addEventListener('click', ()=>{
-    if(!state.selectedScenePerimeterId){ setStatus(t('Nejdřív vyber perimetr.')); return; }
-    deleteScenePerimeter(state.selectedScenePerimeterId);
-  });
   $('clearScenePerimetersBtn')?.addEventListener('click', () => clearScenePerimeters());
 
   updateSceneDistanceWidthReadout();
@@ -17057,11 +17208,6 @@ function bindUI(){
     const on = armSceneAddMode('distance');
     setStatus(on ? t('Natáhni vzdálenost v mapě: podrž bod A a táhni do bodu B.') : t('Měření vzdálenosti vypnuto.'));
   });
-  $('updateSceneDistanceBtn')?.addEventListener('click', updateSelectedSceneDistance);
-  $('deleteSceneDistanceBtn')?.addEventListener('click', ()=>{
-    if(!state.selectedSceneDistanceId){ setStatus(t('Nejdřív vyber vzdálenost.')); return; }
-    deleteSceneDistance(state.selectedSceneDistanceId);
-  });
   // () => … : jinak se událost kliknutí předá jako `silent` a stav i režim zůstanou viset
   $('clearSceneDistancesBtn')?.addEventListener('click', () => clearSceneDistances());
   // --- Scene arrows ---
@@ -17074,11 +17220,6 @@ function bindUI(){
     const on = armSceneAddMode('arrow');
     state.sceneArrowDraft = null;
     setStatus(on ? t('Klikni do mapy dvakrát: začátek a hrot šipky. Lze vkládat opakovaně.') : t('Vkládání šipky vypnuto.'));
-  });
-  $('updateSceneArrowBtn')?.addEventListener('click', updateSelectedSceneArrow);
-  $('deleteSceneArrowBtn')?.addEventListener('click', ()=>{
-    if(!state.selectedSceneArrowId){ setStatus(t('Nejdřív vyber šipku.')); return; }
-    deleteSceneArrow(state.selectedSceneArrowId);
   });
   $('clearSceneArrowsBtn')?.addEventListener('click', ()=> clearSceneArrows());
 
@@ -17107,17 +17248,17 @@ function bindUI(){
   });
 
   $('sceneIconUpload')?.addEventListener('change', async e => {
-    const f = e.target.files?.[0]; if(!f) return; state.sceneIconData = await handleFileToDataUrl(f); $('sceneIconPreview').innerHTML = `<img src="${escapeHtml(state.sceneIconData)}" alt="Náhled ikonky">`; setStatus(t('Ikonka načtena — klikni do mapy pro vložení nebo ji použij na vybranou ikonku.'));
+    const f = e.target.files?.[0]; if(!f) return; state.sceneIconData = await handleFileToDataUrl(f); $('sceneIconPreview').innerHTML = `<img src="${escapeHtml(state.sceneIconData)}" alt="">`;
+    document.querySelectorAll('#pzIconPalette .pz-icon-pick').forEach(x => x.classList.remove('btn-primary'));
+    // nahraná ikonka jde rovnou vkládat — bez dalšího tlačítka
+    if(!state.addingSceneIcon) armSceneAddMode('icon');
+    setStatus(t('Ikonka načtena — klikni do mapy, kam ji dát.'));
   });
   $('addSceneIconBtn')?.addEventListener('click', ()=>{
-    if(!state.sceneIconData){ setStatus(t('Nejdřív nahraj ikonku přes "Upload ikonky".')); return; }
-    clearAllSceneAddModes(); state.addingSceneIcon = true; setActiveEditSection('sceneIconSection'); try{ updateSceneAddButtonStates(); }catch(e){}
-    setStatus(t('Klikni do mapy pro vložení ikonky. Lze vložit opakovaně.'));
-  });
-  $('updateSceneIconBtn')?.addEventListener('click', applySelectedSceneIconChanges);
-  $('deleteSceneIconBtn')?.addEventListener('click', ()=>{
-    if(!state.selectedSceneIconId){ setStatus(t('Nejdřív vyber ikonku.')); return; }
-    deleteSceneIcon(state.selectedSceneIconId);
+    // bez vybrané ikonky se vkládá špendlík místa (nejčastější volba)
+    if(!state.sceneIconData && !state.addingSceneIcon) pzPickBuiltinIcon('pin');
+    const on = armSceneAddMode('icon');
+    setStatus(on ? t('Klikni do mapy pro vložení ikonky. Lze vložit opakovaně.') : t('Vkládání ikonek ukončeno.'));
   });
   $('clearSceneIconsBtn')?.addEventListener('click', clearSceneIcons);
   ['input','change'].forEach(evt => $('sceneIconSize')?.addEventListener(evt, ()=>{
@@ -17128,35 +17269,17 @@ function bindUI(){
     const next = armSceneAddMode('label');
     setStatus(next ? t('Režim popisků: klikáním do mapy vkládáš popisky. Dalším klikem na tlačítko režim vypneš.') : t('Režim popisků vypnut.'));
   });
-  $('updateMapLabelBtn')?.addEventListener('click', applySelectedMapLabelChanges);
-  $('deleteMapLabelBtn')?.addEventListener('click', ()=>{
-    if(!state.selectedMapLabelId){ setStatus(t('Nejdřív vyber popisek.')); return; }
-    deleteMapLabel(state.selectedMapLabelId);
-  });
   $('clearMapLabelsBtn')?.addEventListener('click', clearMapLabels);
   document.addEventListener('click', e => {
     if(!e.target.closest('#presetContextMenu')) closePresetContextMenu();
     if(e.target.closest('#map')) return;
-    if(state.selectedSceneIconId){
-      if(!e.target.closest('.scene-icon-marker') && !e.target.closest('.scene-icon-row') && !e.target.closest('#sceneIconUpload, #sceneIconSize, #addSceneIconBtn, #updateSceneIconBtn, #deleteSceneIconBtn, #clearSceneIconsBtn')){
-        clearSceneIconSelection();
-      }
-    }
-    if(state.selectedScenePerimeterId){
-      if(!e.target.closest('.scene-perimeter-row') && !e.target.closest('#scenePerimeterRadius, #scenePerimeterUnit, #scenePerimeterColor, #scenePerimeterOpacity, #addScenePerimeterBtn, #updateScenePerimeterBtn, #deleteScenePerimeterBtn, #clearScenePerimetersBtn')){
-        clearScenePerimeterSelection();
-      }
-    }
-    if(state.selectedSceneDistanceId){
-      if(!e.target.closest('.scene-distance-row') && !e.target.closest('#sceneDistanceUnit, #sceneDistanceColor, #sceneDistanceWidth, #addSceneDistanceBtn, #updateSceneDistanceBtn, #deleteSceneDistanceBtn, #clearSceneDistancesBtn')){
-        clearSceneDistanceSelection();
-      }
-    }
-    if(!state.selectedMapLabelId) return;
-    if(e.target.closest('.map-label-marker')) return;
-    if(e.target.closest('.map-label-row')) return;
-    if(e.target.closest('#mapLabelText, #mapLabelSize, #mapLabelSide, #addMapLabelBtn, #updateMapLabelBtn, #deleteMapLabelBtn, #clearMapLabelsBtn')) return;
-    clearMapLabelSelection();
+    // lišta výběru, krok zpět apod. nejsou „klik jinam“
+    if(e.target.closest('#pzMultiBar, .map-actions, #statusBar, .shortcuts-panel')) return;
+    if(state.selectedSceneIconId && !e.target.closest('#sceneIconSection')) clearSceneIconSelection();
+    if(state.selectedScenePerimeterId && !e.target.closest('#scenePerimeterSection')) clearScenePerimeterSelection();
+    if(state.selectedSceneDistanceId && !e.target.closest('#sceneDistanceSection')) clearSceneDistanceSelection();
+    if(state.selectedSceneArrowId && !e.target.closest('#sceneArrowSection')) clearSceneArrowSelection();
+    if(state.selectedMapLabelId && !e.target.closest('#mapLabelSection')) clearMapLabelSelection();
   });
   const ctxMenu = $('presetContextMenu');
   if(ctxMenu){
@@ -17173,13 +17296,19 @@ function bindUI(){
       e.stopPropagation();
     });
   }
-  $('mapLabelText')?.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); applySelectedMapLabelChanges(); } });
+  $('mapLabelText')?.addEventListener('keydown', e => {
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    if(getMapLabelById(state.selectedMapLabelId) && !state.addingMapLabel){ try{ window.__pzPushUndo?.(); }catch(err){} applySelectedMapLabelChanges(); return; }
+    if(!state.addingMapLabel) armSceneAddMode('label');
+    setStatus(t('Klikni do mapy, kam popisek vložit.'));
+  });
   $('mapLabelSize')?.addEventListener('input', ()=>{
     applyMapLabelSizeToAll($('mapLabelSize')?.value || state.mapLabelGlobalSize || 28);
   });
   $('mapLabelSide')?.addEventListener('change', ()=>{
     const item = getMapLabelById(state.selectedMapLabelId);
-    if(item) updateMapLabel(item.id, {side: $('mapLabelSide')?.value || item.side});
+    if(item){ try{ window.__pzPushUndo?.(); }catch(e){} updateMapLabel(item.id, {side: $('mapLabelSide')?.value || item.side}); }
   });
   $('mapLabelStyle')?.addEventListener('change', ()=>{
     const item = getMapLabelById(state.selectedMapLabelId);
@@ -17381,6 +17510,47 @@ Object.assign(I18N, {
   "Světlá": {cs:"Světlá",sk:"Svetlá",bg:"Светла",hr:"Svijetla",ro:"Deschisă",en:"Light"},
   "Tmavá": {cs:"Tmavá",sk:"Tmavá",bg:"Тъмна",hr:"Tamna",ro:"Închisă",en:"Dark"},
   // [i18n:scena] překlady oblasti „scena" vkládej pod tento řádek
+  "Ikonky": {cs:"Ikonky",sk:"Ikonky",bg:"Икони",hr:"Ikone",ro:"Pictograme",en:"Icons"},
+  "Perimetr": {cs:"Perimetr",sk:"Perimeter",bg:"Периметър",hr:"Perimetar",ro:"Perimetru",en:"Perimeter"},
+  "Vzdálenost": {cs:"Vzdálenost",sk:"Vzdialenosť",bg:"Разстояние",hr:"Udaljenost",ro:"Distanță",en:"Distance"},
+  "Vlastní ikonka": {cs:"Vlastní ikonka",sk:"Vlastná ikonka",bg:"Собствена икона",hr:"Vlastita ikona",ro:"Pictogramă proprie",en:"Custom icon"},
+  "vybráno": {cs:"vybráno",sk:"vybraté",bg:"избрани",hr:"odabrano",ro:"selectate",en:"selected"},
+  "Vybrané objekty": {cs:"Vybrané objekty",sk:"Vybraté objekty",bg:"Избрани обекти",hr:"Odabrani objekti",ro:"Obiecte selectate",en:"Selected objects"},
+  "Zarovnat do řady": {cs:"Zarovnat do řady",sk:"Zarovnať do radu",bg:"Подравни в ред",hr:"Poravnaj u red",ro:"Aliniază pe rând",en:"Align in a row"},
+  "Zarovnat do sloupce": {cs:"Zarovnat do sloupce",sk:"Zarovnať do stĺpca",bg:"Подравни в колона",hr:"Poravnaj u stupac",ro:"Aliniază pe coloană",en:"Align in a column"},
+  "Duplikovat (Ctrl+D)": {cs:"Duplikovat (Ctrl+D)",sk:"Duplikovať (Ctrl+D)",bg:"Дублирай (Ctrl+D)",hr:"Dupliciraj (Ctrl+D)",ro:"Duplică (Ctrl+D)",en:"Duplicate (Ctrl+D)"},
+  "Duplikovat": {cs:"Duplikovat",sk:"Duplikovať",bg:"Дублирай",hr:"Dupliciraj",ro:"Duplică",en:"Duplicate"},
+  "Smazat (Delete)": {cs:"Smazat (Delete)",sk:"Zmazať (Delete)",bg:"Изтрий (Delete)",hr:"Obriši (Delete)",ro:"Șterge (Delete)",en:"Delete (Del)"},
+  "Zrušit výběr (Esc)": {cs:"Zrušit výběr (Esc)",sk:"Zrušiť výber (Esc)",bg:"Отмени избора (Esc)",hr:"Poništi odabir (Esc)",ro:"Anulează selecția (Esc)",en:"Clear selection (Esc)"},
+  "Zrušit výběr": {cs:"Zrušit výběr",sk:"Zrušiť výber",bg:"Отмени избора",hr:"Poništi odabir",ro:"Anulează selecția",en:"Clear selection"},
+  "sc_multi_click": {cs:"Přidat objekt do výběru",sk:"Pridať objekt do výberu",bg:"Добави обект към избора",hr:"Dodaj objekt u odabir",ro:"Adaugă obiectul la selecție",en:"Add object to selection"},
+  "sc_multi_rect": {cs:"Vybrat objekty obdélníkem",sk:"Vybrať objekty obdĺžnikom",bg:"Избери обекти с правоъгълник",hr:"Odaberi objekte pravokutnikom",ro:"Selectează obiecte cu dreptunghi",en:"Select objects with a rectangle"},
+  "sc_multi_all": {cs:"Vybrat všechny objekty scény",sk:"Vybrať všetky objekty scény",bg:"Избери всички обекти в сцената",hr:"Odaberi sve objekte scene",ro:"Selectează toate obiectele scenei",en:"Select all scene objects"},
+  "sc_nudge": {cs:"Posunout vybrané (Shift = 10 px)",sk:"Posunúť vybrané (Shift = 10 px)",bg:"Премести избраното (Shift = 10 px)",hr:"Pomakni odabrano (Shift = 10 px)",ro:"Mută selecția (Shift = 10 px)",en:"Nudge selection (Shift = 10 px)"},
+  "V obdélníku není žádný objekt.": {cs:"V obdélníku není žádný objekt.",sk:"V obdĺžniku nie je žiadny objekt.",bg:"В правоъгълника няма обект.",hr:"U pravokutniku nema objekta.",ro:"Niciun obiect în dreptunghi.",en:"No object inside the rectangle."},
+  "Posunuto šipkami. Se Shift po 10 px.": {cs:"Posunuto šipkami. Se Shift po 10 px.",sk:"Posunuté šípkami. So Shift po 10 px.",bg:"Преместено със стрелките. С Shift по 10 px.",hr:"Pomaknuto strelicama. Sa Shift po 10 px.",ro:"Mutat cu săgețile. Cu Shift câte 10 px.",en:"Moved with arrow keys. Hold Shift for 10 px steps."},
+  "Zarovnat jdou aspoň dvě vybrané věci (Ctrl+klik).": {cs:"Zarovnat jdou aspoň dvě vybrané věci (Ctrl+klik).",sk:"Zarovnať sa dajú aspoň dve vybraté veci (Ctrl+klik).",bg:"За подравняване избери поне два обекта (Ctrl+клик).",hr:"Za poravnanje odaberi barem dva objekta (Ctrl+klik).",ro:"Pentru aliniere selectează cel puțin două obiecte (Ctrl+click).",en:"Select at least two objects to align (Ctrl+click)."},
+  "Zarovnáno do řady ({0}).": {cs:"Zarovnáno do řady ({0}).",sk:"Zarovnané do radu ({0}).",bg:"Подравнено в ред ({0}).",hr:"Poravnano u red ({0}).",ro:"Aliniat pe rând ({0}).",en:"Aligned in a row ({0})."},
+  "Zarovnáno do sloupce ({0}).": {cs:"Zarovnáno do sloupce ({0}).",sk:"Zarovnané do stĺpca ({0}).",bg:"Подравнено в колона ({0}).",hr:"Poravnano u stupac ({0}).",ro:"Aliniat pe coloană ({0}).",en:"Aligned in a column ({0})."},
+  "Vybráno. Tažením nebo šipkami posuneš, Delete smaže, Ctrl+D duplikuje.": {cs:"Vybráno. Tažením nebo šipkami posuneš, Delete smaže, Ctrl+D duplikuje.",sk:"Vybraté. Ťahaním alebo šípkami posunieš, Delete zmaže, Ctrl+D duplikuje.",bg:"Избрано. Мести с влачене или стрелките, Delete изтрива, Ctrl+D дублира.",hr:"Odabrano. Pomiči povlačenjem ili strelicama, Delete briše, Ctrl+D duplicira.",ro:"Selectat. Mută prin tragere sau cu săgețile, Delete șterge, Ctrl+D duplică.",en:"Selected. Drag or use arrow keys to move, Delete removes, Ctrl+D duplicates."},
+  "Zatím žádné ikonky.": {cs:"Zatím žádné ikonky.",sk:"Zatiaľ žiadne ikonky.",bg:"Все още няма икони.",hr:"Još nema ikona.",ro:"Încă nicio pictogramă.",en:"No icons yet."},
+  "Zatím žádné popisky.": {cs:"Zatím žádné popisky.",sk:"Zatiaľ žiadne popisy.",bg:"Все още няма надписи.",hr:"Još nema oznaka.",ro:"Încă nicio etichetă.",en:"No labels yet."},
+  "Zatím žádné šipky.": {cs:"Zatím žádné šipky.",sk:"Zatiaľ žiadne šípky.",bg:"Все още няма стрелки.",hr:"Još nema strelica.",ro:"Încă nicio săgeată.",en:"No arrows yet."},
+  "Zatím žádné perimetry.": {cs:"Zatím žádné perimetry.",sk:"Zatiaľ žiadne perimetre.",bg:"Все още няма периметри.",hr:"Još nema perimetara.",ro:"Încă niciun perimetru.",en:"No perimeters yet."},
+  "Zatím žádné vzdálenosti.": {cs:"Zatím žádné vzdálenosti.",sk:"Zatiaľ žiadne vzdialenosti.",bg:"Все още няма разстояния.",hr:"Još nema udaljenosti.",ro:"Încă nicio distanță.",en:"No distances yet."},
+  "Šipka": {cs:"Šipka",sk:"Šípka",bg:"Стрелка",hr:"Strelica",ro:"Săgeată",en:"Arrow"},
+  "Perimetr smazán.": {cs:"Perimetr smazán.",sk:"Perimeter zmazaný.",bg:"Периметърът е изтрит.",hr:"Perimetar obrisan.",ro:"Perimetru șters.",en:"Perimeter deleted."},
+  "Šipka smazána.": {cs:"Šipka smazána.",sk:"Šípka zmazaná.",bg:"Стрелката е изтрита.",hr:"Strelica obrisana.",ro:"Săgeată ștearsă.",en:"Arrow deleted."},
+  "Vzdálenost smazána.": {cs:"Vzdálenost smazána.",sk:"Vzdialenosť zmazaná.",bg:"Разстоянието е изтрито.",hr:"Udaljenost obrisana.",ro:"Distanță ștearsă.",en:"Distance deleted."},
+  "Ikonka načtena — klikni do mapy, kam ji dát.": {cs:"Ikonka načtena — klikni do mapy, kam ji dát.",sk:"Ikonka načítaná — klikni do mapy, kam ju dať.",bg:"Иконата е заредена — кликни в картата, където да я поставиш.",hr:"Ikona učitana — klikni na kartu gdje je želiš.",ro:"Pictogramă încărcată — click pe hartă unde o vrei.",en:"Icon loaded — click the map where it should go."},
+  "Ikona „{0}“ vybraná — klikni do mapy, kam ji dát.": {cs:"Ikona „{0}“ vybraná — klikni do mapy, kam ji dát.",sk:"Ikona „{0}“ vybratá — klikni do mapy, kam ju dať.",bg:"Икона „{0}“ е избрана — кликни в картата, където да я поставиш.",hr:"Ikona „{0}“ odabrana — klikni na kartu gdje je želiš.",ro:"Pictograma „{0}” selectată — click pe hartă unde o vrei.",en:"Icon “{0}” selected — click the map where it should go."},
+  "Klikni do mapy, kam popisek vložit.": {cs:"Klikni do mapy, kam popisek vložit.",sk:"Klikni do mapy, kam popis vložiť.",bg:"Кликни в картата, където да поставиш надписа.",hr:"Klikni na kartu gdje želiš oznaku.",ro:"Click pe hartă unde vrei eticheta.",en:"Click the map where the label should go."},
+  "Šipka zkopírována. Ctrl+V ji vloží jako kopii.": {cs:"Šipka zkopírována. Ctrl+V ji vloží jako kopii.",sk:"Šípka skopírovaná. Ctrl+V ju vloží ako kópiu.",bg:"Стрелката е копирана. Ctrl+V я поставя като копие.",hr:"Strelica kopirana. Ctrl+V je umeće kao kopiju.",ro:"Săgeată copiată. Ctrl+V o lipește ca o copie.",en:"Arrow copied. Ctrl+V pastes it as a copy."},
+  "Šipka duplikována.": {cs:"Šipka duplikována.",sk:"Šípka duplikovaná.",bg:"Стрелката е дублирана.",hr:"Strelica duplicirana.",ro:"Săgeată duplicată.",en:"Arrow duplicated."},
+  "Šipka vložena jako kopie.": {cs:"Šipka vložena jako kopie.",sk:"Šípka vložená ako kópia.",bg:"Стрелката е поставена като копие.",hr:"Strelica umetnuta kao kopija.",ro:"Săgeată lipită ca o copie.",en:"Arrow pasted as a copy."},
+  "Zkopírováno {0} položek. Ctrl+V je vloží jako kopie.": {cs:"Zkopírováno {0} položek. Ctrl+V je vloží jako kopie.",sk:"Skopírovaných {0} položiek. Ctrl+V ich vloží ako kópie.",bg:"Копирани {0} елемента. Ctrl+V ги поставя като копия.",hr:"Kopirano stavki: {0}. Ctrl+V ih umeće kao kopije.",ro:"Copiate {0} elemente. Ctrl+V le lipește ca și copii.",en:"Copied {0} items. Ctrl+V pastes them as copies."},
+  "Duplikováno {0} položek.": {cs:"Duplikováno {0} položek.",sk:"Duplikovaných {0} položiek.",bg:"Дублирани {0} елемента.",hr:"Duplicirano stavki: {0}.",ro:"Duplicate {0} elemente.",en:"Duplicated {0} items."},
+  "Vloženo {0} položek.": {cs:"Vloženo {0} položek.",sk:"Vložených {0} položiek.",bg:"Поставени {0} елемента.",hr:"Umetnuto stavki: {0}.",ro:"Lipite {0} elemente.",en:"Pasted {0} items."},
   // .
   // .
   // .
@@ -17528,12 +17698,9 @@ Object.assign(I18N, {
   "Výběr zrušen.": {cs:"Výběr zrušen.",sk:"Výber zrušený.",bg:"Изборът е отменен.",hr:"Odabir poništen.",ro:"Selecție anulată.",en:"Selection cleared."},
   "Smazáno {0} položek.": {cs:"Smazáno {0} položek.",sk:"Zmazaných {0} položiek.",bg:"Изтрити {0} елемента.",hr:"Obrisano stavki: {0}.",ro:"Șterse {0} elemente.",en:"Deleted {0} items."},
   "Posunuto {0} položek.": {cs:"Posunuto {0} položek.",sk:"Posunutých {0} položiek.",bg:"Преместени {0} елемента.",hr:"Pomaknuto stavki: {0}.",ro:"Mutate {0} elemente.",en:"Moved {0} items."},
-  "V obdélníku není žádná ikonka ani popisek.": {cs:"V obdélníku není žádná ikonka ani popisek.",sk:"V obdĺžniku nie je žiadna ikonka ani popis.",bg:"В правоъгълника няма икона или надпис.",hr:"U pravokutniku nema ikone ni oznake.",ro:"În dreptunghi nu este nicio pictogramă sau etichetă.",en:"No icon or label inside the rectangle."},
   "Barva ikonky": {cs:"Barva ikonky",sk:"Farba ikonky",bg:"Цвят на иконата",hr:"Boja ikone",ro:"Culoarea pictogramei",en:"Icon colour"},
   "Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).": {cs:"Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).",sk:"Farba platí pre vstavané ikony (auto, kamión, vlak, loď, lietadlo).",bg:"Цветът важи за вградените икони (кола, камион, влак, кораб, самолет).",hr:"Boja vrijedi za ugrađene ikone (auto, kamion, vlak, brod, avion).",ro:"Culoarea se aplică pictogramelor integrate (mașină, camion, tren, vapor, avion).",en:"The colour applies to built-in icons (car, truck, train, boat, plane)."},
   "Ikonka „{0}“ vložena do mapy.": {cs:"Ikonka „{0}“ vložena do mapy.",sk:"Ikonka „{0}“ vložená do mapy.",bg:"Иконата „{0}“ е добавена в картата.",hr:"Ikona „{0}“ umetnuta na kartu.",ro:"Pictograma „{0}“ a fost adăugată pe hartă.",en:"Icon “{0}” added to the map."},
-  "Hledám název místa…": {cs:"Hledám název místa…",sk:"Hľadám názov miesta…",bg:"Търся името на мястото…",hr:"Tražim naziv mjesta…",ro:"Caut numele locului…",en:"Looking up the place name…"},
-  "MÍSTO": {cs:"MÍSTO",sk:"MIESTO",bg:"МЯСТО",hr:"MJESTO",ro:"LOC",en:"PLACE"},
   "Pusť ji do mapy — mimo mapu se nic nevložilo.": {cs:"Pusť ji do mapy — mimo mapu se nic nevložilo.",sk:"Pusti ju do mapy — mimo mapy sa nič nevložilo.",bg:"Пусни я в картата — извън картата нищо не беше добавено.",hr:"Pusti je na kartu — izvan karte ništa nije umetnuto.",ro:"Las-o pe hartă — în afara hărții nu s-a inserat nimic.",en:"Drop it on the map — nothing was added outside the map."},
   "Hranice a barvy států": {cs:"Hranice a barvy států",sk:"Hranice a farby štátov",bg:"Граници и цветове на държави",hr:"Granice i boje država",ro:"Granițe și culori ale statelor",en:"Country borders & colours"},
   "Rozsah hranic": {cs:"Rozsah",sk:"Rozsah",bg:"Обхват",hr:"Opseg",ro:"Extindere",en:"Extent"},
@@ -17592,17 +17759,11 @@ const PZ_LANG_TEXT = {
   "Zastávky na trase": {sk:"Zastávky na trase",bg:"Спирки по маршрута",hr:"Stajališta na ruti",ro:"Opriri pe traseu",en:"Stops on the route"},
   "Síla glow": {sk:"Sila žiary",bg:"Сила на сиянието",hr:"Jačina sjaja",ro:"Intensitatea strălucirii",en:"Glow strength"},
   "Koncové body (A/B)": {sk:"Koncové body (A/B)",bg:"Крайни точки (A/B)",hr:"Krajnje točke (A/B)",ro:"Puncte de capăt (A/B)",en:"End points (A/B)"},
-  "Rychlá scéna": {sk:"Rýchla scéna",bg:"Бърза сцена",hr:"Brza scena",ro:"Scenă rapidă",en:"Quick scene"},
-  "Zadej místo a klikni na typ události — nebo dlaždici rovnou přetáhni do mapy na místo, kam patří. Ikonka, popisek, případně perimetr se připraví naráz. Všechno jde upravit nebo vrátit Ctrl+Z.": {sk:"Zadaj miesto a klikni na typ udalosti — alebo dlaždicu rovno pretiahni do mapy na miesto, kam patrí. Ikonka, popis, prípadne perimeter sa pripravia naraz. Všetko ide upraviť alebo vrátiť Ctrl+Z.",bg:"Въведи място и кликни типа събитие — или направо провлачи плочката в картата на мястото ѝ. Иконата, надписът и евентуално периметърът се подготвят наведнъж. Всичко може да се промени или върне с Ctrl+Z.",hr:"Upiši mjesto i klikni vrstu događaja — ili pločicu odmah povuci na kartu, na mjesto kamo pripada. Ikona, oznaka i eventualno perimetar pripreme se odjednom. Sve se može urediti ili vratiti s Ctrl+Z.",ro:"Introdu locul și apasă tipul evenimentului — sau trage direct dala pe hartă, acolo unde îi e locul. Pictograma, eticheta și eventual perimetrul se pregătesc deodată. Totul se poate edita sau anula cu Ctrl+Z.",en:"Enter a place and click an event type — or drag a tile straight onto the map where it belongs. Icon, label and perimeter where relevant are set up at once. Everything can be edited or undone with Ctrl+Z."},
   "Místo": {sk:"Miesto",bg:"Място",hr:"Mjesto",ro:"Loc",en:"Place"},
   "Požár": {sk:"Požiar",bg:"Пожар",hr:"Požar",ro:"Incendiu",en:"Fire"},
   "Výbuch": {sk:"Výbuch",bg:"Експлозия",hr:"Eksplozija",ro:"Explozie",en:"Explosion"},
-  "Zásah": {sk:"Zásah",bg:"Намеса",hr:"Intervencija",ro:"Intervenție",en:"Police action"},
-  "Záchranáři": {sk:"Záchranári",bg:"Спасители",hr:"Spasioci",ro:"Salvatori",en:"Rescuers"},
   "Povodeň": {sk:"Povodeň",bg:"Наводнение",hr:"Poplava",ro:"Inundație",en:"Flood"},
   "Varování": {sk:"Varovanie",bg:"Предупреждение",hr:"Upozorenje",ro:"Avertizare",en:"Warning"},
-  "Strana čtverečku i styl platí pro nový popisek a mění vybraný.": {sk:"Strana štvorčeka aj štýl platia pre nový popis a menia vybraný.",bg:"Страната на квадратчето и стилът важат за новия надпис и променят избрания.",hr:"Strana kvadratića i stil vrijede za novu oznaku i mijenjaju odabranu.",ro:"Latura pătrățelului și stilul se aplică etichetei noi și o modifică pe cea selectată.",en:"The square side and style apply to a new label and change the selected one."},
-  "Vestavěné ikony": {sk:"Vstavané ikony",bg:"Вградени икони",hr:"Ugrađene ikone",ro:"Pictograme integrate",en:"Built-in icons"},
   "Záchranka": {sk:"Záchranka",bg:"Линейка",hr:"Hitna pomoć",ro:"Ambulanță",en:"Ambulance"},
   "Uzavírky": {sk:"Uzávierky",bg:"Затваряния",hr:"Zatvaranja",ro:"Închideri",en:"Closures"},
   "Silnice / dálnice": {sk:"Cesta / diaľnica",bg:"Път / магистрала",hr:"Cesta / autocesta",ro:"Drum / autostradă",en:"Road / motorway"},
@@ -17614,7 +17775,6 @@ const PZ_LANG_TEXT = {
   "Smazat uzavírky": {sk:"Zmazať uzávierky",bg:"Изтрий затварянията",hr:"Obriši zatvaranja",ro:"Șterge închiderile",en:"Delete closures"},
   "Silnice: úsek se najde po skutečné silnici. Když vede jinudy než chceš (např. ne po dálnici), přidej bod „Přes\". Metro: jedna stanice, nebo úsek mezi dvěma stanicemi.": {sk:"Cesta: úsek sa nájde po skutočnej ceste. Keď vedie inde, než chceš (napr. nie po diaľnici), pridaj bod „Cez\". Metro: jedna stanica alebo úsek medzi dvoma stanicami.",bg:"Път: отсечката се намира по реалния път. Ако минава другаде, отколкото искаш (напр. не по магистралата), добави точка „През\". Метро: една спирка или отсечка между две спирки.",hr:"Cesta: dionica se pronalazi po stvarnoj cesti. Ako vodi druguda nego što želiš (npr. ne autocestom), dodaj točku „Preko\". Metro: jedna stanica ili dionica između dviju stanica.",ro:"Drum: tronsonul se găsește pe drumul real. Dacă trece pe altundeva decât vrei (de ex. nu pe autostradă), adaugă un punct „Prin\". Metrou: o stație sau tronsonul dintre două stații.",en:"Road: the section follows the real road. If it goes another way than you want (e.g. not along the motorway), add a \"Via\" point. Metro: one station, or the section between two stations."},
   "Rádius": {sk:"Polomer",bg:"Радиус",hr:"Radijus",ro:"Rază",en:"Radius"},
-  "Natáhni bod A → B přímo v mapě.": {sk:"Natiahni bod A → B priamo v mape.",bg:"Изтегли точка A → B направо в картата.",hr:"Povuci točku A → B izravno na karti.",ro:"Trage punctul A → B direct pe hartă.",en:"Drag point A → B directly on the map."},
   "Kraje ČR": {sk:"Kraje ČR",bg:"Области на ЧР",hr:"Regije ČR",ro:"Regiunile Cehiei",en:"Czech regions"},
   "Krytí vrstev počasí": {sk:"Krytie vrstiev počasia",bg:"Плътност на слоевете за времето",hr:"Prozirnost slojeva vremena",ro:"Opacitatea straturilor meteo",en:"Weather layer opacity"},
   "Nahrát GLB soubor": {sk:"Nahrať súbor GLB",bg:"Качи GLB файл",hr:"Učitaj GLB datoteku",ro:"Încarcă fișier GLB",en:"Upload GLB file"},
@@ -17854,13 +18014,9 @@ function applyLang(lang) {
     'addFlightWaypointBtn': '+ Bod letu klikem',
     'clearFlightWaypointsBtn': 'Smazat body',
     'addSceneIconBtn': 'Klikni do mapy',
-    'updateSceneIconBtn': 'Upravit vybranou',
-    'deleteSceneIconBtn': 'Smazat vybranou',
-    'clearSceneIconsBtn': 'Smazat ikonky',
+    'clearSceneIconsBtn': 'Smazat vše',
 
     'addMapLabelBtn': 'Klikni do mapy',
-    'updateMapLabelBtn': 'Upravit vybraný',
-    'deleteMapLabelBtn': 'Smazat vybraný',
     'clearMapLabelsBtn': 'Smazat vše',
     'zoomToCountryBtn': 'Přiblížit stát',
     'applyPoliticalCountryColorBtn': 'Barvit stát',
@@ -18925,7 +19081,8 @@ const PZ_ICON_BADGE = (fill, glyph) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28.5" fill="${fill}" stroke="#fff" stroke-width="5"/>${glyph}</svg>`;
 const PZ_ICON_SET = {
   pin:       {label:'Místo',     svg:`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 3C20.4 3 11 12.2 11 23.6 11 39 32 61 32 61s21-22 21-37.4C53 12.2 43.6 3 32 3z" fill="#e63946" stroke="#fff" stroke-width="4" stroke-linejoin="round"/><circle cx="32" cy="23.5" r="8" fill="#fff"/></svg>`},
-  vybuch:    {label:'Výbuch',    svg:PZ_ICON_BADGE('#e8590c', `<path fill="#fff" d="M32 12l4.2 10.6 9.6-6.2-3.4 11 11.4 1.6-9.6 6.4 7.2 9-11.4-1.4 .6 11.4L32 46.2l-8.6 8.2.6-11.4-11.4 1.4 7.2-9-9.6-6.4 11.4-1.6-3.4-11 9.6 6.2z"/>`)},
+  // nepravidelný dvoubarevný záblesk (bílý + žlutý střed) — čitelný jako výbuch i ve 24 px
+  vybuch:    {label:'Výbuch',    svg:PZ_ICON_BADGE('#d9480f', `<path fill="#fff" d="M28.4 11.3L33.7 21.1L42.8 11.7L39.8 24.2L47 24L42.8 30.1L54.3 35.1L41.9 36.8L44.6 44.2L37.5 41.5L37.3 53.3L31 43L25.1 47.5L24.6 40.2L12.5 43.3L21.2 34.1L15.2 29.6L22 27.4L16 17.6L26.7 22.4z"/><path fill="#ffc300" d="M30.2 21.7L32.9 26.6L37.4 21.8L35.9 28.1L39.5 28L37.4 31L43.1 33.6L36.9 34.4L38.3 38.1L34.8 36.8L34.7 42.7L31.5 37.5L28.5 39.8L28.3 36.1L22.3 37.6L26.6 33L23.6 30.8L27 29.7L24 24.8L29.3 27.2z"/>`)},
   pozar:     {label:'Požár',     svg:PZ_ICON_BADGE('#d62828', `<path fill="#fff" d="M32 12c2.4 7.4 11.6 11.2 11.6 22.4a11.6 11.6 0 0 1-23.2 0c0-5.8 3.2-9.4 5.6-13.6 1 4 2.8 6.2 5 6.6-1.4-6 0-10.8 1-15.4z"/>`)},
   nehoda:    {label:'Nehoda',    svg:PZ_ICON_BADGE('#f59f00', `<path fill="#fff" d="M18 36l4-10.5c.6-1.6 2.1-2.5 3.8-2.5h12.4c1.7 0 3.2.9 3.8 2.5L46 36v9.5c0 .8-.7 1.5-1.5 1.5h-3c-.8 0-1.5-.7-1.5-1.5V43H24v2.5c0 .8-.7 1.5-1.5 1.5h-3c-.8 0-1.5-.7-1.5-1.5zm6.4-8.5L22 34h20l-2.4-6.5zM23 41a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm18 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path fill="#fff" d="M45.5 10.5l1.2 3.3 3.4-.9-1.6 3.1 3 1.9-3.5.4.2 3.5-2.7-2.2-2.6 2.3.1-3.5-3.5-.5 3-1.8-1.5-3.2 3.4 1z"/>`)},
   policie:   {label:'Policie',   svg:PZ_ICON_BADGE('#1c4fd8', `<path fill="#fff" d="M32 12l15 5.5v10.8c0 10.3-6.4 18.7-15 21.7-8.6-3-15-11.4-15-21.7V17.5z"/><path fill="#1c4fd8" d="M32 22l2.6 5.4 5.9.8-4.3 4.1 1 5.9L32 35.4l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z"/>`)},
@@ -18953,92 +19110,6 @@ function pzIconKind(name){
   if(PZ_ICON_ALIASES[k]) return PZ_ICON_ALIASES[k];
   const first = k.split(/[\s_-]+/).find(w => PZ_ICON_ALIASES[w] || PZ_ICON_SET[w]);
   return first ? (PZ_ICON_SET[first] ? first : PZ_ICON_ALIASES[first]) : null;
-}
-// ---- Rychlá scéna: šablony nejčastějších zpráv ------------------------------
-// Místo se geokóduje jen jednou, ikona/popisek/perimetr se vloží přímo (bez
-// tří samostatných dotazů na Nominatim) a celé to jde vrátit jedním Ctrl+Z.
-const PZ_TEMPLATES = [
-  {id:'nehoda',    icon:'nehoda',    label:'Nehoda',     text:'NEHODA',           zoom:12.5},
-  {id:'pozar',     icon:'pozar',     label:'Požár',      text:'POŽÁR',            zoom:13.5},
-  {id:'vybuch',    icon:'vybuch',    label:'Výbuch',     text:'VÝBUCH',           zoom:14, radius:500},
-  {id:'policie',   icon:'policie',   label:'Zásah',      text:'POLICEJNÍ ZÁSAH',  zoom:14.5, radius:300},
-  {id:'zachranka', icon:'zachranka', label:'Záchranáři', text:'ZÁSAH ZÁCHRANÁŘŮ', zoom:13.5},
-  {id:'povoden',   icon:'povoden',   label:'Povodeň',    text:'POVODNĚ',          zoom:11.5},
-  {id:'varovani',  icon:'varovani',  label:'Varování',   text:'VAROVÁNÍ',         zoom:12},
-  {id:'misto',     icon:'pin',       label:'Místo',      text:null,               zoom:12.5}
-];
-function pzBuildTemplates(){
-  const grid = $('pzTplGrid'); if(!grid || grid.childElementCount) return;
-  const EN = {nehoda:'Accident', pozar:'Fire', vybuch:'Explosion', policie:'Police', zachranka:'Rescue', povoden:'Flood', varovani:'Warning', misto:'Place'};
-  PZ_TEMPLATES.forEach(tp => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'pz-tpl-btn'; b.dataset.tpl = tp.id;
-    b.title = tp.text ? (tp.label + ': ikonka + popisek „' + tp.text + '"' + (tp.radius ? ' + perimetr ' + tp.radius + ' m' : '')) : 'Špendlík + název místa';
-    // anglický tooltip pro překladový průchod (pzTranslateTextNodes)
-    try{ PZ_EN_TEXT[b.title] = tp.text ? (EN[tp.id] + ': icon + label' + (tp.radius ? ' + ' + tp.radius + ' m perimeter' : '')) : 'Pin + place name'; }catch(e){}
-    b.innerHTML = '<img alt="" src="' + pzIconDataUrl(tp.icon) + '"><span>' + escapeHtml(tp.label) + '</span>';
-    b.addEventListener('click', () => { if(b.__pzNoClick) return; pzApplyTemplate(tp.id, b); });
-    pzDragToMap(b, pzIconDataUrl(tp.icon), ll => pzDropTemplate(tp.id, ll));
-    grid.appendChild(b);
-  });
-  $('pzTplPlace')?.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); pzApplyTemplate('misto'); } });
-}
-async function pzApplyTemplate(id, btn){
-  const tp = PZ_TEMPLATES.find(x => x.id === id); if(!tp) return {ok:false, error:'Neznámá šablona.'};
-  const place = ($('pzTplPlace')?.value || '').trim();
-  if(!place){ setStatus(t('Nejdřív napiš místo události.'), 'error'); $('pzTplPlace')?.focus(); return {ok:false, error:'Chybí místo.'}; }
-  if(btn) btn.disabled = true;
-  setStatus(t('Hledám místo…') + ' „' + place + '"');
-  try{
-    let g; try{ g = await geocode(place); }
-    catch(e){ setStatus(t('Místo nenalezeno.') + ' „' + place + '"', 'error'); return {ok:false, error:'Místo nenalezeno.'}; }
-    try{ window.__pzPushUndo?.(); }catch(e){}
-    const ll = {lng:+g.lon, lat:+g.lat};
-    const shortName = String(g.name || g.display_name || place).split(',')[0].trim();
-    const text = (($('pzTplText')?.value || '').trim() || tp.text || shortName.toUpperCase());
-    clearPlaceSearchMarker?.();
-    state.screenPan = {x:0, y:0};
-    await new Promise(res => {
-      let done = false; const fin = () => { if(!done){ done = true; res(); } };
-      state.map.once('moveend', fin); setTimeout(fin, 2500);
-      // padding ve flyTo zůstává na mapě natrvalo a rozhodí pozdější zarovnání
-      // (fitBounds, export). Střed výřezu se proto posune přes offset a padding se vynuluje.
-      const fp = getFitPadding();
-      state.screenPan = {x:0, y:0};
-      state.map.flyTo({center:[ll.lng, ll.lat], zoom: tp.zoom, padding:{top:0,right:0,bottom:0,left:0},
-        offset:[Math.round((fp.left - fp.right) / 2), Math.round((fp.top - fp.bottom) / 2)], duration: 900});
-    });
-    pzPlaceTemplateAt(tp, ll, text);
-    setStatus(t('Scéna připravena:') + ' ' + tp.label + ' · ' + shortName);
-    return {ok:true, place: g.display_name, text};
-  } finally { if(btn) btn.disabled = false; }
-}
-// Vloží ikonku, popisek nad ní a případně perimetr na dané místo (bez posunu mapy).
-function pzPlaceTemplateAt(tp, ll, text){
-  if(tp.radius) createScenePerimeterAt(ll, {radiusMeters: tp.radius, unit:'m', silent:true});
-  createSceneIconAt(ll, {data: pzIconDataUrl(tp.icon), silent:true});
-  const size = parseInt($('sceneIconSize')?.value || '44', 10) || 44;
-  // popisek vycentrovaný NAD ikonou (marker má kotvu ve středu celého popisku)
-  const lsz = parseInt(state.mapLabelGlobalSize || $('mapLabelSize')?.value || '28', 10) || 28;
-  addMapLabelAt(offsetLngLat(ll, 0, -Math.round(size * 0.5 + lsz * 1.05 + 12)), {text, silent:true});
-  try{ clearMapLabelSelection(); }catch(e){}
-}
-// Šablona puštěná do mapy: místo je tam, kam ji grafik pustil — bez hledání a
-// bez přeletu. U „Místa" (bez pevného textu) se název dohledá zpětně.
-async function pzDropTemplate(id, ll){
-  const tp = PZ_TEMPLATES.find(x => x.id === id); if(!tp) return;
-  try{ window.__pzPushUndo?.(); }catch(e){}
-  let text = ($('pzTplText')?.value || '').trim() || tp.text;
-  if(!text){
-    setStatus(t('Hledám název místa…'));
-    try{
-      const r = await Promise.race([reverseGeocode([ll.lng, ll.lat], 14), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))]);
-      const a = r?.address || {};
-      text = String(r?.name || a.village || a.town || a.city || a.suburb || a.municipality || '').trim().toUpperCase() || t('MÍSTO');
-    }catch(e){ text = t('MÍSTO'); }
-  }
-  pzPlaceTemplateAt(tp, ll, text);
-  setStatus(t('Scéna připravena:') + ' ' + tp.label + ' · ' + text);
 }
 // Přetažení prvku z panelu do mapy (myš i dotyk, přes pointer události —
 // HTML5 drag&drop na dotykových zařízeních nefunguje). Krátký klik zůstává klikem.
@@ -19079,7 +19150,7 @@ function pzDragToMap(el, imgSrc, onDrop){
       document.removeEventListener('pointercancel', end, true);
       if(!dragging) return;
       ghost?.remove(); document.body.classList.remove('pz-dragging');
-      // klik, který po tažení následuje, nesmí spustit hledání místa
+      // klik, který po tažení následuje, nesmí ikonu ještě vybrat ke vkládání
       el.__pzNoClick = true; setTimeout(() => { el.__pzNoClick = false; }, 50);
       const ll = ev.type === 'pointerup' ? pzMapLngLatAt(ev.clientX, ev.clientY) : null;
       if(ll) onDrop(ll);
@@ -19102,7 +19173,7 @@ function pzBuildIconPalette(){
   const sec = $('sceneIconSection'); if(!sec || $('pzIconPalette')) return;
   const wrap = document.createElement('div');
   wrap.id = 'pzIconPalette';
-  wrap.innerHTML = '<label style="display:block;margin-bottom:6px">Vestavěné ikony</label>';
+  wrap.innerHTML = '';
   const grid = document.createElement('div');
   grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px';
   Object.entries(PZ_ICON_SET).forEach(([kind, it]) => {
@@ -19117,20 +19188,26 @@ function pzBuildIconPalette(){
     });
     b.addEventListener('click', () => {
       if(b.__pzNoClick) return;
-      state.sceneIconData = pzIconDataUrl(kind);
-      const pv = $('sceneIconPreview'); if(pv) pv.innerHTML = `<img src="${state.sceneIconData}" alt="">`;
-      grid.querySelectorAll('.pz-icon-pick').forEach(x => x.classList.toggle('btn-primary', x === b));
+      pzPickBuiltinIcon(kind);
       // Výběr ikony rovnou zapne vkládání — dřív hláška radila „klikni do mapy",
       // ale klik nic neudělal, dokud grafik nezmáčkl ještě „Klikni do mapy".
-      if(!state.addingSceneIcon) $('addSceneIconBtn')?.click();
-      setStatus('Ikona „' + it.label + '" vybraná — klikni do mapy, kam ji dát.');
+      if(!state.addingSceneIcon) armSceneAddMode('icon');
+      setStatus(t('Ikona „{0}“ vybraná — klikni do mapy, kam ji dát.', b.textContent.trim() || it.label));
     });
     grid.appendChild(b);
   });
   wrap.appendChild(grid);
-  const h3 = sec.querySelector(':scope > .section-body') || sec;
-  const firstRow = h3.querySelector('.row');
-  if(firstRow) firstRow.parentNode.insertBefore(wrap, firstRow); else h3.appendChild(wrap);
+  const body = sec.querySelector(':scope > .section-body') || sec;
+  const first = body.querySelector('.pz-icon-size, .row');
+  if(first) first.parentNode.insertBefore(wrap, first); else body.appendChild(wrap);
+}
+// Vestavěná ikona jako „to, co se bude vkládat“ + zvýraznění v paletě.
+function pzPickBuiltinIcon(kind){
+  const data = pzIconDataUrl(kind); if(!data) return;
+  state.sceneIconData = data;
+  const pv = $('sceneIconPreview'); if(pv) pv.innerHTML = '';
+  const up = $('sceneIconUpload'); if(up) up.value = '';
+  document.querySelectorAll('#pzIconPalette .pz-icon-pick').forEach(x => x.classList.toggle('btn-primary', x.dataset.kind === kind));
 }
 
 // Obálka (bbox) skupiny polygonů pro fitBounds. Státy přes 180. poledník
@@ -19197,6 +19274,7 @@ function pzColorFromName(v){
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
     serializeProjectSnapshot, applyProjectSnapshot,
     pzSetKeyboardInset, pzMobilePanel,
+    createSceneArrow, createScenePerimeterAt, createSceneDistance, createSceneIconAt, addMapLabelAt, pzIconDataUrl,   // 21_scene_objects
     get state(){ return state; }};
   // animace (tests/23_animation.test.js)
   Object.assign(window.__pzFns, {pauseAnimation, seekAnimationToTime, setCameraUiMode, getCameraUiMode, cameraAnimReady,
@@ -19914,6 +19992,25 @@ function pzColorFromName(v){
 </style>
 <style id="pz-agent-css">
 /* [css:scena] pravidla oblasti „scena" vkládej pod tento řádek */
+/* řádek seznamu, který je součástí vícenásobného výběru (stejný čárkovaný rámeček jako na mapě) */
+.wp-item.pz-multi-row{outline:2px dashed #F03B3B;outline-offset:-2px;background:rgba(240,59,59,.10)}
+.wp-item.pz-multi-row .wp-badge{background:var(--accent);color:#fff}
+.wp-list > .small{padding:2px 0}
+/* lišta nad mapou při výběru více objektů */
+.pz-multi-bar{position:absolute;top:60px;left:calc(50% + var(--panel-shift,0px));transform:translateX(-50%);z-index:56;display:flex;align-items:center;gap:4px;padding:5px 6px 5px 12px;background:var(--bg1);border:1px solid var(--accent);border-radius:var(--radius);box-shadow:0 6px 20px rgba(0,0,0,.4);color:var(--tx1);font:600 12px var(--font);white-space:nowrap}
+.pz-multi-bar[hidden]{display:none}
+.pz-multi-bar .pz-multi-n{margin-right:6px;letter-spacing:.2px}
+.pz-multi-bar .pz-multi-n b{color:var(--accent-hi,var(--accent));font-weight:800}
+.pz-multi-bar button{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:1px solid transparent;border-radius:var(--radius);background:transparent;color:var(--tx1);cursor:pointer}
+.pz-multi-bar button svg{width:17px;height:17px}
+.pz-multi-bar button:hover{background:var(--bg3);border-color:var(--border-hi)}
+.pz-multi-bar button.danger:hover{color:#f85149;border-color:#f85149;background:rgba(248,81,73,.1)}
+@media (max-width:760px){.pz-multi-bar{top:auto;bottom:96px;left:50%}}
+/* ikonky: velikost přes celou šířku, vlastní soubor v rozbalovacím bloku */
+.pz-icon-size{margin-bottom:10px}
+.pz-icon-upload{display:flex;align-items:center;gap:10px}
+.pz-icon-upload input[type=file]{flex:1;min-width:0}
+#sceneIconPreview:empty{display:none}
 /* . */
 /* . */
 /* . */
