@@ -26,11 +26,12 @@ const ROAD = [[14.42,50.08],[14.5,50.06],[14.55,50.02],[14.52,49.98],[14.6,49.95
       const p = k / 40; F.setAnimProgress(p);
       const spec = F.pzConsistSpec(), f = m.getSource('pz-souprava')?.serialize?.().data?.features || [];
       // na startu vyjíždí souprava z bodu A — díly za ním schovává maska
-      const rp = F.pzRailPose(st._pzConsistLast), shown = rp ? rp.length - 1 : spec?.units.length;   // _pzConsistLast = průběh po easingu
+      const rp = F.pzRailPose(st._pzConsistLast), shown = rp ? rp.slice(1).filter(x => !x.hidden).length : spec?.units.length;   // _pzConsistLast = průběh po easingu
       if(!spec || f.length !== shown){ out.missing++; continue; }
-      if(shown < spec.units.length) out.masked++;
+      // na startu/v cíli schovává část soupravy maska — mezery se měří jen u celé soupravy
+      if(shown < spec.units.length || (rp && rp[0].clip && !rp[0].clip.length)){ out.masked++; continue; }
       const size = parseFloat(st.animatedMarkerEl.style.width);
-      let prev = {c: m.project(st.animatedMarker.getLngLat()), rot: (F.pzLeadHeading ? F.pzLeadHeading(p) : F.pzAutoHeading(st.routeCoords, p)), back: spec.rear};
+      let prev = {c: m.project(st.animatedMarker.getLngLat()), rot: (F.pzLeadHeading ? F.pzLeadHeading(st._pzConsistLast) : F.pzAutoHeading(st.routeCoords, p)), back: spec.rear};
       f.forEach((x, i) => {
         const u = spec.units[i], c = m.project(x.geometry.coordinates), da = dir(prev.rot), db = dir(x.properties.rot);
         const g = Math.hypot((prev.c.x - da[0] * prev.back * size) - (c.x + db[0] * u.front * size), (prev.c.y - da[1] * prev.back * size) - (c.y + db[1] * u.front * size)) / size;

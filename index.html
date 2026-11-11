@@ -12884,6 +12884,21 @@ function pzClipSquare(planes){
   }
   return cut ? poly : null;
 }
+// Průběh animace (0–1) → poloha přídě: od bodu A až do chvíle, kdy celé vozidlo
+// zajede do bodu B (pak je pod maskou schované). Hodnota > 1 = příď za cílem.
+function pzVehicleProgress(e){
+  try{
+    const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
+    if(!pzIsRail(type) || !m || !route || route.length < 2) return e;
+    const {total} = cumulativeRouteLengths(route); if(!(total > 0)) return e;
+    const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
+    const lead = pointAtProgress(route, Math.min(1, e)) || route[0];
+    const U = sizePx * 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
+    const spec = pzConsistSpec() || {rear:0.5, units:[]};
+    const len = spec.units.reduce((a, u) => a + u.front + u.back, spec.rear + 0.5) * U;
+    return e * (total + len) / total;
+  }catch(err){ return e; }
+}
 function pzRailPose(progress){
   const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
   if(!pzIsRail(type) || !m || !route || route.length < 2) return null;
@@ -12891,7 +12906,7 @@ function pzRailPose(progress){
   const zoom = m.getZoom(), key = [progress, zoom, sizePx, route.length, type, $('pzWagonCount')?.value || ''].join('|');
   if(_pzRailCache && _pzRailCache.key === key && _pzRailCache.route === route) return _pzRailCache.pose;
   const {cum, total} = cumulativeRouteLengths(route);
-  const lead = pointAtProgress(route, progress) || route[0];
+  const lead = pointAtProgress(route, Math.min(1, progress)) || route[0];
   const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, zoom));
   const U = sizePx * kmPerPx;
   const lat0 = lead[1] * Math.PI / 180, kx = 111.32 * Math.cos(lat0), ky = 110.57;
@@ -12899,7 +12914,22 @@ function pzRailPose(progress){
   const toLL = q => [lead[0] + q[0] / kx, lead[1] + q[1] / ky];
   const spec = pzConsistSpec() || {rear:0.5, units:[]};
   const lenAll = spec.units.reduce((a, u) => a + u.front + u.back, spec.rear + 0.5) * U;
-  const at = d => toXY(pzPointAtKm(route, cum, total, d, lenAll));
+  const atRaw = d => toXY(pzPointAtKm(route, cum, total, d, lenAll));
+  // Trať v měřítku vozu: data tratí mají drobné zuby a klikačky kratší než vagon —
+  // vozy, které je kopírovaly, se kroutily jako červ. Kolem soupravy se trať
+  // převzorkuje a vyhladí (2× klouzavý průměr přes ~0,8 délky vozu); skutečné
+  // oblouky zůstanou, zuby zmizí.
+  const dN = progress * total, hS = Math.max(U * 0.06, 1e-5), kS = Math.max(2, Math.round(1.0 * U / hS));
+  const s0 = dN - lenAll - 4 * U, nS = Math.ceil((lenAll + 7 * U) / hS) + 1;
+  let P = new Array(nS);
+  for(let i = 0; i < nS; i++) P[i] = atRaw(s0 + i * hS);
+  for(let pass = 0; pass < 2; pass++){
+    const Q = new Array(nS); let sx = 0, sy = 0;
+    const pre = [[0, 0]]; for(let i = 0; i < nS; i++){ sx += P[i][0]; sy += P[i][1]; pre.push([sx, sy]); }
+    for(let i = 0; i < nS; i++){ const a = Math.max(0, i - kS), b = Math.min(nS - 1, i + kS), n = b - a + 1; Q[i] = [(pre[b+1][0] - pre[a][0]) / n, (pre[b+1][1] - pre[a][1]) / n]; }
+    P = Q;
+  }
+  const at = d => { const x = (d - s0) / hS; if(x <= 0 || x >= nS - 1) return atRaw(d); const i = Math.floor(x), t = x - i; return [P[i][0] + (P[i+1][0] - P[i][0]) * t, P[i][1] + (P[i+1][1] - P[i][1]) * t]; };
   // bod trati za vzdáleností s0, který je od bodu Q vzdušně L (hledání dozadu)
   const back = (Q, s0, L) => {
     let hi = s0, lo = s0, step = Math.max(L / 3, 1e-6), k = 0;
@@ -12910,8 +12940,8 @@ function pzRailPose(progress){
   // maska: za bodem A (proti směru trasy na startu) a za bodem B nic není vidět
   const unit = v => { const l = Math.hypot(v[0], v[1]) || 1e-9; return [v[0] / l, v[1] / l]; };
   const ds = Math.min(total * 0.5, Math.max(U * 0.3, 1e-4));
-  const A = at(0), tA = unit([at(ds)[0] - A[0], at(ds)[1] - A[1]]);
-  const B = at(total), tB = unit([B[0] - at(total - ds)[0], B[1] - at(total - ds)[1]]);
+  const A = atRaw(0), tA = unit([atRaw(ds)[0] - A[0], atRaw(ds)[1] - A[1]]);
+  const B = atRaw(total), tB = unit([B[0] - atRaw(total - ds)[0], B[1] - atRaw(total - ds)[1]]);
   const clipOf = (c, f, side, sc) => {
     const pp = [f[1], -f[0]], planes = [];
     const dot = (u, v) => u[0] * v[0] + u[1] * v[1];
@@ -12938,17 +12968,15 @@ function pzRailPose(progress){
   // zadní náprava/podvozek na trati → v zatáčce se díl jen zalomí v kloubu
   const lp = pose[0];
   let hitch = [lp.xy[0] - lp.dir[0] * spec.rear * U, lp.xy[1] - lp.dir[1] * spec.rear * U];
-  let sPrev = sR, hidden = lp.clip && !lp.clip.length;
+  let sPrev = sR;
   spec.units.forEach(u => {
-    if(hidden) return;                                 // díly za úplně schovaným jsou schované taky
     const ax = u.axle != null ? u.axle : Math.min(u.front, u.back) * 0.72;
     const L = (u.front + ax) * U;                      // od spřáhla k zadní nápravě
     const sR2 = back(hitch, Math.min(sPrev, d), L), R2 = at(sR2);
     const f = unit([hitch[0] - R2[0], hitch[1] - R2[1]]);
     const c = [hitch[0] - f[0] * u.front * U, hitch[1] - f[1] * u.front * U];
     const side = (u.scale || 1) * U, clip = clipOf(c, f, side, sR2 + ax * U);
-    if(clip && !clip.length){ hidden = true; return; }
-    pose.push({c: toLL(c), xy: c, rot: Math.atan2(f[0], f[1]) * 180 / Math.PI, dir: f, scale: u.scale, type: u.type, clip, unit: u});
+    pose.push({c: toLL(c), xy: c, rot: Math.atan2(f[0], f[1]) * 180 / Math.PI, dir: f, scale: u.scale, type: u.type, clip, unit: u, hidden: !!(clip && !clip.length)});
     hitch = [c[0] - f[0] * u.back * U, c[1] - f[1] * u.back * U];
     sPrev = sR2;
   });
@@ -13062,6 +13090,13 @@ function pzProjectKm(coords, cum, pt, guessKm){
   return bestD;
 }
 function pzPointAtKm(coords, cum, total, d, chordKm){
+  if(d > total && total > 1e-9){
+    // za cílem (souprava zajíždí do bodu B pod maskou): prodloužit trať přímo
+    const z = coords[coords.length-1], back = Math.min(Math.max(chordKm || 0, d - total, 1e-6), total);
+    const b = pointAtProgress(coords, (total - back) / total);
+    const L = haversineKm(b, z) || 1e-9, k = (d - total) / L;
+    return [z[0] + (z[0] - b[0]) * k, z[1] + (z[1] - b[1]) * k];
+  }
   if(d >= total) return coords[coords.length-1];
   if(d <= 0){
     // před startem: zrcadlit navazující úsek trati za start (bod ve vzdálenosti |d|
@@ -13121,7 +13156,7 @@ function pzUpdateConsist(progress, opts){
   const feats = [];
   if(spec && route.length > 1 && (opts?.size || state.animatedMarkerEl)){
     const size = opts?.size || parseFloat(state.animatedMarkerEl.style.width) || parseInt($('animIconSize')?.value || '34', 10);
-    const lead = pointAtProgress(route, progress) || route[0];
+    const lead = pointAtProgress(route, Math.min(1, progress)) || route[0];
     // km na CSS pixel v místě soupravy (MapLibre: dlaždice 512 px)
     const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
     const U = size * kmPerPx;                         // délka jedné „velikosti ikonky" v km
@@ -13141,7 +13176,7 @@ function pzUpdateConsist(progress, opts){
     if(railPose){
       railPose.slice(1).forEach((pt, i) => {
         const u = pt.unit || spec.units[i], rec = pzConsistImage(pzVehicleImage(u.type), false, '');
-        if(!rec.ready) return;
+        if(!rec.ready || pt.hidden) return;
         if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
         let img = rec.id;
         if(pt.clip){
@@ -13844,7 +13879,8 @@ function setAnimProgress(progress){
   const cameraDriven = applyCameraAnimProgress(progress);
   if(!state.routeCoords.length){ updateAnimReadout(); return; }
   // The object's distance along the route is eased; the camera timeline above stays linear.
-  const eased = applyAnimEasing(progress);
+  const vp = pzVehicleProgress(applyAnimEasing(progress));   // příď (u vozidel z obrázků až za cíl)
+  const eased = Math.min(1, vp);
   const sliced = sliceLineByProgress(state.routeCoords, eased);
   const point = sliced.point;
   // Movement smoothing: a per-frame low-pass on the object position softens the jitter
@@ -13930,11 +13966,11 @@ function setAnimProgress(progress){
     state.map.triggerRepaint();
   } else {
     if(plane3dLayer.cur) plane3dLayer.cur.visible = false;
-    { const rp = (animDot && point) ? pzRailPose(eased) : null; if(rp) mPoint = rp[0].c; }
-    if(animDot && point) ensureAnimMarker(mPoint, finalAngle(eased), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
-    try{ pzUpdateConsist(animDot && point ? eased : null); }catch(e){}
-    try{ pzApplyLeadClip(state.animatedMarkerEl, animDot && point ? pzRailPose(eased) : null); }catch(e){}
-    try{ pzUpdateBeacons(state.animatedMarkerEl, eased); }catch(e){}
+    { const rp = (animDot && point) ? pzRailPose(vp) : null; if(rp) mPoint = rp[0].c; }
+    if(animDot && point) ensureAnimMarker(mPoint, finalAngle(vp), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
+    try{ pzUpdateConsist(animDot && point ? vp : null); }catch(e){}
+    try{ pzApplyLeadClip(state.animatedMarkerEl, animDot && point ? pzRailPose(vp) : null); }catch(e){}
+    try{ pzUpdateBeacons(state.animatedMarkerEl, applyAnimEasing(progress)); }catch(e){}
     // A GLB model pinned to the route follows the animation (position + heading).
     if(state.model3d?.followRoute && model3dHasModel() && mPoint){ state.model3d.lngLat = mPoint; state.model3d.rotationLive = (typeof routeAngle === 'function' ? pzAutoHeading(state.routeCoords, eased) : 0) + (state.model3d.rotationDeg || 0); state.map?.triggerRepaint?.(); }
   }
@@ -14570,7 +14606,8 @@ function createNativeExportMarkers(exportMap){
   if($('animDot')?.checked && state.routeCoords?.length && !exportUses3dPlane()){
     // (When the 3D plane mesh renders on the globe arc, no 2D icon marker is created —
     // otherwise the export would show BOTH the mesh and the flat icon.)
-    const progress = applyAnimEasing(getCurrentAnimationProgress());
+    const vp = pzVehicleProgress(applyAnimEasing(getCurrentAnimationProgress()));
+    const progress = Math.min(1, vp);
     const sliced = sliceLineByProgress(state.routeCoords, progress);
     const point = sliced.point;
     if(point){
@@ -14583,15 +14620,15 @@ function createNativeExportMarkers(exportMap){
       const el = createMarkerEl(getCurrentMoverType(), size);
       temp.animatedMarkerEl = el;
       temp.animatedMarker = new maplibregl.Marker({element:el, anchor:'center', rotationAlignment:align.rotationAlignment, pitchAlignment:align.pitchAlignment})
-        .setLngLat((() => { try{ const rp = pzRailPose(progress); return rp ? rp[0].c : point; }catch(e){ return point; } })()).addTo(exportMap);
+        .setLngLat((() => { try{ const rp = pzRailPose(vp); return rp ? rp[0].c : point; }catch(e){ return point; } })()).addTo(exportMap);
       // Lift the icon onto the 3D arc in the EXPORT too (state.map is already the export
       // map here, so the lift is computed in export-camera pixels). Without this the plane
       // detached from the arc ribbon in rendered videos on tilted/globe views.
       try{ const lp = arc3dLiftPx(point, progress); const off = Array.isArray(lp) ? lp : [0, -(lp || 0)]; temp.animatedMarker.setOffset(off); }catch(e){}
-      temp.animatedMarker.setRotation(cameraFacingDisplayAngle(cameraFacing, finalAngle(progress)));
+      temp.animatedMarker.setRotation(cameraFacingDisplayAngle(cameraFacing, finalAngle(vp)));
       temp.markerCameraMode = align.key;
-      try{ pzUpdateConsist(progress, {map: exportMap, size}); temp.consist = !!pzConsistSpec(); }catch(e){}
-      try{ pzApplyLeadClip(el, pzRailPose(progress)); }catch(e){}
+      try{ pzUpdateConsist(vp, {map: exportMap, size}); temp.consist = !!pzConsistSpec(); }catch(e){}
+      try{ pzApplyLeadClip(el, pzRailPose(vp)); }catch(e){}
       try{ pzUpdateBeacons(el, progress); }catch(e){}
     }
   }
