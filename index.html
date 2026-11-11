@@ -17683,6 +17683,7 @@ function applyLang(lang) {
   try{ if(state.countriesGeojson) populateCountrySelects(); }catch(e){}
   try{ pzRenderCountryColorList(); }catch(e){}
   try{ pzRenderClosureList(); }catch(e){}
+  try{ updateExportSummary(); }catch(e){}   // souhrn pod tlačítky exportu je skládaný v JS — přeložit znovu
 
   // Změna jazyka nesmí znovu otevřít našeptávač (překryl by záložky).
   if (state.placeSearchResults?.length && !document.getElementById('placeSearchResults')?.hidden) {
