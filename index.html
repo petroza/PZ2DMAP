@@ -307,6 +307,8 @@ input[type=color]:hover{border-color:var(--accent)}
 .route-dot.dot-wp{background:var(--yellow);width:22px;height:22px;font-size:10px;border-width:1.5px}
 
 .maplibregl-marker.animated-marker,.maplibregl-marker:has(> .animated-marker){z-index:4}
+/* bod A a B nad vozidlem: vozidlo pod bodem vyjíždí / zajíždí („do tunelu“) */
+.maplibregl-marker.route-dot.dot-a,.maplibregl-marker.route-dot.dot-b{z-index:5}
 .animated-marker.pz-colored-vehicle{filter:none}
 /* majáky hasičů, sanitky a policie — blikají střídavě, jen když vozidlo jede */
 .pz-beacon{position:absolute;width:22%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;background:radial-gradient(circle,rgba(255,255,255,.95) 0 18%,rgba(60,140,255,.85) 32%,rgba(40,110,255,.35) 58%,rgba(40,110,255,0) 72%)}
@@ -15354,13 +15356,14 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
     }
   }
 
-  await drawElement(state.markerA?.getElement?.(), false);
-  await drawElement(state.markerB?.getElement?.(), false);
   for(const m of state.manualViaMarkers){ await drawElement(m.getElement?.(), false); }
   for(const item of state.sceneIcons){ await drawElement((item.marker || item).getElement?.(), false); }
   for(const item of state.mapLabels){ await drawElement(item.marker?.getElement?.(), false); }
   try{ pzDrawSceneTagLabels(ctx, crop); }catch(e){}
+  // vozidlo nad objekty scény, ale POD body A a B (vyjíždí z bodu A, zajíždí pod bod B)
   await drawElement(state.animatedMarkerEl, true);
+  await drawElement(state.markerA?.getElement?.(), false);
+  await drawElement(state.markerB?.getElement?.(), false);
   return true;
 }
 
