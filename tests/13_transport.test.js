@@ -10,10 +10,11 @@ const ROAD = [[14.42,50.08],[14.6,50.0],[14.9,49.8],[15.2,49.65],[15.6,49.43],[1
   let r = await route('Praha', 'Ostrava', 'train');
   check(r.ok && r.distanceKm > 300 && /nádraží/i.test((r.stations || []).join(' ')), `vlak Praha–Ostrava ${r.distanceKm} km, ${JSON.stringify(r.stations)}`);
   await page.waitForTimeout(1500);
-  check(await page.evaluate(() => (window.__tnMap.getSource('pz-souprava')?.serialize?.().data?.features?.length || 0) >= 2), 'vlak má vagony');
+  // na startu vyjíždí z bodu A (díly za ním schovává maska) — kontrola uprostřed jízdy
+  check(await page.evaluate(() => { window.__pzFns.setAnimProgress(0.5); return (window.__tnMap.getSource('pz-souprava')?.serialize?.().data?.features?.length || 0) >= 2; }), 'vlak má vagony');
   r = await route('Praha', 'Mělník', 'boat'); check(r.ok && r.distanceKm > 25, `loď Praha–Mělník ${r.distanceKm} km`);
   r = await route('Praha', 'Brno', 'truck'); await page.waitForTimeout(1500);
-  check(r.ok && await page.evaluate(() => (window.__tnMap.getSource('pz-souprava')?.serialize?.().data?.features?.length || 0) === 1), 'kamion má návěs');
+  check(r.ok && await page.evaluate(() => { window.__pzFns.setAnimProgress(0.5); return (window.__tnMap.getSource('pz-souprava')?.serialize?.().data?.features?.length || 0) === 1; }), 'kamion má návěs');
   r = await page.evaluate(() => window.TNMAP.metroClosure({line:'C', from:'Florenc', to:'Pražského povstání'}));
   check(r.ok && r.stations?.length === 6, 'výluka metra C Florenc–Pražského povstání (6 stanic)');
   r = await page.evaluate(() => window.TNMAP.roadClosure({from:'Humpolec', to:'Větrný Jeníkov'}));
