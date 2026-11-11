@@ -310,6 +310,7 @@ input[type=color]:hover{border-color:var(--accent)}
 /* bod A a B nad vozidlem: vozidlo pod bodem vyjíždí / zajíždí („do tunelu“) */
 .maplibregl-marker.route-dot.dot-a,.maplibregl-marker.route-dot.dot-b{z-index:5}
 .animated-marker.pz-colored-vehicle{filter:none}
+.animated-marker.pz-sprite-vehicle{filter:drop-shadow(0 0 1px rgba(0,0,0,.5)) drop-shadow(0 0 4px rgba(0,0,0,.42))}
 /* majáky hasičů, sanitky a policie — blikají střídavě, jen když vozidlo jede */
 .pz-beacon{position:absolute;width:22%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;background:radial-gradient(circle,rgba(255,255,255,.95) 0 18%,rgba(60,140,255,.85) 32%,rgba(40,110,255,.35) 58%,rgba(40,110,255,0) 72%)}
 .animated-marker.pz-flash-a .pz-beacon.b0,.animated-marker.pz-flash-b .pz-beacon.b1{opacity:1}
@@ -4307,6 +4308,48 @@ function pzSquarePiece(im, sx, sy, sw, sh, out = 384){
   x.drawImage(im, sx, sy, sw, sh, (out - sw * k) / 2, (out - sh * k) / 2, sw * k, sh * k);
   return c.toDataURL('image/png');
 }
+// Tmavá varianta světlého vozidla pro světlou mapu: světlá karoserie → tmavě šedá,
+// tmavá okna → skoro černá (kresba zůstane čitelná); barevné detaily (světla,
+// pruhy) se jen ztmaví. Na tmavé mapě (satelit, tmavé podklady) zůstává světlé.
+const PZ_SPRITE_IMG_DARK = {};
+function pzDarkenPiece(url){
+  return new Promise(res => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height), a = d.data;
+      const D0 = [14, 17, 22], D1 = [74, 82, 94];
+      for(let i = 0; i < a.length; i += 4){
+        if(!a[i+3]) continue;
+        const r = a[i], g = a[i+1], b = a[i+2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        const l = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255, sat = mx ? (mx - mn) / mx : 0;
+        if(sat > 0.35){ a[i] = r * 0.8; a[i+1] = g * 0.8; a[i+2] = b * 0.8; continue; }   // světla, barevné pruhy
+        a[i] = D0[0] + (D1[0] - D0[0]) * l; a[i+1] = D0[1] + (D1[1] - D0[1]) * l; a[i+2] = D0[2] + (D1[2] - D0[2]) * l;
+      }
+      x.putImageData(d, 0, 0); res(c.toDataURL('image/png'));
+    };
+    im.onerror = () => res(null);
+    im.src = url;
+  });
+}
+// Je vozidlo „světlé a bez barvy" (auto, kamion, vlak, loď…)? Hasiči, policie,
+// sanitka a barevné soupravy mají svou barvu a nepřebarvují se.
+function pzSpriteIsNeutralLight(im){
+  try{
+    const c = document.createElement('canvas'), k = Math.min(1, 160 / Math.max(im.naturalWidth, im.naturalHeight));
+    c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k));
+    const x = c.getContext('2d'); x.drawImage(im, 0, 0, c.width, c.height);
+    const a = x.getImageData(0, 0, c.width, c.height).data;
+    let n = 0, sl = 0, ss = 0;
+    for(let i = 0; i < a.length; i += 4){
+      if(a[i+3] < 200) continue;
+      const r = a[i], g = a[i+1], b = a[i+2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      sl += (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255; ss += mx ? (mx - mn) / mx : 0; n++;
+    }
+    return n > 0 && sl / n > 0.55 && ss / n < 0.2;
+  }catch(e){ return false; }
+}
 function pzLoadSprites(){
   Object.entries(PZ_SPRITES).forEach(([type, sp]) => {
     const im = new Image(); im.crossOrigin = 'anonymous';
@@ -4323,16 +4366,21 @@ function pzLoadSprites(){
         }
         PZ_SPRITE_GEO[type] = {leadLen: lead, total: H, aspect: W / lead, rear: (P[1] - (P[0] + P[1]) / 2) / lead, units};
         pzSpriteRefresh(type);
+        if(!sp.keepColor && pzSpriteIsNeutralLight(im)){
+          const keys = [type, ...units.map(u => u.type)];
+          Promise.all(keys.map(k => pzDarkenPiece(PZ_SPRITE_IMG[k]).then(u => { if(u) PZ_SPRITE_IMG_DARK[k] = u; }))).then(() => pzSpriteRefresh(type, true));
+        }
       }catch(e){ console.warn('sprite', type, e); }
     };
     im.src = new URL(sp.src, document.baseURI).href;
   });
 }
 function pzIsSprite(type){ return !!PZ_SPRITE_IMG[type]; }
-function pzSpriteRefresh(type){
+function pzSpriteRefresh(type, consist){
   if(state.animSystemIcon !== type) return;
   state.animIconData = pzVehicleImage(type);
   try{ renderAnimSystemIconSelection(); renderAnimIconPreview(); refreshAnimatedMarkerPreview(); }catch(e){}
+  if(consist) try{ if(state._pzConsistLast != null) pzUpdateConsist(state._pzConsistLast); }catch(e){}
 }
 const PZ_VEHICLE_SVG = {
   "car": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><defs>\n    <linearGradient id=\"roof\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#FFFFFF\"/><stop offset=\".48\" stop-color=\"#F8FAFC\"/><stop offset=\"1\" stop-color=\"#CCD5DF\"/></linearGradient>\n    <linearGradient id=\"glass\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop stop-color=\"#526B7C\"/><stop offset=\".42\" stop-color=\"#233845\"/><stop offset=\"1\" stop-color=\"#14222C\"/></linearGradient>\n    <linearGradient id=\"paint\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop stop-color=\"#48CFA5\"/><stop offset=\"1\" stop-color=\"#48CFA5\" stop-opacity=\".78\"/></linearGradient>\n    <filter id=\"shadow\" x=\"-30%\" y=\"-50%\" width=\"160%\" height=\"220%\"><feDropShadow dx=\"0\" dy=\"2\" stdDeviation=\"2\" flood-color=\"#172B3B\" flood-opacity=\".28\"/></filter>\n    </defs><g transform=\"translate(50 50) rotate(-90) scale(1.2) translate(-40 -22)\"><g filter=\"url(#shadow)\">\n<path d=\"M47 6V3.6M47 38V40.4M22 6V4.4M22 38V39.6\" stroke=\"#263D4A\" stroke-width=\"2.4\" stroke-linecap=\"round\"/>\n<path d=\"M15 6H56Q71 7 74 22Q71 37 56 38H15Q6 38 6 29V15Q6 6 15 6Z\" fill=\"#243442\" stroke=\"white\" stroke-width=\"2.4\"/>\n<path d=\"M16 8H55Q69 9 72 22Q69 35 55 36H16Q8 36 8 28V16Q8 8 16 8Z\" fill=\"url(#roof)\"/>\n<path d=\"M14 9.6H54M14 34.4H54\" stroke=\"url(#paint)\" stroke-width=\"2.2\" stroke-linecap=\"round\"/>\n<path d=\"M49 12Q58 15 59 22Q58 29 49 32L45 28V16Z\" fill=\"url(#glass)\"/>\n<path d=\"M19 13L24 16V28L19 31Q16 22 19 13Z\" fill=\"url(#glass)\"/>\n<rect x=\"26\" y=\"13.5\" width=\"18\" height=\"17\" rx=\"4\" fill=\"url(#roof)\" stroke=\"#C6D0D9\" stroke-width=\".7\"/>\n<path d=\"M52 15Q55 17 56 20\" fill=\"none\" stroke=\"#88A4B4\" stroke-width=\"1.1\" stroke-linecap=\"round\"/>\n<path d=\"M69.5 14.5L71 17.5M69.5 29.5L71 26.5\" stroke=\"#FFF6D4\" stroke-width=\"1.7\" stroke-linecap=\"round\"/>\n<path d=\"M8.6 13V17M8.6 27V31\" stroke=\"#EB6872\" stroke-width=\"1.6\" stroke-linecap=\"round\"/>\n</g></g></svg>",
@@ -4392,7 +4440,20 @@ function pzSetVehiclePalette(palette){
   pzVehicleCache.clear();
 }
 // Po změně podkladu nebo vzhledu: v automatice přebarvit ikonu, když se světlost změnila.
+function pzMapIsDarkCached(){
+  if(state._pzMapDark == null){ try{ state._pzMapDark = pzBasemapIsDark(); }catch(e){ return false; } }
+  return state._pzMapDark;
+}
 function pzAutoVehicleRefresh(){
+  // vozidla z obrázků: světlé ↔ tmavé podle podkladu (vždy automaticky)
+  try{
+    const dark = pzBasemapIsDark();
+    if(dark !== state._pzMapDark){
+      state._pzMapDark = dark;
+      const ty = state.animSystemIcon;
+      if(PZ_SPRITE_IMG[ty]){ state.animIconData = pzVehicleImage(ty); try{ renderAnimIconPreview(); refreshAnimatedMarkerPreview(); }catch(e){} try{ if(state._pzConsistLast != null) pzUpdateConsist(state._pzConsistLast); }catch(e){} }
+    }
+  }catch(e){}
   if(state.vehicleAuto === false) return;
   const want = pzAutoVehicleColors();
   if($('pzVehicleBody').value === want.body && $('pzVehicleAccent').value === want.accent) return;
@@ -4405,7 +4466,8 @@ function pzVehicleShade(hex, target, amount){
   return '#' + channels.map((channel, i) => Math.round(parseInt(channel, 16) * (1 - amount) + target[i] * amount).toString(16).padStart(2, '0')).join('');
 }
 function pzVehicleImage(type){
-  if(PZ_SPRITE_IMG[type]) return PZ_SPRITE_IMG[type];
+  // na světlé mapě tmavé vozidlo, na tmavé světlé (u světlých neutrálních obrázků)
+  if(PZ_SPRITE_IMG[type]) return (!pzMapIsDarkCached() && PZ_SPRITE_IMG_DARK[type]) || PZ_SPRITE_IMG[type];
   if(!pzHasVehiclePalette(type)) return ANIM_SYSTEM_ICONS[type] || null;
   if(!pzVehicleCache.has(type)){
     const {body, accent} = pzVehiclePalette();
@@ -13055,6 +13117,19 @@ function pzConsistSpec(){
   return null;
 }
 const _pzConsistImg = {};
+// Měkký stín kolem vozidla (bez posunu → stejný v každém směru jízdy): čitelnost
+// na světlé mapě, satelitu i přes čáru trasy. Obrázek je o 30 % větší než díl,
+// aby se rozmazání vešlo; ve vrstvě se kreslí 1,3× větší a pod vozidlem.
+const PZ_SHADOW_PAD = 1.3;
+function pzSoftShadow(srcCanvas){
+  const n = srcCanvas.width, N = Math.round(n * PZ_SHADOW_PAD), off = (N - n) / 2;
+  const sil = document.createElement('canvas'); sil.width = sil.height = n;
+  const sx = sil.getContext('2d'); sx.drawImage(srcCanvas, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = '#000'; sx.fillRect(0, 0, n, n);
+  const c = document.createElement('canvas'); c.width = c.height = N;
+  const x = c.getContext('2d'); x.filter = 'blur(' + Math.round(n * 0.035) + 'px)'; x.globalAlpha = 0.6; x.drawImage(sil, off, off);
+  x.filter = 'blur(' + Math.round(n * 0.012) + 'px)'; x.globalAlpha = 0.55; x.drawImage(sil, off, off);
+  return x.getImageData(0, 0, N, N);
+}
 function pzConsistImage(src, inverted, tint){
   const key = src + (inverted ? '#inv' : '') + (tint ? '#' + tint : '');
   if(_pzConsistImg[key]) return _pzConsistImg[key];
@@ -13067,6 +13142,7 @@ function pzConsistImage(src, inverted, tint){
     ctx.drawImage(im, 0, 0, 256, 256);
     rec.data = ctx.getImageData(0, 0, 256, 256);
     if(tint && !rec.accent) rec.data = pzTintPixels(rec.data, tint);
+    try{ rec.shadow = pzSoftShadow(c); rec.shadowId = rec.id + '-stin'; }catch(e){}
     rec.ready = true;
     try{ if(state._pzConsistLast != null) pzUpdateConsist(state._pzConsistLast); }catch(e){}
   };
@@ -13186,7 +13262,9 @@ function pzUpdateConsist(progress, opts){
           img = 'pzclip-' + i; const data = pzClippedImage(rec, pt.clip);
           try{ if(m.hasImage(img)) m.updateImage(img, data); else m.addImage(img, data, {pixelRatio: 256 / 64}); }catch(e){ img = rec.id; }
         }
-        feats.push({type:'Feature', geometry:{type:'Point', coordinates:pt.c}, properties:{img, rot: pt.rot, sz: size * (u.scale || 1) / 64, k:i}});
+        if(rec.shadow && !pt.clip && !m.hasImage(rec.shadowId)) m.addImage(rec.shadowId, rec.shadow, {pixelRatio: 256 / 64});
+        feats.push({type:'Feature', geometry:{type:'Point', coordinates:pt.c}, properties:{img, rot: pt.rot, sz: size * (u.scale || 1) / 64, k:i,
+          shd: rec.shadow && !pt.clip ? rec.shadowId : '', ssz: size * (u.scale || 1) / 64 * PZ_SHADOW_PAD}});
       });
     }
     const hd = pzLeadHeading(progress) * Math.PI / 180;
@@ -13209,14 +13287,24 @@ function pzUpdateConsist(progress, opts){
       hitch = [mid[0] - vx * u.back * U, mid[1] - vy * u.back * U];
       if(!rec.ready) return;
       if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
-      feats.push({type:'Feature', geometry:{type:'Point', coordinates:toLL(mid)}, properties:{img:rec.id, rot: Math.atan2(vx, vy) * 180 / Math.PI, sz: size * (u.scale || 1) / 64, k:i}});
+      if(rec.shadow && !m.hasImage(rec.shadowId)) m.addImage(rec.shadowId, rec.shadow, {pixelRatio: 256 / 64});
+      feats.push({type:'Feature', geometry:{type:'Point', coordinates:toLL(mid)}, properties:{img:rec.id, rot: Math.atan2(vx, vy) * 180 / Math.PI, sz: size * (u.scale || 1) / 64, k:i,
+        shd: rec.shadow ? rec.shadowId : '', ssz: size * (u.scale || 1) / 64 * PZ_SHADOW_PAD}});
     });
   }
   const data = {type:'FeatureCollection', features:feats};
+  const addShadowLayer = () => {
+    if(m.getLayer('pz-souprava-stin') || !m.getLayer('pz-souprava')) return;
+    m.addLayer({id:'pz-souprava-stin', type:'symbol', source:'pz-souprava', filter:['!=', ['get','shd'], ''], layout:{
+      'icon-image':['get','shd'], 'icon-size':['get','ssz'], 'icon-rotate':['get','rot'],
+      'icon-rotation-alignment':'map', 'icon-pitch-alignment':'viewport',
+      'icon-allow-overlap':true, 'icon-ignore-placement':true}}, 'pz-souprava');
+  };
   const src = m.getSource('pz-souprava');
-  if(src){ src.setData(data); return; }
+  if(src){ src.setData(data); try{ addShadowLayer(); }catch(e){} return; }
   if(!feats.length) return;
   m.addSource('pz-souprava', {type:'geojson', data});
+  setTimeout(() => { try{ addShadowLayer(); }catch(e){} }, 0);
   m.addLayer({id:'pz-souprava', type:'symbol', source:'pz-souprava', layout:{
     'icon-image':['get','img'], 'icon-size':['get','sz'], 'icon-rotate':['get','rot'],
     'icon-rotation-alignment':'map', 'icon-pitch-alignment':'viewport',
@@ -13295,6 +13383,7 @@ function createMarkerEl(type,size){
   const el = document.createElement('div');
   el.className = 'animated-marker';
   el.classList.toggle('pz-colored-vehicle', pzHasVehiclePalette(state.animSystemIcon) || pzIsSprite(state.animSystemIcon));
+  el.classList.toggle('pz-sprite-vehicle', pzIsSprite(state.animSystemIcon));
   if(pzLegacyIconInverted()) el.classList.add('inverted');
   el.style.width = size + 'px'; el.style.height = size + 'px';
   el.innerHTML = animMarkerInnerHTML();
@@ -13348,6 +13437,7 @@ function ensureAnimMarker(point, angle, liftPx=0){
   }
   state.animatedMarkerEl.style.width = size + 'px'; state.animatedMarkerEl.style.height = size + 'px';
   state.animatedMarkerEl.classList.toggle('pz-colored-vehicle', pzHasVehiclePalette(state.animSystemIcon) || pzIsSprite(state.animSystemIcon));
+  state.animatedMarkerEl.classList.toggle('pz-sprite-vehicle', pzIsSprite(state.animSystemIcon));
   state.animatedMarkerEl.classList.toggle('inverted', inverted);
   // Rebuild the icon when the selected icon changed (system ⇄ custom ⇄ dot)
   // without recreating the whole marker — otherwise switching e.g. to AUTO
@@ -15345,6 +15435,10 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
     const imgEl = el.querySelector('img') || (el.tagName === 'IMG' ? el : null);
     if(imgEl && imgEl.complete && imgEl.naturalWidth > 0){
       ctx.save();
+      if(isAnimMarker && el.classList?.contains('pz-sprite-vehicle')){
+        // stejný měkký stín jako v náhledu (CSS drop-shadow se do exportu nepřenese)
+        ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5 * outScaleX; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+      }
       if(rotation){
         ctx.translate(dx + dw/2, dy + dh/2);
         ctx.rotate(rotation * Math.PI / 180);
