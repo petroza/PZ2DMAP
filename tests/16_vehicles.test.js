@@ -24,14 +24,14 @@ const ROAD = [[14.42,50.08],[14.5,50.06],[14.55,50.02],[14.52,49.98],[14.6,49.95
     const dir = deg => [Math.sin(deg * Math.PI / 180), -Math.cos(deg * Math.PI / 180)];
     for(let k = 0; k <= 40; k++){
       const p = k / 40; F.setAnimProgress(p);
-      const spec = F.pzConsistSpec(), f = m.getSource('pz-souprava')?.serialize?.().data?.features || [];
+      const spec = F.pzConsistSpec(), f = (window.__pzFns.pzVehicleParts(window.__pzFns.state._pzVehVp).filter(q => !q.lead && !q.hidden).map(q => ({geometry:{coordinates:q.c}, properties:{rot:q.rot}})));
       // na startu vyjíždí souprava z bodu A — díly za ním schovává maska
-      const rp = F.pzRailPose(st._pzConsistLast), shown = rp ? rp.slice(1).filter(x => !x.hidden).length : spec?.units.length;   // _pzConsistLast = průběh po easingu
+      const rp = F.pzRailPose(st._pzVehVp), shown = rp ? rp.slice(1).filter(x => !x.hidden).length : spec?.units.length;   // _pzVehVp = průběh vozidla
       if(!spec || f.length !== shown){ out.missing++; continue; }
       // na startu/v cíli schovává část soupravy maska — mezery se měří jen u celé soupravy
       if(shown < spec.units.length || (rp && rp[0].clip && !rp[0].clip.length)){ out.masked++; continue; }
       const size = parseFloat(st.animatedMarkerEl.style.width);
-      let prev = {c: m.project(st.animatedMarker.getLngLat()), rot: (F.pzLeadHeading ? F.pzLeadHeading(st._pzConsistLast) : F.pzAutoHeading(st.routeCoords, p)), back: spec.rear};
+      let prev = {c: m.project(st.animatedMarker.getLngLat()), rot: (F.pzLeadHeading ? F.pzLeadHeading(st._pzVehVp) : F.pzAutoHeading(st.routeCoords, p)), back: spec.rear};
       f.forEach((x, i) => {
         const u = spec.units[i], c = m.project(x.geometry.coordinates), da = dir(prev.rot), db = dir(x.properties.rot);
         const g = Math.hypot((prev.c.x - da[0] * prev.back * size) - (c.x + db[0] * u.front * size), (prev.c.y - da[1] * prev.back * size) - (c.y + db[1] * u.front * size)) / size;
@@ -50,7 +50,22 @@ const ROAD = [[14.42,50.08],[14.5,50.06],[14.55,50.02],[14.52,49.98],[14.6,49.95
   await page.evaluate(() => { const e = document.getElementById('pzWagonCount'); e.value = '5'; e.dispatchEvent(new Event('input', {bubbles:true})); });
   const g5 = await gaps();
   check(await page.evaluate(() => window.__pzFns.pzConsistSpec().units.length) === 5 && g5.missing === 0 && g5.max < 0.03, `vlak s 5 vagony drží pohromadě (${g5.max.toFixed(3)})`);
-  check(await page.evaluate(() => document.getElementById('pzVehiclePalette').hidden && !document.getElementById('pzWagonRow').hidden), 'u vlaku z obrázku je počet vagonů, barvy ne');
+  check(await page.evaluate(() => !document.getElementById('pzVehiclePalette').hidden && !document.getElementById('pzWagonRow').hidden && !document.getElementById('pzVehicleShadowRow').hidden), 'u vlaku z obrázku je počet vagonů, dvě barvy a stín');
+  // vlastní barva: karoserie + doplňková barva přebarví obrázek (lokomotiva i vagony)
+  const tinted = await page.evaluate(async () => {
+    const F = window.__pzFns, b = document.getElementById('pzVehicleBody'), a = document.getElementById('pzVehicleAccent');
+    b.value = '#c81e1e'; b.dispatchEvent(new Event('input', {bubbles:true})); a.value = '#1e64c8'; a.dispatchEvent(new Event('input', {bubbles:true}));
+    await new Promise(r => setTimeout(r, 1500)); F.setAnimProgress(0.5);
+    const parts = F.pzVehicleParts(F.state._pzVehVp);
+    const im = new Image(); im.src = parts[0].url; await im.decode();
+    const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data; let r = 0, g = 0, n = 0;
+    for(let i = 0; i < d.length; i += 4) if(d[i+3] > 200){ r += d[i]; g += d[i+1]; n++; }
+    const sel = document.getElementById('pzVehiclePreset').value;
+    document.getElementById('pzVehiclePreset').value = 'auto'; document.getElementById('pzVehiclePreset').dispatchEvent(new Event('change', {bubbles:true}));
+    return {red: r / n > g / n * 1.6, sel, allTinted: parts.every(p => p.url.startsWith('data:'))};
+  });
+  check(tinted.red && tinted.sel === 'custom', 'vlastní barvy přebarví vozidlo z obrázku ' + JSON.stringify(tinted));
   await page.evaluate(() => { const e = document.getElementById('pzWagonCount'); e.value = '2'; e.dispatchEvent(new Event('input', {bubbles:true})); });
 
   // majáky: blikají jen za jízdy, střídavě

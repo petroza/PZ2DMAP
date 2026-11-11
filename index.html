@@ -311,6 +311,9 @@ input[type=color]:hover{border-color:var(--accent)}
 .maplibregl-marker.route-dot.dot-a,.maplibregl-marker.route-dot.dot-b{z-index:5}
 .animated-marker.pz-colored-vehicle{filter:none}
 .animated-marker.pz-sprite-vehicle{filter:drop-shadow(0 0 1px rgba(0,0,0,.5)) drop-shadow(0 0 4px rgba(0,0,0,.42))}
+.animated-marker.pz-lead-in-layer{filter:none}
+.animated-marker.pz-lead-in-layer > img,.animated-marker.pz-lead-in-layer .pz-beacon{opacity:0!important}
+.pz-vehicle-canvas{position:absolute;left:0;top:0;pointer-events:none;z-index:4}
 /* majáky hasičů, sanitky a policie — blikají střídavě, jen když vozidlo jede */
 .pz-beacon{position:absolute;width:22%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;background:radial-gradient(circle,rgba(255,255,255,.95) 0 18%,rgba(60,140,255,.85) 32%,rgba(40,110,255,.35) 58%,rgba(40,110,255,0) 72%)}
 .animated-marker.pz-flash-a .pz-beacon.b0,.animated-marker.pz-flash-b .pz-beacon.b1{opacity:1}
@@ -1070,6 +1073,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div><label for="pzVehicleAccent" data-i18n="Akcent">Akcent</label><input type="color" id="pzVehicleAccent" value="#48cfa5"></div>
           </div>
         </div>
+        <label class="check" id="pzVehicleShadowRow" style="margin-top:10px"><input id="pzVehicleShadow" type="checkbox" checked> <span data-i18n="Stín pod vozidlem">Stín pod vozidlem</span></label>
         <label class="check" style="margin-top:10px"><input id="invertIcons" type="checkbox">  Invertovat ikonky (pro světlou mapu)</label>
 
         <div style="margin-top:12px">
@@ -4312,6 +4316,40 @@ function pzSquarePiece(im, sx, sy, sw, sh, out = 384){
 // tmavá okna → skoro černá (kresba zůstane čitelná); barevné detaily (světla,
 // pruhy) se jen ztmaví. Na tmavé mapě (satelit, tmavé podklady) zůstává světlé.
 const PZ_SPRITE_IMG_DARK = {};
+// Vlastní barva vozidla z obrázku: světlá karoserie → zvolená barva, tmavá místa
+// (okna, stíny) → tmavší odstín téže barvy, barevné detaily (světla) zůstanou.
+const _pzTintedSprite = new Map(), _pzTintPending = new Set();
+function pzTintSprite(key, hex, acc){
+  const id = key + '|' + hex + '|' + (acc || '');
+  if(_pzTintedSprite.has(id)) return _pzTintedSprite.get(id);
+  if(!_pzTintPending.has(id)){
+    _pzTintPending.add(id);
+    const n = parseInt(hex.slice(1), 16), C = [n >> 16 & 255, n >> 8 & 255, n & 255];
+    const na = acc ? parseInt(acc.slice(1), 16) : 0, CA = [na >> 16 & 255, na >> 8 & 255, na & 255];
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+      const x = c.getContext('2d'); x.drawImage(im, 0, 0);
+      const d = x.getImageData(0, 0, c.width, c.height), a = d.data;
+      for(let i = 0; i < a.length; i += 4){
+        if(!a[i+3]) continue;
+        const r = a[i], g = a[i+1], b = a[i+2], mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+        const l = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        if(mx && (mx - mn) / mx > 0.35){                                 // barevné části: pruhy, polepy, červená hasičů
+          if(!acc || (mx > 200 && l > 0.75)) continue;                    // bez zvoleného akcentu (a světla) beze změny
+          const fa = Math.min(1.25, 0.45 + 0.8 * l); a[i] = Math.min(255, CA[0] * fa); a[i+1] = Math.min(255, CA[1] * fa); a[i+2] = Math.min(255, CA[2] * fa);
+          continue;
+        }
+        const f = 0.16 + 0.84 * Math.pow(l, 1.15);
+        a[i] = C[0] * f; a[i+1] = C[1] * f; a[i+2] = C[2] * f;
+      }
+      x.putImageData(d, 0, 0); _pzTintedSprite.set(id, c.toDataURL('image/png')); _pzTintPending.delete(id);
+      try{ pzSpriteRefresh(state.animSystemIcon, true); pzRenderVehicleLive(); }catch(e){}
+    };
+    im.src = PZ_SPRITE_IMG[key];
+  }
+  return null;
+}
 function pzDarkenPiece(url){
   return new Promise(res => {
     const im = new Image();
@@ -4368,7 +4406,7 @@ function pzLoadSprites(){
         pzSpriteRefresh(type);
         if(!sp.keepColor && pzSpriteIsNeutralLight(im)){
           const keys = [type, ...units.map(u => u.type)];
-          Promise.all(keys.map(k => pzDarkenPiece(PZ_SPRITE_IMG[k]).then(u => { if(u) PZ_SPRITE_IMG_DARK[k] = u; }))).then(() => pzSpriteRefresh(type, true));
+          Promise.all(keys.map(k => pzDarkenPiece(PZ_SPRITE_IMG[k]).then(u => { if(u) PZ_SPRITE_IMG_DARK[k] = u; }))).then(() => { pzSpriteRefresh(type, true); try{ renderAnimSystemIconSelection(); }catch(e){} });
         }
       }catch(e){ console.warn('sprite', type, e); }
     };
@@ -4422,11 +4460,12 @@ function pzCssColorToRgb(col){
 }
 function pzAutoVehicleColors(){ return pzBasemapIsDark() ? PZ_VEHICLE_PRESETS.light : PZ_VEHICLE_PRESETS.dark; }
 function pzVehiclePalette(){
-  return {body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto: state.vehicleAuto !== false};
+  return {body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto: state.vehicleAuto !== false, accentOn: !!state.vehicleAccentSet};
 }
 function pzSetVehiclePalette(palette){
   // bez uložené palety (nový nebo starší projekt) platí automatika
   state.vehicleAuto = !palette || palette.auto === true || !/^#[0-9a-f]{6}$/i.test(palette.body || '');
+  state.vehicleAccentSet = !state.vehicleAuto && !!palette?.accentOn;
   const src = state.vehicleAuto ? pzAutoVehicleColors() : palette;
   for(const [key, id] of [['body','pzVehicleBody'], ['accent','pzVehicleAccent']]){
     const hex = src?.[key];
@@ -4467,7 +4506,15 @@ function pzVehicleShade(hex, target, amount){
 }
 function pzVehicleImage(type){
   // na světlé mapě tmavé vozidlo, na tmavé světlé (u světlých neutrálních obrázků)
-  if(PZ_SPRITE_IMG[type]) return (!pzMapIsDarkCached() && PZ_SPRITE_IMG_DARK[type]) || PZ_SPRITE_IMG[type];
+  if(PZ_SPRITE_IMG[type]){
+    // automaticky: světlá neutrální vozidla na světlé mapě tmavá; barevná (hasiči…) původní
+    if(state.vehicleAuto !== false) return (!pzMapIsDarkCached() && PZ_SPRITE_IMG_DARK[type]) || PZ_SPRITE_IMG[type];
+    const hex = ($('pzVehicleBody')?.value || '#f8fafc').toLowerCase();
+    const acc = state.vehicleAccentSet ? ($('pzVehicleAccent')?.value || '').toLowerCase() : '';
+    const n = parseInt(hex.slice(1), 16), L = (0.2126 * (n >> 16 & 255) + 0.7152 * (n >> 8 & 255) + 0.0722 * (n & 255)) / 255;
+    if(L > 0.9 && !acc) return PZ_SPRITE_IMG[type];                     // bílá bez akcentu = původní obrázek
+    return pzTintSprite(type, hex, acc) || PZ_SPRITE_IMG[type];
+  }
   if(!pzHasVehiclePalette(type)) return ANIM_SYSTEM_ICONS[type] || null;
   if(!pzVehicleCache.has(type)){
     const {body, accent} = pzVehiclePalette();
@@ -4729,7 +4776,10 @@ function renderAnimSystemIconSelection(){
   $$('.sys-icon-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.sysIcon === state.animSystemIcon));
   const pal = pzHasVehiclePalette(state.animSystemIcon) || pzIsSprite(state.animSystemIcon);
   // realistické obrázky nemají barevné vrstvy — barva jen u kreslených (vlak, letadlo)
-  $('pzVehiclePalette').hidden = !pal || pzIsSprite(state.animSystemIcon);
+  const sprite = pzIsSprite(state.animSystemIcon);
+  // u obrázků jen ty, které jdou přebarvit (ne hasiči, policie, sanitka) a jen karoserie
+  $('pzVehiclePalette').hidden = !pal;
+  if($('pzVehicleShadowRow')) $('pzVehicleShadowRow').hidden = !sprite;
   $('pzWagonRow').hidden = state.animSystemIcon !== 'train';
   // inverze má smysl jen pro vlastní nahraný obrázek a bod
   $('invertIcons').closest('label').style.display = pal ? 'none' : '';
@@ -5595,6 +5645,7 @@ function initMap(){
   // visualizePitch shows a draggable compass/pitch dial — the orbit handle.
   state.map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
   try{ state.map.dragRotate.enable(); state.map.touchZoomRotate.enableRotation(); state.map.touchPitch?.enable?.(); }catch(e){}
+  try{ state.map.on('render', () => { try{ pzRenderVehicleLive(); }catch(e){} }); }catch(e){}
   state.map.on('load', () => {
     ensureRouteSources();
     rememberOriginalRoadPaints();
@@ -7739,6 +7790,7 @@ function serializeProjectSnapshot(){
       invertIcons: !!$('invertIcons')?.checked,
       wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
       vehiclePalette: pzVehiclePalette(),
+      vehicleShadow: $('pzVehicleShadow') ? !!$('pzVehicleShadow').checked : true,
       animStart: $('animStart')?.value || '0',
       animDuration: $('animDuration')?.value || '8',
       cameraPitch: $('cameraPitch')?.value || '45',
@@ -7843,6 +7895,7 @@ function applyBasicProjectSnapshot(snapshot){
   state.animSystemIcon = animation.animSystemIcon && ANIM_SYSTEM_ICONS[animation.animSystemIcon] ? animation.animSystemIcon : null;
   if(state.animSystemIcon === 'truck' && animation.trailer === false) state.animSystemIcon = 'lorry';   // starší projekt: kamion bez návěsu
   pzSetVehiclePalette(animation.vehiclePalette);
+  if($('pzVehicleShadow')) $('pzVehicleShadow').checked = animation.vehicleShadow !== false;
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
   if($('pzWagonCount')){ $('pzWagonCount').value = String(Math.max(0, Math.min(8, parseInt(animation.wagonCount ?? 2, 10) || 0))); $('pzWagonCountVal').textContent = $('pzWagonCount').value; }
   renderAnimSystemIconSelection();
@@ -13047,6 +13100,85 @@ function pzRailPose(progress){
   _pzRailCache = {key, route, pose};
   return pose;
 }
+// ===== Vozidlo z obrázku: jedno plátno nad mapou, jedna kreslicí funkce =====
+// Celé vozidlo (lokomotiva/tahač i všechny vagony/návěs) se kreslí najednou do
+// vlastního plátna při KAŽDÉM překreslení mapy (událost 'render'). Dřív byla
+// lokomotiva HTML značka (posun hned) a vagony vrstva mapy (data přes worker o
+// snímek později, symboly s plynulým nájezdem) → při rychlé jízdě se souprava na
+// okamžik rozpojila a v náhledu problikávala. Stejná funkce kreslí i export.
+const _pzImgCache = new Map();
+function pzImg(url){
+  if(!url) return null;
+  let im = _pzImgCache.get(url);
+  if(!im){ im = new Image(); im.src = url; _pzImgCache.set(url, im); }
+  return im.complete && im.naturalWidth ? im : null;
+}
+// Díly k vykreslení: [{c:[lng,lat], rot, side(px), url, clip, lead}] — pro náhled, export i testy.
+function pzVehicleParts(vp){
+  if(vp == null) return [];
+  const pose = pzRailPose(vp); if(!pose) return [];
+  const type = state.animSystemIcon, spec = pzConsistSpec() || {units:[]};
+  const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
+  return pose.map((pt, i) => {
+    const u = i ? (pt.unit || spec.units[i - 1]) : null;
+    return {c: pt.c, rot: pt.rot, dir: pt.dir, side: sizePx * (u ? (u.scale || 1) : 1), url: pzVehicleImage(i ? u.type : type), clip: pt.clip, lead: !i,
+      hidden: !!(pt.clip && !pt.clip.length)};
+  });
+}
+// map: mapa (náhled nebo export), toOut: CSS px mapy → px plátna, k: měřítko px.
+function pzDrawVehicle(ctx, map, toOut, k, vp){
+  const parts = pzVehicleParts(vp);
+  if(!parts.length) return 0;
+  const sp = PZ_SPRITES[state.animSystemIcon], g = PZ_SPRITE_GEO[state.animSystemIcon];
+  let n = 0;
+  for(let i = parts.length - 1; i >= 0; i--){             // od posledního vagonu, lokomotiva navrch
+    const q = parts[i]; if(q.hidden) continue;
+    const im = pzImg(q.url); if(!im) continue;
+    const c = map.project(q.c);
+    // směr na obrazovce z promítnutého bodu kousek před středem (sedí i při natočení/naklonění)
+    const lat = q.c[1] * Math.PI / 180, e = 0.002;
+    const a = map.project([q.c[0] + q.dir[0] * e / (111.32 * Math.cos(lat)), q.c[1] + q.dir[1] * e / 110.57]);
+    const ang = Math.atan2(a.x - c.x, -(a.y - c.y));
+    const [ox, oy] = toOut([c.x, c.y]), S = q.side * k;
+    ctx.save();
+    ctx.translate(ox, oy); ctx.rotate(ang);
+    if(q.clip){ ctx.beginPath(); q.clip.forEach((pt, j) => { const x = (pt[0] - 0.5) * S, y = (pt[1] - 0.5) * S; if(j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.closePath(); ctx.clip(); }
+    // měkký stín kolem obrysu (bez posunu → stejný v každém směru)
+    if($('pzVehicleShadow')?.checked !== false){ ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5 * k; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; }
+    ctx.drawImage(im, -S / 2, -S / 2, S, S);
+    ctx.shadowColor = 'transparent';
+    // majáky (hasiči, policie, sanitka): blikají jen za jízdy, podle času animace
+    if(q.lead && sp?.beacons && g){
+      const raw = state._pzVehRaw ?? 0, on = raw > 0 && raw < 1, ph = Math.floor(((state.animElapsed || 0) * 4)) % 2;
+      if(on) sp.beacons.forEach(([along, across], bi) => {
+        if(bi % 2 !== ph) return;
+        const x = (across * g.aspect) * S, y = (along - 0.5) * S, r = 0.11 * S;
+        const grd = ctx.createRadialGradient(x, y, 0, x, y, r * 1.6);
+        grd.addColorStop(0, 'rgba(255,255,255,.95)'); grd.addColorStop(0.25, 'rgba(60,140,255,.85)'); grd.addColorStop(0.6, 'rgba(40,110,255,.35)'); grd.addColorStop(1, 'rgba(40,110,255,0)');
+        ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(x, y, r * 1.6, 0, Math.PI * 2); ctx.fill();
+      });
+    }
+    ctx.restore(); n++;
+  }
+  return n;
+}
+let _pzVehCanvas = null;
+function pzVehicleCanvas(map){
+  if(_pzVehCanvas && _pzVehCanvas._map === map && _pzVehCanvas.isConnected) return _pzVehCanvas;
+  const cv = document.createElement('canvas'); cv.className = 'pz-vehicle-canvas'; cv._map = map;
+  map.getCanvasContainer().appendChild(cv);
+  _pzVehCanvas = cv; return cv;
+}
+// Náhled: kreslí se po každém snímku mapy → vozidlo vždy sedí s mapou i samo se sebou.
+function pzRenderVehicleLive(){
+  const m = state.map; if(!m || state._exporting) return;
+  const cv = pzVehicleCanvas(m), dpr = window.devicePixelRatio || 1;
+  const W = m.getCanvas().clientWidth, H = m.getCanvas().clientHeight;
+  if(cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)){ cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+  const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height);
+  const on = $('animDot')?.checked && state.routeCoords?.length > 1 && state._pzVehVp != null && pzIsRail(state.animSystemIcon);
+  if(on) try{ pzDrawVehicle(ctx, m, p => [p[0] * dpr, p[1] * dpr], dpr, state._pzVehVp); }catch(e){}
+}
 // Maska vedoucího dílu (HTML značka): ořez v souřadnicích prvku + údaj pro export.
 function pzApplyLeadClip(el, pose){
   if(!el) return;
@@ -13226,7 +13358,20 @@ function pzUpdateConsist(progress, opts){
   const m = opts?.map || state.map; if(!m || !m.isStyleLoaded?.()) return;
   if(!m._pzConsistHook){
     m._pzConsistHook = true;
-    m.on('zoom', () => { if(state.map === m && state._pzConsistLast != null) try{ pzUpdateConsist(state._pzConsistLast); }catch(e){} });
+    // Po zoomu se mění délka vozidla v km (na mapě má stálou velikost v px) —
+    // přepočítat celé vozidlo: polohu, směr, soupravu i masku u bodu A/B. Jinak
+    // po oddálení v cíli vozidlo „vylezlo" z bodu B.
+    m.on('zoom', () => {
+      if(state.map !== m || state._exporting || state.animPlaying || !state.routeCoords?.length) return;
+      try{
+        const vp = pzVehicleProgress(applyAnimEasing(getCurrentAnimationProgress()));
+        const rp = pzRailPose(vp);
+        if(rp && state.animatedMarker){ state.animatedMarker.setLngLat(rp[0].c); state.animatedMarker.setRotation(cameraFacingDisplayAngle(!!($('followCamera')?.checked), finalAngle(vp))); }
+        pzUpdateConsist(vp);
+        pzApplyLeadClip(state.animatedMarkerEl, rp);
+        if(state._pzVehVp != null) state._pzVehVp = vp;
+      }catch(e){}
+    });
   }
   const spec = (progress != null && state.animSystemIcon) ? pzConsistSpec() : null;
   if(!opts) state._pzConsistLast = progress;
@@ -13251,7 +13396,8 @@ function pzUpdateConsist(progress, opts){
     const railPose = pzRailPose(progress);
     // obrázky všech dílů načíst hned — i těch, které na startu schovává maska
     spec.units.forEach(u => { try{ pzConsistImage(pzVehicleImage(u.type), false, ''); }catch(e){} });
-    if(railPose){
+    if(state.animatedMarkerEl && !opts) state.animatedMarkerEl.classList.toggle('pz-lead-in-layer', !!railPose);
+    if(railPose && false){   // vozidla z obrázků kreslí pzDrawVehicle (plátno), ne vrstva mapy
       railPose.slice(1).forEach((pt, i) => {
         const u = pt.unit || spec.units[i], rec = pzConsistImage(pzVehicleImage(u.type), false, '');
         if(!rec.ready || pt.hidden) return;
@@ -14061,6 +14207,9 @@ function setAnimProgress(progress){
     { const rp = (animDot && point) ? pzRailPose(vp) : null; if(rp) mPoint = rp[0].c; }
     if(animDot && point) ensureAnimMarker(mPoint, finalAngle(vp), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
     try{ pzUpdateConsist(animDot && point ? vp : null); }catch(e){}
+    state._pzVehVp = animDot && point ? vp : null; state._pzVehRaw = applyAnimEasing(progress);
+    if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('pz-lead-in-layer', pzIsRail(state.animSystemIcon));
+    try{ if(!state._exporting){ pzRenderVehicleLive(); state.map?.triggerRepaint?.(); } }catch(e){}
     try{ pzApplyLeadClip(state.animatedMarkerEl, animDot && point ? pzRailPose(vp) : null); }catch(e){}
     try{ pzUpdateBeacons(state.animatedMarkerEl, applyAnimEasing(progress)); }catch(e){}
     // A GLB model pinned to the route follows the animation (position + heading).
@@ -14721,6 +14870,8 @@ function createNativeExportMarkers(exportMap){
       temp.markerCameraMode = align.key;
       try{ pzUpdateConsist(vp, {map: exportMap, size}); temp.consist = !!pzConsistSpec(); }catch(e){}
       try{ pzApplyLeadClip(el, pzRailPose(vp)); }catch(e){}
+      state._pzVehVp = vp; state._pzVehRaw = applyAnimEasing(getCurrentAnimationProgress());
+      if(pzIsRail(state.animSystemIcon)) el.classList.add('pz-lead-in-layer');
       try{ pzUpdateBeacons(el, progress); }catch(e){}
     }
   }
@@ -15455,7 +15606,13 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
   for(const item of state.mapLabels){ await drawElement(item.marker?.getElement?.(), false); }
   try{ pzDrawSceneTagLabels(ctx, crop); }catch(e){}
   // vozidlo nad objekty scény, ale POD body A a B (vyjíždí z bodu A, zajíždí pod bod B)
-  await drawElement(state.animatedMarkerEl, true);
+  if(state.animatedMarkerEl?.classList?.contains('pz-lead-in-layer')){
+    try{
+      const mm = state.map, mr = mm.getContainer().getBoundingClientRect();
+      const k = scaleX * outScaleX;
+      pzDrawVehicle(ctx, mm, p => [(((p[0] + mr.left - mapRect.left) * scaleX) - crop.x) * outScaleX, (((p[1] + mr.top - mapRect.top) * scaleY) - crop.y) * outScaleY], k, state._pzVehVp);
+    }catch(e){}
+  } else await drawElement(state.animatedMarkerEl, true);
   await drawElement(state.markerA?.getElement?.(), false);
   await drawElement(state.markerB?.getElement?.(), false);
   return true;
@@ -16758,7 +16915,7 @@ function bindUI(){
   $('animEasing')?.addEventListener('change', ()=>{ state.camSmoothedBearing = null; updateEasingPreview(); refreshAnimatedMarkerPreview(); });
   function refreshVehicleColors(palette){
     pzSetVehiclePalette(palette);
-    if(pzHasVehiclePalette(state.animSystemIcon)) state.animIconData = pzVehicleImage(state.animSystemIcon);
+    if(pzHasVehiclePalette(state.animSystemIcon) || pzIsSprite(state.animSystemIcon)) state.animIconData = pzVehicleImage(state.animSystemIcon);
     renderAnimSystemIconSelection();
     renderAnimIconPreview();
     refreshAnimatedMarkerPreview();
@@ -16771,9 +16928,14 @@ function bindUI(){
     else { state.vehicleAuto = false; $('pzVehicleBody').focus(); }
   });
   // input = barva se mění už při výběru v kapátku, change = potvrzení
-  ['pzVehicleBody','pzVehicleAccent'].forEach(id => { ['input','change'].forEach(ev => $(id).addEventListener(ev, () => refreshVehicleColors({body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto:false}))); });
+  ['pzVehicleBody','pzVehicleAccent'].forEach(id => { ['input','change'].forEach(ev => $(id).addEventListener(ev, () => {
+    // u vozidel z obrázků se doplňková barva použije, až když ji grafik opravdu změní
+    const accentOn = id === 'pzVehicleAccent' || !!state.vehicleAccentSet;
+    refreshVehicleColors({body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto:false, accentOn});
+  })); });
   pzFillSysIconButtons();
   try{ pzLoadSprites(); }catch(e){}
+  $('pzVehicleShadow')?.addEventListener('change', () => { try{ pzRenderVehicleLive(); state.map?.triggerRepaint?.(); }catch(e){} });
   $('pzWagonCount')?.addEventListener('input', () => { $('pzWagonCountVal').textContent = $('pzWagonCount').value; refreshAnimatedMarkerPreview(); });
   $('invertIcons')?.addEventListener('change', ()=>{
     if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('inverted', pzLegacyIconInverted());
@@ -17438,6 +17600,7 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Stín pod vozidlem": {cs:"Stín pod vozidlem",sk:"Tieň pod vozidlom",bg:"Сянка под превозното средство",hr:"Sjena ispod vozila",ro:"Umbră sub vehicul",en:"Shadow under vehicle"},
   "Nákladní auto": {cs:"Nákladní auto",sk:"Nákladné auto",bg:"Товарен автомобил",hr:"Teretno vozilo",ro:"Camion",en:"Lorry"},
   "Nákladní": {cs:"Nákladní",sk:"Nákladné",bg:"Товарен",hr:"Teretno",ro:"Camion",en:"Lorry"},
   "Tramvaj": {cs:"Tramvaj",sk:"Električka",bg:"Трамвай",hr:"Tramvaj",ro:"Tramvai",en:"Tram"},
@@ -19392,7 +19555,7 @@ function pzColorFromName(v){
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
-    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading,
+    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading, pzVehicleParts,
     pzSetKeyboardInset, pzMobilePanel,
     createSceneArrow, createScenePerimeterAt, createSceneDistance, createSceneIconAt, addMapLabelAt, pzIconDataUrl,   // 21_scene_objects
     get state(){ return state; }};
@@ -20138,7 +20301,7 @@ function pzColorFromName(v){
         el.value = hex; fire(el); res[key] = hex;
       }
       if(Object.keys(res).length === 1) return {ok:false, error:'Zadej preset (light, dark, blue), body (karoserie) nebo accent.'};
-      if($('pzVehiclePalette')?.hidden) res.note = 'Vozidla z obrázků (auto, kamion, vlak, metro, tramvaj, loď…) mají pevné barvy — barva ikonky platí pro letadlo.';
+      if($('pzVehiclePalette')?.hidden) res.note = 'Vyber nejdřív vozidlo v záložce Trasa, sekce Ikona objektu.';
       return res;
     },
     // Styl popisků: vybraný / poslední / podle textu / všechny. Nabídka Styl se
