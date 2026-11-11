@@ -191,16 +191,17 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
   const r0 = await page.evaluate(() => window.TNMAP.routeBetween({from:'50.08, 14.44', to:'49.2, 16.61', mode:'planeDirect'}));
   check(r0.ok, 'letecká trasa pro kontrolu vzhledu'); await page.waitForTimeout(1200); await home();
   await openSection(page, 'routeLookSection');
-  const look = await page.evaluate(() => {
+  // styl trasy se po posuvníku překreslí s krátkým zpožděním (40 ms) — číst až potom
+  const look = await page.evaluate(async () => {
     const m = window.__tnMap, set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input', {bubbles:true})); };
-    const o = {};
-    set('routeColor', '#ff0000'); o.color = m.getPaintProperty('route-anim-line', 'line-color');
-    set('routeWidth', '9'); o.width = m.getPaintProperty('route-anim-line', 'line-width');
-    set('routeDotColor', '#00ff00'); o.glowColor = m.getPaintProperty('route-anim-glow', 'line-color');
-    set('routeGlow', '60'); o.glow = m.getPaintProperty('route-anim-glow', 'line-opacity');
+    const wait = () => new Promise(r => setTimeout(r, 250)); const o = {};
+    set('routeColor', '#ff0000'); await wait(); o.color = m.getPaintProperty('route-anim-line', 'line-color');
+    set('routeWidth', '9'); await wait(); o.width = m.getPaintProperty('route-anim-line', 'line-width');
+    set('routeDotColor', '#00ff00'); await wait(); o.glowColor = m.getPaintProperty('route-anim-glow', 'line-color');
+    set('routeGlow', '60'); await wait(); o.glow = m.getPaintProperty('route-anim-glow', 'line-opacity');
     document.getElementById('routeLookMore').open = true;
     document.querySelector('.endpoint-shape[data-endpoint-shape="square"]').click(); o.square = document.querySelector('.route-dot.dot-a').classList.contains('shape-square');
-    set('routeEndpointSize', '40'); o.size = document.querySelector('.route-dot.dot-a').style.width;
+    set('routeEndpointSize', '40'); await wait(); o.size = document.querySelector('.route-dot.dot-a').style.width;
     return o; });
   check(look.color === '#ff0000' && look.width === 10 && look.glowColor === '#00ff00' && Math.abs(look.glow - 0.6) < 0.01 && look.square && look.size === '40px', 'barva, tloušťka, záře, tvar a velikost konců se projeví: ' + JSON.stringify(look));
   await page.evaluate(() => { const set = (id, v) => { const e = document.getElementById(id); e.value = v; e.dispatchEvent(new Event('input', {bubbles:true})); }; set('routeColor', '#002ee6'); set('routeWidth', '6'); set('routeGlow', '0'); });
@@ -211,8 +212,11 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
   check(s.ghost === 1 && s.anim >= 2, 'zapnuto: uprostřed animace je před objektem předkreslená trasa');
   await page.click('#routePreDraw'); await page.waitForTimeout(400); s = await S();
   check(s.ghost === 0 && s.anim >= 2 && /přehrání/.test(s.status), 'vypnuto: před objektem nic, za ním plná čára; stav: ' + s.status);
-  const snap = await page.evaluate(() => { const f = window.__pzFns, sn = JSON.parse(JSON.stringify(f.serializeProjectSnapshot())); const pre = sn.route.preDraw; delete sn.route.preDraw;
-    f.applyProjectSnapshot(sn, ''); const old = document.getElementById('routePreDraw').checked; sn.route.preDraw = false; f.applyProjectSnapshot(sn, ''); return {pre, old, now: document.getElementById('routePreDraw').checked}; });
+  // applyProjectSnapshot se dokončí až po 120 ms
+  const snap = await page.evaluate(async () => { const f = window.__pzFns, wait = () => new Promise(r => setTimeout(r, 600));
+    const sn = JSON.parse(JSON.stringify(f.serializeProjectSnapshot())); const pre = sn.route.preDraw; delete sn.route.preDraw;
+    f.applyProjectSnapshot(sn, ''); await wait(); const old = document.getElementById('routePreDraw').checked;
+    sn.route.preDraw = false; f.applyProjectSnapshot(sn, ''); await wait(); return {pre, old, now: document.getElementById('routePreDraw').checked}; });
   check(snap.pre === false && snap.old === true && snap.now === false, 'volba se ukládá do projektu; starý projekt bez pole = předkreslovat');
   await page.waitForTimeout(600);
 
