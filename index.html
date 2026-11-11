@@ -1709,19 +1709,20 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
   <div id="shortcutsPanel" class="shortcuts-panel" hidden>
     <h4 data-i18n="Klávesové zkratky">Klávesové zkratky</h4>
     <div class="sc-row"><kbd>Mezerník</kbd><span data-i18n="sc_play">Přehrát / pauza animace</span></div>
-    <div class="sc-row"><kbd>Enter</kbd><span data-i18n="sc_enter">Najít trasu (v poli Start/Cíl)</span></div>
+    <div class="sc-row"><kbd>Enter</kbd><span data-i18n="sc_route">Potvrdit Start / Cíl a najít trasu</span></div>
     <div class="sc-row"><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd><span data-i18n="sc_undo">Krok zpět / vpřed</span></div>
-    <div class="sc-row"><kbd>Backspace</kbd><span data-i18n="sc_backspace">Smazat poslední bod letu</span></div>
+    <div class="sc-row"><kbd>Backspace</kbd><span data-i18n="sc_last">Smazat poslední zastávku</span></div>
     <div class="sc-row"><kbd>R</kbd><span data-i18n="sc_refresh">Obnovit mapu</span></div>
-    <div class="sc-row"><kbd>Esc</kbd><span data-i18n="sc_esc">Ukončit vkládání</span></div>
+    <div class="sc-row"><kbd>Esc</kbd><span data-i18n="sc_cancel">Zrušit vkládání a výběr</span></div>
     <div class="sc-row"><kbd>Delete</kbd><span data-i18n="sc_delete">Smazat vybraný objekt</span></div>
     <div class="sc-row"><kbd>Ctrl+C/V/D</kbd><span data-i18n="sc_copy">Kopírovat / vložit / duplikovat</span></div>
     <div class="sc-row"><kbd>Ctrl+klik</kbd><span>Přidat ikonku / popisek do výběru</span></div>
     <div class="sc-row"><kbd>Alt+táhnout</kbd><span>Vybrat ikonky a popisky obdélníkem</span></div>
     <div class="sc-row"><kbd>Ctrl+A</kbd><span>Vybrat všechny ikonky a popisky</span></div>
     <div class="sc-row"><kbd>Ctrl+klik do mapy</kbd><span data-i18n="sc_via">Přidat zastávku na trase</span></div>
-    <div class="sc-row"><kbd>Pravé tl. / Ctrl+táhnout</kbd><span data-i18n="sc_orbit">Naklonit a otočit (3D / glóbus)</span></div>
+    <div class="sc-row"><kbd>Pravé tl. / Ctrl+táhnout</kbd><span data-i18n="sc_tilt">Naklonit a otočit mapu</span></div>
     <div class="sc-row"><kbd>Shift+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
+    <div class="sc-row"><kbd>?</kbd><span data-i18n="sc_help">Zobrazit zkratky</span></div>
   </div>
   <div class="status-bar" id="statusBar" role="status" aria-live="polite"><span class="dot"></span>Připraveno — klikni do mapy pro bod A.</div>
   <div class="export-progress" id="autosaveRestoreBar" hidden style="bottom:168px">
@@ -2844,11 +2845,22 @@ function setSrcData(src, data){
   src._tnLastData = data;
 }
 const statusEl = $('statusBar');
+// Hlášky volané bez t() (setStatus('Projekt uložen.')) zůstávaly ve všech jazycích česky.
+// Místo desítek úprav po celém kódu se dohledají ve slovníku tady.
+function pzStatusLang(msg){
+  try{
+    if(typeof msg !== 'string' || currentLang === 'cs') return msg;
+    const e = I18N[msg] || PZ_LANG_TEXT[msg];
+    return (e && typeof e === 'object' && e[currentLang]) || (currentLang === 'en' && (PZ_EN_TEXT[msg] || EN_OVERRIDES[msg])) || msg;
+  }catch(e){ return msg; }   // slovníky se plní až níž ve skriptu
+}
 function setStatus(msg, type){
   if(!statusEl) return;
   // Jen text, nikdy HTML: do stavu jdou i názvy projektů ze sdíleného odkazu
   // a „Volby <img onerror=…>" by jinak spustil cizí skript u kolegy.
   const dot = document.createElement('span'); dot.className = 'dot';
+  msg = pzStatusLang(msg);
+  try{ statusEl.dataset.pzLang = currentLang; }catch(_e){}
   statusEl.replaceChildren(dot, document.createTextNode(String(msg == null ? '' : msg)));
   statusEl.classList.toggle('error', type === 'error');
   // Zalomená hláška je vyšší — přehrávač nad ní se podle toho odsune (CSS --pz-status-h).
@@ -16696,6 +16708,158 @@ Object.assign(I18N, {
   // .
   // .
   // [i18n:asistent] překlady oblasti „asistent" vkládej pod tento řádek
+  // zbytky češtiny z kontroly všech jazyků (titulky, aria-label, stavové hlášky)
+  "Přepnout na světlý režim aplikace": {cs:"Přepnout na světlý režim aplikace",sk:"Prepnúť na svetlý režim aplikácie",bg:"Превключи към светъл режим на приложението",hr:"Prebaci na svijetli način aplikacije",ro:"Comută pe modul luminos al aplicației",en:"Switch the app to light mode"},
+  "Přepnout na tmavý režim aplikace": {cs:"Přepnout na tmavý režim aplikace",sk:"Prepnúť na tmavý režim aplikácie",bg:"Превключи към тъмен режим на приложението",hr:"Prebaci na tamni način aplikacije",ro:"Comută pe modul întunecat al aplicației",en:"Switch the app to dark mode"},
+  "Přetáhni na konkrétní čas": {cs:"Přetáhni na konkrétní čas",sk:"Potiahni na konkrétny čas",bg:"Плъзни до конкретно време",hr:"Povuci na određeno vrijeme",ro:"Trage la un moment anume",en:"Drag to a specific time"},
+  "Loď — trasa po řekách a kanálech ČR": {cs:"Loď — trasa po řekách a kanálech ČR",sk:"Loď — trasa po riekach a kanáloch ČR",bg:"Кораб — маршрут по реките и каналите на Чехия",hr:"Brod — ruta po rijekama i kanalima Češke",ro:"Navă — traseu pe râurile și canalele Cehiei",en:"Boat — route along Czech rivers and canals"},
+  "Vlak — trasa po železniční síti ČR": {cs:"Vlak — trasa po železniční síti ČR",sk:"Vlak — trasa po železničnej sieti ČR",bg:"Влак — маршрут по железопътната мрежа на Чехия",hr:"Vlak — ruta po željezničkoj mreži Češke",ro:"Tren — traseu pe rețeaua feroviară a Cehiei",en:"Train — route along the Czech rail network"},
+  "Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)": {cs:"Kamion — trasa po silnicích (bez ohledu na zákazy pro nákladní auta)",sk:"Kamión — trasa po cestách (bez ohľadu na zákazy pre nákladné autá)",bg:"Камион — маршрут по пътищата (без оглед на забраните за товарни автомобили)",hr:"Kamion — ruta po cestama (bez obzira na zabrane za teretna vozila)",ro:"Camion — traseu pe șosele (fără a ține cont de restricțiile pentru camioane)",en:"Truck — route by road (ignoring truck restrictions)"},
+  "Metro — linky se kreslí ve svých barvách A/B/C": {cs:"Metro — linky se kreslí ve svých barvách A/B/C",sk:"Metro — linky sa kreslia vo svojich farbách A/B/C",bg:"Метро — линиите се чертаят в своите цветове A/B/C",hr:"Metro — linije se crtaju u svojim bojama A/B/C",ro:"Metrou — liniile se desenează în culorile lor A/B/C",en:"Metro — lines are drawn in their A/B/C colours"},
+  "Záře pod trasou v barvě Glow / stopa": {cs:"Záře pod trasou v barvě Glow / stopa",sk:"Žiara pod trasou vo farbe Glow / stopa",bg:"Сияние под маршрута в цвета Glow / следа",hr:"Sjaj ispod rute u boji Glow / trag",ro:"Strălucire sub traseu în culoarea Glow / urmă",en:"Glow under the route in the Glow / trail colour"},
+  "Náhled křivky rychlosti": {cs:"Náhled křivky rychlosti",sk:"Náhľad krivky rýchlosti",bg:"Преглед на кривата на скоростта",hr:"Pregled krivulje brzine",ro:"Previzualizarea curbei de viteză",en:"Speed curve preview"},
+  "Barva pozadí a pevniny": {cs:"Barva pozadí a pevniny",sk:"Farba pozadia a pevniny",bg:"Цвят на фона и сушата",hr:"Boja pozadine i kopna",ro:"Culoarea fundalului și a uscatului",en:"Background and land colour"},
+  "Barva parků": {cs:"Barva parků",sk:"Farba parkov",bg:"Цвят на парковете",hr:"Boja parkova",ro:"Culoarea parcurilor",en:"Park colour"},
+  "Barva půdy": {cs:"Barva půdy",sk:"Farba pôdy",bg:"Цвят на почвата",hr:"Boja tla",ro:"Culoarea solului",en:"Land cover colour"},
+  "Barva letišť": {cs:"Barva letišť",sk:"Farba letísk",bg:"Цвят на летищата",hr:"Boja zračnih luka",ro:"Culoarea aeroporturilor",en:"Airport colour"},
+  "Barva názvů": {cs:"Barva názvů",sk:"Farba názvov",bg:"Цвят на имената",hr:"Boja naziva",ro:"Culoarea denumirilor",en:"Label colour"},
+  "Barva štítků silnic": {cs:"Barva štítků silnic",sk:"Farba štítkov ciest",bg:"Цвят на пътните табелки",hr:"Boja oznaka cesta",ro:"Culoarea indicatoarelor de drum",en:"Road shield colour"},
+  "Barva vedlejších silnic": {cs:"Barva vedlejších silnic",sk:"Farba vedľajších ciest",bg:"Цвят на второстепенните пътища",hr:"Boja sporednih cesta",ro:"Culoarea drumurilor secundare",en:"Minor road colour"},
+  "Barva hlavních silnic": {cs:"Barva hlavních silnic",sk:"Farba hlavných ciest",bg:"Цвят на главните пътища",hr:"Boja glavnih cesta",ro:"Culoarea drumurilor principale",en:"Major road colour"},
+  "Barva dálnic": {cs:"Barva dálnic",sk:"Farba diaľnic",bg:"Цвят на магистралите",hr:"Boja autocesta",ro:"Culoarea autostrăzilor",en:"Motorway colour"},
+  "Barva silnic první třídy": {cs:"Barva silnic první třídy",sk:"Farba ciest prvej triedy",bg:"Цвят на първокласните пътища",hr:"Boja cesta prvog reda",ro:"Culoarea drumurilor de clasa întâi",en:"Primary road colour"},
+  "Barva silnic druhé třídy": {cs:"Barva silnic druhé třídy",sk:"Farba ciest druhej triedy",bg:"Цвят на второкласните пътища",hr:"Boja cesta drugog reda",ro:"Culoarea drumurilor de clasa a doua",en:"Secondary road colour"},
+  "Barva vodních toků": {cs:"Barva vodních toků",sk:"Farba vodných tokov",bg:"Цвят на водните течения",hr:"Boja vodotoka",ro:"Culoarea cursurilor de apă",en:"Waterway colour"},
+  "Barva železnic": {cs:"Barva železnic",sk:"Farba železníc",bg:"Цвят на железниците",hr:"Boja željeznica",ro:"Culoarea căilor ferate",en:"Railway colour"},
+  "Bezpečné zóny": {cs:"Bezpečné zóny",sk:"Bezpečné zóny",bg:"Безопасни зони",hr:"Sigurne zone",ro:"Zone sigure",en:"Safe zones"},
+  "Bezpečné zóny (jen náhled, neexportuje se)": {cs:"Bezpečné zóny (jen náhled, neexportuje se)",sk:"Bezpečné zóny (len náhľad, neexportuje sa)",bg:"Безопасни зони (само преглед, не се експортират)",hr:"Sigurne zone (samo pregled, ne izvoze se)",ro:"Zone sigure (doar previzualizare, nu se exportă)",en:"Safe zones (preview only, not exported)"},
+  "Časová osa animace": {cs:"Časová osa animace",sk:"Časová os animácie",bg:"Времева линия на анимацията",hr:"Vremenska traka animacije",ro:"Cronologia animației",en:"Animation timeline"},
+  "Bílý (klasický)": {cs:"Bílý (klasický)",sk:"Biely (klasický)",bg:"Бял (класически)",hr:"Bijeli (klasični)",ro:"Alb (clasic)",en:"White (classic)"},
+  "Nova modrý": {cs:"Nova modrý",sk:"Nova modrý",bg:"Nova син",hr:"Nova plavi",ro:"Nova albastru",en:"Nova blue"},
+  "Nova červený (breaking)": {cs:"Nova červený (breaking)",sk:"Nova červený (breaking)",bg:"Nova червен (breaking)",hr:"Nova crveni (breaking)",ro:"Nova roșu (breaking)",en:"Nova red (breaking)"},
+  "Černý": {cs:"Černý",sk:"Čierny",bg:"Черен",hr:"Crni",ro:"Negru",en:"Black"},
+  "Žádné uzavírky.": {cs:"Žádné uzavírky.",sk:"Žiadne uzávierky.",bg:"Няма затворени участъци.",hr:"Nema zatvaranja.",ro:"Nicio închidere.",en:"No closures."},
+  "Vlastní rozlišení…": {cs:"Vlastní rozlišení…",sk:"Vlastné rozlíšenie…",bg:"Собствена резолюция…",hr:"Vlastita rezolucija…",ro:"Rezoluție proprie…",en:"Custom resolution…"},
+  "Mapa načtena.": {cs:"Mapa načtena.",sk:"Mapa načítaná.",bg:"Картата е заредена.",hr:"Karta je učitana.",ro:"Harta s-a încărcat.",en:"Map loaded."},
+  "Na začátek — podklad Positron, celé Česko v rámečku": {cs:"Na začátek — podklad Positron, celé Česko v rámečku",sk:"Na začiatok — podklad Positron, celé Česko v rámčeku",bg:"В началото — основа Positron, цяла Чехия в рамката",hr:"Na početak — podloga Positron, cijela Češka u okviru",ro:"La început — fundal Positron, toată Cehia în cadru",en:"Back to start — Positron base map, all of Czechia in the frame"},
+  "nepovinné": {cs:"nepovinné",sk:"nepovinné",bg:"по избор",hr:"neobavezno",ro:"opțional",en:"optional"},
+  "vynutí správný tah": {cs:"vynutí správný tah",sk:"vynúti správny ťah",bg:"налага правилното трасе",hr:"nameće ispravan pravac",ro:"impune traseul corect",en:"forces the right road"},
+  "Klávesové zkratky (?)": {cs:"Klávesové zkratky (?)",sk:"Klávesové skratky (?)",bg:"Клавишни комбинации (?)",hr:"Tipkovni prečaci (?)",ro:"Scurtături de tastatură (?)",en:"Keyboard shortcuts (?)"},
+  "Pravé tl. / Ctrl+táhnout": {cs:"Pravé tl. / Ctrl+táhnout",sk:"Pravé tl. / Ctrl+ťahať",bg:"Десен бутон / Ctrl+влачене",hr:"Desna tipka / Ctrl+povlačenje",ro:"Clic dreapta / Ctrl+tragere",en:"Right button / Ctrl+drag"},
+  "Shift+táhnout": {cs:"Shift+táhnout",sk:"Shift+ťahať",bg:"Shift+влачене",hr:"Shift+povlačenje",ro:"Shift+tragere",en:"Shift+drag"},
+  "Alt+táhnout": {cs:"Alt+táhnout",sk:"Alt+ťahať",bg:"Alt+влачене",hr:"Alt+povlačenje",ro:"Alt+tragere",en:"Alt+drag"},
+  "Ctrl+klik": {cs:"Ctrl+klik",sk:"Ctrl+klik",bg:"Ctrl+клик",hr:"Ctrl+klik",ro:"Ctrl+clic",en:"Ctrl+click"},
+  "Ctrl+klik do mapy": {cs:"Ctrl+klik do mapy",sk:"Ctrl+klik do mapy",bg:"Ctrl+клик в картата",hr:"Ctrl+klik na kartu",ro:"Ctrl+clic pe hartă",en:"Ctrl+click on the map"},
+  "Mezerník": {cs:"Mezerník",sk:"Medzerník",bg:"Интервал",hr:"Razmaknica",ro:"Spațiu",en:"Space"},
+  "Pokročilé funkce": {cs:"Pokročilé funkce",sk:"Pokročilé funkcie",bg:"Разширени функции",hr:"Napredne funkcije",ro:"Funcții avansate",en:"Advanced features"},
+  "Zobrazit pokročilé funkce": {cs:"Zobrazit pokročilé funkce",sk:"Zobraziť pokročilé funkcie",bg:"Покажи разширените функции",hr:"Prikaži napredne funkcije",ro:"Afișează funcțiile avansate",en:"Show advanced features"},
+  "3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba.": {cs:"3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba.",sk:"3D model, slnko a tiene, vlastné zdroje mapy, ďalšie podklady (Bright, OSM, OpenTopo, CyclOSM), štatistika a kontrola aplikácie. Na dennú grafiku nie sú potrebné.",bg:"3D модел, слънце и сенки, собствени източници на карта, допълнителни основи (Bright, OSM, OpenTopo, CyclOSM), статистика и проверка на приложението. За ежедневната графика не са нужни.",hr:"3D model, sunce i sjene, vlastiti izvori karte, dodatne podloge (Bright, OSM, OpenTopo, CyclOSM), statistika i provjera aplikacije. Za dnevnu grafiku nisu potrebni.",ro:"Model 3D, soare și umbre, surse proprii de hartă, fundaluri suplimentare (Bright, OSM, OpenTopo, CyclOSM), statistici și verificarea aplicației. Nu sunt necesare pentru grafica zilnică.",en:"3D model, sun and shadows, custom map sources, extra base maps (Bright, OSM, OpenTopo, CyclOSM), statistics and app self-check. Not needed for daily graphics."},
+  "Projekt uložen.": {cs:"Projekt uložen.",sk:"Projekt uložený.",bg:"Проектът е запазен.",hr:"Projekt je spremljen.",ro:"Proiectul a fost salvat.",en:"Project saved."},
+  "Projekt smazán.": {cs:"Projekt smazán.",sk:"Projekt zmazaný.",bg:"Проектът е изтрит.",hr:"Projekt je obrisan.",ro:"Proiectul a fost șters.",en:"Project deleted."},
+  "Vyber projekt.": {cs:"Vyber projekt.",sk:"Vyber projekt.",bg:"Избери проект.",hr:"Odaberi projekt.",ro:"Alege un proiect.",en:"Pick a project."},
+  "Projekt nenalezen.": {cs:"Projekt nenalezen.",sk:"Projekt sa nenašiel.",bg:"Проектът не е намерен.",hr:"Projekt nije pronađen.",ro:"Proiectul nu a fost găsit.",en:"Project not found."},
+  "Uzavírky smazány.": {cs:"Uzavírky smazány.",sk:"Uzávierky zmazané.",bg:"Затворените участъци са изтрити.",hr:"Zatvaranja su obrisana.",ro:"Închiderile au fost șterse.",en:"Closures deleted."},
+  "Barva státu nastavena.": {cs:"Barva státu nastavena.",sk:"Farba štátu nastavená.",bg:"Цветът на държавата е зададен.",hr:"Boja države je postavljena.",ro:"Culoarea statului a fost setată.",en:"Country colour set."},
+  "Preset přejmenován.": {cs:"Preset přejmenován.",sk:"Preset premenovaný.",bg:"Пресетът е преименуван.",hr:"Preset je preimenovan.",ro:"Presetul a fost redenumit.",en:"Preset renamed."},
+  "Preset duplikován.": {cs:"Preset duplikován.",sk:"Preset duplikovaný.",bg:"Пресетът е дублиран.",hr:"Preset je dupliciran.",ro:"Presetul a fost duplicat.",en:"Preset duplicated."},
+  "Název nesmí být prázdný.": {cs:"Název nesmí být prázdný.",sk:"Názov nesmie byť prázdny.",bg:"Името не може да е празно.",hr:"Naziv ne smije biti prazan.",ro:"Numele nu poate fi gol.",en:"The name cannot be empty."},
+  "Výběr presetů zrušen.": {cs:"Výběr presetů zrušen.",sk:"Výber presetov zrušený.",bg:"Изборът на пресети е отменен.",hr:"Odabir preseta je poništen.",ro:"Selecția de preseturi a fost anulată.",en:"Preset selection cleared."},
+  "Načítám sdílenou práci…": {cs:"Načítám sdílenou práci…",sk:"Načítavam zdieľanú prácu…",bg:"Зареждам споделената работа…",hr:"Učitavam podijeljeni rad…",ro:"Încarc lucrarea partajată…",en:"Loading shared work…"},
+  "Není co resetovat.": {cs:"Není co resetovat.",sk:"Nie je čo resetovať.",bg:"Няма какво да се нулира.",hr:"Nema se što resetirati.",ro:"Nu este nimic de resetat.",en:"Nothing to reset."},
+  "Resetován vybraný stát.": {cs:"Resetován vybraný stát.",sk:"Vybraný štát resetovaný.",bg:"Избраната държава е нулирана.",hr:"Odabrana država je resetirana.",ro:"Statul selectat a fost resetat.",en:"Selected country reset."},
+  "Vyber obarvený stát nebo kraj.": {cs:"Vyber obarvený stát nebo kraj.",sk:"Vyber zafarbený štát alebo kraj.",bg:"Избери оцветена държава или област.",hr:"Odaberi obojenu državu ili regiju.",ro:"Alege un stat sau o regiune colorată.",en:"Pick a coloured country or region."},
+  "Chyba: mapový engine se nenačetl.": {cs:"Chyba: mapový engine se nenačetl.",sk:"Chyba: mapový engine sa nenačítal.",bg:"Грешка: картният енджин не се зареди.",hr:"Pogreška: kartografski engine se nije učitao.",ro:"Eroare: motorul de hartă nu s-a încărcat.",en:"Error: the map engine failed to load."},
+  // chat asistenta, rychlé povely, panel zkratek
+  "AI ASISTENT MAPY": {cs:"AI ASISTENT MAPY",sk:"AI ASISTENT MAPY",bg:"AI АСИСТЕНТ ЗА КАРТАТА",hr:"AI ASISTENT KARTE",ro:"ASISTENT AI HARTĂ",en:"AI MAP ASSISTANT"},
+  "AI asistent mapy": {cs:"AI asistent mapy",sk:"AI asistent mapy",bg:"AI асистент за картата",hr:"AI asistent karte",ro:"Asistent AI pentru hartă",en:"AI map assistant"},
+  "AI asistent": {cs:"AI asistent",sk:"AI asistent",bg:"AI асистент",hr:"AI asistent",ro:"Asistent AI",en:"AI assistant"},
+  "Nová konverzace": {cs:"Nová konverzace",sk:"Nová konverzácia",bg:"Нов разговор",hr:"Novi razgovor",ro:"Conversație nouă",en:"New conversation"},
+  "Zavřít": {cs:"Zavřít",sk:"Zavrieť",bg:"Затвори",hr:"Zatvori",ro:"Închide",en:"Close"},
+  "Napiš, co má mapa udělat…": {cs:"Napiš, co má mapa udělat…",sk:"Napíš, čo má mapa urobiť…",bg:"Напиши какво да направи картата…",hr:"Napiši što karta treba učiniti…",ro:"Scrie ce să facă harta…",en:"Type what the map should do…"},
+  "Zpráva": {cs:"Zpráva",sk:"Správa",bg:"Съобщение",hr:"Poruka",ro:"Mesaj",en:"Message"},
+  "Odeslat": {cs:"Odeslat",sk:"Odoslať",bg:"Изпрати",hr:"Pošalji",ro:"Trimite",en:"Send"},
+  "Pracuji": {cs:"Pracuji",sk:"Pracujem",bg:"Работя",hr:"Radim",ro:"Lucrez",en:"Working"},
+  "Hledám místo": {cs:"Hledám místo",sk:"Hľadám miesto",bg:"Търся мястото",hr:"Tražim mjesto",ro:"Caut locul",en:"Looking up the place"},
+  "Zkusit znovu": {cs:"Zkusit znovu",sk:"Skúsiť znova",bg:"Опитай отново",hr:"Pokušaj ponovno",ro:"Încearcă din nou",en:"Try again"},
+  "Bez AI funguje dál:": {cs:"Bez AI funguje dál:",sk:"Bez AI funguje ďalej:",bg:"Без AI продължава да работи:",hr:"Bez AI i dalje radi:",ro:"Fără AI funcționează în continuare:",en:"Still works without AI:"},
+  "Denní limit AI je vyčerpaný, obnoví se v 1:00.": {cs:"Denní limit AI je vyčerpaný, obnoví se v 1:00.",sk:"Denný limit AI je vyčerpaný, obnoví sa o 1:00.",bg:"Дневният лимит на AI е изчерпан, подновява се в 1:00.",hr:"Dnevni limit AI-ja je potrošen, obnavlja se u 1:00.",ro:"Limita zilnică AI este epuizată, se reînnoiește la 1:00.",en:"The daily AI limit is used up; it resets at 1:00."},
+  "Asistent teď neodpovídá (chyba serveru {0}).": {cs:"Asistent teď neodpovídá (chyba serveru {0}).",sk:"Asistent teraz neodpovedá (chyba servera {0}).",bg:"Асистентът не отговаря в момента (грешка на сървъра {0}).",hr:"Asistent trenutno ne odgovara (pogreška poslužitelja {0}).",ro:"Asistentul nu răspunde acum (eroare de server {0}).",en:"The assistant is not responding (server error {0})."},
+  "Asistent teď neodpovídá — zkontroluj připojení k internetu.": {cs:"Asistent teď neodpovídá — zkontroluj připojení k internetu.",sk:"Asistent teraz neodpovedá — skontroluj pripojenie na internet.",bg:"Асистентът не отговаря в момента — провери интернет връзката.",hr:"Asistent trenutno ne odgovara — provjeri internetsku vezu.",ro:"Asistentul nu răspunde acum — verifică conexiunea la internet.",en:"The assistant is not responding — check your internet connection."},
+  "Hotovo.": {cs:"Hotovo.",sk:"Hotovo.",bg:"Готово.",hr:"Gotovo.",ro:"Gata.",en:"Done."},
+  "přeskočeno": {cs:"přeskočeno",sk:"preskočené",bg:"пропуснато",hr:"preskočeno",ro:"omis",en:"skipped"},
+  "Nepodařilo se.": {cs:"Nepodařilo se.",sk:"Nepodarilo sa.",bg:"Не се получи.",hr:"Nije uspjelo.",ro:"Nu a reușit.",en:"That did not work."},
+  "Nehoda v Humpolci": {cs:"Nehoda v Humpolci",sk:"Nehoda v Humpolci",bg:"Катастрофа в Хумполец",hr:"Nesreća u Humpolecu",ro:"Accident în Humpolec",en:"Accident in Humpolec"},
+  "Nehoda v Brně": {cs:"Nehoda v Brně",sk:"Nehoda v Brne",bg:"Катастрофа в Бърно",hr:"Nesreća u Brnu",ro:"Accident în Brno",en:"Accident in Brno"},
+  "Trasa autem z Prahy do Brna": {cs:"Trasa autem z Prahy do Brna",sk:"Trasa autom z Prahy do Brna",bg:"Маршрут с кола от Прага до Бърно",hr:"Ruta autom od Praga do Brna",ro:"Traseu cu mașina de la Praga la Brno",en:"Route by car from Prague to Brno"},
+  "Uzavírka D1 mezi Humpolcem a Jihlavou": {cs:"Uzavírka D1 mezi Humpolcem a Jihlavou",sk:"Uzávierka D1 medzi Humpolcom a Jihlavou",bg:"Затворен участък на D1 между Хумполец и Ихлава",hr:"Zatvorena D1 između Humpoleca i Jihlave",ro:"D1 închisă între Humpolec și Jihlava",en:"D1 closed between Humpolec and Jihlava"},
+  "Obarvi Ukrajinu žlutě": {cs:"Obarvi Ukrajinu žlutě",sk:"Zafarbi Ukrajinu nažlto",bg:"Оцвети Украйна в жълто",hr:"Oboji Ukrajinu žuto",ro:"Colorează Ucraina în galben",en:"Colour Ukraine yellow"},
+  "Přepni na satelit": {cs:"Přepni na satelit",sk:"Prepni na satelit",bg:"Превключи на сателит",hr:"Prebaci na satelit",ro:"Comută pe satelit",en:"Switch to satellite"},
+  "Export PNG": {cs:"Export PNG",sk:"Export PNG",bg:"Експорт PNG",hr:"Izvoz PNG",ro:"Export PNG",en:"Export PNG"},
+  "Zpět": {cs:"Zpět",sk:"Späť",bg:"Назад",hr:"Natrag",ro:"Înapoi",en:"Undo"},
+  "Smaž popisky": {cs:"Smaž popisky",sk:"Zmaž popisy",bg:"Изтрий надписите",hr:"Obriši oznake",ro:"Șterge etichetele",en:"Delete labels"},
+  "Vracím poslední změnu.": {cs:"Vracím poslední změnu.",sk:"Vraciam poslednú zmenu.",bg:"Връщам последната промяна.",hr:"Vraćam zadnju promjenu.",ro:"Anulez ultima modificare.",en:"Undoing the last change."},
+  "Krok vpřed.": {cs:"Krok vpřed.",sk:"Krok vpred.",bg:"Стъпка напред.",hr:"Korak naprijed.",ro:"Pas înainte.",en:"Redo."},
+  "Krok zpět": {cs:"Krok zpět",sk:"Krok späť",bg:"Стъпка назад",hr:"Korak natrag",ro:"Pas înapoi",en:"Undo"},
+  "Krok vpřed": {cs:"Krok vpřed",sk:"Krok vpred",bg:"Стъпка напред",hr:"Korak naprijed",ro:"Pas înainte",en:"Redo"},
+  "Přepínám podklad: {0}.": {cs:"Přepínám podklad: {0}.",sk:"Prepínam podklad: {0}.",bg:"Сменям основата: {0}.",hr:"Mijenjam podlogu: {0}.",ro:"Schimb fundalul: {0}.",en:"Switching the base map: {0}."},
+  "Zapínám světlý režim aplikace.": {cs:"Zapínám světlý režim aplikace.",sk:"Zapínam svetlý režim aplikácie.",bg:"Включвам светлия режим на приложението.",hr:"Uključujem svijetli način aplikacije.",ro:"Activez modul luminos al aplicației.",en:"Switching the app to light mode."},
+  "Zapínám tmavý režim aplikace.": {cs:"Zapínám tmavý režim aplikace.",sk:"Zapínam tmavý režim aplikácie.",bg:"Включвам тъмния режим на приложението.",hr:"Uključujem tamni način aplikacije.",ro:"Activez modul întunecat al aplicației.",en:"Switching the app to dark mode."},
+  "Světlý režim": {cs:"Světlý režim",sk:"Svetlý režim",bg:"Светъл режим",hr:"Svijetli način",ro:"Mod luminos",en:"Light mode"},
+  "Tmavý režim": {cs:"Tmavý režim",sk:"Tmavý režim",bg:"Тъмен режим",hr:"Tamni način",ro:"Mod întunecat",en:"Dark mode"},
+  "Přepínám jazyk.": {cs:"Přepínám jazyk.",sk:"Prepínam jazyk.",bg:"Сменям езика.",hr:"Mijenjam jezik.",ro:"Schimb limba.",en:"Switching the language."},
+  "Zapínám glóbus.": {cs:"Zapínám glóbus.",sk:"Zapínam glóbus.",bg:"Включвам глобуса.",hr:"Uključujem globus.",ro:"Activez globul.",en:"Turning the globe on."},
+  "Vypínám glóbus.": {cs:"Vypínám glóbus.",sk:"Vypínam glóbus.",bg:"Изключвам глобуса.",hr:"Isključujem globus.",ro:"Dezactivez globul.",en:"Turning the globe off."},
+  "Glóbus": {cs:"Glóbus",sk:"Glóbus",bg:"Глобус",hr:"Globus",ro:"Glob",en:"Globe"},
+  "Plochá mapa": {cs:"Plochá mapa",sk:"Plochá mapa",bg:"Плоска карта",hr:"Ravna karta",ro:"Hartă plană",en:"Flat map"},
+  "Ukládám snímek PNG.": {cs:"Ukládám snímek PNG.",sk:"Ukladám snímku PNG.",bg:"Запазвам PNG снимка.",hr:"Spremam PNG snimku.",ro:"Salvez imaginea PNG.",en:"Saving a PNG snapshot."},
+  "Otevírám export — video spustíš tlačítkem Export video.": {cs:"Otevírám export — video spustíš tlačítkem Export video.",sk:"Otváram export — video spustíš tlačidlom Export video.",bg:"Отварям експорта — видеото се стартира с бутона Експорт на видео.",hr:"Otvaram izvoz — video pokrećeš gumbom Izvoz videa.",ro:"Deschid exportul — pornești video cu butonul Export video.",en:"Opening Export — start the video with the Export video button."},
+  "Ukládám projekt.": {cs:"Ukládám projekt.",sk:"Ukladám projekt.",bg:"Запазвам проекта.",hr:"Spremam projekt.",ro:"Salvez proiectul.",en:"Saving the project."},
+  "Přehrávám animaci.": {cs:"Přehrávám animaci.",sk:"Prehrávam animáciu.",bg:"Пускам анимацията.",hr:"Pokrećem animaciju.",ro:"Redau animația.",en:"Playing the animation."},
+  "Zastavuji animaci.": {cs:"Zastavuji animaci.",sk:"Zastavujem animáciu.",bg:"Спирам анимацията.",hr:"Zaustavljam animaciju.",ro:"Opresc animația.",en:"Stopping the animation."},
+  "Pozastavuji animaci.": {cs:"Pozastavuji animaci.",sk:"Pozastavujem animáciu.",bg:"Поставям анимацията на пауза.",hr:"Pauziram animaciju.",ro:"Pun animația pe pauză.",en:"Pausing the animation."},
+  "Otevírám: {0}.": {cs:"Otevírám: {0}.",sk:"Otváram: {0}.",bg:"Отварям: {0}.",hr:"Otvaram: {0}.",ro:"Deschid: {0}.",en:"Opening: {0}."},
+  "Ukazuji celou trasu.": {cs:"Ukazuji celou trasu.",sk:"Ukazujem celú trasu.",bg:"Показвам целия маршрут.",hr:"Prikazujem cijelu rutu.",ro:"Afișez întregul traseu.",en:"Showing the whole route."},
+  "Celá trasa": {cs:"Celá trasa",sk:"Celá trasa",bg:"Целият маршрут",hr:"Cijela ruta",ro:"Tot traseul",en:"Whole route"},
+  "Ukazuji: {0}.": {cs:"Ukazuji: {0}.",sk:"Ukazujem: {0}.",bg:"Показвам: {0}.",hr:"Prikazujem: {0}.",ro:"Afișez: {0}.",en:"Showing: {0}."},
+  "Česko": {cs:"Česko",sk:"Česko",bg:"Чехия",hr:"Češka",ro:"Cehia",en:"Czechia"},
+  "Slovensko": {cs:"Slovensko",sk:"Slovensko",bg:"Словакия",hr:"Slovačka",ro:"Slovacia",en:"Slovakia"},
+  "Střední Evropa": {cs:"Střední Evropa",sk:"Stredná Európa",bg:"Централна Европа",hr:"Srednja Europa",ro:"Europa Centrală",en:"Central Europe"},
+  "Evropa": {cs:"Evropa",sk:"Európa",bg:"Европа",hr:"Europa",ro:"Europa",en:"Europe"},
+  "Svět": {cs:"Svět",sk:"Svet",bg:"Свят",hr:"Svijet",ro:"Lumea",en:"World"},
+  "Přibližuji.": {cs:"Přibližuji.",sk:"Približujem.",bg:"Приближавам.",hr:"Približavam.",ro:"Apropii.",en:"Zooming in."},
+  "Oddaluji.": {cs:"Oddaluji.",sk:"Odďaľujem.",bg:"Отдалечавам.",hr:"Udaljavam.",ro:"Depărtez.",en:"Zooming out."},
+  "Přiblížit": {cs:"Přiblížit",sk:"Priblížiť",bg:"Приближи",hr:"Približi",ro:"Apropie",en:"Zoom in"},
+  "Oddálit": {cs:"Oddálit",sk:"Oddialiť",bg:"Отдалечи",hr:"Udalji",ro:"Depărtează",en:"Zoom out"},
+  "Vracím aplikaci na začátek.": {cs:"Vracím aplikaci na začátek.",sk:"Vraciam aplikáciu na začiatok.",bg:"Връщам приложението в началото.",hr:"Vraćam aplikaciju na početak.",ro:"Readuc aplicația la început.",en:"Resetting the app to the start."},
+  "Není co mazat: {0}.": {cs:"Není co mazat: {0}.",sk:"Nie je čo mazať: {0}.",bg:"Няма какво да се изтрие: {0}.",hr:"Nema što obrisati: {0}.",ro:"Nu este nimic de șters: {0}.",en:"Nothing to delete: {0}."},
+  "Mažu: {0}.": {cs:"Mažu: {0}.",sk:"Mažem: {0}.",bg:"Изтривам: {0}.",hr:"Brišem: {0}.",ro:"Șterg: {0}.",en:"Deleting: {0}."},
+  "Vrátíš to přes Ctrl+Z.": {cs:"Vrátíš to přes Ctrl+Z.",sk:"Vrátiš to cez Ctrl+Z.",bg:"Връщаш го с Ctrl+Z.",hr:"Vratit ćeš to s Ctrl+Z.",ro:"Revii cu Ctrl+Z.",en:"Undo it with Ctrl+Z."},
+  "popisky": {cs:"popisky",sk:"popisy",bg:"надписи",hr:"oznake",ro:"etichete",en:"labels"},
+  "ikonky": {cs:"ikonky",sk:"ikonky",bg:"икони",hr:"ikone",ro:"pictograme",en:"icons"},
+  "šipky": {cs:"šipky",sk:"šípky",bg:"стрелки",hr:"strelice",ro:"săgeți",en:"arrows"},
+  "perimetry": {cs:"perimetry",sk:"perimetre",bg:"периметри",hr:"perimetri",ro:"perimetre",en:"perimeters"},
+  "vzdálenosti": {cs:"vzdálenosti",sk:"vzdialenosti",bg:"разстояния",hr:"udaljenosti",ro:"distanțe",en:"distances"},
+  "uzavírky": {cs:"uzavírky",sk:"uzávierky",bg:"затворени участъци",hr:"zatvaranja",ro:"închideri",en:"closures"},
+  "barvy států": {cs:"barvy států",sk:"farby štátov",bg:"цветове на държави",hr:"boje država",ro:"culorile statelor",en:"country colours"},
+  "trasu": {cs:"trasu",sk:"trasu",bg:"маршрут",hr:"ruta",ro:"traseu",en:"route"},
+  "všechno": {cs:"všechno",sk:"všetko",bg:"всичко",hr:"sve",ro:"tot",en:"everything"},
+  "{0}: ikonka a popisek jsou na mapě.": {cs:"{0}: ikonka a popisek jsou na mapě.",sk:"{0}: ikonka a popis sú na mape.",bg:"{0}: иконата и надписът са на картата.",hr:"{0}: ikona i oznaka su na karti.",ro:"{0}: pictograma și eticheta sunt pe hartă.",en:"{0}: the icon and label are on the map."},
+  "Délka trasy {0} km": {cs:"Délka trasy {0} km",sk:"Dĺžka trasy {0} km",bg:"Дължина на маршрута {0} км",hr:"Duljina rute {0} km",ro:"Lungimea traseului {0} km",en:"Route length {0} km"},
+  "Vzdušnou čarou {0} – {1}: {2} km.": {cs:"Vzdušnou čarou {0} – {1}: {2} km.",sk:"Vzdušnou čiarou {0} – {1}: {2} km.",bg:"По права линия {0} – {1}: {2} км.",hr:"Zračnom linijom {0} – {1}: {2} km.",ro:"În linie dreaptă {0} – {1}: {2} km.",en:"As the crow flies {0} – {1}: {2} km."},
+  "Perimetr {0}.": {cs:"Perimetr {0}.",sk:"Perimeter {0}.",bg:"Периметър {0}.",hr:"Perimetar {0}.",ro:"Perimetru {0}.",en:"Perimeter {0}."},
+  "Není žádný krok zpět.": {cs:"Není žádný krok zpět.",sk:"Nie je žiadny krok späť.",bg:"Няма стъпка назад.",hr:"Nema koraka natrag.",ro:"Nu există niciun pas înapoi.",en:"Nothing to undo."},
+  "Není žádný krok vpřed.": {cs:"Není žádný krok vpřed.",sk:"Nie je žiadny krok vpred.",bg:"Няма стъпка напред.",hr:"Nema koraka naprijed.",ro:"Nu există niciun pas înainte.",en:"Nothing to redo."},
+  "Není co přehrát — nejdřív je potřeba trasa nebo animace kamery.": {cs:"Není co přehrát — nejdřív je potřeba trasa nebo animace kamery.",sk:"Nie je čo prehrať — najprv je potrebná trasa alebo animácia kamery.",bg:"Няма какво да се пусне — първо е нужен маршрут или анимация на камерата.",hr:"Nema se što reproducirati — najprije treba ruta ili animacija kamere.",ro:"Nu este nimic de redat — mai întâi e nevoie de un traseu sau de o animație a camerei.",en:"Nothing to play — find a route or set up a camera animation first."},
+  "Právě běží jiný export — počkej, až doběhne.": {cs:"Právě běží jiný export — počkej, až doběhne.",sk:"Práve beží iný export — počkaj, kým dobehne.",bg:"В момента върви друг експорт — изчакай да приключи.",hr:"Upravo traje drugi izvoz — pričekaj da završi.",ro:"Rulează deja un alt export — așteaptă să se termine.",en:"Another export is running — wait until it finishes."},
+  "Mapa": {cs:"Mapa",sk:"Mapa",bg:"Карта",hr:"Karta",ro:"Hartă",en:"Map"},
+  "Objekty": {cs:"Objekty",sk:"Objekty",bg:"Обекти",hr:"Objekti",ro:"Obiecte",en:"Objects"},
+  "Trasa a animace": {cs:"Trasa a animace",sk:"Trasa a animácia",bg:"Маршрут и анимация",hr:"Ruta i animacija",ro:"Traseu și animație",en:"Route & animation"},
+  "Obecné": {cs:"Obecné",sk:"Všeobecné",bg:"Общи",hr:"Općenito",ro:"General",en:"General"},
+  "sc_route": {cs:"Potvrdit Start / Cíl a najít trasu",sk:"Potvrdiť Štart / Cieľ a nájsť trasu",bg:"Потвърди Старт / Цел и намери маршрут",hr:"Potvrdi Start / Cilj i pronađi rutu",ro:"Confirmă Start / Destinație și găsește traseul",en:"Confirm Start / Destination and find the route"},
+  "sc_last": {cs:"Smazat poslední zastávku",sk:"Zmazať poslednú zastávku",bg:"Изтрий последната спирка",hr:"Izbriši zadnju stanicu",ro:"Șterge ultima oprire",en:"Delete the last stop"},
+  "sc_cancel": {cs:"Zrušit vkládání a výběr",sk:"Zrušiť vkladanie a výber",bg:"Отмени добавянето и избора",hr:"Poništi umetanje i odabir",ro:"Anulează inserarea și selecția",en:"Cancel placing and selection"},
+  "sc_tilt": {cs:"Naklonit a otočit mapu",sk:"Nakloniť a otočiť mapu",bg:"Наклони и завърти картата",hr:"Nagni i zakreni kartu",ro:"Înclină și rotește harta",en:"Tilt and rotate the map"},
+  "sc_help": {cs:"Zobrazit zkratky",sk:"Zobraziť skratky",bg:"Покажи клавишните комбинации",hr:"Prikaži prečace",ro:"Afișează scurtăturile",en:"Show shortcuts"},
   // .
   // .
   // .
@@ -17638,7 +17802,7 @@ document.addEventListener('keydown', e => {
   // Every tool returns a plain object the chat can read back and narrate.
   // =========================================================================
   const TOOL_STYLE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
-  const TOOL_TABS = ['styly','trasa','scena','animace','projekt','export'];
+  const TOOL_TABS = ['scena','trasa','animace','export','styly','projekt','nastaveni'];
   const TOOL_MODES = ['driving','truck','moto','train','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
 
   function toolOpenSection(sectionId, open = true){
@@ -17646,13 +17810,19 @@ document.addEventListener('keydown', e => {
     if(!sec) return {ok:false, error:'Sekce ' + sectionId + ' neexistuje.'};
     // Krok uvnitř sekce (např. worldPoliticalSection) → otevřít celou sekci.
     if(!sec.classList.contains('section')) sec = sec.closest('.section') || sec;
+    // Pokročilá sekce (stíny, 3D model) je bez zapnutých Pokročilých funkcí schovaná —
+    // asistent by hlásil ✓ a nic by se neukázalo.
+    let advNote;
+    if(open && sec.classList.contains('pz-adv-only') && !pzAdvancedOn()){
+      try{ pzApplyAdvanced(true); advNote = 'Zapnul jsem Pokročilé funkce (jdou vypnout v Nastavení).'; }catch(e){}
+    }
     // Sekce na jiné záložce: nejdřív na ni přepnout, jinak se otevře „naslepo".
     const pane = sec.closest('.tab-pane')?.dataset?.pane;
     if(open && pane && pane !== state.currentTab){ try{ setTab(pane); }catch(e){} }
     if(sec.closest('.settings-modal') && open){ try{ openSettings(); }catch(e){} }
     try{ setAccordionOpen(sec, !!open, null, false); }catch(e){ return {ok:false, error:String(e)}; }
     try{ sec.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
-    return {ok:true, section:sectionId, open:!!open};
+    return advNote ? {ok:true, section:sectionId, open:!!open, note:advNote} : {ok:true, section:sectionId, open:!!open};
   }
 
   function toolMapState(){
@@ -17669,6 +17839,9 @@ document.addEventListener('keydown', e => {
       hasRoute: (state.routeCoords||[]).length > 0,
       shadows: !!$('sunShadowsOn')?.checked,
       ao: !!$('aoOn')?.checked,
+      uiTheme: document.documentElement.dataset.ui === 'light' ? 'light' : 'dark',
+      lang: currentLang,
+      playing: !!state.animPlaying,
       // Co na mapě je — na to se odkazují pokyny „ho", „ten popisek", „Rusko ne".
       scene: toolSceneSummary()
     };
@@ -17688,6 +17861,7 @@ document.addEventListener('keydown', e => {
     });
     if(Object.keys(colored).length) sc.colored = colored;
     if(state.mapLabels?.length) sc.labels = state.mapLabels.map(l => l.text).slice(0, 10);
+    if(state.multiSel?.size) sc.selected = state.multiSel.size;
     if(state.sceneIcons?.length) sc.icons = state.sceneIcons.length;
     if(state.sceneArrows?.length) sc.arrows = state.sceneArrows.length;
     if(state.scenePerimeters?.length) sc.perimeters = state.scenePerimeters.map(x => Math.round(x.radiusMeters || 0) + ' m');
@@ -18206,7 +18380,7 @@ function pzColorFromName(v){
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
-    serializeProjectSnapshot, applyProjectSnapshot,
+    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT,
     get state(){ return state; }};
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
@@ -18227,10 +18401,11 @@ function pzColorFromName(v){
       }catch(e){ return {ok:false, error:'Místo „' + query + '" jsem nenašel.'}; }
     },
     // Direct camera control: any of zoom/pitch/bearing.
-    setCamera({zoom, pitch, bearing, duration = 900} = {}){
+    setCamera({zoom, zoomBy, pitch, bearing, duration = 900} = {}){
       const m = state.map; if(!m) return {ok:false, error:'Mapa není načtená.'};
       const opts = {duration: Math.max(0, Math.min(6000, Number(duration) || 0))};
       if(zoom   != null) opts.zoom    = Math.max(0,  Math.min(22, Number(zoom)));
+      else if(zoomBy != null && isFinite(Number(zoomBy))) opts.zoom = Math.max(0, Math.min(22, m.getZoom() + Number(zoomBy)));
       if(pitch  != null) opts.pitch   = Math.max(0,  Math.min(85, Number(pitch)));
       if(bearing!= null) opts.bearing = Number(bearing);
       try{ m.easeTo(opts); }catch(e){ return {ok:false, error:String(e)}; }
@@ -18288,7 +18463,7 @@ function pzColorFromName(v){
     // ---- ikonka ve scéně ----------------------------------------------------
     // Obrázek ikonky nahrává uživatel (je to jeho soubor), ale jakmile je v appce,
     // umístit ji na jmenované místo už umíme — stejný princip jako u GLB modelu.
-    async placeIcon({place, size, kind} = {}){
+    async placeIcon({place, size, kind, zoom, fit} = {}){
       // kind = vestavěná ikona (výbuch, požár, policie…). Bez kind se použije
       // vybraná/nahraná ikonka, a když žádná není, špendlík místa události.
       let data = null;
@@ -18301,24 +18476,55 @@ function pzColorFromName(v){
       if(!place) return {ok:false, error:'Chybí place (kam ikonku umístit).'};
       let g; try{ g = await geocode(String(place)); }
       catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
-      const item = createSceneIconAt({lng:+g.lon, lat:+g.lat}, {size: size, data});
+      const ll = {lng:+g.lon, lat:+g.lat};
+      if(fit !== false) await toolShowPoint(ll, zoom);
+      const item = createSceneIconAt(ll, {size: size, data});
       if(!item) return {ok:false, error:'Ikonku se nepodařilo umístit.'};
+      try{ clearPlaceSearchMarker(); }catch(e){}   // špendlík z hledání by trčel zpod ikonky
       return {ok:true, place: g.display_name, size: item.size,
               center:{lat:+g.lat, lng:+g.lon}};
     },
 
     // ---- popisek v mapě -----------------------------------------------------
     // Nejčastější anotace v grafice vůbec. Text bere buď zadaný, nebo název místa.
-    async addLabel({place, text, size, side} = {}){
+    async addLabel({place, text, size, side, style, fit} = {}){
       if(!place) return {ok:false, error:'Chybí place (kam popisek patří).'};
+      const st = style != null ? toolLabelStyle(style) : null;
+      if(style != null && !st) return {ok:false, error:'Styl popisku „' + style + '" neznám. Mám: bílý (classic), TN modrý (navy), TN červený (red), černý (dark).'};
       let g; try{ g = await geocode(String(place)); }
       catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
       // Bez zadaného textu použij první část názvu z geokodéru („Brno, okres…" -> „Brno").
       const label = (text != null && String(text).trim()) ? String(text).trim()
                   : String(g.display_name || place).split(',')[0].trim();
-      const item = addMapLabelAt({lng:+g.lon, lat:+g.lat},
-                     {text: label, size: size, side: side === 'left' ? 'left' : undefined});
+      const ll = {lng:+g.lon, lat:+g.lat};
+      if(fit !== false) await toolShowPoint(ll);
+      // Na stejném místě už je ikonka (typicky „nehoda v X" = ikonka + popisek):
+      // popisek patří nad ni, ne přes ni.
+      let pos = ll, ic = null;
+      try{
+        const m = state.map, b = m.project([ll.lng, ll.lat]);
+        ic = (state.sceneIcons || []).find(x => { const a = m.project(x.marker.getLngLat()); return Math.hypot(a.x - b.x, a.y - b.y) < 12; });
+        if(ic){
+          const lsz = parseInt(size || state.mapLabelGlobalSize || $('mapLabelSize')?.value || '28', 10) || 28;
+          pos = offsetLngLat(ll, 0, -Math.round((ic.size || 44) * 0.5 + lsz * 1.05 + 12));
+        }
+      }catch(e){}
+      const opts = {text: label, size: size, side: side === 'left' ? 'left' : undefined};
+      if(st) opts.style = st;
+      const item = addMapLabelAt(pos, opts);
       if(!item && item !== undefined) return {ok:false, error:'Popisek se nepodařilo přidat.'};
+      // Kotva popisku je jeho čtvereček, ne střed — nad ikonkou by visel nakřivo.
+      try{
+        if(ic && item?.marker){
+          const el = item.marker.getElement(), rs = ['.map-label-bubble', '.map-label-square'].map(s => el.querySelector(s)?.getBoundingClientRect()).filter(r => r && r.width);
+          const ir = ic.marker.getElement().getBoundingClientRect();
+          if(rs.length){
+            const dx = (ir.left + ir.width / 2) - (Math.min(...rs.map(r => r.left)) + Math.max(...rs.map(r => r.right))) / 2;
+            const at = offsetLngLat(item.marker.getLngLat(), dx, 0);
+            item.marker.setLngLat(at); item.lngLat = at;
+          }
+        }
+      }catch(e){}
       return {ok:true, place: g.display_name, text: label,
               center:{lat:+g.lat, lng:+g.lon}};
     },
@@ -18623,7 +18829,9 @@ function pzColorFromName(v){
         boundary:'boundaryColor', countryBorder:'countryBorderColor',
         perimeter:'scenePerimeterColor', arrow:'sceneArrowColor',
         distance:'sceneDistanceColor', czRegion:'czRegionColor',
-        country:'politicalCountryColor'
+        country:'politicalCountryColor',
+        motorway:'motorwayColor', roadPrimary:'primaryColor', roadSecondary:'secondaryColor',
+        railway:'railwayColor', transit:'transitColor', vehicleIcon:'animIconColor'
       };
       const dia = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
       const norm = pzColorFromName;
@@ -18701,7 +18909,10 @@ function pzColorFromName(v){
         majorRoadWidth:'majorWidth', minorRoadWidth:'minorWidth',
         sceneIconSize:'sceneIconSize', animIconSize:'animIconSize',
         animDuration:'animDuration', cameraPitch:'cameraPitch',
-        routeEndpointSize:'routeEndpointSize'
+        routeEndpointSize:'routeEndpointSize',
+        routeGlow:'routeGlow', arrowWidth:'sceneArrowWidth', distanceWidth:'sceneDistanceWidth',
+        perimeterOpacity:'scenePerimeterOpacity', countryBorderWidth:'countryBorderWidth',
+        countryFillOpacity:'politicalFillOpacity', motorwayWidth:'motorwayWidth', railwayWidth:'railwayWidth'
       };
       const changed = {}, unknown = [], clamped = [];
       Object.keys(spec || {}).forEach(k => {
@@ -18746,7 +18957,9 @@ function pzColorFromName(v){
         minorRoads:'showMinorRoads', motorways:'showMotorways',
         railways:'showRailways', waterways:'showWaterways', metro:'showMetro',
         transit:'showTransit', boundaries:'showBoundaries', landcover:'showLandcover',
-        landuse:'showLanduse', aeroway:'showAeroway', exportFrame:'showExportFrame'
+        landuse:'showLanduse', aeroway:'showAeroway', exportFrame:'showExportFrame',
+        primaryRoads:'showPrimaryRoads', secondaryRoads:'showSecondaryRoads',
+        countryBorders:'showCountryBordersOverlay', countryColors:'showPoliticalCountries', routeTrail:'showTrail'
       };
       const changed = {}, unknown = [];
       Object.keys(spec || {}).forEach(k => {
@@ -18815,6 +19028,7 @@ function pzColorFromName(v){
     // ---- UI navigation ("open the tool for me") ---------------------------
     openTab({tab} = {}){
       if(!TOOL_TABS.includes(tab)) return {ok:false, error:'Neznámá záložka. Dostupné: ' + TOOL_TABS.join(', ')};
+      if(tab === 'nastaveni'){ try{ openSettings(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true, tab}; }
       try{ setTab(tab); }catch(e){ return {ok:false, error:String(e)}; }
       return {ok:true, tab, note: tab === 'projekt' ? 'Projekt je panel v horní liště.' : undefined};
     },
@@ -18829,10 +19043,14 @@ function pzColorFromName(v){
         perimeters: () => clearScenePerimeters?.(), perimetry: 'perimeters',
         distances: () => clearSceneDistances?.(), vzdalenosti: 'distances',
         closures: () => { state.pzClosures = []; pzRedrawClosures(); }, uzavirky: 'closures',
-        colors: () => clearPoliticalPainting?.(), barvy: 'colors'
+        colors: () => clearPoliticalPainting?.(), barvy: 'colors',
+        route: () => clearRoute?.(), trasa: 'route',
+        // „smaž všechno": celá scéna i trasa; podklad a vzhled mapy zůstávají
+        all: () => { ['labels','icons','arrows','perimeters','distances','closures','colors','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
+        vse: 'all', vsechno: 'all'
       };
       let fn = map[W]; if(typeof fn === 'string') fn = map[fn];
-      if(typeof fn !== 'function') return {ok:false, error:'what musí být labels, icons, arrows, perimeters, distances, closures nebo colors.'};
+      if(typeof fn !== 'function') return {ok:false, error:'what musí být labels, icons, arrows, perimeters, distances, closures, colors, route nebo all.'};
       try{ fn(); }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
       return {ok:true, cleared:W};
     },
@@ -18841,6 +19059,207 @@ function pzColorFromName(v){
     redo(){ const ok = window.__pzRedo?.(); return ok ? {ok:true} : {ok:false, error:'Není žádný krok vpřed.'}; },
     resetApp(){ try{ resetAppToStart(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; }
   };
+
+  // ---- [asistent] stavový řádek po přepnutí jazyka ----
+  // Hláška zůstávala v původním jazyce („Preset 01 použit." v anglickém rozhraní).
+  try{
+    new MutationObserver(() => { if(statusEl && statusEl.dataset.pzLang && statusEl.dataset.pzLang !== currentLang) setStatus(t('Mapa načtena.')); })
+      .observe(document.documentElement, {attributes:true, attributeFilter:['lang']});
+  }catch(e){}
+
+  // ---- [asistent] panel zkratek: řádky seskupit podle toho, k čemu slouží ----
+  // Skupinu určuje klíč textu, takže řádky jde v HTML přidávat v libovolném pořadí;
+  // řádek bez známého klíče (zkratky výběru objektů) patří k objektům.
+  (function pzGroupShortcuts(){
+    const p = $('shortcutsPanel'); if(!p) return;
+    const WHERE = {sc_tilt:['Mapa', 1], sc_pan:['Mapa', 2], sc_refresh:['Mapa', 3],
+      sc_delete:['Objekty', 1], sc_copy:['Objekty', 2],
+      sc_route:['Trasa a animace', 1], sc_via:['Trasa a animace', 2], sc_last:['Trasa a animace', 3], sc_play:['Trasa a animace', 4],
+      sc_undo:['Obecné', 1], sc_cancel:['Obecné', 2], sc_help:['Obecné', 3]};
+    const groups = new Map(['Mapa', 'Objekty', 'Trasa a animace', 'Obecné'].map(g => [g, []]));
+    [...p.querySelectorAll(':scope > .sc-row')].forEach((row, i) => {
+      const w = WHERE[row.querySelector('[data-i18n]')?.dataset.i18n] || ['Objekty', 50 + i];
+      groups.get(w[0]).push([w[1], row]);
+    });
+    groups.forEach((rows, name) => {
+      if(!rows.length) return;
+      const box = document.createElement('div'); box.className = 'sc-group';
+      const h = document.createElement('h5'); h.dataset.i18n = name; h.textContent = name;
+      box.appendChild(h);
+      rows.sort((a, b) => a[0] - b[0]).forEach(([, row]) => box.appendChild(row));
+      p.appendChild(box);
+    });
+  })();
+
+  // ---- [asistent] další nástroje -------------------------------------------
+  // Styl popisku: jména z nabídky (#mapLabelStyle) i to, jak to říká grafik.
+  function toolLabelStyle(v){
+    const k = String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if(/cerven|red|breaking/.test(k)) return 'red';
+    if(/modr|navy|blue/.test(k)) return 'navy';
+    if(/cern|tmav|dark|black/.test(k)) return 'dark';
+    if(/bil|white|classic|klasick|svetl/.test(k)) return 'classic';
+    return null;
+  }
+  // Vložený prvek musí být v záběru — jinak asistent hlásí ✓ a grafik nic nevidí.
+  // Se zoomem na místo přeletí (a počká), bez něj jen když je bod mimo výřez.
+  async function toolShowPoint(ll, zoom){
+    const m = state.map; if(!m) return;
+    const moved = () => new Promise(res => { let d = false; const fin = () => { if(!d){ d = true; res(); } }; m.once('moveend', fin); setTimeout(fin, 2500); });
+    const fp = getFitPadding();
+    const fly = z => {
+      state.screenPan = {x:0, y:0};
+      // padding ve flyTo zůstává na mapě natrvalo — střed výřezu proto posouvá offset
+      m.flyTo({center:[ll.lng, ll.lat], zoom:z, padding:{top:0, right:0, bottom:0, left:0},
+        offset:[Math.round((fp.left - fp.right) / 2), Math.round((fp.top - fp.bottom) / 2)], duration:900});
+      return moved();
+    };
+    try{
+      if(zoom != null && isFinite(Number(zoom))) return await fly(Math.max(2, Math.min(18, Number(zoom))));
+      if(m.isMoving()) await moved();
+      const p = m.project([ll.lng, ll.lat]), c = m.getContainer();
+      const inside = p.x > fp.left && p.x < c.clientWidth - fp.right && p.y > fp.top && p.y < c.clientHeight - fp.bottom;
+      if(!inside) await fly(Math.max(5, Math.min(14, m.getZoom())));
+    }catch(e){}
+  }
+  // Výřezy, které se hledají pořád dokola — bez geokódování, tedy hned a bez sítě.
+  const TOOL_REGIONS = {
+    world:   {center:[15, 25], zoom:1.4},
+    europe:  [[-11, 35], [40, 66]],
+    centralEurope: [[5.5, 45.5], [24.5, 55]],
+    czechia: [[12.00, 48.55], [18.95, 51.10]],
+    slovakia:[[16.83, 47.73], [22.57, 49.62]],
+    bulgaria:[[22.35, 41.23], [28.61, 44.22]],
+    croatia: [[13.49, 42.38], [19.45, 46.56]],
+    romania: [[20.26, 43.62], [29.71, 48.27]]
+  };
+  const TOOL_REGION_ALIASES = {svet:'world', 'cely svet':'world', world:'world', evropa:'europe', evropu:'europe', europe:'europe',
+    'stredni evropa':'centralEurope', 'stredni evropu':'centralEurope', centraleurope:'centralEurope',
+    cesko:'czechia', cr:'czechia', cechy:'czechia', 'ceska republika':'czechia', 'ceskou republiku':'czechia', czechia:'czechia',
+    slovensko:'slovakia', slovakia:'slovakia', bulharsko:'bulgaria', bulgaria:'bulgaria',
+    chorvatsko:'croatia', croatia:'croatia', rumunsko:'romania', romania:'romania'};
+  const TOOL_LANGS = {cs:'cs', cesky:'cs', cestina:'cs', cestinu:'cs', czech:'cs', sk:'sk', slovensky:'sk', slovenstina:'sk', slovenstinu:'sk', slovak:'sk',
+    bg:'bg', bulharsky:'bg', bulharstina:'bg', bulharstinu:'bg', bulgarian:'bg', hr:'hr', chorvatsky:'hr', chorvatstina:'hr', chorvatstinu:'hr', croatian:'hr',
+    ro:'ro', rumunsky:'ro', rumunstina:'ro', rumunstinu:'ro', romanian:'ro', en:'en', anglicky:'en', anglictina:'en', anglictinu:'en', english:'en'};
+  const toolKey = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+  Object.assign(window.TNMAP, {
+    // Barvy vestavěného vozidla na trase. Jen nastaví ovládací prvky a ohlásí změnu —
+    // všechno ostatní (překreslení ikonky, uložení) si řeší sekce Ikona objektu sama.
+    setVehicleColors({preset, body, accent} = {}){
+      const sel = $('pzVehiclePreset'), bodyEl = $('pzVehicleBody'), accEl = $('pzVehicleAccent');
+      if(!sel && !bodyEl && !accEl) return {ok:false, error:'Barvy vozidla nejsou dostupné.'};
+      const fire = el => el.dispatchEvent(new Event('change', {bubbles:true}));
+      const res = {ok:true};
+      if(preset != null && sel){
+        const k = toolKey(preset);
+        const opts = [...sel.options];
+        const alias = /tmav|dark/.test(k) ? 'dark' : /modr|blue/.test(k) ? 'blue' : /svetl|light/.test(k) ? 'light' : /vlastn|custom/.test(k) ? 'custom' : k;
+        const opt = opts.find(o => o.value === preset) || opts.find(o => toolKey(o.value) === alias) || opts.find(o => toolKey(o.textContent).includes(k));
+        if(!opt) return {ok:false, error:'Sadu barev „' + preset + '" neznám. Mám: ' + opts.map(o => o.value).join(', ') + '.'};
+        sel.value = opt.value; fire(sel); res.preset = opt.value;
+      }
+      for(const [key, el, v] of [['body', bodyEl, body], ['accent', accEl, accent]]){
+        if(v == null || !el) continue;
+        const hex = pzColorFromName(v);
+        if(!hex) return {ok:false, error:'Barvu „' + v + '" neznám.'};
+        el.value = hex; fire(el); res[key] = hex;
+      }
+      if(Object.keys(res).length === 1) return {ok:false, error:'Zadej preset (light, dark, blue), body (karoserie) nebo accent.'};
+      if($('pzVehiclePalette')?.hidden) res.note = 'Barvy platí pro vestavěné vozidlo (auto, kamion, vlak, loď) — vyber ho v záložce Trasa, sekce Ikona objektu.';
+      return res;
+    },
+    // Styl popisků: vybraný / poslední / podle textu / všechny. Nabídka Styl se
+    // přepne také, takže další popisky vzniknou ve stejném stylu.
+    setLabelStyle({style, text, all} = {}){
+      const st = toolLabelStyle(style);
+      if(!st) return {ok:false, error:'Styl „' + (style || '') + '" neznám. Mám: bílý (classic), TN modrý (navy), TN červený (red), černý (dark).'};
+      if($('mapLabelStyle')) $('mapLabelStyle').value = st;
+      const labels = state.mapLabels || [];
+      if(!labels.length) return {ok:true, style:st, changed:0, note:'Na mapě není žádný popisek — styl platí pro další.'};
+      let targets;
+      if(text){ const k = toolKey(text); targets = labels.filter(l => toolKey(l.text).includes(k)); if(!targets.length) return {ok:false, error:'Popisek „' + text + '" na mapě není.'}; }
+      else if(all) targets = labels.slice();
+      else targets = [labels.find(l => l.id === state.selectedMapLabelId) || labels[labels.length - 1]];
+      targets.forEach(l => updateMapLabel(l.id, {style: st}));
+      return {ok:true, style:st, changed:targets.length, labels: targets.map(l => l.text).slice(0, 10)};
+    },
+    // Světlý / tmavý režim APLIKACE (ne mapy).
+    setUiTheme({mode} = {}){
+      const cur = document.documentElement.dataset.ui === 'light' ? 'light' : 'dark';
+      const k = toolKey(mode);
+      const want = /svetl|light/.test(k) ? 'light' : /tmav|dark/.test(k) ? 'dark' : (cur === 'light' ? 'dark' : 'light');
+      try{ pzSetUiTheme(want); }catch(e){ return {ok:false, error:String(e)}; }
+      return {ok:true, mode:want};
+    },
+    setLanguage({lang} = {}){
+      const code = TOOL_LANGS[toolKey(lang)];
+      if(!code) return {ok:false, error:'Jazyk „' + (lang || '') + '" neznám. Mám: cs, sk, bg, hr, ro, en.'};
+      const btn = document.querySelector('.lang-btn[data-lang="' + code + '"]');
+      if(!btn) return {ok:false, error:'Přepínač jazyka není dostupný.'};
+      if(btn.style.display === 'none') return {ok:false, error:'Jazyk ' + code.toUpperCase() + ' je vypnutý v Nastavení.'};
+      btn.click();
+      return {ok:true, lang:code};
+    },
+    // Celý svět, Evropa, Česko… bez hledání místa.
+    showRegion({region} = {}){
+      const m = state.map; if(!m) return {ok:false, error:'Mapa není načtená.'};
+      const k = TOOL_REGION_ALIASES[toolKey(region)] || (TOOL_REGIONS[region] ? region : null);
+      if(!k) return {ok:false, error:'Výřez „' + (region || '') + '" neznám. Mám: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania. Jiná místa hledej přes gotoPlace.'};
+      const r = TOOL_REGIONS[k];
+      try{
+        state.screenPan = {x:0, y:0};
+        if(Array.isArray(r)) m.fitBounds(r, {padding:getFitPadding(), bearing:0, pitch:0, duration:900});
+        else m.easeTo({center:r.center, zoom:r.zoom, bearing:0, pitch:0, duration:900});
+      }catch(e){ return {ok:false, error:String(e)}; }
+      return {ok:true, region:k};
+    },
+    // Přehrávač animace: play | pause | stop | rewind.
+    playAnimation({action = 'play'} = {}){
+      const a = toolKey(action);
+      if(a === 'play'){
+        if(!(state.routeCoords || []).length && !cameraAnimReady()) return {ok:false, error:'Není co přehrát — nejdřív je potřeba trasa nebo animace kamery.'};
+        playAnimation();
+      } else if(a === 'pause') pauseAnimation();
+      else if(a === 'stop') stopAnimation();
+      else if(a === 'rewind') $('animRewindBtn')?.click();
+      else return {ok:false, error:'action musí být play, pause, stop nebo rewind.'};
+      return {ok:true, action:a, playing: !!state.animPlaying};
+    },
+    // Snímek PNG (stejné jako tlačítko Screenshot PNG). Video z chatu spustit nejde záměrně.
+    exportPng(){
+      const btn = $('exportPngBtn');
+      if(!btn) return {ok:false, error:'Export není dostupný.'};
+      if(btn.disabled) return {ok:false, error:'Právě běží jiný export — počkej, až doběhne.'};
+      btn.click();
+      return {ok:true, started:true, note:'PNG se ukládá do stažených souborů.'};
+    },
+    // Vícenásobný výběr ikonek a popisků: all | none | delete.
+    selectObjects({action = 'all'} = {}){
+      const a = toolKey(action);
+      if(a === 'all'){
+        if(!pzMultiSelectAll()) return {ok:false, error:'Na mapě není žádná ikonka ani popisek.'};
+        return {ok:true, selected: state.multiSel.size};
+      }
+      if(a === 'none'){ pzMultiClear(); try{ clearSceneIconSelection(); clearMapLabelSelection(); }catch(e){} return {ok:true, selected:0}; }
+      if(a === 'delete'){
+        const n = state.multiSel?.size || 0;
+        if(n){ pzMultiDelete(); return {ok:true, deleted:n}; }
+        if(deleteSelectedMapObject()) return {ok:true, deleted:1};
+        return {ok:false, error:'Nic není vybrané.'};
+      }
+      return {ok:false, error:'action musí být all, none nebo delete.'};
+    },
+    // Pomůcky pro panel chatu (ne nástroje — worker je modelu nenabízí a jména s _ odmítá).
+    _t: (key, ...args) => t(key, ...args),
+    _lang: () => currentLang,
+    _afterTool: () => { try{ pzMarkAdvancedInUse(); }catch(e){} },
+    _bump: () => { try{ tnBump('chat', 1); }catch(e){} },
+    async _geocode(q){
+      const g = await geocode(String(q));
+      return {lat:+g.lat, lng:+g.lon, name: String(g.name || g.namedetails?.name || ''), display: String(g.display_name || '')};
+    }
+  });
 
 })();
 </script>
@@ -18945,6 +19364,35 @@ function pzColorFromName(v){
 /* . */
 /* . */
 /* [css:asistent] pravidla oblasti „asistent" vkládej pod tento řádek */
+/* Chat: hlavička s tlačítkem Nová konverzace, pole na víc řádků, příklady, stav „pracuji", výpadek AI */
+.tnchat-head .tnchat-new{margin-left:auto;display:grid;place-items:center;width:26px;height:24px;padding:0}
+.tnchat-head .tnchat-new[hidden]{display:none}
+.tnchat-head .tnchat-new:not([hidden]) + #tnchatClose{margin-left:0}
+.tnchat-head button:hover{color:var(--tx1)}
+.tnchat-panel.busy .tnchat-dot{background:var(--accent);animation:tnchatBlink 1s ease-in-out infinite}
+@keyframes tnchatBlink{50%{opacity:.25}}
+.tnchat-form{align-items:flex-end}
+.tnchat-form textarea{flex:1;min-width:0;resize:none;background:var(--bg2);border:1px solid var(--border);color:var(--tx1);
+  padding:9px 11px;border-radius:8px;font:13px/1.4 var(--font);max-height:96px;overflow-y:auto;display:block}
+.tnchat-form textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);outline:none}
+.tnchat-form button{height:38px}
+.tnchat-log .tnchat-chips{padding:0}
+.tnchat-empty{flex-direction:column;flex-wrap:nowrap;gap:6px}
+.tnchat-empty .tnchat-chip{border-radius:8px;text-align:left;padding:9px 11px;font:500 12.5px/1.3 var(--font);color:var(--tx1)}
+.tnchat-busy{align-self:flex-start;display:flex;align-items:center;gap:8px;font:600 11px var(--font);color:var(--tx2);padding:2px 4px}
+.tnchat-busy::before{content:'';flex:0 0 auto;width:11px;height:11px;border-radius:50%;border:2px solid var(--border-hi);border-top-color:var(--accent);animation:tnchatSpin .8s linear infinite}
+.tnchat-busy::after{content:'…';margin-left:-7px}
+@keyframes tnchatSpin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.tnchat-busy::before,.tnchat-panel.busy .tnchat-dot{animation:none}}
+.tnchat-msg.err{max-width:100%;white-space:normal}
+.tnchat-retry{display:inline-block;margin-top:8px;background:var(--accent);border:0;color:#fff;font:700 11px var(--font);padding:6px 10px;border-radius:6px;cursor:pointer}
+.tnchat-retry:hover{background:var(--accent-hi)}
+.tnchat-noai{margin:10px 0 6px;font:600 11px var(--font);color:var(--tx2)}
+html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
+@media (max-width:760px){ .tnchat-form textarea{font-size:16px} }   /* iOS jinak při fokusu přiblíží stránku */
+/* Panel zkratek: čtyři skupiny místo jednoho dlouhého seznamu */
+.shortcuts-panel .sc-group + .sc-group{margin-top:10px;padding-top:9px;border-top:1px solid var(--border)}
+.shortcuts-panel h5{margin:0 0 6px;font:700 10px var(--font);letter-spacing:.8px;text-transform:uppercase;color:var(--tx3)}
 /* . */
 /* . */
 /* . */
@@ -18961,12 +19409,13 @@ function pzColorFromName(v){
 </style>
 <button type="button" class="tnchat-fab" id="tnchatFab" title="AI asistent mapy" aria-label="AI asistent"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2 L14.2 9.8 L22 12 L14.2 14.2 L12 22 L9.8 14.2 L2 12 L9.8 9.8 Z" fill="currentColor"/></svg></button>
 <div class="tnchat-panel" id="tnchatPanel" role="dialog" aria-label="AI asistent mapy">
-  <div class="tnchat-head"><span class="tnchat-dot"></span>AI ASISTENT MAPY<button type="button" id="tnchatClose" aria-label="Zavřít">×</button></div>
-  <div class="tnchat-log" id="tnchatLog"></div>
-  <div class="tnchat-chips" id="tnchatChips"></div>
+  <div class="tnchat-head"><span class="tnchat-dot"></span><span data-i18n="AI ASISTENT MAPY">AI ASISTENT MAPY</span>
+    <button type="button" id="tnchatNew" class="tnchat-new" title="Nová konverzace" aria-label="Nová konverzace" hidden><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
+    <button type="button" id="tnchatClose" aria-label="Zavřít">×</button></div>
+  <div class="tnchat-log" id="tnchatLog" aria-live="polite"></div>
   <form class="tnchat-form" id="tnchatForm" autocomplete="off">
-    <input id="tnchatInput" type="text" placeholder="Např. ukaž 3D Staré Město v Praze…" aria-label="Zpráva">
-    <button type="submit" id="tnchatSend">▲</button>
+    <textarea id="tnchatInput" rows="1" placeholder="Napiš, co má mapa udělat…" aria-label="Zpráva"></textarea>
+    <button type="submit" id="tnchatSend" aria-label="Odeslat">▲</button>
   </form>
 </div>
 <script>
@@ -18975,26 +19424,96 @@ function pzColorFromName(v){
   // Cloudflare Worker s LLM (tool-calling). Doména se doplní po nasazení workeru.
   const TNCHAT_ENDPOINT = 'https://tnmap-chat.petrzavorka.workers.dev/api/chat';
   const MAX_ROUNDS = 4;   // model → nástroje → výsledky → model … (strop proti smyčce)
+  const FETCH_TIMEOUT_MS = 45000;
 
   const $q = id => document.getElementById(id);
   const panel = $q('tnchatPanel'), log = $q('tnchatLog'), input = $q('tnchatInput'),
-        form = $q('tnchatForm'), sendBtn = $q('tnchatSend');
+        form = $q('tnchatForm'), sendBtn = $q('tnchatSend'), newBtn = $q('tnchatNew');
   let history = [];   // [{role:'user'|'assistant', content:string}]
   let busy = false;
+  let busyEl = null;
+
+  // Překlad přes slovník appky (hlavní skript je uzavřený, zpřístupňuje jen TNMAP).
+  function tr(key, ...args){
+    try{ if(window.TNMAP && window.TNMAP._t) return window.TNMAP._t(key, ...args); }catch(e){}
+    let s = String(key); args.forEach((a, i) => { s = s.replace('{' + i + '}', a); }); return s;
+  }
+  const uiLang = () => { try{ return window.TNMAP._lang() || 'cs'; }catch(e){ return 'cs'; } };
+  // Fokus do pole jen tam, kde nevyskočí klávesnice přes půl obrazovky.
+  const isDesktop = () => { try{ return window.matchMedia('(hover: hover) and (pointer: fine)').matches; }catch(e){ return true; } };
+  const focusInput = () => { if(isDesktop() && panel.classList.contains('open')) input.focus(); };
 
   function esc(s){ const d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
+  function append(el){
+    log.querySelector('.tnchat-empty')?.remove();
+    log.appendChild(el);
+    if(busyEl) log.appendChild(busyEl);   // „Pracuji" vždy až pod poslední zprávou
+    log.scrollTop = log.scrollHeight;
+    newBtn.hidden = false;
+    return el;
+  }
   function add(kind, text){
     const el = document.createElement('div');
     el.className = 'tnchat-msg ' + kind;
     el.textContent = text;
-    log.appendChild(el); log.scrollTop = log.scrollHeight;
-    return el;
+    return append(el);
   }
   function addAction(label, ok){
     const el = document.createElement('div');
     el.className = 'tnchat-act';
     el.innerHTML = '<span class="' + (ok ? 'ok' : 'bad') + '">' + (ok ? '✓' : '✕') + '</span>' + esc(label);
-    log.appendChild(el); log.scrollTop = log.scrollHeight;
+    append(el);
+  }
+  function setBusy(on, label){
+    busy = on; sendBtn.disabled = on;
+    panel.classList.toggle('busy', on);
+    if(on){
+      if(!busyEl){ busyEl = document.createElement('div'); busyEl.className = 'tnchat-busy'; busyEl.setAttribute('role', 'status'); }
+      busyEl.textContent = label || tr('Pracuji');
+      log.querySelector('.tnchat-empty')?.remove();
+      log.appendChild(busyEl); log.scrollTop = log.scrollHeight;
+    } else if(busyEl){ busyEl.remove(); busyEl = null; }
+  }
+  // Řádek povelů, na které jde klepnout (prázdný stav, výpadek AI).
+  function chipRow(items, cls){
+    const row = document.createElement('div');
+    row.className = 'tnchat-chips' + (cls ? ' ' + cls : '');
+    items.forEach(key => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'tnchat-chip'; b.dataset.i18n = key; b.textContent = tr(key);
+      // odesílá se český povel (rozpozná ho i rychlý povel bez AI), vidět je překlad
+      b.addEventListener('click', () => { if(!busy) ask(key, false, b.textContent); });
+      row.appendChild(b);
+    });
+    return row;
+  }
+  // Příklady odpovídají tomu, co asistent opravdu umí; první, pátý a šestý nestojí dotaz na AI.
+  const EXAMPLES = ['Nehoda v Humpolci', 'Trasa autem z Prahy do Brna', 'Uzavírka D1 mezi Humpolcem a Jihlavou',
+                    'Obarvi Ukrajinu žlutě', 'Přepni na satelit', 'Export PNG'];
+  // Co funguje i bez AI (vyčerpaný limit, výpadek sítě).
+  const NO_AI = ['Zpět', 'Přepni na satelit', 'Nehoda v Brně', 'Smaž popisky', 'Export PNG'];
+  function showEmpty(){
+    log.replaceChildren();
+    const row = chipRow(EXAMPLES, 'tnchat-empty');
+    row.id = 'tnchatChips';
+    log.appendChild(row);
+    newBtn.hidden = true;
+  }
+  // Hláška o výpadku: co se stalo + (volitelně) Zkusit znovu + povely, které jdou dál.
+  function addNotice(text, retryText){
+    const el = document.createElement('div');
+    el.className = 'tnchat-msg err';
+    const p = document.createElement('div'); p.textContent = text; el.appendChild(p);
+    if(retryText){
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'tnchat-retry'; b.dataset.i18n = 'Zkusit znovu'; b.textContent = tr('Zkusit znovu');
+      b.addEventListener('click', () => { if(!busy){ el.remove(); ask(retryText, true); } });
+      el.appendChild(b);
+    }
+    const h = document.createElement('div'); h.className = 'tnchat-noai'; h.dataset.i18n = 'Bez AI funguje dál:'; h.textContent = tr('Bez AI funguje dál:');
+    el.appendChild(h);
+    el.appendChild(chipRow(NO_AI));
+    return append(el);
   }
 
   // Vše, co uživatel v této konverzaci napsal — proti tomu ověřujeme názvy míst.
@@ -19024,50 +19543,199 @@ function pzColorFromName(v){
     }));
   }
 
+  // Nástroje, které mapu nemění — před nimi se snímek pro Krok zpět nedělá.
+  const NO_UNDO = new Set(['getState','fitRoute','openTab','openSection','arcBestView','undo','redo',
+                           'playAnimation','exportPng','setUiTheme','setLanguage']);
+  let undoTaken = false;   // jeden povel = jeden Krok zpět, i když spustí víc nástrojů
   // Spustí jeden nástroj z whitelistu (window.TNMAP). Nikdy nevyhodí — vrací výsledek.
   async function runTool(call){
     const api = window.TNMAP;
     const name = call && call.tool;
     if(!api) return {ok:false, error:'API mapy není připravené.'};
-    if(!name || typeof api[name] !== 'function') return {ok:false, error:'Neznámý nástroj: ' + name};
-    if(!/^(get|fit|open|arcBest|undo|redo)/.test(name)) try{ window.__pzPushUndo?.(); }catch(e){}
+    if(!name || name[0] === '_' || typeof api[name] !== 'function') return {ok:false, error:'Neznámý nástroj: ' + name};
+    if(!NO_UNDO.has(name) && !undoTaken){ undoTaken = true; try{ window.__pzPushUndo?.(); }catch(e){} }
     try{ window.tnFeature?.('tool:' + name); }catch(e){}
     try{
       const r = await api[name](call.args || {});
       return (r && typeof r === 'object') ? r : {ok:true};
     }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
-    finally{ try{ pzMarkAdvancedInUse(); }catch(e){} }   // asistent mohl vložit 3D model / zapnout stíny
+    finally{ try{ api._afterTool?.(); }catch(e){} }   // asistent mohl vložit 3D model / zapnout stíny
   }
 
+  // ---------------------------------------------------------------------------
   // Rychlé povely bez AI: jednoznačné krátké příkazy vyřídíme hned v prohlížeči.
   // Jsou okamžité, fungují i při vyčerpaném denním limitu Workers AI a limit
   // nešetří jen ony — každý dotaz na model stojí ~7 000 tokenů promptu.
-  const QUICK = [
-    [/^(krok )?zpet$|^vrat( to)?( zpet| o krok zpet)?$|^zrus (to|posledni (krok|zmenu))$|^undo$/, 'Vracím poslední změnu.', [{tool:'undo', label:'Krok zpět'}]],
-    [/^(krok )?vpred$|^znovu$|^redo$/, 'Krok vpřed.', [{tool:'redo', label:'Krok vpřed'}]],
-    [/^((prepni|dej|zapni|chci)( na)? )?satelit(ni (mapu|podklad|snimek))?$/, 'Přepínám na satelit.', [{tool:'setBaseStyle', args:{style:'satellite'}, label:'Satelit'}]],
-    [/^((prepni|dej|chci)( na)? )?hybrid$/, 'Přepínám na hybridní mapu.', [{tool:'setBaseStyle', args:{style:'hybrid'}, label:'Hybrid'}]],
-    [/^((prepni|dej|chci)( na)? )?(positron|svetlou mapu|svetly podklad|zakladni mapu)$/, 'Přepínám na Positron.', [{tool:'setBaseStyle', args:{style:'positron'}, label:'Positron'}]],
-    [/^((prepni|dej|chci)( na)? )?(politickou mapu|politicka mapa)$/, 'Přepínám na politickou mapu.', [{tool:'setBaseStyle', args:{style:'political'}, label:'Politická mapa'}]],
-    [/^(zapni |dej |prepni na )?globus$/, 'Zapínám glóbus.', [{tool:'setGlobe', args:{on:true}, label:'Glóbus'}]],
-    [/^vypni globus$|^(prepni na |dej )?plochou mapu$/, 'Vypínám glóbus.', [{tool:'setGlobe', args:{on:false}, label:'Plochá mapa'}]],
-    [/^(otevri |prepni na |jdi na |ukaz )?(zalozku )?(export|exportovat)$/, 'Otevírám export.', [{tool:'openTab', args:{tab:'export'}, label:'Export'}]],
-    [/^(otevri |prepni na |jdi na )?(zalozku )?(trasa|trasu)$/, 'Otevírám trasu.', [{tool:'openTab', args:{tab:'trasa'}, label:'Trasa'}]],
-    [/^(otevri |prepni na |jdi na )?(zalozku )?(scena|scenu)$/, 'Otevírám scénu.', [{tool:'openTab', args:{tab:'scena'}, label:'Scéna'}]],
-    [/^(otevri |prepni na |jdi na )?(zalozku )?(animace|animaci)$/, 'Otevírám animaci.', [{tool:'openTab', args:{tab:'animace'}, label:'Animace'}]],
-    [/^(otevri |prepni na |jdi na |ukaz )?(zalozku |panel )?(projekt|projekty|ulozene projekty)$/, 'Otevírám projekty.', [{tool:'openTab', args:{tab:'projekt'}, label:'Projekt'}]],
-    [/^(otevri |prepni na |jdi na )?(zalozku )?(styl|styly|vzhled)$/, 'Otevírám styl.', [{tool:'openTab', args:{tab:'styly'}, label:'Styl'}]],
-    [/^(ukaz )?celou trasu$|^doramuj trasu$/, 'Ukazuji celou trasu.', [{tool:'fitRoute', label:'Celá trasa'}]],
-    [/^(ukaz )?(cele cesko|celou cr|celou ceskou republiku)$/, 'Ukazuji celé Česko.', [{tool:'gotoPlace', args:{query:'Česko'}, label:'Česko'}]],
-    [/^(smaz|zrus|vymaz) (uzavirky|vyluky|vsechny uzavirky)$/, 'Mažu uzavírky.', [{tool:'clearClosures', label:'Smazání uzavírek'}]],
-    [/^(smaz|zrus|vymaz) trasu$/, 'Mažu trasu.', [{tool:'clearRoute', label:'Smazání trasy'}]]
+  // Porovnává se text bez diakritiky a malými písmeny („prepni", „otevri" = totéž).
+  // ---------------------------------------------------------------------------
+  const V = '(?:(?:prepni|prepnout|dej|zapni|zapnout|chci|nastav|zmen|zmenit|ukaz|zobraz|hod|udelej)(?: tam| sem| to)?(?: podklad| mapu)?(?: na| do)? )?';
+  const OPEN = '(?:(?:otevri|otevrit|prepni na|prepni|jdi na|jdi do|ukaz|zobraz) )?(?:zalozk[au] |panel |sekci )?';
+  const DEL = '(?:smaz|smazat|vymaz|vymazat|odstran|odstranit|zrus|zrusit|odeber|odebrat|pryc s|pryc se)';
+  const one = (tool, args, label) => [{tool, args: args || {}, label}];
+  const UNDO_HINT = 'Vrátíš to přes Ctrl+Z.';
+  const mapState = () => { try{ return window.TNMAP.getState() || {}; }catch(e){ return {}; } };
+
+  // Druhy prvků pro „smaž …": [vzor, what, klíč názvu, počet ve scéně]
+  const KINDS = [
+    [/^popis/, 'labels', 'popisky', s => (s.labels || []).length],
+    [/^ikon/, 'icons', 'ikonky', s => s.icons || 0],
+    [/^sipk/, 'arrows', 'šipky', s => s.arrows || 0],
+    [/^(perimetr|okruh|kruh)/, 'perimeters', 'perimetry', s => (s.perimeters || []).length],
+    [/^(vzdalenost|mereni)/, 'distances', 'vzdálenosti', s => s.distances || 0],
+    [/^(uzavirk|vyluk)/, 'closures', 'uzavírky', s => (s.closures || []).length],
+    [/^(barv|obarven)/, 'colors', 'barvy států', s => Object.keys(s.colored || {}).length],
+    [/^tras/, 'route', 'trasu', s => s.route ? 1 : 0]
   ];
+  // Událost na místě (dřív Rychlá scéna): ikonka + popisek nad ní.
+  const EVENTS = [
+    [/^(nehod|bourack|havari)/, 'nehoda', 'NEHODA', 12.5],
+    [/^(pozar|ohen)/, 'pozar', 'POŽÁR', 13.5],
+    [/^(vybuch|exploz)/, 'vybuch', 'VÝBUCH', 14],
+    [/^(polici|zasah)/, 'policie', 'POLICEJNÍ ZÁSAH', 14.5],
+    [/^(zachrank|sanitk)/, 'zachranka', 'ZÁSAH ZÁCHRANÁŘŮ', 13.5],
+    [/^(povod|zaplav)/, 'povoden', 'POVODNĚ', 11.5],
+    [/^varovan/, 'varovani', 'VAROVÁNÍ', 12],
+    [/^(spendlik|misto|bod)/, 'pin', null, 12.5]
+  ];
+  const LANG_OF = [[/^(ces|cz)/, 'cs'], [/^slov/, 'sk'], [/^(angl|engl)/, 'en'], [/^bulh/, 'bg'], [/^chorv/, 'hr'], [/^rumun/, 'ro']];
+
+  // Každý řádek: [vzor, m => plán | null]. Plán = {say, calls} nebo {say, local} nebo {prepare}.
+  const QUICK = [
+    [/^(krok )?(zpet|zpatky)$|^o krok zpet$|^vrat( to)?( zpet| zpatky| o krok zpet)?$|^zrus (to|posledni (krok|zmenu))$|^undo$/,
+      () => ({say: tr('Vracím poslední změnu.'), calls: one('undo', {}, tr('Krok zpět'))})],
+    [/^(krok )?vpred$|^znovu$|^redo$/, () => ({say: tr('Krok vpřed.'), calls: one('redo', {}, tr('Krok vpřed'))})],
+    // --- podklad
+    [new RegExp('^' + V + '(satelit(ni|ku)?|leteck(a|ou|y) (mapa|mapu|snimek))( mapu| mapa| podklad| snimek)?$'), () => base('satellite', 'Satelit')],
+    [new RegExp('^' + V + 'hybrid(ni)?( mapu| mapa| podklad)?$'), () => base('hybrid', 'Hybrid')],
+    [new RegExp('^' + V + '(positron|svetl(a|ou|y) (mapa|mapu|podklad)|zakladni (mapa|mapu|podklad))$'), () => base('positron', 'Positron')],
+    [new RegExp('^' + V + '(liberty|3d (mapa|mapu|budovy|podklad))$'), () => base('liberty', 'Liberty 3D')],
+    [new RegExp('^' + V + '(politick(a|ou) (mapa|mapu)|politicky podklad)$'), () => base('political', tr('Politická'))],
+    [new RegExp('^' + V + '(turistick(a|ou) (mapa|mapu)|topo( mapa| mapu)?)$'), () => base('openTopo', 'OpenTopoMap')],
+    // --- režim aplikace
+    [new RegExp('^' + V + '(svetl(y|e|ou) (rezim|vzhled|motiv|rozhrani|tema)|light( mode)?)( aplikace)?$'), () => ({say: tr('Zapínám světlý režim aplikace.'), calls: one('setUiTheme', {mode:'light'}, tr('Světlý režim'))})],
+    [new RegExp('^' + V + '(tmav(y|e|ou) (rezim|vzhled|motiv|rozhrani|tema)|dark( mode)?)( aplikace)?$'), () => ({say: tr('Zapínám tmavý režim aplikace.'), calls: one('setUiTheme', {mode:'dark'}, tr('Tmavý režim'))})],
+    // --- jazyk
+    [new RegExp('^' + V + '(?:jazyk )?(?:na |do )?(cesky|cestin[auy]|slovensky|slovenstin[auy]|anglicky|anglictin[auy]|english|bulharsky|bulharstin[auy]|chorvatsky|chorvatstin[auy]|rumunsky|rumunstin[auy])$'),
+      m => { const code = (LANG_OF.find(([re]) => re.test(m[1])) || [])[1]; return code ? {say: tr('Přepínám jazyk.'), calls: one('setLanguage', {lang: code}, code.toUpperCase())} : null; }],
+    // --- glóbus
+    [/^(zapni |dej |prepni na |ukaz )?(globus|zemekouli|zemekoule)$/, () => ({say: tr('Zapínám glóbus.'), calls: one('setGlobe', {on:true}, tr('Glóbus'))})],
+    [/^vypni (globus|zemekouli)$|^(prepni na |dej )?plochou mapu$/, () => ({say: tr('Vypínám glóbus.'), calls: one('setGlobe', {on:false}, tr('Plochá mapa'))})],
+    // --- export, projekt, přehrávání (před záložkami: „export png" není záložka Export)
+    [/^(export|exportuj|exportovat|uloz|ulozit|stahni|stahnout|udelej|vyfot)? ?(png|screenshot|snimek( obrazovky| mapy)?|obrazek)$/, () => ({say: tr('Ukládám snímek PNG.'), calls: one('exportPng', {}, 'PNG')})],
+    [/^(export|exportuj|exportovat|uloz|ulozit|udelej) video$|^video$/, () => ({say: tr('Otevírám export — video spustíš tlačítkem Export video.'), calls: one('openTab', {tab:'export'}, tr('Export'))})],
+    [/^(uloz|ulozit|save)( to)?( projekt| praci| rozdelanou praci)?$/, () => ({local: saveProject, label: tr('Uložit projekt')})],
+    [/^(prehraj|prehrat|play|spust|spustit|pust|pustit)( to| animaci| trasu)?$/, () => ({say: tr('Přehrávám animaci.'), calls: one('playAnimation', {action:'play'}, tr('Přehrát'))})],
+    [/^(stop|stopni|zastav|zastavit)( to| animaci| prehravani)?$/, () => ({say: tr('Zastavuji animaci.'), calls: one('playAnimation', {action:'stop'}, tr('Stop'))})],
+    [/^(pauza|pauzni|pozastav|pozastavit)( to| animaci)?$/, () => ({say: tr('Pozastavuji animaci.'), calls: one('playAnimation', {action:'pause'}, tr('Pauza'))})],
+    // --- záložky a panely
+    [new RegExp('^' + OPEN + '(export|exportovat)$'), () => tab('export', 'Export')],
+    [new RegExp('^' + OPEN + '(trasa|trasu)$'), () => tab('trasa', 'Trasa')],
+    [new RegExp('^' + OPEN + '(scena|scenu)$'), () => tab('scena', 'Scéna')],
+    [new RegExp('^' + OPEN + '(animace|animaci)$'), () => tab('animace', 'Animace')],
+    [new RegExp('^' + OPEN + '(styl|styly|vzhled)$'), () => tab('styly', 'Styl')],
+    [new RegExp('^' + OPEN + '(projekt|projekty|ulozene projekty)$'), () => tab('projekt', 'Projekt')],
+    [new RegExp('^' + OPEN + 'nastaveni$'), () => tab('nastaveni', 'Nastavení')],
+    [/^(klavesove )?zkratky$|^klavesy$/, () => ({say: tr('Klávesové zkratky'), local: () => { const p = $q('shortcutsPanel'); if(p && p.hidden) $q('shortcutsBtn')?.click(); return true; }, label: tr('Klávesové zkratky')})],
+    [/^(co( vsechno)? umis|napoveda|pomoc|help|priklady)$/, () => ({local: () => { append(chipRow(EXAMPLES)); return true; }})],
+    // --- výřez a přiblížení
+    [/^(ukaz )?celou trasu$|^doramuj trasu$/, () => ({say: tr('Ukazuji celou trasu.'), calls: one('fitRoute', {}, tr('Celá trasa'))})],
+    [new RegExp('^' + V + '(?:cel(?:e|a|y|ou) )?(cesko|cr|ceskou republiku|ceska republika|slovensko|evropu|evropa|stredni evropu|stredni evropa|svet)$'),
+      m => { const r = /^(cesk|cr)/.test(m[1]) ? ['czechia', 'Česko'] : /^slov/.test(m[1]) ? ['slovakia', 'Slovensko'] : /^stredni/.test(m[1]) ? ['centralEurope', 'Střední Evropa'] : /^evrop/.test(m[1]) ? ['europe', 'Evropa'] : ['world', 'Svět'];
+             return {say: tr('Ukazuji: {0}.', tr(r[1])), calls: one('showRegion', {region: r[0]}, tr(r[1]))}; }],
+    [/^(pribliz|priblizit|zoom in|bliz|blize)( to| mapu| se)?( (jeste|trochu|vic|hodne))?$/, m => ({say: tr('Přibližuji.'), calls: one('setCamera', {zoomBy: /vic|hodne/.test(m[3] || '') ? 2 : 1}, tr('Přiblížit'))})],
+    [/^(oddal|oddalit|zoom out)( to| mapu| se)?( (jeste|trochu|vic|hodne))?$/, m => ({say: tr('Oddaluji.'), calls: one('setCamera', {zoomBy: /vic|hodne/.test(m[3] || '') ? -2 : -1}, tr('Oddálit'))})],
+    [/^(reset|resetuj|na zacatek|domu)$/, () => ({say: tr('Vracím aplikaci na začátek.'), calls: one('resetApp', {}, tr('Na začátek'))})],
+    // --- mazání (jde vrátit: snímek pro Krok zpět se dělá před prvním nástrojem)
+    [new RegExp('^(?:' + DEL + '(?: to)? (vsechno|vse|vsecko|celou scenu|scenu|celou mapu)|vycisti(?:t)? (mapu|scenu))$'), () => clearPlan('all', 'všechno', s =>
+      KINDS.reduce((n, k) => n + k[3](s), 0))],
+    [new RegExp('^' + DEL + '(?: vsechny| vsechna| vsechnu| ty| ten| tu)? (\\w+)( statu| zemi)?$'), m => { const k = KINDS.find(([re]) => re.test(m[1])); return k ? clearPlan(k[1], k[2], k[3]) : null; }],
+    // --- událost na místě: „nehoda v Humpolci", „dej požár do Ostravy"
+    [new RegExp('^(?:(?:dej|pridej|vloz|oznac|ukaz|zobraz|vyznac) )?(nehod[au]|bourack[au]|havari[ei]|pozar|ohen|vybuch|exploz[ei]|polici[ei]|zasah|zachrank[au]|sanitk[au]|povoden|zaplav[ay]|varovani|spendlik|misto|bod) (?:je |byla? |se stala? )?(v|ve|na|u|do|pobliz|pri) (.+)$'),
+      (m, words) => { const ev = EVENTS.find(([re]) => re.test(m[1])); const n = m[3].split(' ').length; return ev ? {prepare: () => eventPlan(ev, words.slice(-n).join(' '))} : null; }]
+  ];
+  function base(style, name){ return {say: tr('Přepínám podklad: {0}.', name), calls: one('setBaseStyle', {style}, name)}; }
+  function tab(id, name){ return {say: tr('Otevírám: {0}.', tr(name)), calls: one('openTab', {tab: id}, tr(name))}; }
+  function clearPlan(what, name, count){
+    const n = count(mapState().scene || {});
+    if(!n) return {say: tr('Není co mazat: {0}.', tr(name))};
+    return {say: tr('Mažu: {0}.', tr(name)) + ' ' + tr(UNDO_HINT), calls: one('clearScene', {what}, tr('Smazat') + ': ' + tr(name))};
+  }
+  // Uložení projektu je jen na výslovný povel uživatele — modelu se nenabízí
+  // (uložené projekty vidí celá redakce, omyl by přepsal cizí práci).
+  // Odpovědí je to, co po uložení hlásí stavový řádek (uloženo / zrušeno / chyba).
+  async function saveProject(){
+    const b = $q('saveProjectBtn'); if(!b) return false;
+    b.click();
+    await new Promise(r => setTimeout(r, 250));
+    return ($q('statusBar')?.textContent || '').trim() || true;
+  }
+
+  // Česká místa bývají v povelu skloňovaná („v Humpolci", „u Brna"); geokodér chce
+  // první pád. Nejčastější města jsou v tabulce, ostatní se odvodí z koncovky
+  // a ověří: bere se jen výsledek, jehož název přesně sedí na některý odhad.
+  const CITY = {praze:'Praha', prahy:'Praha', brne:'Brno', brna:'Brno', ostrave:'Ostrava', ostravy:'Ostrava', plzni:'Plzeň', plzne:'Plzeň',
+    liberci:'Liberec', liberce:'Liberec', olomouci:'Olomouc', olomouce:'Olomouc', 'ceskych budejovicich':'České Budějovice', 'ceskych budejovic':'České Budějovice',
+    'hradci kralove':'Hradec Králové', 'hradce kralove':'Hradec Králové', 'usti nad labem':'Ústí nad Labem', pardubicich:'Pardubice', pardubic:'Pardubice',
+    zline:'Zlín', zlina:'Zlín', kladne:'Kladno', kladna:'Kladno', moste:'Most', mostu:'Most', opave:'Opava', opavy:'Opava', jihlave:'Jihlava', jihlavy:'Jihlava',
+    'karlovych varech':'Karlovy Vary', 'karlovych varu':'Karlovy Vary', 'mlade boleslavi':'Mladá Boleslav',
+    teplicich:'Teplice', teplic:'Teplice', decine:'Děčín', decina:'Děčín', havirove:'Havířov', karvine:'Karviná', 'frydku-mistku':'Frýdek-Místek',
+    'kutne hore':'Kutná Hora', 'kutne hory':'Kutná Hora', 'ceske lipe':'Česká Lípa', 'ceskem krumlove':'Český Krumlov',
+    kyjeve:'Kyjev', kyjeva:'Kyjev', moskve:'Moskva', moskvy:'Moskva', berline:'Berlín', berlina:'Berlín', vidni:'Vídeň', vidne:'Vídeň',
+    bratislave:'Bratislava', bratislavy:'Bratislava', varsave:'Varšava', varsavy:'Varšava', parizi:'Paříž', parize:'Paříž', londyne:'Londýn', londyna:'Londýn',
+    rime:'Řím', rima:'Řím', budapesti:'Budapešť', bruselu:'Brusel', washingtonu:'Washington'};
+  const ENDINGS = [   // [koncovka, náhrady v pořadí pravděpodobnosti]
+    [/ově$/, ['ov', 'ova']], [/ci$/, ['ec', 'c']], [/ce$/, ['ec', 'k', 'ce', 'c']], [/ze$/, ['ha']], [/ně$/, ['no', 'n', 'ň', 'na']],
+    [/ni$/, ['eň', 'ň', 'n']], [/ře$/, ['r', 'ra']], [/ích$/, ['e']], [/ech$/, ['y']], [/ách$/, ['y']], [/ku$/, ['ek', 'k']],
+    [/mě$/, ['mo', 'm']], [/ě$/, ['a', '']], [/u$/, ['', 'o']], [/i$/, ['', 'ě']], [/y$/, ['a']], [/a$/, ['a', '', 'o']], [/e$/, ['e', '']]
+  ];
+  function nominativeGuesses(place){
+    const p = String(place || '').trim();
+    const known = CITY[stripDia(p)];
+    if(known) return {sure: known};
+    if(/[\s\d-]/.test(p)) return {list: []};       // víceslovná a složená místa nechat modelu
+    const lower = p.toLowerCase(), cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+    const rule = ENDINGS.find(([re]) => re.test(lower));
+    const list = rule ? rule[1].map(r => cap(lower.replace(rule[0], r))) : [];
+    if(!list.includes(cap(lower))) list.push(cap(lower));
+    return {list: list.slice(0, 4)};
+  }
+  async function resolvePlace(place){
+    const g = nominativeGuesses(place);
+    const geo = window.TNMAP && window.TNMAP._geocode;
+    if(!geo) return null;
+    if(g.sure){ try{ const r = await geo(g.sure); return {name: g.sure, lat: r.lat, lng: r.lng}; }catch(e){ return null; } }
+    const want = g.list.map(stripDia);
+    for(const cand of g.list.slice(0, 3)){
+      try{
+        const r = await geo(cand);
+        const got = stripDia(r.name || r.display.split(',')[0]).trim();
+        const i = want.indexOf(got);
+        if(i >= 0) return {name: (r.name || r.display.split(',')[0]).trim() || g.list[i], lat: r.lat, lng: r.lng};
+      }catch(e){}
+    }
+    return null;
+  }
+  async function eventPlan(ev, place){
+    const hit = await resolvePlace(place);
+    if(!hit) return null;                           // nejisté místo → ať rozhodne model
+    const ll = hit.lat.toFixed(5) + ',' + hit.lng.toFixed(5);
+    const text = ev[2] || hit.name.toUpperCase();
+    return {say: tr('{0}: ikonka a popisek jsou na mapě.', hit.name) + ' ' + tr(UNDO_HINT),
+      calls: [{tool:'placeIcon', args:{place: ll, kind: ev[1], zoom: ev[3]}, label: tr('Ikonka')},
+              {tool:'addLabel', args:{place: ll, text}, label: tr('Popisek') + ' ' + text}]};
+  }
+
   function quickCommand(text){
-    const k = stripDia(String(text || '')).toLowerCase().replace(/[.!?,]+/g, ' ')
-      .replace(/\b(prosim|pls|hned)\b/g, ' ').replace(/\s+/g, ' ').trim();
-    if(!k || k.length > 40) return null;
-    const hit = QUICK.find(([re]) => re.test(k));
-    return hit ? {say: hit[1], calls: hit[2]} : null;
+    // slova původního textu a jejich podoba bez diakritiky se drží 1:1 (kvůli názvu místa)
+    const FILL = /^(prosim|pls|hned|rychle|mi|te|ted)$/;
+    const words = String(text || '').replace(/[.!?,;:„“”"'`()]+/g, ' ').split(/\s+/).filter(Boolean).filter(w => !FILL.test(stripDia(w)));
+    const k = words.map(stripDia).join(' ');
+    if(!k || k.length > 60) return null;
+    for(const [re, make] of QUICK){
+      const m = re.exec(k);
+      if(m){ const plan = make(m, words); if(plan) return plan; }
+    }
+    return null;
   }
 
   function localReadback(results){
@@ -19076,61 +19744,93 @@ function pzColorFromName(v){
     const out = [];
     for(const {tool, result:r} of results){
       if(tool === 'routeBetween' && r.distanceKm != null){
-        let txt = 'Délka trasy ' + fmt(r.distanceKm) + ' km';
+        let txt = tr('Délka trasy {0} km', fmt(r.distanceKm));
         if(Array.isArray(r.stations) && (r.stations[0] || r.stations[1])) txt += ' (' + (r.stations[0] || '…') + ' → ' + (r.stations[1] || '…') + ')';
         out.push(txt + '.');
       } else if(tool === 'measureDistance' && r.distanceKm != null){
-        out.push('Vzdušnou čarou ' + shortName(r.from) + ' – ' + shortName(r.to) + ': ' + fmt(r.distanceKm) + ' km.');
+        out.push(tr('Vzdušnou čarou {0} – {1}: {2} km.', shortName(r.from), shortName(r.to), fmt(r.distanceKm)));
       } else if(tool === 'drawPerimeter' && r.radiusMeters != null){
         const m = +r.radiusMeters;
-        out.push((r.place ? shortName(r.place) + ': p' : 'P') + 'erimetr ' + (m >= 1000 ? fmt(m / 1000) + ' km' : Math.round(m) + ' m') + '.');
+        out.push((r.place && r.place !== 'střed mapy' ? shortName(r.place) + ': ' : '') + tr('Perimetr {0}.', m >= 1000 ? fmt(m / 1000) + ' km' : Math.round(m) + ' m'));
       }
     }
     return out.join(' ');
   }
 
-  async function ask(userText){
-    if(busy) return;
-    busy = true; sendBtn.disabled = true;
-    add('user', userText);
-    history.push({role:'user', content:userText});
-    try{ tnBump('chat', 1); }catch(_e){}
-    const quick = quickCommand(userText);
-    try{ window.tnFeature?.(quick ? 'ai:quick' : 'ai:llm'); }catch(_e){}
-    if(quick){
-      try{
-        add('bot', quick.say);
-        const done = [];
-        for(const c of quick.calls){
-          const out = await runTool(c);
-          addAction(c.label || c.tool, out.ok !== false);
-          done.push(c.tool + '(' + JSON.stringify(c.args || {}) + ') → ' + (out.ok === false ? 'CHYBA: ' + (out.error || '') : 'ok'));
-        }
-        history.push({role:'assistant', content: quick.say + '\n[provedeno: ' + done.join('; ') + ']'});
-      } finally { busy = false; sendBtn.disabled = false; input.focus(); }
-      return;
+  // Provede plán rychlého povelu. Vrací false, když se z něj stal dotaz pro model.
+  async function runQuick(quick, userText){
+    if(quick.prepare){
+      setBusy(true, tr('Hledám místo'));
+      quick = await quick.prepare();
+      setBusy(true);
+      if(!quick) return false;
     }
-    const thinking = add('bot', '…');
+    try{ window.tnFeature?.('ai:quick'); }catch(_e){}
+    // Nejdřív provést, pak teprve odpovědět — ať chat netvrdí „Přehrávám", když není co.
+    const rows = [], done = [];
+    let fail = null;
+    let localSay = null;
+    if(quick.local){
+      let ok = false;
+      try{ const r = await quick.local(); ok = r !== false; if(typeof r === 'string') localSay = r; }catch(e){}
+      if(quick.label) rows.push([quick.label, ok]);
+      done.push('local → ' + (ok ? 'ok' : 'CHYBA'));
+    }
+    for(const c of (quick.calls || [])){
+      const out = await runTool(c);
+      rows.push([c.label || c.tool, out.ok !== false]);
+      if(out.ok === false && !fail) fail = out.error || tr('Nepodařilo se.');
+      done.push(c.tool + '(' + JSON.stringify(c.args || {}) + ') → ' + (out.ok === false ? 'CHYBA: ' + (out.error || '') : 'ok'));
+    }
+    const reply = fail ? tr(fail) : (localSay || quick.say);
+    if(reply) add('bot', reply);
+    rows.forEach(([label, ok]) => addAction(label, ok));
+    history.push({role:'assistant', content: (reply || '') + '\n[provedeno: ' + done.join('; ') + ']'});
+    return true;
+  }
 
+  async function ask(userText, isRetry, shown){
+    if(busy) return;
+    setBusy(true);
+    undoTaken = false;
+    if(!isRetry){
+      add('user', shown || userText);
+      history.push({role:'user', content:userText});
+      try{ window.TNMAP._bump?.(); }catch(_e){}
+    }
     try{
+      const quick = quickCommand(userText);
+      if(quick && await runQuick(quick, userText)) return;
+      try{ window.tnFeature?.('ai:llm'); }catch(_e){}
+      let bubble = null;
+      const say = text => { if(!text) return; if(bubble) bubble.textContent = text; else bubble = add('bot', text); };
       let rounds = 0, toolResults = null;
       while(rounds++ < MAX_ROUNDS){
-        const res = await fetch(TNCHAT_ENDPOINT, {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            messages: history,
-            mapState: (window.TNMAP && window.TNMAP.getState) ? window.TNMAP.getState() : null,
-            catalog: (window.TNMAP && window.TNMAP.catalog) || null,
-            toolResults
-          })
-        });
-        if(!res.ok) throw new Error('Server ' + res.status);
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
+        let res;
+        try{
+          res = await fetch(TNCHAT_ENDPOINT, {
+            method:'POST', headers:{'Content-Type':'application/json'}, signal: ctl.signal,
+            body: JSON.stringify({
+              messages: history,
+              mapState: (window.TNMAP && window.TNMAP.getState) ? window.TNMAP.getState() : null,
+              catalog: (window.TNMAP && window.TNMAP.catalog) || null,
+              lang: uiLang(),
+              toolResults
+            })
+          });
+        } finally { clearTimeout(timer); }
+        if(!res.ok){ const err = new Error('HTTP ' + res.status); err.status = res.status; throw err; }
         const data = await res.json();
+        // Vyčerpaný denní limit Workers AI: hláška v jazyce rozhraní + co jde dál bez AI.
+        if(data.quota){ addNotice(tr('Denní limit AI je vyčerpaný, obnoví se v 1:00.')); return; }
 
-        if(data.say){ thinking.textContent = data.say; }
         const calls = Array.isArray(data.calls) ? data.calls : [];
+        bubble = null;   // každé kolo má vlastní bublinu pod kroky toho předchozího
+        say(data.say);
         if(!calls.length){
-          if(!data.say) thinking.textContent = 'Hotovo.';
+          if(!data.say) say(tr('Hotovo.'));
           history.push({role:'assistant', content: data.say || 'Hotovo.'});
           break;
         }
@@ -19144,7 +19844,7 @@ function pzColorFromName(v){
         for(const c of calls){
           if(MOVERS.includes(c.tool)){
             if(moved){
-              addAction((c.label || c.tool) + ' — přeskočeno (už letíme jinam)', false);
+              addAction((c.label || c.tool) + ' — ' + tr('přeskočeno'), false);
               toolResults.push({tool:c.tool, args:c.args || {}, result:{ok:false, error:'Přeskočeno: v jednom plánu jde jen jeden přelet.'}});
               continue;
             }
@@ -19153,7 +19853,7 @@ function pzColorFromName(v){
             // pustíme jen tehdy, když má název oporu v tom, co uživatel skutečně napsal.
             const q = (c.args || {}).query;
             if(q && !placeHasBasis(q, userSaidText())){
-              addAction((c.label || c.tool) + ' — přeskočeno („' + q + '" jsi nezmínil)', false);
+              addAction((c.label || c.tool) + ' — ' + tr('přeskočeno') + ' („' + q + '")', false);
               toolResults.push({tool:c.tool, args:c.args || {}, result:{ok:false,
                 error:'Přeskočeno: místo „' + q + '" uživatel nezmínil. Nevymýšlej místa; když je potřeba, zeptej se.'}});
               continue;
@@ -19180,7 +19880,7 @@ function pzColorFromName(v){
         if(allOk && calls.every(c => LOCAL_OK.has(c.tool))){
           const extra = localReadback(toolResults);
           if(extra){
-            thinking.textContent = ((data.say || '').trim() + ' ' + extra).trim();
+            say(((data.say || '').trim() + ' ' + extra).trim());
             history[history.length - 1].content += '\n' + extra;
             try{ window.tnFeature?.('ai:localReadback'); }catch(_e){}
             break;
@@ -19188,45 +19888,53 @@ function pzColorFromName(v){
         }
       }
     }catch(e){
-      thinking.remove();
-      add('err', 'Asistent není dostupný: ' + (e && e.message || e) +
-          '\n(Zkontroluj, že je nasazený Cloudflare Worker na ' + TNCHAT_ENDPOINT + ')');
+      // Síť / časový limit / chyba serveru. Dotaz v historii zůstává — „Zkusit znovu" ho pošle znovu.
+      const st = e && e.status;
+      addNotice(st ? tr('Asistent teď neodpovídá (chyba serveru {0}).', st)
+                   : tr('Asistent teď neodpovídá — zkontroluj připojení k internetu.'), userText);
     }finally{
-      busy = false; sendBtn.disabled = false; input.focus();
+      setBusy(false); focusInput();
     }
   }
 
-  form.addEventListener('submit', e => {
-    e.preventDefault();
+  function submit(){
     const v = input.value.trim();
     if(!v || busy) return;
-    input.value = '';
+    input.value = ''; grow();
     ask(v);
+  }
+  // Pole roste s textem (Shift+Enter = nový řádek), nejvýš na pár řádků.
+  function grow(){ input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 96) + 'px'; }
+  form.addEventListener('submit', e => { e.preventDefault(); submit(); });
+  input.addEventListener('input', grow);
+  input.addEventListener('keydown', e => {
+    if(e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); submit(); }
   });
-  $q('tnchatFab').addEventListener('click', () => {
-    panel.classList.toggle('open');
-    if(panel.classList.contains('open')){
-      if(!log.childElementCount){
-        add('bot', 'Ahoj! Řekni mi, co má mapa udělat — např. „ukaž 3D Staré Město v Praze", „trasa autem z Prahy do Brna", „přepni na satelit" nebo „otevři export".');
-      }
-      input.focus();
-    }
-  });
-  $q('tnchatClose').addEventListener('click', () => panel.classList.remove('open'));
+  function setOpen(on){
+    panel.classList.toggle('open', on);
+    if(on){ if(!log.childElementCount) showEmpty(); focusInput(); }
+  }
+  $q('tnchatFab').addEventListener('click', () => setOpen(!panel.classList.contains('open')));
+  $q('tnchatClose').addEventListener('click', () => setOpen(false));
+  newBtn.addEventListener('click', () => { if(busy) return; history = []; showEmpty(); focusInput(); });
   document.addEventListener('keydown', e => {
-    if(e.key === 'Escape' && panel.classList.contains('open')){ panel.classList.remove('open'); }
+    if(e.key === 'Escape' && panel.classList.contains('open')) setOpen(false);
   });
-  // Rychlé návrhy
-  [['3D Staré Město','ukaž 3D Staré Město v Praze'],
-   ['Praha → Brno','trasa autem z Prahy do Brna'],
-   ['Satelit','přepni podklad na satelit'],
-   ['Glóbus','zapni glóbus a ukaž Evropu']
-  ].forEach(([label, prompt]) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.className = 'tnchat-chip'; b.textContent = label;
-    b.addEventListener('click', () => { if(!busy) ask(prompt); });
-    $q('tnchatChips').appendChild(b);
-  });
+  // Na užší obrazovce se chat a panel Projekt vedle sebe nevejdou — otevřený Projekt
+  // chat zavře (konverzace zůstává), aby se nepřekrývaly.
+  try{
+    const pp = $q('projectPanel');
+    if(pp) new MutationObserver(() => { if(!pp.hidden && window.innerWidth < 1150) setOpen(false); }).observe(pp, {attributes:true, attributeFilter:['hidden']});
+  }catch(e){}
+  // Texty mimo data-i18n (titulky, placeholder) přeložit při každé změně jazyka.
+  const ATTRS = [[$q('tnchatFab'), 'title', 'AI asistent mapy'], [$q('tnchatFab'), 'aria-label', 'AI asistent'], [panel, 'aria-label', 'AI asistent mapy'],
+                 [newBtn, 'title', 'Nová konverzace'], [newBtn, 'aria-label', 'Nová konverzace'], [$q('tnchatClose'), 'aria-label', 'Zavřít'],
+                 [input, 'placeholder', 'Napiš, co má mapa udělat…'], [input, 'aria-label', 'Zpráva'], [sendBtn, 'aria-label', 'Odeslat']];
+  const applyAttrs = () => ATTRS.forEach(([el, a, key]) => { if(el) el.setAttribute(a, tr(key)); });
+  try{ new MutationObserver(applyAttrs).observe(document.documentElement, {attributes:true, attributeFilter:['lang']}); }catch(e){}
+  applyAttrs();
+  // Háček pro testy: rozpoznání povelu bez odeslání.
+  window.__tnchat = {quick: text => { const q = quickCommand(text); return q ? {say: q.say || '', calls: q.calls || [], local: !!q.local, prepare: !!q.prepare} : null; }, guesses: nominativeGuesses};
 })();
 </script>
 <!-- defer: only used by video/PNG-sequence export (a much later user action), so it

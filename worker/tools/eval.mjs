@@ -1,4 +1,4 @@
-// Spuštění: node worker/tools/eval.mjs   (EP=<endpoint> pro jiný worker). Stojí ~23 dotazů z denního limitu Workers AI.
+// Spuštění: node worker/tools/eval.mjs   (EP=<endpoint> pro jiný worker). Stojí ~28 dotazů z denního limitu Workers AI.
 // Regresní sada asistenta: jednotahové dotazy + navazující pokyny.
 const U = process.env.EP || 'https://tnmap-chat.petrzavorka.workers.dev/api/chat';
 const baseState = {center:{lng:15.5,lat:49.8}, zoom:7, baseStyle:'positron', globe:false, transportMode:'driving', tab:'styly', hasRoute:false};
@@ -6,9 +6,15 @@ const single = [
  ['ukaž Brno - Komín a přehradu', /gotoPlace|show3D/],
  ['kolik je to vzdušnou čarou z Prahy do Kyjeva', /measureDistance/],
  ['dej šipku z Prahy na Brno', /drawArrow/],
- ['zapni radar srážek', /setWeather/],
+ ['zapni radar srážek', /^$/],                       // vrstvy počasí appka už nemá → žádný nástroj
  ['přidej popisek Letňany na mapu', /addLabel/],
- ['vyznač Středočeský kraj červeně', /colorPolitical/],
+ ['vyznač Středočeský kraj červeně', /^$/],          // barvení krajů zrušeno → jen vysvětlení
+ ['nehoda v Humpolci', /placeIcon.*addLabel/],
+ ['smaž všechno', /clearScene.*all/],
+ ['dej popisky modře', /setLabelStyle/],
+ ['červené auto na trase', /setVehicleColors/],
+ ['ukaž celou Evropu', /showRegion/],
+ ['ulož mi to jako png', /exportPng/],
  ['vypni budovy', /setLayers|setValues/],
  ['perimetr 2 km kolem Moskvy', /drawPerimeter/],
  ['satelit', /setBaseStyle/],
@@ -23,7 +29,7 @@ const single = [
  ['kamion z Plzně do Prahy', /routeBetween/],
 ];
 const multi = [
- {name:'přebarvit kraj', turns:[['obarvi Jihočeský kraj modře','colorPolitical({"region":"Jihočeský kraj","color":"modrá"}) → ok']], state:{scene:{colored:{'Jihočeský kraj':'#1f4fd8'}}}, q:'a teď ho dej červeně', expect:/colorPolitical.*Jihočesk.*(červ|#[ef])/i},
+ {name:'přebarvit stát', turns:[['obarvi Polsko modře','colorPolitical({"country":"Polsko","color":"modrá"}) → ok']], state:{scene:{colored:{'Polsko':'#1f4fd8'}}}, q:'a teď ho dej červeně', expect:/colorPolitical.*Polsk.*(červ|#[ef])/i},
  {name:'zrušit stát', turns:[['obarvi Ukrajinu žlutě a Rusko červeně','colorPolitical({"country":"Ukrajina","color":"žlutá"}) → ok; colorPolitical({"country":"Rusko","color":"červená"}) → ok']], state:{scene:{colored:{'Ukrajina':'#ffd400','Rusko':'#e30613'}}}, q:'Rusko tam nechci', expect:/colorPolitical.*Rusko.*clear|clearScene.*Rusko/i},
  {name:'smazat popisek', turns:[['přidej popisek NEHODA v Brně','addLabel({"place":"Brno","text":"NEHODA"}) → ok']], state:{scene:{labels:['NEHODA']}}, q:'smaž ten popisek', expect:/clearScene|removeLabel|undo/i},
  {name:'zájmeno místo', turns:[['ukaž Ostravu','gotoPlace({"query":"Ostrava"}) → ok']], state:{}, q:'dej tam ikonu požáru', expect:/placeIcon.*Ostrav/i},
