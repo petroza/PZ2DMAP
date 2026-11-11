@@ -19716,7 +19716,7 @@ function pzColorFromName(v){
       if(preset != null && sel){
         const k = toolKey(preset);
         const opts = [...sel.options];
-        const alias = /tmav|dark/.test(k) ? 'dark' : /modr|blue/.test(k) ? 'blue' : /svetl|light/.test(k) ? 'light' : /vlastn|custom/.test(k) ? 'custom' : k;
+        const alias = /^auto|automat/.test(k) ? 'auto' : /tmav|dark/.test(k) ? 'dark' : /modr|blue/.test(k) ? 'blue' : /svetl|light/.test(k) ? 'light' : /vlastn|custom/.test(k) ? 'custom' : k;
         const opt = opts.find(o => o.value === preset) || opts.find(o => toolKey(o.value) === alias) || opts.find(o => toolKey(o.textContent).includes(k));
         if(!opt) return {ok:false, error:'Sadu barev „' + preset + '" neznám. Mám: ' + opts.map(o => o.value).join(', ') + '.'};
         sel.value = opt.value; fire(sel); res.preset = opt.value;
@@ -19728,7 +19728,7 @@ function pzColorFromName(v){
         el.value = hex; fire(el); res[key] = hex;
       }
       if(Object.keys(res).length === 1) return {ok:false, error:'Zadej preset (light, dark, blue), body (karoserie) nebo accent.'};
-      if($('pzVehiclePalette')?.hidden) res.note = 'Barvy platí pro vestavěné vozidlo (auto, kamion, vlak, loď) — vyber ho v záložce Trasa, sekce Ikona objektu.';
+      if($('pzVehiclePalette')?.hidden) res.note = 'Vozidla z obrázků (auto, kamion, vlak, metro, tramvaj, loď…) mají pevné barvy — barva ikonky platí pro letadlo.';
       return res;
     },
     // Styl popisků: vybraný / poslední / podle textu / všechny. Nabídka Styl se

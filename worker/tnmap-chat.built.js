@@ -84,8 +84,8 @@ setColors {prvek:"#rrggbb", …}     – nastaví BARVY. Klíče: route (trasa),
                                      Bere #rrggbb i české názvy (červená, modrá, zelená, žlutá,
                                      oranžová, bílá, černá, šedá). "udělej trasu červenou" -> {"route":"červená"}.
                                      Barvy NIKDY neposílej přes setValues!
-setVehicleColors {preset?, body?, accent?} – BARVY VOZIDLA na trase (auto, kamion, vlak, loď).
-                                     preset: light (pro světlý podklad), dark (pro tmavý), blue (pro modrý);
+setVehicleColors {preset?, body?, accent?} – BARVA IKONKY na trase (jen letadlo; auta, kamion, vlak, metro, tramvaj, loď, bus, hasiči, policie, sanitka jsou obrázky s pevnými barvami).
+                                     preset: auto (podle podkladu), light, dark, blue;
                                      body = karoserie, accent = doplňková barva (#rrggbb i česky).
                                      "červené auto" -> {"body":"červená"}; "auto pro tmavou mapu" -> {"preset":"dark"}.
 setValues {ovladač:číslo, …}       – nastaví číselné ovladače. Klíče a rozsahy:
