@@ -33,6 +33,7 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 | 13 transport | vlak (nádraží, vagony), loď, kamion s návěsem, uzavírky |
 | 24 export | záložka Export (předvolby, shrnutí), PNG se všemi vrstvami a s průhledným pozadím, krátké video (průběh, dvojklik, zrušení), PNG sekvence, více formátů, názvy souborů |
 | 23 animation | přehrávač (přehrát/pauza/stop, časová osa, mezerník, konec animace), kamera (sledování, přelet záběry, návrat po stopu), krok zpět a uložení nastavení animace do projektu |
+| 22 route | Trasa: klik/psaní/tažení A a B, prohození, zastávky, vlastní kreslená trasa, 10 druhů dopravy, chybové stavy, délka a doba, „Předkreslit celou trasu“ v náhledu i exportu PNG, krok zpět po každé akci (geokódování i OSRM podvržené) |
 | 20 api_d1 | serverové API nad náhradní D1 (node:sqlite): token, ochrana proti hromadnému smazání, historie verzí a obnova, statistika |
 | 90 batch_export (pomalý) | hromadný export 16:9 + 9:16 |
 
