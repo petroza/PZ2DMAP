@@ -48,22 +48,24 @@ const {check, done, open, status, tab} = require('./lib');
   check(await page.evaluate(() => __pzFns.pzCountryFillOpacity(0.9) === 0 || document.getElementById('baseStyle').value === 'political'),
     'bez obarvených států žádný závoj přes mapu');
 
-  // slovenština v sekci Hranice a barvy států
+  // slovenština v sekci Státy
   await page.evaluate(() => __pzFns.applyLang('sk')); await page.waitForTimeout(800);
   const sk = await page.$eval('#countryBordersOverlaySection', e => e.textContent);
-  check(/Hranice a farby štátov/.test(sk) && /Vyfarbiť štát/.test(sk) && !/Vybarvit stát|Další nastavení výplně/.test(sk), 'slovensky bez českých zbytků v sekci států');
-  check(await page.$eval('#czRegionSelect', s => s.options[0].textContent) !== 'Načítám…' || true, 'kraje: úvodní položka');
+  check(/Štáty/.test(sk) && /Vyfarbiť/.test(sk) && /Ďalšie možnosti/.test(sk) && !/Obarvit|Další možnosti|Hranice států|Krytí/.test(sk), 'slovensky bez českých zbytků v sekci států');
   const skNames = await page.$$eval('#politicalCountrySelect option', o => o.map(x => x.textContent));
   check(skNames.includes('Nemecko'), 'slovensky názvy států slovensky (Nemecko)');
   await page.evaluate(() => __pzFns.applyLang('cs')); await page.waitForTimeout(500);
-  check(/Vybarvit stát/.test(await page.$eval('#countryBordersOverlaySection', e => e.textContent)), 'zpět česky');
+  check(/Obarvit/.test(await page.$eval('#countryBordersOverlaySection', e => e.textContent)), 'zpět česky');
 
-  // tlačítka zrušení barvy státu
-  await page.evaluate(() => { __pzFns.state.countryColorMap = {DE:'#ff0000', AT:'#00ff00'}; __pzFns.syncCountrySelects('DE'); });
-  await page.evaluate(() => document.getElementById('resetPoliticalCountryColorBtn').click());
-  check(await page.evaluate(() => !__pzFns.state.countryColorMap.DE && !!__pzFns.state.countryColorMap.AT), 'Zrušit barvu státu zruší jen vybraný stát');
+  // seznam obarvených států: křížek zruší jeden, Smazat barvy všechny
+  await page.evaluate(() => { __pzFns.state.countryColorMap = {DE:'#ff0000', AT:'#00ff00'}; __pzFns.syncCountrySelects('DE');
+    document.getElementById('showPoliticalCountries').dispatchEvent(new Event('change', {bubbles:true})); });
+  await page.waitForTimeout(400);
+  check(await page.$$eval('#pzCountryColorList .wp-item', e => e.length) === 2, 'seznam obarvených států má 2 řádky');
+  await page.evaluate(() => document.querySelector('#pzCountryColorList .wp-item[data-country="DE"] .btn-remove').click());
+  check(await page.evaluate(() => !__pzFns.state.countryColorMap.DE && !!__pzFns.state.countryColorMap.AT), 'křížek v seznamu zruší jen ten stát');
   await page.evaluate(() => document.getElementById('clearPoliticalCountryColorsBtn').click());
-  check(await page.evaluate(() => Object.keys(__pzFns.state.countryColorMap).length === 0), 'Zrušit všechny barvy');
+  check(await page.evaluate(() => Object.keys(__pzFns.state.countryColorMap).length === 0), 'Smazat barvy zruší všechny');
 
   // krok zpět: snímek shodný se stavem se přeskočí
   const undoOk = await page.evaluate(() => { const before = document.getElementById('mapLabelStyle')?.value;
@@ -98,7 +100,7 @@ const {check, done, open, status, tab} = require('./lib');
   check(await page.evaluate(() => { document.getElementById('projectName').value = ''; return /^tnmap-\d{8}-\d{4}$/.test(__pzFns.getExportBaseName()); }), 'bez projektu tnmap-datum-čas');
 
   // asistent: openSection přepne záložku
-  const os = await page.evaluate(() => window.TNMAP.openSection?.({section:'czPoliticalSection'}));
+  const os = await page.evaluate(() => window.TNMAP.openSection?.({section:'countryBordersOverlaySection'}));
   check(await page.$eval('.tab-btn.active', e => e.dataset.tab) === 'scena', 'openSection přepne na záložku sekce ' + JSON.stringify(os));
 
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));

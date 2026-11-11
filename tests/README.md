@@ -31,6 +31,7 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 | 11 assistant | rychlé povely a délka trasy bez dotazu na model (odpovědi podvržené) |
 | 12 search | Hledat skočí na místo, záloha Photon při výpadku Nominatimu |
 | 13 transport | vlak (nádraží, vagony), loď, kamion s návěsem, uzavírky |
+| 28 style_layers | Styl a mapové vrstvy: preset se použije a označí („upraveno“ po ruční změně), přepnutí podkladu zachová scénu, na satelitu zmizí volby bez účinku, obarvený stát je v seznamu i v exportu PNG, uzavírka přežije přepnutí podkladu a krok zpět |
 | 20 api_d1 | serverové API nad náhradní D1 (node:sqlite): token, ochrana proti hromadnému smazání, historie verzí a obnova, statistika |
 | 90 batch_export (pomalý) | hromadný export 16:9 + 9:16 |
 

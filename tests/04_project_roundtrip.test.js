@@ -16,7 +16,7 @@ function diff(a, b, p = '', out = []){ if(JSON.stringify(a) === JSON.stringify(b
     document.getElementById('mapLabelStyle').value = 'red'; document.getElementById('mapLabelStyle').dispatchEvent(new Event('change', {bubbles:true}));
     o.icon = (await T.placeIcon({place:'Rokycany', kind:'nehoda'})).ok;
     o.perim = (await T.drawPerimeter({place:'Beroun', km:5, fit:false})).ok;
-    o.col = (await T.colorPolitical({region:'Plzeňský kraj', color:'#3366ff', fit:false})).ok;
+    o.col = (await T.colorPolitical({country:'Rakousko', color:'#3366ff', fit:false})).ok;
     o.vals = T.setValues({routeWidth:7, routeGlow:30, animDuration:12}).ok;
     return o; });
   check(Object.values(r).every(Boolean), 'scéna postavena: ' + JSON.stringify(r));
