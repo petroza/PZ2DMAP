@@ -1055,6 +1055,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
         <input id="animIconSize" type="range" min="18" max="96" step="2" value="34">
+        <div id="pzHoldRow" style="margin-top:10px" hidden>
+          <label for="pzRouteHold"><span data-i18n="Držet se trasy">Držet se trasy</span> <span class="val" id="pzRouteHoldVal">60 %</span></label>
+          <input id="pzRouteHold" type="range" min="0" max="100" step="5" value="60">
+        </div>
         <div id="pzWagonRow" style="margin-top:10px" hidden>
           <label for="pzWagonCount"><span data-i18n="Počet vagonů">Počet vagonů</span> <span class="val" id="pzWagonCountVal">2</span></label>
           <input id="pzWagonCount" type="range" min="0" max="8" step="1" value="2">
@@ -4780,6 +4784,7 @@ function renderAnimSystemIconSelection(){
   // u obrázků jen ty, které jdou přebarvit (ne hasiči, policie, sanitka) a jen karoserie
   $('pzVehiclePalette').hidden = !pal;
   if($('pzVehicleShadowRow')) $('pzVehicleShadowRow').hidden = !sprite;
+  if($('pzHoldRow')) $('pzHoldRow').hidden = !sprite;
   $('pzWagonRow').hidden = state.animSystemIcon !== 'train';
   // inverze má smysl jen pro vlastní nahraný obrázek a bod
   $('invertIcons').closest('label').style.display = pal ? 'none' : '';
@@ -7789,6 +7794,7 @@ function serializeProjectSnapshot(){
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
       wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
+      routeHold: parseInt($('pzRouteHold')?.value ?? '60', 10),
       vehiclePalette: pzVehiclePalette(),
       vehicleShadow: $('pzVehicleShadow') ? !!$('pzVehicleShadow').checked : true,
       animStart: $('animStart')?.value || '0',
@@ -7897,6 +7903,7 @@ function applyBasicProjectSnapshot(snapshot){
   pzSetVehiclePalette(animation.vehiclePalette);
   if($('pzVehicleShadow')) $('pzVehicleShadow').checked = animation.vehicleShadow !== false;
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
+  if($('pzRouteHold')){ const h = Number.isFinite(+animation.routeHold) ? Math.max(0, Math.min(100, +animation.routeHold)) : 60; $('pzRouteHold').value = String(h); $('pzRouteHoldVal').textContent = h + ' %'; }
   if($('pzWagonCount')){ $('pzWagonCount').value = String(Math.max(0, Math.min(8, parseInt(animation.wagonCount ?? 2, 10) || 0))); $('pzWagonCountVal').textContent = $('pzWagonCount').value; }
   renderAnimSystemIconSelection();
   renderAnimIconPreview();
@@ -12408,7 +12415,7 @@ function routeRestFC(){
   const drawing = state.currentTransportMode === 'planeCustom' && !state.pointB;
   if(isRoutePreDrawOn() || !$('showTrail')?.checked || drawing) return fullRouteFC(state.routeCoords);
   if((state.routeCoords || []).length < 2) return FC_EMPTY;
-  const sl = sliceLineByProgress(state.routeCoords, applyAnimEasing(getCurrentAnimationProgress()));
+  const sl = sliceLineByProgress(state.routeCoords, Math.min(1, pzVehicleProgress(applyAnimEasing(getCurrentAnimationProgress()))));
   return sl.coords.length > 1 ? lineStringFC(sl.coords) : FC_EMPTY;
 }
 
@@ -13020,7 +13027,7 @@ function pzRailPose(progress){
   const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
   if(!pzIsRail(type) || !m || !route || route.length < 2) return null;
   const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
-  const zoom = m.getZoom(), key = [progress, zoom, sizePx, route.length, type, $('pzWagonCount')?.value || ''].join('|');
+  const zoom = m.getZoom(), key = [progress, zoom, sizePx, route.length, type, $('pzWagonCount')?.value || '', $('pzRouteHold')?.value || ''].join('|');
   if(_pzRailCache && _pzRailCache.key === key && _pzRailCache.route === route) return _pzRailCache.pose;
   const {cum, total} = cumulativeRouteLengths(route);
   const lead = pointAtProgress(route, Math.min(1, progress)) || route[0];
@@ -13036,11 +13043,12 @@ function pzRailPose(progress){
   // vozy, které je kopírovaly, se kroutily jako červ. Kolem soupravy se trať
   // převzorkuje a vyhladí (2× klouzavý průměr přes ~0,8 délky vozu); skutečné
   // oblouky zůstanou, zuby zmizí.
-  const dN = progress * total, hS = Math.max(U * 0.06, 1e-5), kS = Math.max(2, Math.round(1.0 * U / hS));
+  const hold = Math.max(0, Math.min(100, parseFloat($('pzRouteHold')?.value ?? '60'))) / 100;
+  const dN = progress * total, hS = Math.max(U * 0.06, 1e-5), kS = Math.round((1 - hold) * U / hS);
   const s0 = dN - lenAll - 4 * U, nS = Math.ceil((lenAll + 7 * U) / hS) + 1;
   let P = new Array(nS);
   for(let i = 0; i < nS; i++) P[i] = atRaw(s0 + i * hS);
-  for(let pass = 0; pass < 2; pass++){
+  for(let pass = 0; pass < (kS > 0 ? 2 : 0); pass++){
     const Q = new Array(nS); let sx = 0, sy = 0;
     const pre = [[0, 0]]; for(let i = 0; i < nS; i++){ sx += P[i][0]; sy += P[i][1]; pre.push([sx, sy]); }
     for(let i = 0; i < nS; i++){ const a = Math.max(0, i - kS), b = Math.min(nS - 1, i + kS), n = b - a + 1; Q[i] = [(pre[b+1][0] - pre[a][0]) / n, (pre[b+1][1] - pre[a][1]) / n]; }
@@ -13059,7 +13067,24 @@ function pzRailPose(progress){
   const ds = Math.min(total * 0.5, Math.max(U * 0.3, 1e-4));
   const A = atRaw(0), tA = unit([atRaw(ds)[0] - A[0], atRaw(ds)[1] - A[1]]);
   const B = atRaw(total), tB = unit([B[0] - atRaw(total - ds)[0], B[1] - atRaw(total - ds)[1]]);
-  const clipOf = (c, f, side, sc) => {
+  // Maska podle POLOHY NA TRASE: díl celý před startem / za cílem je schovaný celý;
+  // díl na hraně se ořízne kolmo ke svému vlastnímu směru v místě, kde je na trase
+  // 0 km (start) / konec trasy. Dřív řezala přímka kolmá k trase v bodě A — když se
+  // trať za startem stáčela, natočené vozidlo za bodem A maskou prolezlo.
+  const clipOf = (c, f, side, sc, half, sFront) => {
+    if(sFront != null){
+      const sRear = sFront - 2 * half;
+      if(sFront <= 0 || sRear >= total) return [];
+      const fr = [c[0] + f[0] * half, c[1] + f[1] * half], planes = [];
+      const cut = (along, sgn) => {                    // řez v bodě osy ve vzdálenosti „along" od přídě
+        const O = [fr[0] - f[0] * along, fr[1] - f[1] * along];
+        const k0 = (c[0] - O[0]) * f[0] + (c[1] - O[1]) * f[1];
+        planes.push([sgn * (k0 + 0.5 * side), 0, -sgn * side]);
+      };
+      if(sRear < 0) cut(sFront, 1);                    // za startem nic
+      if(sFront > total) cut(sFront - total, -1);      // za cílem nic
+      return planes.length ? pzClipSquare(planes) : null;
+    }
     const pp = [f[1], -f[0]], planes = [];
     const dot = (u, v) => u[0] * v[0] + u[1] * v[1];
     // bod obrázku (x, y) ∈ [0,1]² → c + (0,5 − y)·side·f + (x − 0,5)·side·p
@@ -13079,7 +13104,7 @@ function pzRailPose(progress){
   const F = at(sF), sR = back(F, sF, 2 * bL * U), R = at(sR);
   {
     const c = [(F[0] + R[0]) / 2, (F[1] + R[1]) / 2], f = unit([F[0] - R[0], F[1] - R[1]]);
-    pose.push({c: toLL(c), xy: c, rot: Math.atan2(f[0], f[1]) * 180 / Math.PI, dir: f, clip: clipOf(c, f, U, d - 0.5 * U)});
+    pose.push({c: toLL(c), xy: c, rot: Math.atan2(f[0], f[1]) * 180 / Math.PI, dir: f, clip: clipOf(c, f, U, d - 0.5 * U, 0.5 * U, d)});
   }
   // vagony / návěs: přední spřáhlo PŘESNĚ v zadním spřáhle předchozího dílu (nerozpojí se),
   // zadní náprava/podvozek na trati → v zatáčce se díl jen zalomí v kloubu
@@ -13092,7 +13117,7 @@ function pzRailPose(progress){
     const sR2 = back(hitch, Math.min(sPrev, d), L), R2 = at(sR2);
     const f = unit([hitch[0] - R2[0], hitch[1] - R2[1]]);
     const c = [hitch[0] - f[0] * u.front * U, hitch[1] - f[1] * u.front * U];
-    const side = (u.scale || 1) * U, clip = clipOf(c, f, side, sR2 + ax * U);
+    const side = (u.scale || 1) * U, clip = clipOf(c, f, side, sR2 + ax * U, u.front * U, sR2 + (ax + u.front) * U);
     pose.push({c: toLL(c), xy: c, rot: Math.atan2(f[0], f[1]) * 180 / Math.PI, dir: f, scale: u.scale, type: u.type, clip, unit: u, hidden: !!(clip && !clip.length)});
     hitch = [c[0] - f[0] * u.back * U, c[1] - f[1] * u.back * U];
     sPrev = sR2;
@@ -13144,7 +13169,9 @@ function pzDrawVehicle(ctx, map, toOut, k, vp){
     ctx.translate(ox, oy); ctx.rotate(ang);
     if(q.clip){ ctx.beginPath(); q.clip.forEach((pt, j) => { const x = (pt[0] - 0.5) * S, y = (pt[1] - 0.5) * S; if(j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.closePath(); ctx.clip(); }
     // měkký stín kolem obrysu (bez posunu → stejný v každém směru)
-    if($('pzVehicleShadow')?.checked !== false){ ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5 * k; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; }
+    // měkký vržený stín do strany (vpravo dolů) — posun stínu plátno neotáčí, takže
+    // padá stejným směrem v každém směru jízdy, jako od slunce
+    if($('pzVehicleShadow')?.checked !== false){ ctx.shadowColor = 'rgba(0,0,0,.38)'; ctx.shadowBlur = 7 * k; ctx.shadowOffsetX = 3 * k; ctx.shadowOffsetY = 4 * k; }
     ctx.drawImage(im, -S / 2, -S / 2, S, S);
     ctx.shadowColor = 'transparent';
     // majáky (hasiči, policie, sanitka): blikají jen za jízdy, podle času animace
@@ -16935,6 +16962,7 @@ function bindUI(){
   })); });
   pzFillSysIconButtons();
   try{ pzLoadSprites(); }catch(e){}
+  $('pzRouteHold')?.addEventListener('input', () => { $('pzRouteHoldVal').textContent = $('pzRouteHold').value + ' %'; refreshAnimatedMarkerPreview(); });
   $('pzVehicleShadow')?.addEventListener('change', () => { try{ pzRenderVehicleLive(); state.map?.triggerRepaint?.(); }catch(e){} });
   $('pzWagonCount')?.addEventListener('input', () => { $('pzWagonCountVal').textContent = $('pzWagonCount').value; refreshAnimatedMarkerPreview(); });
   $('invertIcons')?.addEventListener('change', ()=>{
@@ -17600,6 +17628,7 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Držet se trasy": {cs:"Držet se trasy",sk:"Držať sa trasy",bg:"Следване на маршрута",hr:"Držati se rute",ro:"Urmărește traseul",en:"Stick to route"},
   "Stín pod vozidlem": {cs:"Stín pod vozidlem",sk:"Tieň pod vozidlom",bg:"Сянка под превозното средство",hr:"Sjena ispod vozila",ro:"Umbră sub vehicul",en:"Shadow under vehicle"},
   "Nákladní auto": {cs:"Nákladní auto",sk:"Nákladné auto",bg:"Товарен автомобил",hr:"Teretno vozilo",ro:"Camion",en:"Lorry"},
   "Nákladní": {cs:"Nákladní",sk:"Nákladné",bg:"Товарен",hr:"Teretno",ro:"Camion",en:"Lorry"},
