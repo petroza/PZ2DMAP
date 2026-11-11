@@ -103,12 +103,17 @@ const {check, done, open, status, shot} = require('./lib');
   await page.keyboard.press('Control+z'); s = await until(x => counts(x) === '1,1,1,1,1');
   check(counts(s) === '1,1,1,1,1', 'Ctrl+Z vrátí smazanou skupinu');
 
+  // Krok zpět znovu nahrává i velké vrstvy států; dokud mapa nedokreslí, klik do ní
+  // šipku „nenajde“ (queryRenderedFeatures je prázdné) — počkat, až se uklidní.
+  await idle(); await page.waitForTimeout(1500); await idle();
+
   // --- jedna věc: klik vybere, šipka posune, Delete smaže a řekne co ---
   await page.mouse.click(...EMPTY); await page.waitForTimeout(400);
   await page.mouse.click(775, 475); await page.waitForTimeout(400);
   s = await S(); check(s.sel === 'a' && s.multi === '', 'klik na šipku vybere jen šipku');
+  const t0 = s.arrows[0][0];
   await page.keyboard.press('ArrowUp'); await page.waitForTimeout(300);
-  s = await S(); check(near(s.arrows[0][0], [700, 449], 1) && /Posunuto šipkami/.test(await st()), 'šipka na klávesnici posune vybranou šipku o 1 px');
+  s = await S(); check(near(s.arrows[0][0], [t0[0], t0[1] - 1], 0) && /Posunuto šipkami/.test(await st()), 'šipka na klávesnici posune vybranou šipku o 1 px');
   await page.keyboard.press('Control+c'); await page.keyboard.press('Control+v'); await page.waitForTimeout(500);
   s = await S(); check(s.arrows.length === 2 && /Šipka vložena/.test(await st()), 'Ctrl+C / Ctrl+V umí i šipku');
   await page.keyboard.press('Delete'); await page.waitForTimeout(300);
@@ -122,6 +127,7 @@ const {check, done, open, status, shot} = require('./lib');
   check(s.multi === '' && near(s.icons[0], b.icons[0]) && s.arrows[0][0][0] - b.arrows[0][0][0] > 30, 'tažení věci mimo skupinu posune jen ji a skupinu zruší');
   await page.keyboard.press('Control+z'); s = await until(x => near(x.arrows[0][0], b.arrows[0][0], 2));
   check(near(s.arrows[0][0], b.arrows[0][0], 2), 'Ctrl+Z vrátí posun šipky, která nebyla předem vybraná');
+  await idle(); await page.waitForTimeout(1500); await idle();
 
   // --- Alt+tažení obdélníkem bere i vrstvy; zarovnání do řady ---
   await page.mouse.click(...EMPTY); await page.waitForTimeout(300);
@@ -142,7 +148,8 @@ const {check, done, open, status, shot} = require('./lib');
   const rows = await page.evaluate(() => ['mapLabelList', 'sceneIconList', 'sceneArrowList', 'scenePerimeterList', 'sceneDistanceList'].map(id => document.querySelectorAll('#' + id + ' .wp-item[data-pz-key]').length).join(','));
   check(rows === '1,1,1,1,1', 'každý seznam má jednotný řádek pro svůj objekt (' + rows + ')');
   await page.click('#sceneArrowList .wp-item'); await page.waitForTimeout(300);
-  s = await S(); check(s.sel === 'a' && /Vybráno\./.test(await st()), 'klik na řádek šipky ji vybere a stav poradí, co dál');
+  s = await S();
+  check(s.sel === 'a' && /Vybráno\./.test(await st()), 'klik na řádek šipky ji vybere a stav poradí, co dál');
   check(await page.$eval('#sceneArrowList .wp-item', e => e.classList.contains('active')), 'vybraný řádek je zvýrazněný');
   await page.click('#scenePerimeterList .wp-item', {modifiers: ['Control']}); await page.waitForTimeout(300);
   s = await S(); check(s.multi === 'ap', 'Ctrl+klik na řádek perimetru přidá do skupiny (' + s.multi + ')');
