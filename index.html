@@ -961,7 +961,14 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <input id="startInput" type="text" placeholder="Start — napiš nebo klikni do mapy" autocomplete="off">
             <div class="nav-suggest" id="startInputSuggest" role="listbox"></div>
           </div>
-          <div class="nav-connector"></div>
+          <div class="nav-mid">
+            <button type="button" class="nav-mini nav-swap" id="swapRouteBtn" title="Prohodit start a cíl" aria-label="Prohodit start a cíl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4v15M8 19l-3.5-3.5M8 19l3.5-3.5M16 20V5M16 5l-3.5 3.5M16 5l3.5 3.5"/></svg></button>
+            <button type="button" class="nav-mini" id="addWaypointBtn" title="Klikni do mapy na místo zastávky (nebo Ctrl + klik)" data-i18n="+ Zastávka">+ Zastávka</button>
+            <button type="button" class="nav-mini nav-mini-danger" id="clearFlightWaypointsBtn" data-i18n="Smazat body" hidden>Smazat body</button>
+          </div>
+          <!-- zastávky i body vlastní trasy: jeden seznam přímo mezi A a B (dřív dvě sekce níž) -->
+          <div id="waypointSection" class="nav-stops"><div id="waypointList" class="wp-list"></div></div>
+          <span id="flightWaypointSection" hidden></span>
           <div class="nav-point">
             <div class="nav-dot b">B</div>
             <input id="endInput" type="text" placeholder="Cíl — napiš nebo klikni do mapy" autocomplete="off">
@@ -1020,6 +1027,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           </button>
           <button type="button" class="btn nav-clear" id="clearRouteBtn" data-i18n="Smazat">Smazat</button>
         </div>
+        <div class="nav-summary" id="routeSummary" hidden></div>
       </div>
 
       <div class="section anim-sys-icon-section" id="animationSystemIconsSection">
@@ -1120,48 +1128,36 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
       </div>
 
-      <div class="section" id="waypointSection">
-        <h3 data-i18n="Zastávky na trase">Zastávky na trase</h3>
-        <div class="btns"><button type="button" class="btn btn-sm" id="addWaypointBtn" data-i18n="+ Přidat zastávku">+ Přidat zastávku</button></div>
-        <div id="waypointList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_via_points">Přidej zastávky mezi A a B. Trasa se přepočítá automaticky.</p>
-      </div>
-
-      <div class="section" id="flightWaypointSection">
-        <h3 data-i18n="Naklikaná cesta">Naklikaná cesta</h3>
-        <div class="btns">
-          <button type="button" class="btn btn-sm btn-danger" id="clearFlightWaypointsBtn" data-i18n="Smazat body">Smazat body</button>
-        </div>
-        <div id="flightWaypointList" class="wp-list"></div>
-        <p class="hint" data-i18n="hint_custom_draw">Kresli trasu klikáním do mapy od začátku do konce. Každý klik přidá další bod. Pravým tlačítkem trasu ukončíš — poslední bod se stane cílem (B). Body jdou na mapě chytit a přetáhnout.</p>
-      </div>
-
-      <div class="section">
+      <div class="section" id="routeLookSection" data-default-open="1">
         <h3 data-i18n="Vzhled trasy">Vzhled trasy</h3>
         <div class="row">
-          <div class="color-row"><input id="routeColor" type="color" value="#002ee6"><label data-i18n="Barva trasy">Barva trasy</label></div>
-          <div class="color-row"><input id="routeDotColor" type="color" value="#ffffff"><label data-i18n="Glow / stopa">Glow / stopa</label></div>
+          <div class="color-row"><input id="routeColor" type="color" value="#002ee6"><label for="routeColor" data-i18n="Barva trasy">Barva</label></div>
+          <div class="color-row"><input id="routeDotColor" type="color" value="#ffffff"><label for="routeDotColor" data-i18n="Záře trasy">Záře</label></div>
         </div>
-        <label data-i18n="Tloušťka">Tloušťka <span class="val" id="routeWidthVal">4 px</span></label>
+        <label for="routeWidth" data-i18n="Tloušťka">Tloušťka <span class="val" id="routeWidthVal">4 px</span></label>
         <input id="routeWidth" type="range" min="1" max="16" step="0.5" value="4">
-        <label>Síla glow <span class="val" id="routeGlowVal">12 %</span></label>
-        <input id="routeGlow" type="range" min="0" max="100" step="1" value="12" title="Záře pod trasou v barvě Glow / stopa">
-        <label style="margin-top:10px;display:block" data-i18n="Koncové body (A/B)">Koncové body (A/B)</label>
-        <div class="endpoint-grid">
-          <button type="button" class="endpoint-shape active" data-endpoint-shape="circle">
-            <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg></span>
-            <span class="t-label" data-i18n="Kruh (bod)">Kruh</span>
-          </button>
-          <button type="button" class="endpoint-shape" data-endpoint-shape="square">
-            <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></span>
-            <span class="t-label" data-i18n="Čtverec (bod)">Čtverec</span>
-          </button>
-        </div>
-        <label style="margin-top:8px" data-i18n="Velikost (end)">Velikost <span class="val" id="routeEndpointSizeVal">28 px</span></label>
-        <input id="routeEndpointSize" type="range" min="12" max="48" step="1" value="28">
-        <label class="check" id="showDirectLineWrap" style="margin-top:8px"><input id="showDirectLine" type="checkbox" checked> Zobrazit přímou spojnici (oblouk)</label>
-        <label class="check" id="hideGroundLineWrap" style="display:none;margin-top:8px"><input id="hideGroundLine" type="checkbox"> <span data-i18n="Skrýt pozemní stín (jen oblouk)">Skrýt pozemní stín (jen oblouk)</span></label>
-        <button type="button" class="btn btn-sm" id="arcBestViewBtn" style="display:none;margin-top:8px;width:100%" data-i18n="Optimální pohled na oblouk (3D)">Optimální pohled na oblouk (3D)</button>
+        <label class="check" id="routePreDrawWrap" style="margin-top:8px"><input id="routePreDraw" type="checkbox" checked> <span data-i18n="Předkreslit celou trasu">Předkreslit celou trasu</span></label>
+        <label class="check" id="showDirectLineWrap"><input id="showDirectLine" type="checkbox" checked> <span data-i18n="Přímá spojnice místo oblouku">Přímá spojnice místo oblouku</span></label>
+        <label class="check" id="hideGroundLineWrap" style="display:none"><input id="hideGroundLine" type="checkbox"> <span data-i18n="Skrýt stín na zemi">Skrýt stín na zemi</span></label>
+        <button type="button" class="btn btn-sm" id="arcBestViewBtn" style="display:none;margin-top:8px;width:100%" data-i18n="3D pohled na oblouk">3D pohled na oblouk</button>
+        <details class="compact-details" id="routeLookMore">
+          <summary data-i18n="Další možnosti">Další možnosti</summary>
+          <label for="routeGlow" data-i18n="Síla záře">Síla záře <span class="val" id="routeGlowVal">12 %</span></label>
+          <input id="routeGlow" type="range" min="0" max="100" step="1" value="12">
+          <label style="margin-top:10px;display:block" data-i18n="Konce trasy">Konce trasy</label>
+          <div class="endpoint-grid">
+            <button type="button" class="endpoint-shape active" data-endpoint-shape="circle">
+              <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg></span>
+              <span class="t-label" data-i18n="Kruh (bod)">Kruh</span>
+            </button>
+            <button type="button" class="endpoint-shape" data-endpoint-shape="square">
+              <span class="t-icon"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor"/></svg></span>
+              <span class="t-label" data-i18n="Čtverec (bod)">Čtverec</span>
+            </button>
+          </div>
+          <label for="routeEndpointSize" style="margin-top:8px" data-i18n="Velikost (end)">Velikost <span class="val" id="routeEndpointSizeVal">28 px</span></label>
+          <input id="routeEndpointSize" type="range" min="12" max="48" step="1" value="28">
+        </details>
       </div>
 
     </div>
@@ -4852,17 +4848,23 @@ function resetAppToStart(){
 // everything else, and the direct-line toggle only to the arc mode.
 function updateTransportSections(){
   const mode = state.currentTransportMode;
-  const stops = $('waypointSection');
-  if(stops) stops.style.display = mode === 'planeCustom' ? 'none' : '';
-  const flight = $('flightWaypointSection');
-  if(flight) flight.style.display = mode === 'planeCustom' ? '' : 'none';
+  const globe = (() => { try{ return isGlobeProjectionOn(); }catch(e){ return false; } })();
+  // Zastávky a body vlastní trasy sdílí jeden seznam mezi poli A a B.
+  const addStop = $('addWaypointBtn');
+  if(addStop) addStop.hidden = mode === 'planeCustom';
+  const clearPts = $('clearFlightWaypointsBtn');
+  if(clearPts) clearPts.hidden = !(mode === 'planeCustom' && (state.manualViaPoints || []).length);
+  // Přímá spojnice je jen jiná podoba předkreslené trasy u plochého oblouku;
+  // na glóbu se nekreslí vůbec, bez předkreslení taky ne.
   const directWrap = $('showDirectLineWrap');
-  if(directWrap) directWrap.style.display = mode === 'planeArc' ? '' : 'none';
+  if(directWrap) directWrap.style.display = (mode === 'planeArc' && !globe && isRoutePreDrawOn()) ? '' : 'none';
   const arcBtn = $('arcBestViewBtn');
   if(arcBtn) arcBtn.style.display = mode === 'planeArc' ? '' : 'none';
   const hideGround = $('hideGroundLineWrap');
-  if(hideGround) hideGround.style.display = mode === 'planeArc' ? '' : 'none';
+  if(hideGround) hideGround.style.display = (mode === 'planeArc' && globe) ? '' : 'none';   // stín na zemi má jen 3D oblouk na glóbu
 }
+// „Předkreslit celou trasu": vypnuto = před objektem není nic, trasa se kreslí až za ním.
+function isRoutePreDrawOn(){ return $('routePreDraw')?.checked !== false; }
 
 function isRouteTabActive(){
   return state.currentTab === 'trasa';
@@ -4961,6 +4963,7 @@ function isAccordionDefaultOpen(section, idx){
   const pane = section.closest('.tab-pane');
   if(!pane) return false;
   if(section.id === 'exportActionsSection') return true;   // tlačítka exportu mají být hned vidět
+  if(section.dataset.defaultOpen === '1') return true;     // např. Vzhled trasy („Předkreslit celou trasu" má být vidět hned)
   return pane.querySelector(':scope > .section') === section;
 }
 
@@ -5113,31 +5116,62 @@ function clearRouteLineOnly(){
 
 function deleteRoutePoint(type){
   const pointType = type === 'B' ? 'B' : 'A';
+  cancelRouteSearch();
   clearRouteLineOnly();
+  const custom = state.currentTransportMode === 'planeCustom';
   if(pointType === 'A'){
     if(state.markerA){ state.markerA.remove(); state.markerA = null; }
     state.pointA = null;
     if($('startInput')) $('startInput').value = '';
-    state.clickPhase = 'A';
+    // Vlastní trasa: začátkem se stane další nakreslený bod (bez něj není co nechat).
+    const next = custom ? state.manualViaPoints.shift() : null;
+    if(next){ state.pointA = next.lngLat; if($('startInput')) $('startInput').value = next.name || ''; }
+    else if(custom && state.pointB){ state.pointB = null; if($('endInput')) $('endInput').value = ''; }
   } else {
     if(state.markerB){ state.markerB.remove(); state.markerB = null; }
     state.pointB = null;
     if($('endInput')) $('endInput').value = '';
-    state.clickPhase = state.pointA ? 'B' : 'A';
   }
+  state.clickPhase = state.pointA ? (state.pointB ? 'done' : 'B') : 'A';
   if(state.selectedRoutePointType === pointType) state.selectedRoutePointType = null;
+  if(custom){ restorePointMarkers(); refreshManualViaMarkers(); renderWaypointList(); rebuildCustomPreview(); }
   refreshRoutePointSelection();
-  setStatus(t(pointType === 'A' ? 'Bod A smazán.' : 'Bod B smazán.'));
+  updateRouteSummary();
+  setStatus(custom && pointType === 'B' && state.pointA ? t('Cíl smazán. Klikáním pokračuj v kreslení.')
+    : t(pointType === 'A' ? 'Start smazán. Klikni do mapy na nový.' : 'Cíl smazán. Klikni do mapy na nový.'));
   return true;
+}
+
+// Nastaví start/cíl (klik do mapy, tažení značky) a podle stavu rovnou hledá trasu.
+function setRoutePointAt(type, lngLat, {reverse = true} = {}){
+  const isA = type !== 'B';
+  const label = `${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}`;
+  if(isA) state.pointA = lngLat; else state.pointB = lngLat;
+  const inputId = isA ? 'startInput' : 'endInput';
+  if($(inputId)) $(inputId).value = label;
+  if(reverse) fillInputWithReverseGeocode(inputId, lngLat);
+  state.clickPhase = state.pointA ? (state.pointB ? 'done' : 'B') : 'A';
+  restorePointMarkers();
+  if(state.currentTransportMode === 'planeCustom' && !(state.pointA && state.pointB)){ rebuildCustomPreview(); return; }
+  if(state.pointA && state.pointB) findRoute();
+  else setStatus(t(isA ? 'Start nastaven. Klikni do mapy na cíl.' : 'Cíl nastaven. Klikni do mapy na start.'));
 }
 
 function createRoutePointMarker(type, lngLat){
   const pointType = type === 'B' ? 'B' : 'A';
   const el = makeDotMarker('', pointType === 'A' ? 'dot-a' : 'dot-b');
   styleEndpointEl(el);
+  el.title = t('Táhni pro přesun, Delete smaže');
   el.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); selectRoutePoint(pointType); });
-  el.addEventListener('mousedown', ev => ev.stopPropagation());
-  const marker = new maplibregl.Marker({element: el}).setLngLat(lngLat).addTo(state.map);
+  // Body A/B jdou chytit a přetáhnout stejně jako zastávky; trasa se přepočítá.
+  const marker = new maplibregl.Marker({element: el, draggable: true}).setLngLat(lngLat).addTo(state.map);
+  marker.on('dragstart', () => { state.draggingViaPoint = true; });
+  marker.on('dragend', () => {
+    const ll = marker.getLngLat();
+    state.draggingViaPoint = false;
+    // až po doběhnutí tažení — přepočet značku A/B nahrazuje novou
+    setTimeout(() => { try{ setRoutePointAt(pointType, [ll.lng, ll.lat]); }catch(e){ console.error(e); } }, 0);
+  });
   refreshRoutePointSelection();
   return marker;
 }
@@ -5595,7 +5629,7 @@ function initMap(){
   // Right-click finishes the live distance measurement, else a custom-flight route.
   state.map.on('contextmenu', e => {
     if(state.measureMode === 'line'){ try{ e.preventDefault?.(); }catch(_e){} finishMeasureLine(); return; }
-    if(state.currentTransportMode === 'planeCustom' && isRouteTabActive() && state.pointA && !state.pointB && state.manualViaPoints.length){
+    if(state.currentTransportMode === 'planeCustom' && isRouteTabActive() && state.pointA && !state.pointB){
       try{ e.preventDefault?.(); }catch(_e){}
       finishCustomRoute();
     }
@@ -8045,7 +8079,9 @@ function serializeProjectSnapshot(){
       routeWidth: $('routeWidth')?.value || '4',
       routeEndpointShape: state.routeEndpointShape || 'circle',
       routeEndpointSize: parseInt($('routeEndpointSize')?.value, 10) || state.routeEndpointSize || 28,
-      showDirectLine: $('showDirectLine')?.checked !== false
+      showDirectLine: $('showDirectLine')?.checked !== false,
+      preDraw: isRoutePreDrawOn(),                    // nepovinné; starý projekt = zapnuto
+      durationSec: state.routeDurationSec || null     // doba jízdy z routeru (nepovinné)
     },
     sceneIcons: state.sceneIcons.map(item => ({id:item.id, data:item.data, size:item.size, lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     scenePerimeters: state.scenePerimeters.map(item => ({id:item.id, lngLat:item.lngLat, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity})),
@@ -8132,13 +8168,19 @@ function applyBasicProjectSnapshot(snapshot){
   if($('routeEndpointSize')) $('routeEndpointSize').value = String(state.routeEndpointSize);
   $$('.endpoint-shape').forEach(b => b.classList.toggle('active', b.dataset.endpointShape === state.routeEndpointShape));
   if($('showDirectLine') && route.showDirectLine != null) $('showDirectLine').checked = !!route.showDirectLine;
+  if($('routePreDraw')) $('routePreDraw').checked = route.preDraw !== false;   // starý projekt pole nemá = předkreslovat
+  state.routeDurationSec = Number(route.durationSec) > 0 ? Number(route.durationSec) : null;
+  state.pzTrainStations = null;
+  try{ cancelRouteSearch(); }catch(e){}   // rozběhnuté hledání by po kroku zpět trasu vrátilo
   setActiveButton('.transport-btn', 'mode', state.currentTransportMode);
   updateTransportSections();
   renderWaypointList();
   refreshManualViaMarkers();
   restorePointMarkers();
   redrawRoute();
-  setTimeout(() => { try{ refreshAnimatedMarkerPreview(); }catch(e){} }, 0);   // po kroku zpět/vpřed i načtení projektu
+  try{ updateRouteSummary(); }catch(e){}
+  // po kroku zpět/vpřed i načtení projektu; čára znovu až po obnově voleb animace (stopa za objektem)
+  setTimeout(() => { try{ redrawRoute(); refreshAnimatedMarkerPreview(); }catch(e){} }, 0);
 
   const animation = snapshot.animation || {};
   state.currentRotMode = animation.currentRotMode || 'fixed';
@@ -10478,7 +10520,12 @@ function onMapClick(e){
   }
   if(state.addingSceneIcon){ addSceneIcon(e.lngLat); return; }
   if(state.addingMapLabel){ addMapLabelAt(e.lngLat); return; }
-  if(state.addingFlightPoint){ addManualViaPoint([e.lngLat.lng, e.lngLat.lat], `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`); return; }
+  if(state.addingFlightPoint){
+    // tlačítko „+ Zastávka": jeden klik = jedna zastávka, pak se vkládání samo vypne
+    state.addingFlightPoint = false;
+    addManualViaPoint([e.lngLat.lng, e.lngLat.lat], `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`);
+    return;
+  }
   if(handleCzRegionPaintClick(e)) return;
   if(handlePoliticalCountryPaintClick(e)) return;
   clearRoutePointSelection();
@@ -10496,7 +10543,7 @@ function onMapClick(e){
   // Custom flight ("Vlastní"): draw the path point-by-point in click order.
   // Right-click finishes it (last clicked point becomes the destination B).
   if(state.currentTransportMode === 'planeCustom'){
-    handleCustomRouteClick(lngLat, label);
+    handleCustomRouteClick(lngLat, label, ctrlPressed);
     return;
   }
 
@@ -10505,62 +10552,66 @@ function onMapClick(e){
     return; // findRoute called inside addManualViaPoint
   }
 
-  if(!state.pointA || (!state.pointB && state.clickPhase === 'B')){
-    if(!state.pointA){
-      state.addingFlightPoint = false;
-      state.pointA = lngLat;
-      if(state.markerA) state.markerA.remove();
-      state.markerA = createRoutePointMarker('A', state.pointA);
-      $('startInput').value = label;
-      fillInputWithReverseGeocode('startInput', lngLat);
-      state.clickPhase = 'B';
-      setStatus(t('Bod A nastaven. Klikni do mapy pro bod B.'));
-      return;
-    }
-
-    state.addingFlightPoint = false;
-    state.pointB = lngLat;
-    if(state.markerB) state.markerB.remove();
-    state.markerB = createRoutePointMarker('B', state.pointB);
-    $('endInput').value = label;
-    fillInputWithReverseGeocode('endInput', lngLat);
-    state.clickPhase = 'done';
-    setStatus(t('Bod B nastaven.'));
-    return;
-  }
+  // Klik doplní chybějící bod (start, pak cíl) — rozhoduje, co opravdu chybí,
+  // ne pořadí klikání: po smazání nebo přepsání pole šel dřív klik naprázdno.
+  // Jakmile jsou oba, trasa se hledá sama.
+  if(state.pointA && state.pointB) return;
+  setRoutePointAt(state.pointA ? 'B' : 'A', lngLat);
 }
 
 function makeViaMarker(idx){
   return makeDotMarker(String(idx+1),'dot-wp');
 }
 
-function updateManualViaPoint(idx, lngLat){
-  if(!state.manualViaPoints[idx]) return;
-  state.manualViaPoints[idx].lngLat = lngLat;
-  state.manualViaPoints[idx].name = `${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}`;
+// Po změně zastávek/bodů: seznam, značky a čára musí vždy odpovídat stavu.
+function afterViaChange(){
   renderWaypointList();
   refreshManualViaMarkers();
   if(state.pointA && state.pointB) findRoute();
+  else if(state.pointA && state.currentTransportMode === 'planeCustom') rebuildCustomPreview();
   else redrawRoute();
+}
+
+// Zastávka má v seznamu jméno místa, ne souřadnice (u ručně kreslené trasy se
+// nedohledává — desítky bodů by zbytečně zatížily geokódování).
+async function nameViaPoint(pt){
+  if(state.currentTransportMode === 'planeCustom') return;
+  const token = pt.name;
+  try{
+    const label = normalizePlaceLabel(await reverseGeocode(pt.lngLat, 10));
+    if(label && pt.name === token && state.manualViaPoints.includes(pt)){ pt.name = label; renderWaypointList(); }
+  }catch(e){}
+}
+
+function updateManualViaPoint(idx, lngLat){
+  const pt = state.manualViaPoints[idx];
+  if(!pt) return;
+  pt.lngLat = lngLat;
+  pt.name = `${lngLat[1].toFixed(5)}, ${lngLat[0].toFixed(5)}`;
+  nameViaPoint(pt);
+  afterViaChange();
 }
 
 function removeManualViaPoint(idx, reason='remove'){
   if(idx < 0 || idx >= state.manualViaPoints.length) return;
   state.manualViaPoints.splice(idx,1);
-  renderWaypointList();
-  refreshManualViaMarkers();
-  if(state.pointA && state.pointB) findRoute();
-  else if(state.pointA) rebuildCustomPreview();   // rozkreslená vlastní trasa: čára bez smazaného bodu
-  else redrawRoute();
-  if(reason === 'undo') setStatus(t('Vrácen poslední krok vlastní trasy.'));
-  else if(reason === 'ctrl-marker') setStatus(t('Bod trasy smazán.'));
+  afterViaChange();
+  if(!(state.pointA && state.pointB)) setStatus(t(reason === 'undo' ? 'Poslední bod smazán.' : 'Bod trasy smazán.'));
+}
+
+// Přeřazení zastávky v seznamu (▲▼).
+function moveManualViaPoint(idx, delta){
+  const to = idx + delta, pts = state.manualViaPoints;
+  if(idx < 0 || idx >= pts.length || to < 0 || to >= pts.length) return;
+  [pts[idx], pts[to]] = [pts[to], pts[idx]];
+  afterViaChange();
 }
 
 function refreshManualViaMarkers(){
   state.manualViaMarkers.forEach(m=>m.remove());
   state.manualViaMarkers = state.manualViaPoints.map((pt, idx)=> {
     const el = makeViaMarker(idx);
-    el.title = 'Ctrl + klik smaže bod';
+    el.title = t('Táhni pro přesun, Ctrl + klik smaže');
     el.addEventListener('click', ev => {
       ev.stopPropagation();
       if(ev.ctrlKey || ev.metaKey){
@@ -10571,86 +10622,87 @@ function refreshManualViaMarkers(){
     const marker = new maplibregl.Marker({element: el, draggable:true})
       .setLngLat(pt.lngLat)
       .addTo(state.map);
-    marker.on('dragstart', ()=>{
-      state.draggingViaPoint = true;
-      setStatus(t('Táhneš bod trasy. Pusť ho na nové místo.'));
-    });
+    marker.on('dragstart', ()=>{ state.draggingViaPoint = true; });
     marker.on('dragend', ()=>{
       const ll = marker.getLngLat();
       state.draggingViaPoint = false;
       updateManualViaPoint(idx, [ll.lng, ll.lat]);
-      setStatus(t('Bod trasy přesunut.'));
     });
     return marker;
   });
 }
 
+// Jeden seznam mezi poli A a B: zastávky trasy i body ručně kreslené trasy.
 function renderWaypointList(){
   const list = $('waypointList');
-  const flightList = $('flightWaypointList');
-  function buildItems(container){
-    if(!container) return;
-    container.innerHTML = '';
-    if(!state.manualViaPoints.length){
-      container.innerHTML = '<div class="small">' + escapeHtml(t('Zatím žádné body. Ctrl + klik přidává bod. Ctrl + klik na existující bod ho smaže. Backspace vrátí poslední krok.')) + '</div>';
-      return;
-    }
-    state.manualViaPoints.forEach((pt, idx) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'wp-item';
-      wrap.innerHTML = `<div class="wp-head"><span class="wp-badge">${idx+1}</span><div class="wp-actions"><button type="button" class="btn btn-sm btn-danger" data-remove="${idx}" data-i18n="Smazat">Smazat</button></div></div><div class="small">${escapeHtml(pt.name || '')}</div>`;
-      wrap.querySelector('[data-remove]').addEventListener('click', ()=>{
-        removeManualViaPoint(idx);
-      });
-      container.appendChild(wrap);
-    });
+  if(!list) return;
+  list.innerHTML = '';
+  const pts = state.manualViaPoints || [];
+  pts.forEach((pt, idx) => {
+    const row = document.createElement('div');
+    row.className = 'wp-item nav-stop';
+    const badge = document.createElement('span');
+    badge.className = 'wp-badge'; badge.textContent = String(idx + 1);
+    const name = document.createElement('span');
+    name.className = 'nav-stop-name'; name.textContent = pt.name || ''; name.title = pt.name || '';
+    row.append(badge, name);
+    const mk = (cls, label, glyph, fn, off) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = cls; b.textContent = glyph;
+      b.title = t(label); b.setAttribute('aria-label', t(label)); b.disabled = !!off;
+      b.addEventListener('click', fn);
+      row.appendChild(b);
+    };
+    mk('nav-stop-btn', 'Posunout výš', '▲', () => moveManualViaPoint(idx, -1), idx === 0);
+    mk('nav-stop-btn', 'Posunout níž', '▼', () => moveManualViaPoint(idx, 1), idx === pts.length - 1);
+    mk('nav-stop-btn nav-stop-del', 'Smazat', '×', () => removeManualViaPoint(idx));
+    list.appendChild(row);
+  });
+  try{ updateTransportSections(); }catch(e){}
+}
+
+// Nová zastávka se zařadí tam, kde trasu prodlouží nejméně — pořadí pak
+// odpovídá cestě, i když grafik kliká zastávky napřeskáčku.
+function viaInsertIndex(lngLat){
+  const pts = [state.pointA, ...state.manualViaPoints.map(p => p.lngLat), state.pointB];
+  let best = state.manualViaPoints.length, bestCost = Infinity;
+  for(let i = 1; i < pts.length; i++){
+    const cost = haversineKm(pts[i-1], lngLat) + haversineKm(lngLat, pts[i]) - haversineKm(pts[i-1], pts[i]);
+    if(cost < bestCost){ bestCost = cost; best = i - 1; }
   }
-  buildItems(list);
-  buildItems(flightList);
+  return best;
 }
 
 function addManualViaPoint(lngLat, label){
-  state.manualViaPoints.push({lngLat, name: label});
-  renderWaypointList();
-  refreshManualViaMarkers();
-  if(state.addingFlightPoint){
-    if(state.pointA && state.pointB) findRoute();
-    setStatus(t('Bod letu přidán.', state.manualViaPoints.length));
-  } else {
-    setStatus(t('Přidán průjezdný bod.', state.manualViaPoints.length));
-    if(state.pointA && state.pointB) findRoute();
-  }
+  if(!(state.pointA && state.pointB)){ setStatus(t('Nejdřív zadej start a cíl.'), 'error'); return; }
+  const pt = {lngLat, name: label};
+  state.manualViaPoints.splice(viaInsertIndex(lngLat), 0, pt);
+  nameViaPoint(pt);
+  afterViaChange();
 }
 
 // Progressive custom-route drawing: each left-click adds the next point in order.
-function handleCustomRouteClick(lngLat, label){
-  // First click = start (A).
-  if(!state.pointA){
-    state.pointA = lngLat;
-    if(state.markerA) state.markerA.remove();
-    state.markerA = createRoutePointMarker('A', lngLat);
-    if($('startInput')) $('startInput').value = label;
-    fillInputWithReverseGeocode('startInput', lngLat);
-    state.pointB = null; state.manualViaPoints = [];
-    state.clickPhase = 'B';
-    state.routeCoords = [lngLat];
-    redrawRoute();
-    setStatus(t('Kresli trasu klikáním. Pravým tlačítkem ukončíš (poslední bod = cíl).'));
+function handleCustomRouteClick(lngLat, label, ctrl){
+  // Hotová trasa: obyčejný klik ji nesmí smazat (dřív začal kreslit novou a
+  // stará byla pryč). Nová trasa = Smazat; Ctrl + klik přidá bod do stávající.
+  if(state.pointA && state.pointB){
+    if(ctrl) addManualViaPoint(lngLat, label);
+    else setStatus(t('Trasa je hotová. Ctrl + klik přidá bod, Smazat začne novou.'));
     return;
   }
-  // Already finished (B set) → start a fresh custom route from this point.
-  if(state.pointB){
-    if(state.markerB){ state.markerB.remove(); state.markerB = null; }
+  // First click = start (A).
+  if(!state.pointA){
     state.pointB = null; state.manualViaPoints = [];
+    if($('endInput')) $('endInput').value = '';
     state.pointA = lngLat;
-    if(state.markerA) state.markerA.remove();
-    state.markerA = createRoutePointMarker('A', lngLat);
     if($('startInput')) $('startInput').value = label;
     fillInputWithReverseGeocode('startInput', lngLat);
     state.clickPhase = 'B';
+    restorePointMarkers(); refreshManualViaMarkers(); renderWaypointList();
     state.routeCoords = [lngLat];
-    refreshManualViaMarkers(); renderWaypointList(); redrawRoute();
-    setStatus(t('Kresli trasu klikáním. Pravým tlačítkem ukončíš (poslední bod = cíl).'));
+    redrawRoute();
+    updateRouteSummary();
+    setStatus(t('Start nastaven. Klikej další body, pravé tlačítko trasu ukončí.'));
     return;
   }
   // Middle clicks = append a point, grow the live preview line.
@@ -10658,7 +10710,7 @@ function handleCustomRouteClick(lngLat, label){
   refreshManualViaMarkers();
   renderWaypointList();
   rebuildCustomPreview();
-  setStatus(t('Bod přidán ({0}). Pravým tlačítkem ukonči (poslední = cíl).', state.manualViaPoints.length));
+  setStatus(t('Bod {0}. Pravé tlačítko trasu ukončí.', state.manualViaPoints.length));
 }
 function rebuildCustomPreview(){
   if(!state.pointA){ return; }
@@ -10666,6 +10718,7 @@ function rebuildCustomPreview(){
   if(state.pointB) pts.push(state.pointB);
   state.routeCoords = pts.length > 1 ? pts : [state.pointA];
   redrawRoute();
+  updateRouteSummary();
 }
 // Right-click finishes the custom route: the last placed point becomes B.
 function finishCustomRoute(){
@@ -10673,20 +10726,19 @@ function finishCustomRoute(){
   if(!state.pointA) return false;
   if(state.pointB) return false; // already finished
   if(!state.manualViaPoints.length){
-    setStatus(t('Přidej aspoň jeden další bod, než trasu ukončíš.'), 'error');
+    setStatus(t('Klikni aspoň jeden další bod, pak trasu ukonči.'), 'error');
     return false;
   }
+  try{ window.__pzPushUndo?.(); }catch(e){}   // ukončení je samostatný krok zpět
   const last = state.manualViaPoints.pop();
   state.pointB = last.lngLat;
-  if(state.markerB) state.markerB.remove();
-  state.markerB = createRoutePointMarker('B', state.pointB);
   if($('endInput')) $('endInput').value = last.name || `${last.lngLat[1].toFixed(5)}, ${last.lngLat[0].toFixed(5)}`;
   fillInputWithReverseGeocode('endInput', state.pointB);
   state.clickPhase = 'done';
+  restorePointMarkers();
   refreshManualViaMarkers();
   renderWaypointList();
   findRoute();
-  setStatus(t('Vlastní trasa dokončena.'));
   return true;
 }
 
@@ -11812,22 +11864,17 @@ function pickNavSuggest(id, idx){
   if(!item) return;
   const lon = parseFloat(item.lon), lat = parseFloat(item.lat);
   if(!isFinite(lon) || !isFinite(lat)) return;
+  try{ window.__pzPushUndo?.(); }catch(e){}   // výběr místa (a hned nalezená trasa) = jeden krok zpět
   const lngLat = [lon, lat];
   const label = (typeof normalizePlaceLabel === 'function' ? normalizePlaceLabel(item) : '') || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
   const input = document.getElementById(id);
   if(input) input.value = label;
   const pointType = (id === 'startInput') ? 'A' : 'B';
-  if(pointType === 'A'){
-    state.pointA = lngLat;
-    if(state.markerA) state.markerA.remove();
-    state.markerA = createRoutePointMarker('A', lngLat);
-    state.clickPhase = state.pointB ? 'done' : 'B';
-  } else {
-    state.pointB = lngLat;
-    if(state.markerB) state.markerB.remove();
-    state.markerB = createRoutePointMarker('B', lngLat);
-    state.clickPhase = 'done';
-  }
+  if(pointType === 'A') state.pointA = lngLat; else state.pointB = lngLat;
+  state.clickPhase = state.pointA ? (state.pointB ? 'done' : 'B') : 'A';
+  restorePointMarkers();
+  closeNavSuggest(id);
+  if(state.pointA && state.pointB){ findRoute(); return; }   // trasa se pak zarámuje sama
   try {
     state.screenPan = {x:0, y:0};
     const bounds = (typeof getBoundsFromPlaceItem === 'function') ? getBoundsFromPlaceItem(item) : null;
@@ -11837,28 +11884,26 @@ function pickNavSuggest(id, idx){
       state.map.flyTo({ center: lngLat, zoom: (typeof getPlaceZoom === 'function' ? getPlaceZoom(item) : 13), duration: 700 });
     }
   } catch(e){}
-  closeNavSuggest(id);
-  try { if(typeof refreshRoutePointSelection === 'function') refreshRoutePointSelection(); } catch(e){}
-  if(state.pointA && state.pointB){ try { findRoute(); } catch(e){} }
-  else setStatus((typeof t === 'function' ? t(pointType === 'A' ? 'Bod A nastaven. Klikni do mapy pro bod B.' : 'Bod B nastaven.') : ''));
+  if(state.currentTransportMode === 'planeCustom'){ rebuildCustomPreview(); }
+  setStatus(t(pointType === 'A' ? 'Start nastaven. Zadej cíl nebo klikni do mapy.' : 'Cíl nastaven. Zadej start nebo klikni do mapy.'));
 }
 
+// Enter v poli bez otevřeného našeptávače: text se dohledá a trasa se najde.
 async function resolveNavInputThenFind(id){
   const input = document.getElementById(id);
   const val = (input?.value || '').trim();
-  if(!val){ try { findRoute(); } catch(e){} return; }
-  try {
-    const items = await searchPlaces(val, 1);
-    if(items && items.length){ pickNavSuggest.__lastItems = items; /* no-op */ }
-    if(items && items.length){
-      const item = items[0];
-      const st = _navSuggestState[id];
-      st.items = [item];
-      pickNavSuggest(id, 0);
-      return;
-    }
-  } catch(e){}
-  try { findRoute(); } catch(e){}
+  const st = _navSuggestState[id];
+  if(st){ clearTimeout(st.debounce); st.token++; }   // čekající našeptávač by se otevřel až po hledání
+  if(!val){ findRoute(); return; }
+  const has = id === 'startInput' ? state.pointA : state.pointB;
+  if(has){ findRoute(); return; }
+  setStatus(t('Hledám místo…'));
+  let items = null;
+  try { items = await searchPlaces(val, 1); } catch(e){ items = null; }
+  if((input?.value || '').trim() !== val) return;   // mezitím přepsáno
+  if(items && items.length){ st.items = [items[0]]; pickNavSuggest(id, 0); return; }
+  setStatus(items ? t('Místo „{0}“ nenalezeno. Zkus jiný název nebo klikni do mapy.', val)
+                  : t('Hledání míst neodpovídá. Zkus to znovu nebo klikni do mapy.'), 'error');
 }
 
 async function fillInputWithReverseGeocode(inputId, lngLat){
@@ -12084,7 +12129,11 @@ function pzRemoveRouteLoops(coords){
   return out;
 }
 
+var _routeReq = 0, _routeDurationSec = null;   // var: volá se i z funkcí definovaných výš
+function routeErr(code, msg){ const e = new Error(msg || code); e.code = code; return e; }
+
 async function routeFromPoints(a,b,mode){
+  _routeDurationSec = null;
   const viaPoints = (state.manualViaPoints || []).map(pt => pt.lngLat);
   const allPoints = [a, ...viaPoints, b];
   if(mode === 'planeDirect') return allPoints;
@@ -12133,15 +12182,20 @@ async function routeFromPoints(a,b,mode){
       lastErr = res;
     }catch(e){ res = null; lastErr = e; }
   }
-  if(!res){ throw new Error('Směrovací služba neodpovídá — zkus to znovu.'); }
+  if(!res){ throw routeErr('down', 'Směrovací služba neodpovídá — zkus to znovu.'); }
   // Distinguish a busy/throttled routing server (429/503) from a genuine no-route,
   // so the user knows to retry rather than assuming the route is impossible.
   if(!res.ok){
-    if(res.status === 429 || res.status === 503) throw new Error('Směrovací služba je přetížená, zkus to za chvíli.');
-    throw new Error('Směrovací služba vrátila chybu ' + res.status + '.');
+    if(res.status === 429 || res.status === 503) throw routeErr('busy', 'Směrovací služba je přetížená, zkus to za chvíli.');
+    // OSRM hlásí „cesta neexistuje" chybou 400 s kódem NoRoute/NoSegment
+    let code = ''; try{ code = (await res.json())?.code || ''; }catch(e){}
+    if(/^No(Route|Segment)$/.test(code)) throw routeErr('noroute', 'Trasa nenalezena');
+    throw routeErr('http', 'Směrovací služba vrátila chybu ' + res.status + '.');
   }
   const data = await res.json();
-  if(!data.routes?.length) throw new Error('Trasa nenalezena');
+  if(!data.routes?.length) throw routeErr('noroute', 'Trasa nenalezena');
+  // doba jízdy z routeru (auto/pěšky/kolo) — ukazuje se u délky trasy
+  _routeDurationSec = Number(data.routes[0].duration) > 0 ? Number(data.routes[0].duration) : null;
   return data.routes[0].geometry.coordinates;
 }
 
@@ -12225,7 +12279,10 @@ function updateArc3dSource(progress){
   const showTrail = $('showTrail')?.checked;
   // At rest (progress 0, nothing playing/exporting) show the whole arc —
   // the trail-style reveal only applies while the animation actually runs.
-  const atRest = (progress == null) || (progress <= 0.0001 && !state.animPlaying && !state._exportKeepSession);
+  // Bez předkreslení se ani v klidu neukazuje nic před objektem.
+  const preDraw = isRoutePreDrawOn();
+  if(!preDraw && progress == null) progress = applyAnimEasing(getCurrentAnimationProgress());
+  const atRest = preDraw && ((progress == null) || (progress <= 0.0001 && !state.animPlaying && !state._exportKeepSession));
   if(atRest || !showTrail){
     // Static whole arc → coalesced (uploaded once, not every frame).
     setSrcData(src, arc3dFullFC(state.arc3dSegments));
@@ -12241,17 +12298,33 @@ function getGhostRouteCoords(){
   return pts.length > 1 ? pts : state.routeCoords;
 }
 
+// Předkreslená (světlejší) trasa před objektem; s vypnutým „Předkreslit celou
+// trasu" není před objektem nic — v náhledu, při přehrávání i v exportu.
+function routeGhostFC(){
+  return isRoutePreDrawOn() ? ghostRouteFC(getGhostRouteCoords()) : FC_EMPTY;
+}
+// Plná čára v klidu: celá trasa. Bez předkreslení jen úsek ujetý do aktuálního
+// času animace (na začátku nic). Rozkreslená vlastní trasa je vidět vždy celá.
+function routeRestFC(){
+  const drawing = state.currentTransportMode === 'planeCustom' && !state.pointB;
+  if(isRoutePreDrawOn() || !$('showTrail')?.checked || drawing) return fullRouteFC(state.routeCoords);
+  if((state.routeCoords || []).length < 2) return FC_EMPTY;
+  const sl = sliceLineByProgress(state.routeCoords, applyAnimEasing(getCurrentAnimationProgress()));
+  return sl.coords.length > 1 ? lineStringFC(sl.coords) : FC_EMPTY;
+}
+
 function redrawRoute(){
   // Bez trasy nesmí zůstat objekt na mapě — ani když se styl zrovna dočítá
   // (krok zpět během načítání dlaždic dřív nechal vozidlo viset).
   if(!state.routeCoords?.length){ try{ removeAnimMarker(); }catch(e){} }
   if(!state.map?.isStyleLoaded()) return;
   ensureRouteSources();
-  setSrcData(state.map.getSource('route-ghost'), ghostRouteFC(getGhostRouteCoords()));
-  setSrcData(state.map.getSource('route-anim'), fullRouteFC(state.routeCoords));
+  setSrcData(state.map.getSource('route-ghost'), routeGhostFC());
+  setSrcData(state.map.getSource('route-anim'), routeRestFC());
   recomputeArc3dSegments();
   updateArc3dSource(null);
   updateRouteStyle();
+  try{ updateTransportSections(); }catch(e){}   // volby oblouku závisí i na glóbu
 }
 
 function getFitPadding(){
@@ -12322,10 +12395,15 @@ async function getPointFromInputOrState(inputId, currentPoint){
     if(parsed){
       return {point: parsed, label: `${parsed[1].toFixed(5)}, ${parsed[0].toFixed(5)}`};
     }
-    const item = await geocode(raw);
+    let item;
+    try{ item = await geocode(raw); }
+    catch(e){
+      // „nenašel jsem" a „služba neodpovídá" chtějí od grafika jiný další krok
+      const err = routeErr(/Nenalezeno/.test(String(e?.message)) ? 'geo' : 'geoDown'); err.query = raw; throw err;
+    }
     return {point: placePointFromItem(item), label: normalizePlaceLabel(item) || raw, item};
   }
-  throw new Error('Chybí bod ' + inputId);
+  throw routeErr(inputId === 'startInput' ? 'noA' : 'noB');
 }
 
 function restoreAnimationState(elapsed, wasPlaying){
@@ -12343,7 +12421,70 @@ function restoreAnimationState(elapsed, wasPlaying){
   if(wasPlaying) playAnimation();
 }
 
+// ===== Délka a doba trasy (řádek pod tlačítky + stavová hláška) =====
+function routeKm(){
+  const rc = state.routeCoords || [];
+  if(rc.length < 2) return 0;
+  const m = state.currentTransportMode;
+  // U letu vzdušná vzdálenost přes body — ozdobný oblouk je delší než skutečný let.
+  if(m === 'planeDirect' || m === 'planeArc' || m === 'planeCustom'){
+    const pts = [state.pointA, ...(state.manualViaPoints || []).map(p => p.lngLat), state.pointB].filter(Boolean);
+    let km = 0; for(let i = 1; i < pts.length; i++) km += haversineKm(pts[i-1], pts[i]);
+    return km;
+  }
+  return lineLength(rc);
+}
+function fmtRouteDuration(sec){
+  const min = Math.max(1, Math.round(sec / 60));
+  if(min < 60) return min + ' min';
+  const h = Math.floor(min / 60), mm = min % 60;
+  return h + ' h' + (mm ? ' ' + mm + ' min' : '');
+}
+function routeSummaryText(){
+  const km = routeKm();
+  if(!(km > 0)) return '';
+  const num = km >= 20 ? String(Math.round(km)) : km.toFixed(1).replace('.', currentLang === 'en' ? '.' : ',');
+  const road = ['driving','truck','moto','foot','cycle'].includes(state.currentTransportMode);
+  const dur = road && state.routeDurationSec > 0 ? ' · ' + fmtRouteDuration(state.routeDurationSec) : '';
+  return num + ' km' + dur;
+}
+function updateRouteSummary(){
+  const el = $('routeSummary');
+  if(!el) return;
+  const txt = routeSummaryText();
+  el.textContent = txt;
+  el.hidden = !txt;
+}
+
+function setRouteBusy(on){
+  const b = $('findRouteBtn');
+  if(b){ b.classList.toggle('is-busy', !!on); b.setAttribute('aria-busy', on ? 'true' : 'false'); }
+}
+// Zruší běžící hledání (smazání trasy nebo bodu): pozdní odpověď routeru by
+// jinak trasu vrátila na mapu k prázdným polím.
+function cancelRouteSearch(){ _routeReq++; setRouteBusy(false); }
+
+// Chyba hledání → co se stalo a co má grafik udělat dál.
+function routeErrorText(e){
+  const code = e?.code || '', msg = String(e?.message || '');
+  const mode = state.currentTransportMode;
+  if(code === 'noA') return t('Zadej start — napiš místo nebo klikni do mapy.');
+  if(code === 'noB') return t('Zadej cíl — napiš místo nebo klikni do mapy.');
+  if(code === 'geo') return t('Místo „{0}“ nenalezeno. Zkus jiný název nebo klikni do mapy.', e.query || '');
+  if(code === 'geoDown') return t('Hledání míst neodpovídá. Zkus to znovu nebo klikni do mapy.');
+  if(code === 'busy') return t('Směrovací služba je přetížená. Zkus to za chvíli znovu.');
+  if(code === 'down' || code === 'http') return t('Směrovací služba neodpovídá. Zkus to za chvíli znovu.');
+  if(mode === 'train' || mode === 'boat'){
+    if(/načíst/.test(msg)) return t('Síť tratí a řek se nenačetla. Zkus to znovu.');
+    return t(mode === 'train' ? 'Vlakem to nejde — tratě máme jen v Česku. Posuň bod nebo zvol jinou dopravu.'
+                              : 'Lodí to nejde — mezi body není splavná řeka. Posuň bod nebo zvol jinou dopravu.');
+  }
+  return t('Mezi startem a cílem nevede cesta. Posuň bod nebo zvol jinou dopravu.');
+}
+
 async function findRoute(){
+  const req = ++_routeReq;
+  const stale = () => req !== _routeReq;   // mezitím spuštěno nové hledání nebo trasa smazána
   state._pzLastRouteOk = false;
   // Výchozí Auto bez zvolené ikonky jezdilo jako tečka — ikonku k dopravě
   // doplnit (vlastní nahraný obrázek zůstává).
@@ -12352,18 +12493,23 @@ async function findRoute(){
   // Dismiss any open autocomplete dropdown — covers all entry points (the
   // "Najít trasu" button, Enter in a field, programmatic calls).
   try { closeNavSuggest('startInput'); closeNavSuggest('endInput'); } catch(e){}
+  state.addingFlightPoint = false;
+  setRouteBusy(true);
+  setStatus(t('Hledám trasu…'));
   try{
-    setStatus(t('Hledám trasu…'));
     const aInfo = await getPointFromInputOrState('startInput', state.pointA);
+    if(stale()) return;
     const bInfo = await getPointFromInputOrState('endInput', state.pointB);
+    if(stale()) return;
     const a = aInfo.point;
     const b = bInfo.point;
-    state.pointA = a; state.pointB = b;
+    const mode = state.currentTransportMode;
+    state.pointA = a; state.pointB = b; state.clickPhase = 'done';
     $('startInput').value = aInfo.label || `${a[1].toFixed(5)}, ${a[0].toFixed(5)}`;
     $('endInput').value = bInfo.label || `${b[1].toFixed(5)}, ${b[0].toFixed(5)}`;
     restorePointMarkers();
     let ra = a, rb = b, stA = null, stB = null;
-    if(state.currentTransportMode === 'train'){
+    if(mode === 'train'){
       try{
         const g = await pzLoadRail();
         stA = pzPickStation(g, a, aInfo.label); stB = pzPickStation(g, b, bInfo.label);
@@ -12371,9 +12517,20 @@ async function findRoute(){
         if(stB) rb = [stB.lon, stB.lat];
       }catch(e){}
     }
-    state.routeCoords = await routeFromPoints(ra,rb,state.currentTransportMode);
+    const coords = await routeFromPoints(ra,rb,mode);
+    // Výsledek patří jen stavu, pro který se hledalo — po smazání, kroku zpět
+    // nebo změně dopravy během hledání se zahodí.
+    if(stale() || state.pointA !== a || state.pointB !== b || state.currentTransportMode !== mode) return;
+    if(!coords || coords.length < 2) throw routeErr('noroute');
+    if(mode === 'train' || mode === 'boat'){
+      // Síť je jen česká: bod daleko od ní by se „přichytil" stovky km jinde.
+      const off = Math.max(haversineKm(ra, coords[0]), haversineKm(rb, coords[coords.length-1]));
+      if(off > 30) throw routeErr('offnet');
+    }
+    state.routeCoords = coords;
+    state.routeDurationSec = _routeDurationSec;
     if(stA || stB) state.pzTrainStations = [stA?.name || null, stB?.name || null]; else state.pzTrainStations = null;
-    if((state.currentTransportMode === 'train' || state.currentTransportMode === 'boat') && state.routeCoords.length > 1){
+    if((mode === 'train' || mode === 'boat') && state.routeCoords.length > 1){
       // Body A/B na koleje, ať čára nezačíná uprostřed náměstí.
       state.pointA = state.routeCoords[0].slice(); state.pointB = state.routeCoords[state.routeCoords.length-1].slice();
       restorePointMarkers();
@@ -12381,23 +12538,35 @@ async function findRoute(){
     redrawRoute();
     fitRoute();
     state._pzLastRouteOk = true;
+    updateRouteSummary();
     // Objekt na trase (auto/vlak/letadlo) má být vidět i v klidu, ne až po přehrání.
     setTimeout(() => { try{ refreshAnimatedMarkerPreview(); }catch(e){} }, 0);
     try{ clearPlaceSearchMarker(); }catch(e){}   // starý pin z hledání by překrýval bod A/B
-    setStatus(state.pzTrainStations ? (t('Trasa nalezena.') + ' ' + (state.pzTrainStations[0] || '…') + ' → ' + (state.pzTrainStations[1] || '…')) : t('Trasa nalezena.'));
+    const sum = routeSummaryText();
+    let msg = t('Trasa nalezena.') + (sum ? ' ' + sum : '');
+    if(state.pzTrainStations) msg += ' · ' + (state.pzTrainStations[0] || '…') + ' → ' + (state.pzTrainStations[1] || '…');
+    if(!isRoutePreDrawOn() && $('showTrail')?.checked) msg += ' · ' + t('Vykreslí se při přehrání.');
+    setStatus(msg);
   } catch (e){
-    console.error(e);
-    // Surface a transient routing-server problem distinctly from a real no-route,
-    // so the user retries instead of assuming the route is impossible.
-    const msg = String(e?.message || '');
-    if(/přetížen|chybu \d/.test(msg)) setStatus(msg, 'error');
-    else setStatus(t('Trasu se nepodařilo najít.'), 'error');
+    if(stale()) return;
+    console.warn(e);
+    // Po neúspěchu nesmí na mapě zůstat stará čára (patřila jiné dopravě nebo
+    // jiným bodům); body a text polí zůstávají, ať jde hned zkusit znovu.
+    state.pzTrainStations = null; state.routeDurationSec = null;
+    clearRouteLineOnly();
+    restorePointMarkers();
+    updateRouteSummary();
+    setStatus(routeErrorText(e), 'error');
+  } finally {
+    if(!stale()) setRouteBusy(false);
   }
 }
 
 function clearRoute(){
+  cancelRouteSearch();
   state.routeCoords = [];
   state.arc3dSegments = [];
+  state.routeDurationSec = null; state.pzTrainStations = null;
   setSrcData(state.map?.getSource('route-arc3d'), FC_EMPTY);
   setSrcData(state.map?.getSource('route-ghost'), FC_EMPTY);
   setSrcData(state.map?.getSource('route-anim'), FC_EMPTY);
@@ -12407,11 +12576,33 @@ function clearRoute(){
   state.selectedRoutePointType = null;
   state.addingFlightPoint = false; state.addingSceneIcon = false;
   $('startInput').value=''; $('endInput').value='';
+  try{ closeNavSuggest('startInput'); closeNavSuggest('endInput'); }catch(e){}
   clearManualViaPoints();
-  clearSceneIcons();
+  // Ikonky scény zůstávají — „Smazat" u trasy je dřív mazalo taky.
   removeAnimMarker();
   stopAnimation();
-  setStatus(t('Trasa smazána. Klikni do mapy pro nový bod A.'));
+  updateRouteSummary();
+  setStatus(t('Trasa smazána.'));
+}
+
+// Prohodí start a cíl (a obrátí pořadí zastávek), trasu přepočítá.
+function swapRoutePoints(){
+  const sI = $('startInput'), eI = $('endInput');
+  const aTxt = sI?.value || '', bTxt = eI?.value || '';
+  if(!state.pointA && !state.pointB && !aTxt.trim() && !bTxt.trim()){ setStatus(t('Nejdřív zadej start a cíl.')); return; }
+  if(state.currentTransportMode === 'planeCustom' && state.pointA && !state.pointB){
+    setStatus(t('Nejdřív trasu ukonči pravým tlačítkem.')); return;
+  }
+  cancelRouteSearch();
+  [state.pointA, state.pointB] = [state.pointB, state.pointA];
+  if(sI) sI.value = bTxt; if(eI) eI.value = aTxt;
+  state.manualViaPoints.reverse();
+  state.selectedRoutePointType = null;
+  state.clickPhase = state.pointA ? (state.pointB ? 'done' : 'B') : 'A';
+  restorePointMarkers(); renderWaypointList(); refreshManualViaMarkers();
+  const hasA = state.pointA || bTxt.trim(), hasB = state.pointB || aTxt.trim();
+  if(hasA && hasB) findRoute();
+  else { clearRouteLineOnly(); updateRouteSummary(); setStatus(t('Start a cíl prohozeny.')); }
 }
 
 function updateRouteStyle(){
@@ -13423,7 +13614,7 @@ function setAnimProgress(progress){
   const animSrc = state.map.getSource('route-anim');
   if(showTrail){
     const partial = sliced.coords.length > 1 ? lineStringFC(sliced.coords) : FC_EMPTY;
-    setSrcData(ghostSrc, ghostRouteFC(getGhostRouteCoords()));
+    setSrcData(ghostSrc, routeGhostFC());   // prázdné, když je „Předkreslit celou trasu" vypnuté
     setSrcData(animSrc, partial);
   } else {
     setSrcData(ghostSrc, FC_EMPTY);
@@ -16214,13 +16405,28 @@ function bindUI(){
           try{ window.__pzPushUndo?.(); }catch(err){}
           e.preventDefault();
           removeManualViaPoint(state.manualViaPoints.length - 1, 'undo');
+        } else if(onRouteTab && state.currentTransportMode === 'planeCustom' && state.pointA && !state.pointB){
+          // rozkreslená vlastní trasa jen se startem: Backspace vrátí i ten
+          try{ window.__pzPushUndo?.(); }catch(err){}
+          e.preventDefault();
+          deleteRoutePoint('A');
         }
       }
     }
   });
   ['startInput','endInput'].forEach(id => {
     $(id)?.addEventListener('input', ()=>{
-      if(id === 'startInput'){ state.pointA = null; if(state.selectedRoutePointType === 'A') state.selectedRoutePointType = null; }
+      const isA = id === 'startInput', had = isA ? state.pointA : state.pointB;
+      // přepsání pole ruší dosavadní bod — snímek, ať jde vrátit jedním krokem
+      if(had){ try{ window.__pzPushUndo?.(); }catch(e){} }
+      if(!$(id).value.trim()){
+        // Vymazané pole = smazaný bod: značka ani čára nesmí zůstat viset na mapě.
+        const st = _navSuggestState[id]; if(st){ clearTimeout(st.debounce); st.token++; }
+        closeNavSuggest(id);
+        if(had || (state.routeCoords || []).length) deleteRoutePoint(isA ? 'A' : 'B');
+        return;
+      }
+      if(isA){ state.pointA = null; if(state.selectedRoutePointType === 'A') state.selectedRoutePointType = null; }
       else { state.pointB = null; if(state.selectedRoutePointType === 'B') state.selectedRoutePointType = null; }
       refreshRoutePointSelection();
       queueNavSuggest(id);
@@ -16264,15 +16470,22 @@ function bindUI(){
   });
   $('placeSearchBtn')?.addEventListener('click', ()=> performPlaceSearch({focusFirst:true, keepList:false}));
   $('clearPlaceSearchBtn')?.addEventListener('click', clearPlaceSearch);
-  $('findRouteBtn')?.addEventListener('click', ()=>{ state.addingMapLabel = false; state.addingSceneIcon = false; state.addingScenePerimeter = false; state.addingSceneDistance = false; state.addingFlightPoint = false; findRoute(); });
+  $('findRouteBtn')?.addEventListener('click', ()=>{ state.addingMapLabel = false; state.addingSceneIcon = false; state.addingScenePerimeter = false; state.addingSceneDistance = false; state.addingFlightPoint = false;
+    // Rozkreslená vlastní trasa: tlačítko ji dokončí stejně jako pravé tlačítko myši.
+    if(state.currentTransportMode === 'planeCustom' && state.pointA && !state.pointB && !$('endInput')?.value.trim()){ finishCustomRoute(); return; }
+    findRoute();
+  });
+  $('swapRouteBtn')?.addEventListener('click', swapRoutePoints);
   $('clearRouteBtn')?.addEventListener('click', ()=>{ state.addingMapLabel = false; state.addingSceneIcon = false; state.addingScenePerimeter = false; state.addingSceneDistance = false; state.addingFlightPoint = false; clearRoute(); });
   $('addWaypointBtn')?.addEventListener('click', ()=>{
     state.addingMapLabel = false;
     state.addingSceneIcon = false;
     state.addingScenePerimeter = false;
     state.addingSceneDistance = false;
-    state.addingFlightPoint = false;
-    setStatus(t('Nastav body A a B, pak drž Ctrl a klikáním do mapy přidávej průjezdné body.'));
+    if(!(state.pointA && state.pointB)){ state.addingFlightPoint = false; setStatus(t('Nejdřív zadej start a cíl.'), 'error'); return; }
+    // Přepínač: další klik do mapy vloží zastávku (pak se sám vypne).
+    state.addingFlightPoint = !state.addingFlightPoint;
+    setStatus(state.addingFlightPoint ? t('Klikni do mapy na místo zastávky.') : t('Vkládání zastávky zrušeno.'));
   });
   $('animPlayBtn')?.addEventListener('click', playAnimation);
   $('objSmooth')?.addEventListener('input', e => { const v = $('objSmoothVal'); if(v) v.textContent = e.target.value + ' %'; });
@@ -16540,7 +16753,7 @@ function bindUI(){
     state.addingFlightPoint = true; state.addingSceneIcon = false; state.addingMapLabel = false;
     setStatus(t('Klikni do mapy pro přidání bodu letu. Backspace vrací poslední bod, Ctrl + klik na bod ho smaže.'));
   });
-  $('clearFlightWaypointsBtn')?.addEventListener('click', ()=>{ clearManualViaPoints(); if(state.pointA && state.pointB) findRoute(); setStatus(t('Body letu smazány.')); });
+  $('clearFlightWaypointsBtn')?.addEventListener('click', ()=>{ state.manualViaPoints = []; state.addingFlightPoint = false; afterViaChange(); if(!(state.pointA && state.pointB)) setStatus(t('Body smazány.')); });
 
   $('countryBorderMode')?.addEventListener('change', applyPoliticalOverlayTweaks);
   $('countryFocusSelect')?.addEventListener('change', () => { syncCountrySelects($('countryFocusSelect')?.value || ''); applyPoliticalOverlayTweaks(); });
@@ -16632,17 +16845,57 @@ function bindUI(){
     // Entering custom-draw mode: start with a clean slate and prompt the user.
     if(state.currentTransportMode === 'planeCustom' && prevMode !== 'planeCustom'){
       clearRoute();
-      setStatus(t('Vlastní let: klikej do mapy a kresli trasu. Pravým tlačítkem ukončíš (poslední bod = cíl).'));
+      setStatus(t('Vlastní trasa: klikej body do mapy, pravé tlačítko ji ukončí.'));
       return;
     }
-    if(state.pointA && state.pointB && state.routeCoords.length) findRoute();
-    else if(!state.animPlaying && state.routeCoords.length && $('animDot')?.checked){
-      const delay = parseFloat($('animStart')?.value || '0');
-      const dur = Math.max(0.001, parseFloat($('animDuration')?.value || '8'));
-      const progress = state.animElapsed <= delay ? 0 : Math.min(1, (state.animElapsed - delay) / dur);
-      setAnimProgress(progress);
+    // Odchod z rozkreslené vlastní trasy: poslední nakreslený bod se stane cílem,
+    // jinak by zůstaly body bez cíle a nová doprava by neměla co hledat.
+    if(prevMode === 'planeCustom' && state.currentTransportMode !== 'planeCustom' && state.pointA && !state.pointB && state.manualViaPoints.length){
+      const last = state.manualViaPoints.pop();
+      state.pointB = last.lngLat;
+      if($('endInput')) $('endInput').value = last.name || '';
+      restorePointMarkers(); refreshManualViaMarkers(); renderWaypointList();
+    }
+    // Trasa se přepočítá, kdykoli je z čeho — i z rozepsaných polí nebo po
+    // předchozím neúspěchu. Jinak stav řekne, co chybí.
+    const hasA = state.pointA || $('startInput')?.value.trim(), hasB = state.pointB || $('endInput')?.value.trim();
+    if(hasA && hasB) findRoute();
+    else {
+      if((state.routeCoords || []).length){ clearRouteLineOnly(); updateRouteSummary(); }
+      const name = btn.querySelector('.t-label')?.textContent?.trim() || '';
+      setStatus(name + ': ' + t(hasA ? 'zadej cíl nebo klikni do mapy.' : 'zadej start a cíl nebo klikni do mapy.'));
     }
   }));
+  // „Předkreslit celou trasu": vypnutí dává smysl jen se stopou za objektem, proto ji zapne.
+  $('routePreDraw')?.addEventListener('change', ()=>{
+    const on = isRoutePreDrawOn();
+    if(!on && $('showTrail') && !$('showTrail').checked) $('showTrail').checked = true;
+    updateTransportSections();
+    redrawRoute();
+    refreshAnimatedMarkerPreview();
+    setStatus(on ? t('Celá trasa je předkreslená.') : t('Trasa se vykreslí až při přehrání.'));
+  });
+  // Jednorázově: Vzhled trasy rozbalit i tomu, kdo ho měl uložený sbalený —
+  // nová volba „Předkreslit celou trasu" má být vidět hned.
+  try{
+    if(!localStorage.getItem('pzRouteLookOpen1')){
+      localStorage.setItem('pzRouteLookOpen1', '1');
+      const sec = $('routeLookSection');
+      if(sec){
+        const key = getAccordionStorageKey(sec, 0);
+        if(sec.dataset.accordionReady === '1') setAccordionOpen(sec, true, key, true);
+        else localStorage.removeItem(key);
+      }
+    }
+  }catch(e){}
+  // viditelnost voleb oblouku závisí i na glóbu
+  $('globeProjection')?.addEventListener('change', ()=> setTimeout(updateTransportSections, 0));
+  // tlačítko „+ Zastávka" svítí, dokud appka čeká na klik do mapy
+  try{
+    let _addingStop = !!state.addingFlightPoint;
+    const syncAddStop = () => { const b = $('addWaypointBtn'); if(b){ b.classList.toggle('is-on', _addingStop); b.setAttribute('aria-pressed', _addingStop ? 'true' : 'false'); } };
+    Object.defineProperty(state, 'addingFlightPoint', {configurable:true, enumerable:true, get(){ return _addingStop; }, set(v){ _addingStop = !!v; syncAddStop(); }});
+  }catch(e){}
   $$('.rotation-mode-btn').forEach(btn => btn.addEventListener('click', ()=>{ state.currentRotMode = btn.dataset.rotmode; setActiveButton('.rotation-mode-btn', 'rotmode', state.currentRotMode); state.smoothAngle = null; }));
   refreshPresetSelect();
   renderPresetTiles();
@@ -16676,6 +16929,58 @@ Object.assign(I18N, {
   // .
   // .
   // [i18n:trasa] překlady oblasti „trasa" vkládej pod tento řádek
+  "+ Zastávka": {cs:"+ Zastávka",sk:"+ Zastávka",bg:"+ Спирка",hr:"+ Stanica",ro:"+ Oprire",en:"+ Stop"},
+  "Prohodit start a cíl": {cs:"Prohodit start a cíl",sk:"Vymeniť štart a cieľ",bg:"Размени старт и цел",hr:"Zamijeni start i cilj",ro:"Inversează startul și destinația",en:"Swap start and destination"},
+  "Klikni do mapy na místo zastávky (nebo Ctrl + klik)": {cs:"Klikni do mapy na místo zastávky (nebo Ctrl + klik)",sk:"Klikni do mapy na miesto zastávky (alebo Ctrl + klik)",bg:"Кликни в картата на мястото на спирката (или Ctrl + клик)",hr:"Klikni na kartu na mjesto stanice (ili Ctrl + klik)",ro:"Click pe hartă în locul opririi (sau Ctrl + click)",en:"Click the map where the stop should be (or Ctrl + click)"},
+  "Barva trasy": {cs:"Barva",sk:"Farba",bg:"Цвят",hr:"Boja",ro:"Culoare",en:"Color"},
+  "Záře trasy": {cs:"Záře",sk:"Žiara",bg:"Сияние",hr:"Sjaj",ro:"Strălucire",en:"Glow"},
+  "Síla záře": {cs:"Síla záře",sk:"Sila žiary",bg:"Сила на сиянието",hr:"Jačina sjaja",ro:"Intensitatea strălucirii",en:"Glow strength"},
+  "Předkreslit celou trasu": {cs:"Předkreslit celou trasu",sk:"Predkresliť celú trasu",bg:"Начертай целия маршрут предварително",hr:"Unaprijed nacrtaj cijelu rutu",ro:"Desenează tot traseul dinainte",en:"Pre-draw the whole route"},
+  "Přímá spojnice místo oblouku": {cs:"Přímá spojnice místo oblouku",sk:"Priama spojnica namiesto oblúka",bg:"Права линия вместо дъга",hr:"Ravna linija umjesto luka",ro:"Linie dreaptă în loc de arc",en:"Straight line instead of arc"},
+  "Skrýt stín na zemi": {cs:"Skrýt stín na zemi",sk:"Skryť tieň na zemi",bg:"Скрий сянката на земята",hr:"Sakrij sjenu na tlu",ro:"Ascunde umbra de pe sol",en:"Hide ground shadow"},
+  "3D pohled na oblouk": {cs:"3D pohled na oblouk",sk:"3D pohľad na oblúk",bg:"3D изглед към дъгата",hr:"3D pogled na luk",ro:"Vedere 3D a arcului",en:"3D view of the arc"},
+  "Další možnosti": {cs:"Další možnosti",sk:"Ďalšie možnosti",bg:"Още опции",hr:"Više opcija",ro:"Mai multe opțiuni",en:"More options"},
+  "Konce trasy": {cs:"Konce trasy",sk:"Konce trasy",bg:"Краища на маршрута",hr:"Krajevi rute",ro:"Capetele traseului",en:"Route ends"},
+  "Posunout výš": {cs:"Posunout výš",sk:"Posunúť vyššie",bg:"Премести нагоре",hr:"Pomakni gore",ro:"Mută mai sus",en:"Move up"},
+  "Posunout níž": {cs:"Posunout níž",sk:"Posunúť nižšie",bg:"Премести надолу",hr:"Pomakni dolje",ro:"Mută mai jos",en:"Move down"},
+  "Táhni pro přesun, Delete smaže": {cs:"Táhni pro přesun, Delete smaže",sk:"Ťahaj na presun, Delete zmaže",bg:"Влачи за преместване, Delete изтрива",hr:"Povuci za premještanje, Delete briše",ro:"Trage pentru mutare, Delete șterge",en:"Drag to move, Delete removes"},
+  "Táhni pro přesun, Ctrl + klik smaže": {cs:"Táhni pro přesun, Ctrl + klik smaže",sk:"Ťahaj na presun, Ctrl + klik zmaže",bg:"Влачи за преместване, Ctrl + клик изтрива",hr:"Povuci za premještanje, Ctrl + klik briše",ro:"Trage pentru mutare, Ctrl + click șterge",en:"Drag to move, Ctrl + click removes"},
+  "Start smazán. Klikni do mapy na nový.": {cs:"Start smazán. Klikni do mapy na nový.",sk:"Štart zmazaný. Klikni do mapy na nový.",bg:"Стартът е изтрит. Кликни в картата за нов.",hr:"Start obrisan. Klikni na kartu za novi.",ro:"Start șters. Click pe hartă pentru unul nou.",en:"Start removed. Click the map to set a new one."},
+  "Cíl smazán. Klikni do mapy na nový.": {cs:"Cíl smazán. Klikni do mapy na nový.",sk:"Cieľ zmazaný. Klikni do mapy na nový.",bg:"Целта е изтрита. Кликни в картата за нова.",hr:"Cilj obrisan. Klikni na kartu za novi.",ro:"Destinație ștearsă. Click pe hartă pentru una nouă.",en:"Destination removed. Click the map to set a new one."},
+  "Cíl smazán. Klikáním pokračuj v kreslení.": {cs:"Cíl smazán. Klikáním pokračuj v kreslení.",sk:"Cieľ zmazaný. Klikaním pokračuj v kreslení.",bg:"Целта е изтрита. Продължи да чертаеш с кликване.",hr:"Cilj obrisan. Nastavi crtati klikanjem.",ro:"Destinație ștearsă. Continuă desenul cu click-uri.",en:"Destination removed. Keep clicking to continue drawing."},
+  "Start nastaven. Klikni do mapy na cíl.": {cs:"Start nastaven. Klikni do mapy na cíl.",sk:"Štart nastavený. Klikni do mapy na cieľ.",bg:"Стартът е зададен. Кликни в картата за целта.",hr:"Start postavljen. Klikni na kartu za cilj.",ro:"Start setat. Click pe hartă pentru destinație.",en:"Start set. Click the map for the destination."},
+  "Cíl nastaven. Klikni do mapy na start.": {cs:"Cíl nastaven. Klikni do mapy na start.",sk:"Cieľ nastavený. Klikni do mapy na štart.",bg:"Целта е зададена. Кликни в картата за старта.",hr:"Cilj postavljen. Klikni na kartu za start.",ro:"Destinație setată. Click pe hartă pentru start.",en:"Destination set. Click the map for the start."},
+  "Start nastaven. Zadej cíl nebo klikni do mapy.": {cs:"Start nastaven. Zadej cíl nebo klikni do mapy.",sk:"Štart nastavený. Zadaj cieľ alebo klikni do mapy.",bg:"Стартът е зададен. Въведи цел или кликни в картата.",hr:"Start postavljen. Upiši cilj ili klikni na kartu.",ro:"Start setat. Scrie destinația sau click pe hartă.",en:"Start set. Type the destination or click the map."},
+  "Cíl nastaven. Zadej start nebo klikni do mapy.": {cs:"Cíl nastaven. Zadej start nebo klikni do mapy.",sk:"Cieľ nastavený. Zadaj štart alebo klikni do mapy.",bg:"Целта е зададена. Въведи старт или кликни в картата.",hr:"Cilj postavljen. Upiši start ili klikni na kartu.",ro:"Destinație setată. Scrie startul sau click pe hartă.",en:"Destination set. Type the start or click the map."},
+  "Poslední bod smazán.": {cs:"Poslední bod smazán.",sk:"Posledný bod zmazaný.",bg:"Последната точка е изтрита.",hr:"Zadnja točka obrisana.",ro:"Ultimul punct a fost șters.",en:"Last point removed."},
+  "Bod trasy smazán.": {cs:"Bod trasy smazán.",sk:"Bod trasy zmazaný.",bg:"Точката от маршрута е изтрита.",hr:"Točka rute obrisana.",ro:"Punctul traseului a fost șters.",en:"Route point removed."},
+  "Body smazány.": {cs:"Body smazány.",sk:"Body zmazané.",bg:"Точките са изтрити.",hr:"Točke obrisane.",ro:"Punctele au fost șterse.",en:"Points removed."},
+  "Nejdřív zadej start a cíl.": {cs:"Nejdřív zadej start a cíl.",sk:"Najprv zadaj štart a cieľ.",bg:"Първо задай старт и цел.",hr:"Najprije zadaj start i cilj.",ro:"Mai întâi setează startul și destinația.",en:"Set the start and destination first."},
+  "Klikni do mapy na místo zastávky.": {cs:"Klikni do mapy na místo zastávky.",sk:"Klikni do mapy na miesto zastávky.",bg:"Кликни в картата на мястото на спирката.",hr:"Klikni na kartu na mjesto stanice.",ro:"Click pe hartă în locul opririi.",en:"Click the map where the stop should be."},
+  "Vkládání zastávky zrušeno.": {cs:"Vkládání zastávky zrušeno.",sk:"Vkladanie zastávky zrušené.",bg:"Добавянето на спирка е отменено.",hr:"Dodavanje stanice otkazano.",ro:"Adăugarea opririi a fost anulată.",en:"Adding a stop cancelled."},
+  "Trasa je hotová. Ctrl + klik přidá bod, Smazat začne novou.": {cs:"Trasa je hotová. Ctrl + klik přidá bod, Smazat začne novou.",sk:"Trasa je hotová. Ctrl + klik pridá bod, Zmazať začne novú.",bg:"Маршрутът е готов. Ctrl + клик добавя точка, Изтрий започва нов.",hr:"Ruta je gotova. Ctrl + klik dodaje točku, Obriši započinje novu.",ro:"Traseul e gata. Ctrl + click adaugă un punct, Șterge începe unul nou.",en:"The route is finished. Ctrl + click adds a point, Delete starts a new one."},
+  "Start nastaven. Klikej další body, pravé tlačítko trasu ukončí.": {cs:"Start nastaven. Klikej další body, pravé tlačítko trasu ukončí.",sk:"Štart nastavený. Klikaj ďalšie body, pravé tlačidlo trasu ukončí.",bg:"Стартът е зададен. Кликай следващи точки, десният бутон завършва маршрута.",hr:"Start postavljen. Klikaj sljedeće točke, desna tipka završava rutu.",ro:"Start setat. Dă click pe următoarele puncte, click dreapta încheie traseul.",en:"Start set. Click more points; right-click finishes the route."},
+  "Bod {0}. Pravé tlačítko trasu ukončí.": {cs:"Bod {0}. Pravé tlačítko trasu ukončí.",sk:"Bod {0}. Pravé tlačidlo trasu ukončí.",bg:"Точка {0}. Десният бутон завършва маршрута.",hr:"Točka {0}. Desna tipka završava rutu.",ro:"Punctul {0}. Click dreapta încheie traseul.",en:"Point {0}. Right-click finishes the route."},
+  "Klikni aspoň jeden další bod, pak trasu ukonči.": {cs:"Klikni aspoň jeden další bod, pak trasu ukonči.",sk:"Klikni aspoň jeden ďalší bod, potom trasu ukonči.",bg:"Кликни поне още една точка, след това завърши маршрута.",hr:"Klikni barem još jednu točku, zatim završi rutu.",ro:"Dă click pe încă cel puțin un punct, apoi încheie traseul.",en:"Click at least one more point, then finish the route."},
+  "Nejdřív trasu ukonči pravým tlačítkem.": {cs:"Nejdřív trasu ukonči pravým tlačítkem.",sk:"Najprv trasu ukonči pravým tlačidlom.",bg:"Първо завърши маршрута с десния бутон.",hr:"Najprije završi rutu desnom tipkom.",ro:"Mai întâi încheie traseul cu click dreapta.",en:"Finish the route with a right-click first."},
+  "Vlastní trasa: klikej body do mapy, pravé tlačítko ji ukončí.": {cs:"Vlastní trasa: klikej body do mapy, pravé tlačítko ji ukončí.",sk:"Vlastná trasa: klikaj body do mapy, pravé tlačidlo ju ukončí.",bg:"Собствен маршрут: кликай точки в картата, десният бутон го завършва.",hr:"Vlastita ruta: klikaj točke na karti, desna tipka je završava.",ro:"Traseu propriu: dă click pe puncte pe hartă, click dreapta îl încheie.",en:"Custom route: click points on the map; right-click finishes it."},
+  "Místo „{0}“ nenalezeno. Zkus jiný název nebo klikni do mapy.": {cs:"Místo „{0}“ nenalezeno. Zkus jiný název nebo klikni do mapy.",sk:"Miesto „{0}“ sa nenašlo. Skús iný názov alebo klikni do mapy.",bg:"Мястото „{0}“ не е намерено. Опитай друго име или кликни в картата.",hr:"Mjesto „{0}“ nije pronađeno. Pokušaj drugi naziv ili klikni na kartu.",ro:"Locul „{0}” nu a fost găsit. Încearcă alt nume sau click pe hartă.",en:"Place “{0}” not found. Try another name or click the map."},
+  "Hledání míst neodpovídá. Zkus to znovu nebo klikni do mapy.": {cs:"Hledání míst neodpovídá. Zkus to znovu nebo klikni do mapy.",sk:"Hľadanie miest neodpovedá. Skús to znova alebo klikni do mapy.",bg:"Търсенето на места не отговаря. Опитай отново или кликни в картата.",hr:"Pretraga mjesta ne odgovara. Pokušaj ponovno ili klikni na kartu.",ro:"Căutarea locurilor nu răspunde. Încearcă din nou sau click pe hartă.",en:"Place search is not responding. Try again or click the map."},
+  "Zadej start — napiš místo nebo klikni do mapy.": {cs:"Zadej start — napiš místo nebo klikni do mapy.",sk:"Zadaj štart — napíš miesto alebo klikni do mapy.",bg:"Задай старт — напиши място или кликни в картата.",hr:"Zadaj start — upiši mjesto ili klikni na kartu.",ro:"Setează startul — scrie un loc sau click pe hartă.",en:"Set the start — type a place or click the map."},
+  "Zadej cíl — napiš místo nebo klikni do mapy.": {cs:"Zadej cíl — napiš místo nebo klikni do mapy.",sk:"Zadaj cieľ — napíš miesto alebo klikni do mapy.",bg:"Задай цел — напиши място или кликни в картата.",hr:"Zadaj cilj — upiši mjesto ili klikni na kartu.",ro:"Setează destinația — scrie un loc sau click pe hartă.",en:"Set the destination — type a place or click the map."},
+  "Směrovací služba je přetížená. Zkus to za chvíli znovu.": {cs:"Směrovací služba je přetížená. Zkus to za chvíli znovu.",sk:"Smerovacia služba je preťažená. Skús to o chvíľu znova.",bg:"Услугата за маршрути е претоварена. Опитай отново след малко.",hr:"Usluga za rute je preopterećena. Pokušaj ponovno za trenutak.",ro:"Serviciul de rutare este supraîncărcat. Încearcă din nou peste puțin timp.",en:"The routing service is overloaded. Try again in a moment."},
+  "Směrovací služba neodpovídá. Zkus to za chvíli znovu.": {cs:"Směrovací služba neodpovídá. Zkus to za chvíli znovu.",sk:"Smerovacia služba neodpovedá. Skús to o chvíľu znova.",bg:"Услугата за маршрути не отговаря. Опитай отново след малко.",hr:"Usluga za rute ne odgovara. Pokušaj ponovno za trenutak.",ro:"Serviciul de rutare nu răspunde. Încearcă din nou peste puțin timp.",en:"The routing service is not responding. Try again in a moment."},
+  "Síť tratí a řek se nenačetla. Zkus to znovu.": {cs:"Síť tratí a řek se nenačetla. Zkus to znovu.",sk:"Sieť tratí a riek sa nenačítala. Skús to znova.",bg:"Мрежата от линии и реки не се зареди. Опитай отново.",hr:"Mreža pruga i rijeka nije učitana. Pokušaj ponovno.",ro:"Rețeaua de căi ferate și râuri nu s-a încărcat. Încearcă din nou.",en:"The rail and river network did not load. Try again."},
+  "Vlakem to nejde — tratě máme jen v Česku. Posuň bod nebo zvol jinou dopravu.": {cs:"Vlakem to nejde — tratě máme jen v Česku. Posuň bod nebo zvol jinou dopravu.",sk:"Vlakom to nejde — trate máme len v Česku. Posuň bod alebo zvoľ inú dopravu.",bg:"С влак не става — имаме линии само в Чехия. Премести точката или избери друг транспорт.",hr:"Vlakom ne ide — pruge imamo samo u Češkoj. Pomakni točku ili odaberi drugi prijevoz.",ro:"Cu trenul nu se poate — avem linii doar în Cehia. Mută punctul sau alege alt transport.",en:"No train route — we only have tracks in Czechia. Move a point or pick another transport."},
+  "Lodí to nejde — mezi body není splavná řeka. Posuň bod nebo zvol jinou dopravu.": {cs:"Lodí to nejde — mezi body není splavná řeka. Posuň bod nebo zvol jinou dopravu.",sk:"Loďou to nejde — medzi bodmi nie je splavná rieka. Posuň bod alebo zvoľ inú dopravu.",bg:"С кораб не става — между точките няма плавателна река. Премести точката или избери друг транспорт.",hr:"Brodom ne ide — između točaka nema plovne rijeke. Pomakni točku ili odaberi drugi prijevoz.",ro:"Cu vaporul nu se poate — între puncte nu există un râu navigabil. Mută punctul sau alege alt transport.",en:"No boat route — there is no navigable river between the points. Move a point or pick another transport."},
+  "Mezi startem a cílem nevede cesta. Posuň bod nebo zvol jinou dopravu.": {cs:"Mezi startem a cílem nevede cesta. Posuň bod nebo zvol jinou dopravu.",sk:"Medzi štartom a cieľom nevedie cesta. Posuň bod alebo zvoľ inú dopravu.",bg:"Между старта и целта няма път. Премести точката или избери друг транспорт.",hr:"Između starta i cilja nema puta. Pomakni točku ili odaberi drugi prijevoz.",ro:"Între start și destinație nu există drum. Mută punctul sau alege alt transport.",en:"There is no road between the start and destination. Move a point or pick another transport."},
+  "Vykreslí se při přehrání.": {cs:"Vykreslí se při přehrání.",sk:"Vykreslí sa pri prehraní.",bg:"Ще се начертае при възпроизвеждане.",hr:"Iscrtat će se pri reprodukciji.",ro:"Se desenează la redare.",en:"It draws during playback."},
+  "Celá trasa je předkreslená.": {cs:"Celá trasa je předkreslená.",sk:"Celá trasa je predkreslená.",bg:"Целият маршрут е начертан предварително.",hr:"Cijela ruta je unaprijed nacrtana.",ro:"Tot traseul este desenat dinainte.",en:"The whole route is pre-drawn."},
+  "Trasa se vykreslí až při přehrání.": {cs:"Trasa se vykreslí až při přehrání.",sk:"Trasa sa vykreslí až pri prehraní.",bg:"Маршрутът ще се начертае едва при възпроизвеждане.",hr:"Ruta će se iscrtati tek pri reprodukciji.",ro:"Traseul se desenează abia la redare.",en:"The route draws only during playback."},
+  "Trasa smazána.": {cs:"Trasa smazána.",sk:"Trasa zmazaná.",bg:"Маршрутът е изтрит.",hr:"Ruta obrisana.",ro:"Traseu șters.",en:"Route deleted."},
+  "Start a cíl prohozeny.": {cs:"Start a cíl prohozeny.",sk:"Štart a cieľ vymenené.",bg:"Стартът и целта са разменени.",hr:"Start i cilj zamijenjeni.",ro:"Startul și destinația au fost inversate.",en:"Start and destination swapped."},
+  "zadej cíl nebo klikni do mapy.": {cs:"zadej cíl nebo klikni do mapy.",sk:"zadaj cieľ alebo klikni do mapy.",bg:"въведи цел или кликни в картата.",hr:"upiši cilj ili klikni na kartu.",ro:"scrie destinația sau click pe hartă.",en:"type the destination or click the map."},
+  "zadej start a cíl nebo klikni do mapy.": {cs:"zadej start a cíl nebo klikni do mapy.",sk:"zadaj štart a cieľ alebo klikni do mapy.",bg:"въведи старт и цел или кликни в картата.",hr:"upiši start i cilj ili klikni na kartu.",ro:"scrie startul și destinația sau click pe hartă.",en:"type the start and destination or click the map."},
   // .
   // .
   // .
@@ -17017,7 +17322,6 @@ function applyLang(lang) {
       'globeProjection': 'Glóbus (3D zeměkoule)',
       'followCameraRotate': 'Kamera se otáčí podle směru jízdy',
       'exportTransparent': 'Průhledné pozadí (bez mapy)',
-      'showDirectLine': 'Zobrazit přímou spojnici (oblouk)',
     };
     if (checkMap[cbId]) {
       // Replace text nodes after the checkbox
@@ -17037,7 +17341,7 @@ function applyLang(lang) {
     'clearPlaceSearchBtn': 'Smazat',
     'savePresetBtn': '+ Přidat preset',
     'updatePresetBtn': 'Uložit změny',
-    'addWaypointBtn': '+ Přidat zastávku',
+    'addWaypointBtn': '+ Zastávka',
     'addFlightWaypointBtn': '+ Bod letu klikem',
     'clearFlightWaypointsBtn': 'Smazat body',
     'addSceneIconBtn': 'Klikni do mapy',
@@ -17412,7 +17716,7 @@ document.addEventListener('keydown', e => {
   const MUTATING_BUTTON_IDS = new Set([
     'clearRouteBtn','clearFlightWaypointsBtn','clearSceneIconsBtn',
     'clearMapLabelsBtn','clearPoliticalPaintingBtn',
-    'findRouteBtn','addWaypointBtn','addFlightWaypointBtn',
+    'findRouteBtn','addFlightWaypointBtn','swapRouteBtn',
     'applyPoliticalCountryColorBtn','applyCzRegionColorBtn',
     'savePresetBtn','updatePresetBtn',
     'resetPoliticalSelectionBtn','resetCzSelectionBtn',
@@ -17425,7 +17729,7 @@ document.addEventListener('keydown', e => {
     'resetPoliticalCountryColorBtn','clearPoliticalCountryColorsBtn'
   ]);
   // Volba druhu dopravy trasu hned přepočítá — snímek musí vzniknout PŘED tím.
-  const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove';
+  const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove, #waypointList button, #routeLookSection .endpoint-shape';
   window.__pzPushUndo = () => pushUndo();
   window.__pzUndo = () => { const n = undoStack.length; doUndo(); return n > 0; };
   window.__pzRedo = () => { const n = redoStack.length; doRedo(); return n > 0; };   // asistent: snímek před každým nástrojem
@@ -18925,6 +19229,35 @@ function pzColorFromName(v){
 /* . */
 /* . */
 /* [css:trasa] pravidla oblasti „trasa" vkládej pod tento řádek */
+/* řádek mezi poli A a B: prohodit, + zastávka */
+.nav-mid{display:flex;align-items:center;gap:6px;margin:-3px 0}
+.nav-mini{height:24px;padding:0 9px;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);color:var(--tx2);font:inherit;font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;cursor:pointer;transition:.15s}
+.nav-mini:hover{border-color:var(--border-hi);background:var(--bg2);color:var(--tx1)}
+.nav-mini.is-on{background:var(--accent);border-color:var(--accent);color:#fff}
+.nav-mini[hidden]{display:none}
+.nav-swap{width:28px;padding:0;flex-shrink:0;margin-right:4px}
+.nav-swap svg{width:14px;height:14px}
+.nav-mini-danger{margin-left:auto;color:#f85149;border-color:rgba(248,81,73,.3)}
+.nav-mini-danger:hover{background:rgba(248,81,73,.1);border-color:#f85149;color:#f85149}
+html[data-ui="light"] .nav-mini-danger{color:#c4232d;border-color:rgba(196,35,45,.35)}
+/* zastávky / body vlastní trasy přímo mezi A a B */
+.nav-stops .wp-list{margin-top:0;gap:4px}
+.nav-stops .wp-list:empty{display:none}
+.nav-stop.wp-item{gap:6px;padding:3px 4px 3px 6px;margin-left:38px}
+.nav-stop-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx1)}
+.nav-stop-btn{width:22px;height:22px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;padding:0;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--tx2);font-size:10px;line-height:1;cursor:pointer;transition:.15s}
+.nav-stop-btn:hover:not(:disabled){border-color:var(--border-hi);background:var(--bg2);color:var(--tx1)}
+.nav-stop-btn:disabled{opacity:.25;cursor:default}
+.nav-stop-del{font-size:15px}
+.nav-stop-del:hover:not(:disabled){background:rgba(248,81,73,.1);border-color:#f85149;color:#f85149}
+/* délka a doba trasy pod tlačítky */
+.nav-summary{margin-top:10px;padding:6px 10px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--tx1);background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);font-variant-numeric:tabular-nums}
+.nav-summary[hidden]{display:none}
+/* hledání trasy běží */
+.nav-actions .btn-find.is-busy{cursor:progress;opacity:.78}
+.nav-actions .btn-find.is-busy svg{animation:pz-route-busy .7s ease-in-out infinite alternate}
+@keyframes pz-route-busy{from{transform:translateY(1px);opacity:.45}to{transform:translateY(-2px);opacity:1}}
+#routeLookSection .check{padding:3px 0}
 /* . */
 /* . */
 /* . */

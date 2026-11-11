@@ -31,6 +31,7 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 | 11 assistant | rychlé povely a délka trasy bez dotazu na model (odpovědi podvržené) |
 | 12 search | Hledat skočí na místo, záloha Photon při výpadku Nominatimu |
 | 13 transport | vlak (nádraží, vagony), loď, kamion s návěsem, uzavírky |
+| 22 route | Trasa: klik/psaní/tažení A a B, prohození, zastávky, vlastní kreslená trasa, 10 druhů dopravy, chybové stavy, délka a doba, „Předkreslit celou trasu“ v náhledu i exportu PNG, krok zpět po každé akci (geokódování i OSRM podvržené) |
 | 20 api_d1 | serverové API nad náhradní D1 (node:sqlite): token, ochrana proti hromadnému smazání, historie verzí a obnova, statistika |
 | 90 batch_export (pomalý) | hromadný export 16:9 + 9:16 |
 
