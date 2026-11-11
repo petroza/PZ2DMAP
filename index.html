@@ -7787,6 +7787,10 @@ function applyBasicProjectSnapshot(snapshot){
   (snapshot.scenePerimeters || []).forEach(item => createScenePerimeterAt(item.lngLat, {id:item.id, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, silent:true}));
   (snapshot.sceneDistances || []).forEach(item => createSceneDistance(item.a, item.b, {id:item.id, unit:item.unit, color:item.color, width:item.width, silent:true}));
   (snapshot.sceneArrows || []).forEach(item => createSceneArrow(item.tail, item.head, {id:item.id, color:item.color, width:item.width, silent:true}));
+  // Obnovené objekty nemají zůstat vybrané (createSceneIconAt nově vloženou ikonku
+  // vybírá): po kroku zpět jinak Backspace/Delete smazal neviditelně vybranou ikonku
+  // místo posledního bodu trasy.
+  try{ clearSceneIconSelection(); clearScenePerimeterSelection(); clearSceneDistanceSelection(); clearSceneArrowSelection(); }catch(e){}
   state.pzClosures = Array.isArray(snapshot.closures) ? snapshot.closures : [];
   try{ pzRedrawClosures(); }catch(e){}
   // 3D model transform/shadow scalars (the GLB binary isn't stored; if it's still loaded
@@ -11702,7 +11706,7 @@ function pickNavSuggest(id, idx){
   const lngLat = [lon, lat];
   const label = (typeof normalizePlaceLabel === 'function' ? normalizePlaceLabel(item) : '') || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
   const input = document.getElementById(id);
-  if(input) input.value = label;
+  if(input){ input.value = label; input.blur(); }   // pole vyřízené: Ctrl+Z pak vrací krok appky, ne psaní v poli
   const pointType = (id === 'startInput') ? 'A' : 'B';
   if(pointType === 'A') state.pointA = lngLat; else state.pointB = lngLat;
   state.clickPhase = state.pointA ? (state.pointB ? 'done' : 'B') : 'A';
