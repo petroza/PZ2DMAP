@@ -1579,22 +1579,17 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
 </aside>
 
 <div id="settingsPanel" class="settings-modal" hidden>
-  <div class="settings-card">
-    <div class="settings-head"><b><span data-i18n="Nastavení">Nastavení</span></b><button type="button" id="closeSettingsBtn" class="settings-close" aria-label="Zavřít">×</button></div>
+  <div class="settings-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1">
+    <div class="settings-head"><b id="settingsTitle"><span data-i18n="Nastavení">Nastavení</span></b><button type="button" id="closeSettingsBtn" class="settings-close" aria-label="Zavřít" title="Zavřít (Esc)">×</button></div>
     <div class="settings-body">
       <div id="settingsStatus" class="settings-status" hidden role="status" aria-live="polite"></div>
       <div class="settings-sec">
-        <h4>Pokročilé funkce</h4>
-        <label class="check"><input id="advancedFeatures" type="checkbox"> Zobrazit pokročilé funkce</label>
-        <div class="small" style="margin-top:4px">3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba.</div>
+        <h4 data-i18n="Zobrazení">Zobrazení</h4>
+        <label class="check" title="3D model, slunce a stíny, vlastní zdroje mapy, další podklady (Bright, OSM, OpenTopo, CyclOSM), statistika a kontrola aplikace. Pro denní grafiku nejsou potřeba."><input id="advancedFeatures" type="checkbox"> Pokročilé funkce</label>
+        <label class="check"><input id="lightMapMode" type="checkbox"> <span data-i18n="Světlá mapa">Světlá mapa</span></label>
       </div>
       <div class="settings-sec">
-        <h4>Mapa</h4>
-        <label class="check"><input id="lightMapMode" type="checkbox"> Světlý režim mapy (světlý podklad)</label>
-      </div>
-      <div class="settings-sec">
-        <h4>Jazyky / vlajky</h4>
-        <div class="small" style="margin-bottom:6px">Zaškrtnuté vlajky se zobrazí nahoře. Výchozí je čeština.</div>
+        <h4 data-i18n="Jazyky">Jazyky</h4>
         <div id="langToggleList" class="lang-toggle-list"></div>
       </div>
       <div class="settings-sec" id="backupSettingsSec">
@@ -1604,16 +1599,15 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <button type="button" class="btn btn-sm" id="backupImportBtn" data-i18n="Obnovit ze zálohy">Obnovit ze zálohy</button>
         </div>
         <input id="backupImportFile" class="file-input-hidden" type="file" accept=".json,application/json">
-        <p class="hint" data-i18n="hint_backup">Záloha obsahuje všechny projekty, presety stylů i vlastní mapové zdroje. Obnova data sloučí s aktuálními podle ID (stejné ID přepíše verze ze zálohy).</p>
       </div>
       <div class="settings-sec pz-adv-only">
         <h4>Statistika</h4>
         <div id="settingsStats" class="small"></div>
       </div>
       <div class="settings-sec pz-adv-only">
-        <h4>Selfcheck</h4>
+        <h4 data-i18n="Kontrola aplikace">Kontrola aplikace</h4>
         <button type="button" class="btn btn-sm" id="runSelfcheckBtn">Spustit kontrolu</button>
-        <div id="selfcheckResult" class="small" style="margin-top:8px;line-height:1.7"></div>
+        <div id="selfcheckResult" class="small" style="line-height:1.7"></div>
       </div>
       <div class="settings-sec pz-adv-only" id="settingsCustomSources"></div>
     </div>
@@ -1639,11 +1633,11 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sg-center"></div>
   </div></div>
   <div class="map-actions">
-    <button id="projectPanelBtn" class="map-action-btn" type="button" title="Projekt — uložit, otevřít, sdílet" aria-label="Projekt">
+    <button id="projectPanelBtn" class="map-action-btn" type="button" title="Projekt — uložit, otevřít, sdílet" aria-label="Projekt" aria-expanded="false" aria-controls="projectPanel">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
       <span data-i18n="Projekt">Projekt</span>
     </button>
-    <button id="safeGuidesBtn" class="map-action-btn" type="button" title="Bezpečné zóny (jen náhled, neexportuje se)" aria-label="Bezpečné zóny">
+    <button id="safeGuidesBtn" class="map-action-btn" type="button" title="Bezpečné zóny (jen náhled, neexportuje se)" aria-label="Bezpečné zóny" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><rect x="6" y="8" width="12" height="8" rx="1" stroke-dasharray="2 2"/></svg>
       <span data-i18n="Zóny">Zóny</span>
     </button>
@@ -1659,16 +1653,16 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3.1-6.8"/><path d="M21 4v5h-5"/></svg>
       <span data-i18n="btn_refresh">Obnovit</span>
     </button>
-    <button id="globeToggleBtn" class="map-action-btn" type="button" title="Glóbus (3D zeměkoule)" aria-label="Glóbus">
+    <button id="globeToggleBtn" class="map-action-btn" type="button" title="Glóbus (3D zeměkoule)" aria-label="Glóbus" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/></svg>
       <span data-i18n="btn_globe">Glóbus</span>
     </button>
-    <button id="shortcutsBtn" class="map-action-btn" type="button" title="Klávesové zkratky (?)" aria-label="Klávesové zkratky">
+    <button id="shortcutsBtn" class="map-action-btn" type="button" title="Klávesové zkratky (?)" aria-label="Klávesové zkratky" aria-expanded="false" aria-controls="shortcutsPanel">
       <span style="font-weight:800;font-size:13px">?</span>
     </button>
   </div>
-<div id="projectPanel" class="project-panel" hidden>
-  <div class="project-panel-head"><b data-i18n="Projekt">Projekt</b><button type="button" id="projectPanelClose" class="settings-close" aria-label="Zavřít">×</button></div>
+<div id="projectPanel" class="project-panel" role="dialog" aria-label="Projekt" hidden>
+  <div class="project-panel-head"><b data-i18n="Projekt">Projekt</b><button type="button" id="projectPanelClose" class="settings-close" aria-label="Zavřít" title="Zavřít (Esc)">×</button></div>
       <div class="section">
         <h3 data-i18n="Projekty">Projekty</h3>
         <div class="row">
@@ -1678,22 +1672,22 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <div class="btns">
           <button type="button" class="btn btn-sm btn-primary" id="saveProjectBtn" data-i18n="Uložit projekt">Uložit projekt</button>
           <button type="button" class="btn btn-sm" id="loadProjectBtn" data-i18n="Načíst projekt">Načíst projekt</button>
-          <button type="button" class="btn btn-sm btn-danger" id="deleteProjectBtn" data-i18n="Smazat projekt">Smazat projekt</button>
           <button type="button" class="btn btn-sm" id="shareProjectBtn" data-i18n="Odeslat link">Odeslat link</button>
+          <button type="button" class="btn btn-sm btn-danger" id="deleteProjectBtn" data-i18n="Smazat projekt">Smazat projekt</button>
         </div>
-        <div id="shareProjectBox" class="small" style="display:none;margin-top:8px">
-          <div style="margin-bottom:4px">Odkaz na rozdělanou práci (kolega ho otevře a načte se mu všechno):</div>
-          <input id="shareProjectLink" type="text" readonly style="width:100%" onclick="this.select()">
+        <div id="shareProjectBox" style="display:none">
+          <label for="shareProjectLink" data-i18n="Odkaz pro kolegu">Odkaz pro kolegu</label>
+          <input id="shareProjectLink" type="text" readonly onclick="this.select()">
         </div>
-        <p class="hint" data-i18n="hint_project">Projekt uloží trasu, vzhled mapy, ikonky, popisky, animaci i politické barvení. Uložené projekty vidí všichni kolegové.</p>
-        <div id="projectThumbWrap" style="margin-top:10px;display:none">
+        <div id="projectThumbWrap" style="display:none">
           <label data-i18n="Náhled projektu">Náhled projektu</label>
           <img id="projectThumbPreview" alt="" style="width:100%;max-height:140px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--border)">
         </div>
       </div>
 </div>
-  <div id="shortcutsPanel" class="shortcuts-panel" hidden>
-    <h4 data-i18n="Klávesové zkratky">Klávesové zkratky</h4>
+  <div id="shortcutsPanel" class="shortcuts-panel" role="dialog" aria-label="Klávesové zkratky" hidden>
+    <div class="project-panel-head"><b data-i18n="Klávesové zkratky">Klávesové zkratky</b><button type="button" id="shortcutsPanelClose" class="settings-close" aria-label="Zavřít" title="Zavřít (Esc)">×</button></div>
+    <div class="sc-list">
     <div class="sc-row"><kbd>Mezerník</kbd><span data-i18n="sc_play">Přehrát / pauza animace</span></div>
     <div class="sc-row"><kbd>Enter</kbd><span data-i18n="sc_enter">Najít trasu (v poli Start/Cíl)</span></div>
     <div class="sc-row"><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd><span data-i18n="sc_undo">Krok zpět / vpřed</span></div>
@@ -1708,6 +1702,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sc-row"><kbd>Ctrl+klik do mapy</kbd><span data-i18n="sc_via">Přidat zastávku na trase</span></div>
     <div class="sc-row"><kbd>Pravé tl. / Ctrl+táhnout</kbd><span data-i18n="sc_orbit">Naklonit a otočit (3D / glóbus)</span></div>
     <div class="sc-row"><kbd>Shift+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
+    </div>
   </div>
   <div class="status-bar" id="statusBar" role="status" aria-live="polite"><span class="dot"></span>Připraveno — klikni do mapy pro bod A.</div>
   <div class="export-progress" id="autosaveRestoreBar" hidden style="bottom:168px">
@@ -5474,7 +5469,7 @@ function ensureSatellitePolarRetouch(mapObj=state.map){
 function applyGlobeProjection(mapObj = state.map){
   // MapLibre v5: projection is a style property, so a style reload resets it
   // and we have to re-apply after every 'style.load'.
-  $('globeToggleBtn')?.classList.toggle('globe-on', isGlobeProjectionOn());
+  { const gb = $('globeToggleBtn'), on = isGlobeProjectionOn(); if(gb){ gb.classList.toggle('globe-on', on); gb.setAttribute('aria-pressed', String(!!on)); } }
   if(!mapObj || typeof mapObj.setProjection !== 'function') return;
   try{ mapObj.setProjection({type: isGlobeProjectionOn() ? 'globe' : 'mercator'}); }
   catch(e){ console.warn('Projection switch failed', e); }
@@ -9942,8 +9937,12 @@ try{
 function openSettings(){ const p=$('settingsPanel'); if(!p) return; refreshSettingsStats();
   const box=$('settingsStatus'); if(box){ box.hidden=true; box.textContent=''; }   // stará hláška z mapy sem nepatří
   try{ pzToggleProjectPanel(false); }catch(_e){}
-  p.hidden=false; }
-function closeSettings(){ const p=$('settingsPanel'); if(p) p.hidden=true; }
+  p.hidden=false;
+  // fokus do okna, ať Tab neběhá po panelu pod ním; při zavření se vrátí na tlačítko
+  try{ p.querySelector('.settings-card')?.focus({preventScroll:true}); }catch(_e){} }
+function closeSettings(){ const p=$('settingsPanel'); if(!p || p.hidden) return; p.hidden=true;
+  // až po ostatních obsluhách klávesy Esc (jedna z nich fokus ruší)
+  setTimeout(() => { try{ const a = document.activeElement; if(!a || a === document.body || p.contains(a)) $('openSettingsBtn')?.focus({preventScroll:true}); }catch(_e){} }, 0); }
 function setLightMapMode(on){
   const sel=$('baseStyle'); if(!sel){ setStatus(t('Světlý režim není dostupný pro tento podklad.')); return; }
   try{
@@ -10025,7 +10024,7 @@ function safeGuidesVisible(){ const g = $('exportSafeGuides'); return !!(g && g.
 function setSafeGuides(on){
   const g = $('exportSafeGuides'); if(!g) return;
   g.style.display = on ? 'block' : 'none';
-  const btn = $('safeGuidesBtn'); if(btn) btn.classList.toggle('active', !!on);
+  const btn = $('safeGuidesBtn'); if(btn){ btn.classList.toggle('active', !!on); btn.setAttribute('aria-pressed', String(!!on)); }
   if(on) updateSafeGuideContrast();
 }
 // Sample the rendered map brightness so the guides flip to dark lines on a light map and
@@ -15875,6 +15874,7 @@ function pzToggleProjectPanel(open){
   const show = open == null ? p.hidden : !!open;
   p.hidden = !show;
   b?.classList.toggle('active-panel', show);
+  b?.setAttribute('aria-expanded', String(show));
   if(show){
     try{ $('shortcutsPanel').hidden = true; }catch(e){}
     pzPlaceProjectPanel();
@@ -15959,6 +15959,16 @@ function bindUI(){
   $('reloadStyleBtn')?.addEventListener('click', reloadStyle);
   $('baseStyle')?.addEventListener('change', reloadStyle);
   updateMapSourceWatermark();
+  $('shortcutsPanelClose')?.addEventListener('click', () => { const p = $('shortcutsPanel'); if(p) p.hidden = true; $('shortcutsBtn')?.focus(); });
+  // Zkratky se zavírají z pěti míst (klik, klik mimo, Esc, „?", otevření Projektu) —
+  // stav tlačítka proto hlídá jeden pozorovatel atributu hidden.
+  try{
+    const scp = $('shortcutsPanel'), scb = $('shortcutsBtn');
+    if(scp && scb && window.MutationObserver){
+      const sync = () => { scb.classList.toggle('active-panel', !scp.hidden); scb.setAttribute('aria-expanded', String(!scp.hidden)); };
+      new MutationObserver(sync).observe(scp, {attributes:true, attributeFilter:['hidden']}); sync();
+    }
+  }catch(_e){}
   $('shortcutsBtn')?.addEventListener('click', ()=>{
     const p = $('shortcutsPanel');
     if(!p) return;
@@ -16178,7 +16188,7 @@ function bindUI(){
     const typing = pzIsTextEntry(e.target);
     const mod = e.ctrlKey || e.metaKey;
     if(e.key === 'Escape'){
-      const sp = $('settingsPanel'); if(sp && !sp.hidden){ sp.hidden = true; return; }
+      const sp = $('settingsPanel'); if(sp && !sp.hidden){ closeSettings(); return; }
       const sc = $('shortcutsPanel');
       if(sc && !sc.hidden) sc.hidden = true;
       const pp = $('projectPanel'); if(pp && !pp.hidden){ pzToggleProjectPanel(false); return; }
@@ -16730,6 +16740,12 @@ Object.assign(I18N, {
   // .
   // .
   // [i18n:design] překlady oblasti „design" vkládej pod tento řádek
+  "Zobrazení": {cs:"Zobrazení",sk:"Zobrazenie",bg:"Изглед",hr:"Prikaz",ro:"Afișare",en:"Display"},
+  "Jazyky": {cs:"Jazyky",sk:"Jazyky",bg:"Езици",hr:"Jezici",ro:"Limbi",en:"Languages"},
+  "Světlá mapa": {cs:"Světlá mapa",sk:"Svetlá mapa",bg:"Светла карта",hr:"Svijetla karta",ro:"Hartă deschisă",en:"Light map"},
+  "Kontrola aplikace": {cs:"Kontrola aplikace",sk:"Kontrola aplikácie",bg:"Проверка на приложението",hr:"Provjera aplikacije",ro:"Verificarea aplicației",en:"App self-check"},
+  "Odkaz pro kolegu": {cs:"Odkaz pro kolegu",sk:"Odkaz pre kolegu",bg:"Връзка за колега",hr:"Poveznica za kolegu",ro:"Link pentru coleg",en:"Link for a colleague"},
+  "Zavřít (Esc)": {cs:"Zavřít (Esc)",sk:"Zavrieť (Esc)",bg:"Затвори (Esc)",hr:"Zatvori (Esc)",ro:"Închide (Esc)",en:"Close (Esc)"},
   // .
   // .
   // .
@@ -18978,8 +18994,294 @@ function pzColorFromName(v){
 /* . */
 /* . */
 /* [css:design] pravidla oblasti „design" vkládej pod tento řádek */
-/* . */
-/* . */
+/* ============================================================================
+   SPOLEČNÝ VZHLED (počítač ≥ 981 px, tmavý i světlý režim)
+   Sada pravidel, ke které se má vztahovat každá komponenta v panelu:
+     výška ovládacího prvku  --pz-h (30 px)   tlačítko, pole, výběr, vzorek barvy
+     ikonové tlačítko        --pz-h-icon (24 px)   rozbalit, zavřít, odebrat
+     poloměr                 var(--radius) = 0
+     mezery                  4 / 8 / 12 px (--pz-s1 / --pz-s2 / --pz-s3)
+     písmo popisků           11 px (popisek pole, nápověda) a 12 px (text tlačítka, zaškrtávátko)
+     tlačítka                primární .btn-primary (červené, max. jedno na sekci) · běžné .btn ·
+                             nebezpečné .btn-danger (červený jen text) · přepínací .is-on /
+                             aria-pressed="true" (červené + bílá kontrolka)
+     fokus z klávesnice      2px rámeček UVNITŘ prvku (nepřetéká do sousedů)
+   Velikosti platí jen pro počítač; barvy, stavy a fokus všude (telefon si
+   velikosti řeší v [css:mobil]).
+   ============================================================================ */
+:root{
+  --pz-h:30px;--pz-h-icon:24px;
+  --pz-s1:4px;--pz-s2:8px;--pz-s3:12px;
+  --pz-fs-label:11px;--pz-fs-text:12px;
+  --pz-danger:#ff6b63;--pz-danger-bg:rgba(248,81,73,.12);
+  --pz-focus:var(--accent-hi);
+  --pz-field-border:#3a4352;--pz-check-border:#6c7789;--pz-track:#3f4858;
+  --pz-float-shadow:0 0 0 1px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.32);
+  --pz-t:.12s ease;
+  /* Nápovědy a neaktivní texty měly 3,0–3,6:1 — pod hranicí čitelnosti. */
+  --tx2:#9aa3b4;--tx3:#7f8999;
+}
+html[data-ui="light"]{
+  --pz-danger:#c4232d;--pz-danger-bg:rgba(196,35,45,.08);
+  --pz-focus:var(--accent);
+  --pz-field-border:#b9c1cd;--pz-check-border:#7b8698;--pz-track:#aeb7c4;
+  --pz-float-shadow:0 0 0 1px rgba(20,30,50,.10),0 4px 14px rgba(20,30,50,.16);
+  --tx3:#5c6678;
+}
+
+/* ===== Fokus z klávesnice ===== */
+button:focus-visible,[role=button]:focus-visible,summary:focus-visible,a:focus-visible,
+label.btn:focus-within,
+input[type=checkbox]:focus-visible,input[type=radio]:focus-visible,
+input[type=color]:focus-visible,input[type=file]:focus-visible{
+  outline:2px solid var(--pz-focus);outline-offset:-2px}
+/* na červené ploše by červený rámeček nebyl vidět */
+.btn-primary:focus-visible,.btn.is-on:focus-visible,.btn[aria-pressed="true"]:focus-visible,
+.btn-find:focus-visible,.transport-btn.active:focus-visible,.camera-mode-btn.active:focus-visible,
+.endpoint-shape.active:focus-visible,.preset-btn.active:focus-visible,.sat-cat-btn.active:focus-visible,
+.player-btn.play-main:focus-visible,.map-actions .map-action-btn.active:focus-visible,
+.map-actions .map-action-btn.globe-on:focus-visible,input[type=checkbox]:checked:focus-visible{
+  outline-color:#fff}
+input[type=checkbox]:focus-visible{outline-offset:1px}
+input[type=checkbox]:checked:focus-visible{outline-color:var(--pz-focus)}
+input[type=range]:not(.player-scrub):focus-visible{outline:2px solid var(--pz-focus);outline-offset:1px}
+select:focus,input[type=text]:focus,input[type=number]:focus,input[type=search]:focus,textarea:focus{
+  border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
+
+/* ===== Tlačítka: hierarchie a stavy ===== */
+.btn{transition:background-color var(--pz-t),border-color var(--pz-t),color var(--pz-t);user-select:none}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+.btn:disabled:hover{background:var(--bg3);border-color:var(--border)}
+.btn-primary:disabled:hover{background:var(--accent);border-color:var(--accent)}
+/* nebezpečné: stejná plocha jako běžné, červený jen text — rámeček zčervená až pod myší */
+.btn-danger,html[data-ui="light"] .btn-danger{color:var(--pz-danger);border-color:var(--border)}
+.btn-danger:hover,html[data-ui="light"] .btn-danger:hover{background:var(--pz-danger-bg);border-color:var(--pz-danger)}
+.btn-danger:disabled:hover{background:var(--bg3);border-color:var(--border)}
+/* přepínací: zapnuto = červená plocha + bílá kontrolka (odliší se od primárního) */
+.btn.is-on,.btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.is-on::before,.btn[aria-pressed="true"]::before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:#fff}
+
+/* tlačítko jako <label> (výběr souboru) nesmí zdědit verzálky a odsazení popisku */
+label.btn{text-transform:none;letter-spacing:0;margin-bottom:0}
+
+/* ===== Pole a výběry ===== */
+select,input[type=text],input[type=number],input[type=search],textarea{
+  border-color:var(--pz-field-border);transition:border-color var(--pz-t),box-shadow var(--pz-t)}
+select:hover,input[type=text]:hover,input[type=number]:hover{border-color:var(--border-hi)}
+select:disabled,input:disabled,textarea:disabled{opacity:.5;cursor:not-allowed}
+input::placeholder,textarea::placeholder{color:var(--tx3);opacity:1}
+/* světlý režim: šedá pole na šedé kartě vypadala jako vypnutá */
+html[data-ui="light"] select,html[data-ui="light"] input[type=text],html[data-ui="light"] input[type=number],
+html[data-ui="light"] input[type=search],html[data-ui="light"] textarea{background-color:#fff}
+html[data-ui="light"] .section{border-color:var(--border)}
+
+/* ===== Zaškrtávátka: jeden vzhled v panelu, Nastavení i vrstvách počasí ===== */
+input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:16px;height:16px;margin:0;
+  border:1px solid var(--pz-check-border);border-radius:0;background:var(--bg0) center/12px 12px no-repeat;
+  cursor:pointer;vertical-align:middle;transition:background-color var(--pz-t),border-color var(--pz-t)}
+html[data-ui="light"] input[type=checkbox]{background-color:#fff}
+input[type=checkbox]:hover{border-color:var(--tx1)}
+input[type=checkbox]:checked,html[data-ui="light"] input[type=checkbox]:checked{background-color:var(--accent);border-color:var(--accent);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.2 6.3 5 9l4.8-5.6' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='square'/%3E%3C/svg%3E")}
+input[type=checkbox]:indeterminate,html[data-ui="light"] input[type=checkbox]:indeterminate{background-color:var(--accent);border-color:var(--accent);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6h6' stroke='%23fff' stroke-width='1.8'/%3E%3C/svg%3E")}
+input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
+/* skryté pomocné vstupy (mimo obrazovku) nechat neviditelné */
+input.file-input-hidden{width:1px;height:1px;border:0}
+
+/* ===== Posuvníky =====
+   Prvek je vysoký jako jezdec (18 px) a stopa se kreslí uvnitř — jezdec tak
+   nikdy nepřesáhne vlastní řádek a nedotkne se sousedního popisku. */
+input[type=range]:not(.player-scrub){height:18px;margin:0;background:transparent;cursor:pointer;vertical-align:middle}
+input[type=range]:not(.player-scrub)::-webkit-slider-runnable-track{height:3px;background:var(--pz-track)}
+input[type=range]:not(.player-scrub)::-moz-range-track{height:3px;background:var(--pz-track)}
+input[type=range]:not(.player-scrub)::-webkit-slider-thumb{width:8px;height:16px;margin-top:-6.5px;transition:background-color var(--pz-t)}
+input[type=range]:not(.player-scrub)::-moz-range-thumb{width:8px;height:16px}
+input[type=range]:not(.player-scrub):hover::-webkit-slider-thumb{background:var(--accent-hi)}
+input[type=range]:not(.player-scrub):hover::-moz-range-thumb{background:var(--accent-hi)}
+input[type=range]:disabled{opacity:.45;cursor:not-allowed}
+/* popisek s hodnotou: text vlevo, hodnota vpravo */
+label:has(> .val){display:flex;align-items:baseline;gap:var(--pz-s1)}
+label:has(> .val) > .val{margin-left:auto;padding-left:var(--pz-s2);white-space:nowrap}
+
+/* ===== Vzorek barvy, výběr souboru ===== */
+input[type=color]{border-width:1px;border-color:var(--pz-field-border);padding:2px;flex:none}
+input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+input[type=color]::-webkit-color-swatch{border:0}
+input[type=color]::-moz-color-swatch{border:0}
+input[type=file]{width:100%;min-width:0;max-width:100%;font:500 var(--pz-fs-label) var(--font);color:var(--tx2)}
+input[type=file]::file-selector-button{height:var(--pz-h);margin-right:var(--pz-s2);padding:0 10px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--tx1);font:600 var(--pz-fs-label) var(--font);cursor:pointer;transition:background-color var(--pz-t),border-color var(--pz-t)}
+input[type=file]::file-selector-button:hover{background:var(--bg4);border-color:var(--border-hi)}
+
+/* ===== Sekce, popisky, nápovědy ===== */
+.section-toggle{transition:border-color var(--pz-t),color var(--pz-t),background-color var(--pz-t)}
+.section-toggle-chevron{transition:transform var(--pz-t),margin-top var(--pz-t)}
+.tab-btn{transition:color var(--pz-t),background-color var(--pz-t),border-color var(--pz-t)}
+.tab-pane{animation-duration:.12s}
+.hint,.small{font-size:var(--pz-fs-label);line-height:1.45}
+.compact-details>summary{font-size:var(--pz-fs-label);padding:2px 0;transition:color var(--pz-t)}
+.compact-details>summary:hover{color:var(--tx1)}
+.wp-item{transition:background-color var(--pz-t),border-color var(--pz-t),box-shadow var(--pz-t)}
+
+/* ===== Vlastní posuvníky panelů ===== */
+.sidebar-content,.project-panel,.settings-body,.shortcuts-panel,.place-search-results,.nav-suggest,.sat-results{
+  scrollbar-width:thin;scrollbar-color:var(--border-hi) transparent}
+.sidebar-content::-webkit-scrollbar,.project-panel::-webkit-scrollbar,.settings-body::-webkit-scrollbar,
+.shortcuts-panel::-webkit-scrollbar,.place-search-results::-webkit-scrollbar,.nav-suggest::-webkit-scrollbar,
+.sat-results::-webkit-scrollbar{width:6px;height:6px}
+.sidebar-content::-webkit-scrollbar-thumb,.project-panel::-webkit-scrollbar-thumb,.settings-body::-webkit-scrollbar-thumb,
+.shortcuts-panel::-webkit-scrollbar-thumb,.place-search-results::-webkit-scrollbar-thumb,.nav-suggest::-webkit-scrollbar-thumb,
+.sat-results::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:0}
+
+/* ===== Hlavička panelu ===== */
+.lang-btn,.ui-theme-btn{transition:border-color var(--pz-t),background-color var(--pz-t)}
+.lang-btn.active{background:var(--bg3)}
+
+/* ===== Lišta nad mapou =====
+   Neprůhledné plochy s linkou a stínem — čitelné na světlé i tmavé mapě. */
+.map-actions .map-action-btn{border-color:var(--border-hi);box-shadow:var(--pz-float-shadow);
+  transition:background-color var(--pz-t),border-color var(--pz-t),color var(--pz-t)}
+.map-actions .map-action-btn[disabled]{color:var(--tx3);border-color:var(--border);box-shadow:none}
+.map-actions .map-action-btn[disabled]:hover{background:var(--bg1);border-color:var(--border);color:var(--tx3)}
+.map-actions .map-action-btn[disabled] svg{opacity:.55}
+/* přepínače (Zóny, Glóbus): zapnuto = červená plocha, stejně jako v panelu */
+.map-actions .map-action-btn.active,.map-actions .map-action-btn.globe-on,
+.map-actions .map-action-btn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.map-actions .map-action-btn.active:hover,.map-actions .map-action-btn.globe-on:hover,
+html[data-ui="light"] .map-actions .map-action-btn.active:hover,
+html[data-ui="light"] .map-actions .map-action-btn.globe-on:hover{background:var(--accent-hi);border-color:var(--accent-hi);color:#fff}
+/* otevřený panel (Projekt, ?): červená linka dole jako u aktivní záložky */
+.map-actions .map-action-btn.active-panel,.map-actions .map-action-btn[aria-expanded="true"]{
+  background:var(--bg3);border-color:var(--border-hi);color:var(--tx1);box-shadow:inset 0 -2px 0 var(--accent),var(--pz-float-shadow)}
+
+/* ===== Stavový řádek: informace vs. chyba ===== */
+.status-bar{color:var(--tx1);border-color:var(--border-hi);box-shadow:var(--pz-float-shadow);line-height:1.4}
+.status-bar.error{background:#2a1014;border-color:var(--pz-danger);color:#ffd0d0;
+  box-shadow:inset 4px 0 0 var(--pz-danger),var(--pz-float-shadow)}
+html[data-ui="light"] .status-bar.error{background:#fdecee;color:#8f1a24}
+/* chyba má místo zelené tečky vykřičník — pozná se i bez barvy */
+.status-bar.error .dot{width:14px;height:14px;margin-right:8px;background:var(--pz-danger);animation:none;
+  display:inline-grid;place-items:center;vertical-align:-2px}
+.status-bar.error .dot::before{content:"!";font:800 11px/1 var(--font);color:#fff}
+html:not([data-ui="light"]) .status-bar.error .dot::before{color:#2a1014}
+
+/* ===== Plovoucí panely: Projekt, zkratky, Nastavení — jedna hlavička ===== */
+.project-panel,.shortcuts-panel{background:var(--bg1);border:1px solid var(--border-hi);box-shadow:var(--pz-float-shadow),0 12px 32px rgba(0,0,0,.35);padding:0}
+.project-panel-head,.settings-head{display:flex;align-items:center;justify-content:space-between;gap:var(--pz-s2);
+  min-height:40px;margin:0;padding:0 var(--pz-s2) 0 var(--pz-s3);border-bottom:1px solid var(--border);
+  font-size:var(--pz-fs-label);letter-spacing:.9px;text-transform:uppercase;color:var(--tx1)}
+.project-panel-head b,.settings-head b{display:flex;align-items:center;gap:var(--pz-s2);font-weight:700}
+.project-panel-head b::before,.settings-head b::before{content:"";flex:none;width:3px;height:12px;background:var(--accent)}
+.settings-close{display:grid;place-items:center;flex:none;width:var(--pz-h-icon);height:var(--pz-h-icon);padding:0;
+  border:1px solid var(--border);background:var(--bg0);color:var(--tx2);font:400 16px/1 var(--font);
+  transition:border-color var(--pz-t),color var(--pz-t),background-color var(--pz-t)}
+.settings-close:hover,html[data-ui="light"] .settings-close:hover{border-color:var(--accent);color:var(--accent);background:var(--bg2)}
+.project-panel > .section{padding:var(--pz-s3)}
+.project-panel .row{margin-bottom:0}
+/* čtyři akce ve dvou sloupcích: uložit/načíst nahoře, sdílet/smazat dole */
+.project-panel .btns{display:grid;grid-template-columns:1fr 1fr;gap:var(--pz-s1);margin-top:var(--pz-s2)}
+#shareProjectBox{margin-top:var(--pz-s2)}
+#projectThumbWrap{margin-top:var(--pz-s2)}
+
+.shortcuts-panel{width:340px;min-width:0;max-width:calc(100vw - 28px)}
+.sc-list{padding:var(--pz-s2) var(--pz-s3) var(--pz-s3)}
+.sc-row{gap:var(--pz-s1);min-height:24px;padding:2px 0;font-size:var(--pz-fs-text);color:var(--tx2)}
+.sc-row kbd{padding:2px 6px;font-size:var(--pz-fs-label);background:var(--bg3);border-color:var(--border-hi)}
+.sc-row span{padding-left:var(--pz-s2)}
+
+.settings-card{width:min(460px,93vw);box-shadow:var(--pz-float-shadow),0 20px 60px rgba(0,0,0,.45)}
+.settings-card:focus{outline:none}
+.settings-body{padding:var(--pz-s3) 16px 16px;overflow-x:hidden}
+.settings-status{top:calc(-1 * var(--pz-s3));margin:calc(-1 * var(--pz-s3)) -16px var(--pz-s3)}
+.settings-sec{margin-bottom:16px}
+.settings-sec:last-child{margin-bottom:0}
+.settings-sec>h4,.settings-sec .section>h3{margin:0 0 var(--pz-s2);padding-bottom:6px;border-bottom:1px solid var(--border);
+  font-size:var(--pz-fs-label);font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--tx2)}
+.settings-sec .section>h3::before{display:none}
+.settings-sec .btns{margin-top:0}
+.lang-toggle-list{display:grid;grid-template-columns:1fr 1fr;gap:0 var(--pz-s3)}
+.lang-toggle-list label{min-height:26px;margin:0;gap:var(--pz-s2);font-size:var(--pz-fs-text);font-weight:500;text-transform:none;letter-spacing:0}
+
+/* ===== Ovládání mapy (+ / − / kompas): stejný vzhled jako lišta ===== */
+.maplibregl-ctrl-group{background:var(--bg1);border:1px solid var(--border-hi);border-radius:0;overflow:hidden}
+.maplibregl-ctrl-group:not(:empty){box-shadow:var(--pz-float-shadow)}
+.maplibregl-ctrl-group button{width:30px;height:30px;border-radius:0;background-color:transparent;transition:background-color var(--pz-t)}
+.maplibregl-ctrl-group button+button{border-top:1px solid var(--border)}
+.maplibregl-ctrl-group button:not(:disabled):hover{background-color:var(--bg3)}
+.maplibregl-ctrl-group button:focus-visible{box-shadow:none}
+html:not([data-ui="light"]) .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:invert(1) brightness(1.6)}
+
+/* ===== Vodoznak zdroje, načítání ===== */
+.map-source-watermark{border-radius:0;font-size:10px;padding:3px 7px}
+.map-loading{transition:opacity .15s}
+
+@media (min-width:981px){
+  /* --- jedna výška ovládacích prvků --- */
+  .btn{min-height:var(--pz-h);padding:0 12px;font-size:var(--pz-fs-text);line-height:1.15}
+  .btn-sm{padding:0 10px;font-size:var(--pz-fs-label)}
+  select,input[type=text],input[type=number],input[type=search]{height:var(--pz-h);padding-top:0;padding-bottom:0;padding-left:10px}
+  input[type=text],input[type=number],input[type=search]{padding-right:10px}
+  input[type=color]{width:var(--pz-h);height:var(--pz-h)}
+  .brand-search-row{gap:var(--pz-s1)}
+  .brand-search-row .btn{padding:0 10px}
+
+  /* --- popisky --- */
+  label{font-size:var(--pz-fs-label);margin-bottom:var(--pz-s1)}
+  .check{min-height:26px;padding:var(--pz-s1) 0;gap:var(--pz-s2);font-size:var(--pz-fs-text);margin-bottom:0}
+  .color-row{gap:var(--pz-s2);margin-bottom:var(--pz-s2);min-height:var(--pz-h)}
+  .color-row:last-child{margin-bottom:0}
+
+  /* --- mřížka mezer uvnitř sekce ---
+     Nulová specifičnost (:where): doplní 8 px jen tam, kde komponenta sama
+     nic neříká (popisek po poli, řádek po posuvníku…), a nepřebije pravidla
+     jednotlivých záložek. */
+  :where(.section-body,.control-step,.compact-details,.settings-sec) > :where(* + *){margin-top:var(--pz-s2)}
+  :where(.section-body,.control-step,.compact-details,.settings-sec) > :where(* + .check){margin-top:var(--pz-s1)}
+  :where(.section-body,.control-step,.compact-details,.settings-sec) > :where(.check + .check){margin-top:0}
+  /* popisek patří k poli pod sebou — mezi nimi jen 4 px z popisku */
+  :where(.section-body,.control-step,.compact-details,.settings-sec) > :where(label:not(.check):not(.btn) + *){margin-top:0}
+  :where(.row > div,.custom-upload-area) > :where(:is(input,select,.btn,.btns) + label:not(.check)){margin-top:var(--pz-s2)}
+  /* sekce bez úvodního odstavce nesmí mít nahoře díru (odsazení první položky pryč) */
+  .section-body > :first-child{margin-top:0 !important}
+  .section-body > :last-child{margin-bottom:0}
+  .row{gap:var(--pz-s2) var(--pz-s3);margin-bottom:var(--pz-s2);align-items:end}
+  .row:last-child{margin-bottom:0}
+  /* soubor nebo dlouhý výběr nesmí roztáhnout sloupec přes okraj sekce */
+  .row > *{min-width:0}
+  .row > .color-row{margin-bottom:0}
+  .btns,.control-actions{gap:var(--pz-s1);margin-top:var(--pz-s2)}
+  .hint{margin-top:var(--pz-s2)}
+  .compact-details{margin-top:var(--pz-s2);padding-top:var(--pz-s2)}
+  .compact-details[open]>summary{margin-bottom:var(--pz-s2)}
+  .control-step{margin-top:var(--pz-s2);padding:var(--pz-s3)}
+  .control-step-title{margin-bottom:var(--pz-s2)}
+  .wp-list{gap:var(--pz-s1);margin-top:var(--pz-s2)}
+  .wp-item{min-height:var(--pz-h);padding:var(--pz-s1) var(--pz-s2)}
+
+  /* --- hlavička panelu --- */
+  .sidebar-brand-top{gap:var(--pz-s2)}
+  .lang-switcher-inline{gap:var(--pz-s1)}
+  .lang-switcher-inline .lang-btn,.ui-theme-btn{width:28px;height:22px}
+
+  /* --- lišta nad mapou --- */
+  .map-actions{gap:6px}
+  .map-actions .map-action-btn{height:32px;padding:0 12px}
+  /* Zpět / vpřed / obnovit: ikona stačí (název je v tooltipu), lišta je kratší */
+  .map-actions #undoActionBtn,.map-actions #redoActionBtn,.map-actions #refreshMapBtn,.map-actions #shortcutsBtn{
+    width:32px;padding:0;justify-content:center}
+  .map-actions #undoActionBtn span,.map-actions #redoActionBtn span,.map-actions #refreshMapBtn span{display:none}
+  .map-actions #undoActionBtn{margin-right:-7px}
+  .map-actions .map-action-btn:hover,.map-actions .map-action-btn:focus-visible{position:relative;z-index:1}
+  .map-actions .map-action-btn svg{width:15px;height:15px}
+
+  .status-bar{padding:8px 16px}
+  .maplibregl-ctrl-top-right{top:54px}
+  .maplibregl-ctrl-top-right .maplibregl-ctrl{margin:0 14px 0 0}
+}
+@media (min-width:981px) and (max-width:1250px){
+  .map-actions .map-action-btn{width:32px;padding:0;justify-content:center}
+}
 /* . */
 /* [css:mobil] pravidla oblasti „mobil" vkládej pod tento řádek */
 /* . */
