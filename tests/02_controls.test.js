@@ -19,7 +19,7 @@ const SKIP = /deleteProject|exportVideo|exportPng|exportPngSeq|batch|share|sendL
       clicked++; await page.waitForTimeout(100); await page.keyboard.press('Escape').catch(() => {});
     }
   }
-  check(clicked > 120, `prokliknuto ${clicked} prvků`);
+  check(clicked > 100, `prokliknuto ${clicked} prvků`);   // po zrušení Rychlé scény, krajů a počasí je prvků méně
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   await close(); done();
 })();
