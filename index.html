@@ -3,7 +3,7 @@
 <head>
 <script>try{if(localStorage.getItem('pzUiTheme')==='light')document.documentElement.dataset.ui='light';}catch(e){}</script>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>PZ MAP</title>
 <link rel="stylesheet" href="assets/vendor/maplibre-gl.css" onerror="this.onerror=null;this.href='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css'">
 <!-- defer: download the 1 MB engine in parallel with HTML/inline-JS parsing instead
@@ -793,7 +793,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
 <body>
 <div class="app">
 <div class="mobile-backdrop" id="mobileBackdrop" aria-hidden="true"></div>
-<button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-controls="sidebarPanel" aria-expanded="false">
+<button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu" aria-controls="sidebarPanel" aria-expanded="false">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
   Menu
 </button>
@@ -1724,6 +1724,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sc-row"><kbd>Shift+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
   </div>
   <div class="status-bar" id="statusBar" role="status" aria-live="polite"><span class="dot"></span>Připraveno — klikni do mapy pro bod A.</div>
+  <div class="pz-touch-bar" id="pzTouchBar">
+    <button type="button" class="btn btn-danger" id="pzTouchDeleteBtn" data-i18n="Smazat" hidden>Smazat</button>
+    <button type="button" class="btn btn-primary" id="pzTouchDoneBtn" data-i18n="Hotovo">Hotovo</button>
+  </div>
   <div class="export-progress" id="autosaveRestoreBar" hidden style="bottom:168px">
     <div class="export-progress-row">
       <span id="autosaveRestoreLabel">Obnovit rozdělanou práci?</span>
@@ -16692,6 +16696,7 @@ Object.assign(I18N, {
   // .
   // .
   // [i18n:mobil] překlady oblasti „mobil" vkládej pod tento řádek
+  "Hotovo": {cs:"Hotovo",sk:"Hotovo",bg:"Готово",hr:"Gotovo",ro:"Gata",en:"Done"},
   // .
   // .
   // .
@@ -17526,7 +17531,69 @@ document.addEventListener('keydown', e => {
 
 // ensureOverlaySetup() is called in map.on('load') — no need here
 
-  // Mobile drawer + safe MapLibre resize
+  // ===== Telefon a tablet: výsuvný panel, dotyková náhrada kláves, klávesnice na obrazovce =====
+  // Do 980 px je panel výsuvný; pod 700 px navíc zakrývá skoro celou mapu a
+  // zatemňuje ji („modální"), nad tím leží vedle mapy a ta zůstává ovladatelná.
+  function pzMobileIsDrawer(){ try{ return window.matchMedia('(max-width: 980px)').matches; }catch(e){ return false; } }
+  function pzMobileIsModal(){ try{ return window.matchMedia('(max-width: 699px)').matches; }catch(e){ return false; } }
+  function pzMobilePanelOpen(){ return document.body.classList.contains('mobile-panel-open'); }
+  // Jediné místo, které panel otevírá a zavírá (třída, aria, fokus, průhled).
+  function pzMobilePanel(open){
+    open = !!open && pzMobileIsDrawer();
+    document.body.classList.toggle('mobile-panel-open', open);
+    $('mobileMenuBtn')?.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if(!open){
+      document.body.classList.remove('pz-peek');
+      // pole ve schovaném panelu by drželo klávesnici na obrazovce otevřenou
+      try{ const a = document.activeElement; if(a && a !== document.body && a.closest?.('.sidebar')) a.blur(); }catch(e){}
+    }
+    return open;
+  }
+  // Na co teď čeká klepnutí do mapy: vkládací režimy, měření, barvení klikem.
+  function pzMobileArmedList(){
+    const parts = [];
+    try{ Object.values(SCENE_ADD_FLAGS).forEach(f => { if(state[f]) parts.push(f); }); }catch(e){}
+    try{ if(state.measureMode && state.measureMode !== 'off') parts.push('measure:' + state.measureMode); }catch(e){}
+    if($('paintPoliticalCountryOnClick')?.checked) parts.push('paintCountry');
+    if($('paintCzRegionOnClick')?.checked) parts.push('paintRegion');
+    return parts;
+  }
+  function pzMobileIsAdding(){ try{ return Object.values(SCENE_ADD_FLAGS).some(f => state[f]); }catch(e){ return false; } }
+  // Pruh „Hotovo" a „Smazat" (vybraný objekt nebo výběr) — na dotyku není Esc ani Delete.
+  function pzMobileSyncTouchBar(){
+    const multi = (state.multiSel?.size || 0) > 0, adding = pzMobileIsAdding();
+    let sel = false; try{ sel = !!getSelectedMapObject(); }catch(e){}
+    document.body.classList.toggle('pz-touch-on', adding || multi || sel);
+    const del = $('pzTouchDeleteBtn'); if(del) del.hidden = !(multi || sel);
+    const ok = $('pzTouchDoneBtn'); if(ok) ok.hidden = !(adding || multi);
+  }
+  // Pole, do kterého se píše, posunout nad klávesnici (jen uvnitř jeho panelu —
+  // scrollIntoView by posunul i stránku, která se posouvat nemá).
+  function pzMobileKeepFieldVisible(){
+    const a = document.activeElement;
+    if(!a || !pzIsTextEntry(a) || a.closest('.maplibregl-marker')) return;
+    const sc = a.closest('.sidebar-content,.settings-body,.project-panel'); if(!sc) return;
+    const kb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pz-kb')) || 0;
+    const r = a.getBoundingClientRect(), s = sc.getBoundingClientRect();
+    const limit = Math.min(s.bottom, window.innerHeight - kb) - 12;
+    if(r.bottom > limit) sc.scrollTop += r.bottom - limit;
+    else if(r.top < s.top + 8) sc.scrollTop -= s.top + 8 - r.top;
+  }
+  // Klávesnice na obrazovce zmenší jen viditelnou část stránky (visualViewport),
+  // rozvržení o ní neví — její výšku dostane CSS v --pz-kb.
+  function pzSetKeyboardInset(px){
+    px = Math.max(0, Math.round(px || 0));
+    if(px < 90) px = 0;   // schovávání adresního řádku není klávesnice
+    const was = document.body.classList.contains('pz-kb-open');
+    document.documentElement.style.setProperty('--pz-kb', px + 'px');
+    document.body.classList.toggle('pz-kb-open', px > 0);
+    document.body.classList.toggle('pz-kb-tight', px > 0 && window.innerHeight - px < 420);
+    if(px) setTimeout(pzMobileKeepFieldVisible, 60);
+    // iOS po zavření klávesnice nechává stránku odsunutou nahoru
+    else if(was){ try{ window.scrollTo(0, 0); }catch(e){} }
+    return px;
+  }
+
   function initMobileLayout(){
     const btn = $('mobileMenuBtn');
     const backdrop = $('mobileBackdrop');
@@ -17538,13 +17605,11 @@ document.addEventListener('keydown', e => {
       window.setTimeout(() => { try { state.map?.resize?.(); } catch(e){} }, 60);
       window.setTimeout(() => { try { state.map?.resize?.(); } catch(e){} }, 280);
     };
-    const setOpen = (open) => {
-      document.body.classList.toggle('mobile-panel-open', !!open);
-      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      resizeMapSoon();
-    };
+    // panel se vysouvá přes mapu a její velikost nemění — resize jen při změně okna
+    const setOpen = pzMobilePanel;
+    let autoHidden = false;   // panel schovaný kvůli klepnutí do mapy → „Hotovo" ho vrátí
 
-    btn.addEventListener('click', () => setOpen(!document.body.classList.contains('mobile-panel-open')));
+    btn.addEventListener('click', () => { autoHidden = false; setOpen(!pzMobilePanelOpen()); });
     backdrop.addEventListener('click', () => setOpen(false));
     $('mobileCloseBtn')?.addEventListener('click', () => setOpen(false));
 
@@ -17557,13 +17622,13 @@ document.addEventListener('keydown', e => {
       const onStart = e => {
         if(!mq.matches || dragging) return;
         const tch = e.touches && e.touches[0]; if(!tch) return;
-        const open = document.body.classList.contains('mobile-panel-open');
+        const open = pzMobilePanelOpen();
         width = sidebar.getBoundingClientRect().width || 320;
         if(open){
           // close-drag: must start on the drawer, but not on a control that needs
           // its own horizontal gesture (sliders, tab strip, dials, selects…)
           if(!sidebar.contains(e.target)) return;
-          if(e.target.closest('input,select,textarea,.sidebar-tabs,.angle-dial,.lang-switcher,.place-search-results,.preset-tile,.transport-grid')) return;
+          if(e.target.closest('input,select,textarea,.sidebar-tabs,.angle-dial,.lang-switcher,.place-search-results,.preset-tile,.transport-grid,.pz-icon-pick,.pz-tpl-btn')) return;
           opening = false;
         } else {
           if(tch.clientX > 24) return;   // open only from the very left screen edge
@@ -17605,8 +17670,122 @@ document.addEventListener('keydown', e => {
       document.addEventListener('touchcancel', onEnd, {passive:true});
     })();
     document.addEventListener('keydown', (e) => {
-      if(e.key === 'Escape' && document.body.classList.contains('mobile-panel-open')) setOpen(false);
+      // jen skutečná klávesa — „Hotovo" posílá Esc uměle a panel zavírat nemá
+      if(e.key === 'Escape' && e.isTrusted && pzMobilePanelOpen()) setOpen(false);
     });
+
+    // --- Telefon: akce, jejíž výsledek je v mapě, panel sama schová ---
+    // Hlídá se obecně (stav před stiskem a po kliknutí), ne u každého tlačítka zvlášť.
+    let armedBefore = [];
+    document.addEventListener('pointerdown', () => { armedBefore = pzMobileArmedList(); }, true);
+    document.addEventListener('click', e => {
+      requestAnimationFrame(pzMobileSyncTouchBar);
+      if(!pzMobileIsModal() || !pzMobilePanelOpen()) return;
+      const el = e.target?.closest?.('.sidebar button, .sidebar input[type=checkbox], .sidebar label, .sidebar .place-search-item');
+      if(!el) return;
+      const now = pzMobileArmedList();
+      // nově zapnutý režim, nebo jiná ikona z palety při zapnutém vkládání
+      const armed = now.some(x => !armedBefore.includes(x)) || (now.length && !!el.closest('.pz-icon-pick'));
+      const onMap = !!el.closest('.place-search-item,#exportVideoBtn,#exportPngSeqBtn,#exportBatchBtn')
+        || (!!el.closest('#findRouteBtn') && !!$('startInput')?.value.trim() && !!$('endInput')?.value.trim());
+      if(armed || onMap){ autoHidden = armed; setOpen(false); }
+    });
+
+    // --- Hláška se nad otevřeným panelem na chvíli ukáže (jinak ji zakrývá) ---
+    let toastTimer = 0;
+    try{
+      new MutationObserver(() => {
+        pzMobileSyncTouchBar();
+        if(!pzMobilePanelOpen()) return;
+        document.body.classList.add('pz-status-toast');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => document.body.classList.remove('pz-status-toast'), statusEl.classList.contains('error') ? 6000 : 3500);
+      }).observe(statusEl, {childList:true});
+    }catch(e){}
+
+    // --- Pruh „Hotovo" / „Smazat": dotyková náhrada Esc a Delete ---
+    const sendKey = key => document.dispatchEvent(new KeyboardEvent('keydown', {key, bubbles:true, cancelable:true}));
+    $('pzTouchDoneBtn')?.addEventListener('click', () => {
+      const wasAdding = pzMobileIsAdding();
+      // Esc napřed zavírá otevřené panely (Projekt, zkratky) — proto případně víckrát
+      for(let i = 0; i < 3 && (pzMobileIsAdding() || state.multiSel?.size); i++) sendKey('Escape');
+      pzMobileSyncTouchBar();
+      // z panelu se odešlo jen kvůli klepnutí do mapy → vrátit se tam, kde se pokračuje
+      if(wasAdding && autoHidden && pzMobileIsModal()) setOpen(true);
+      autoHidden = false;
+    });
+    $('pzTouchDeleteBtn')?.addEventListener('click', () => { sendKey('Delete'); pzMobileSyncTouchBar(); });
+
+    // --- Dlouhé podržení ikonky nebo popisku přidá objekt do výběru (místo Ctrl+kliku) ---
+    (function initLongPressSelect(){
+      const SEL = '.maplibregl-marker.scene-icon-marker, .maplibregl-marker.map-label-marker';
+      let timer = 0, sx = 0, sy = 0, fired = 0;
+      const cancel = () => { clearTimeout(timer); timer = 0; if(fired) state._pzMultiClickGuard = Date.now(); };
+      document.addEventListener('touchstart', e => {
+        cancel();
+        if(!e.touches || e.touches.length !== 1) return;
+        const el = e.target?.closest?.(SEL);
+        if(!el || e.target.closest('.map-label-del') || e.target.isContentEditable) return;
+        sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+        timer = setTimeout(() => {
+          timer = 0;
+          if(!pzMultiToggleEl(el)) return;
+          fired = Date.now(); state._pzMultiClickGuard = fired;
+          try{ navigator.vibrate?.(15); }catch(_e){}
+          pzMobileSyncTouchBar();
+        }, 550);
+      }, {passive:true, capture:true});
+      document.addEventListener('touchmove', e => {
+        const tch = e.touches && e.touches[0];
+        if(timer && tch && Math.hypot(tch.clientX - sx, tch.clientY - sy) > 10) cancel();
+      }, {passive:true, capture:true});
+      document.addEventListener('touchend', cancel, {passive:true, capture:true});
+      document.addEventListener('touchcancel', cancel, {passive:true, capture:true});
+      // klepnutí, které po podržení následuje, by výběr zrušilo nebo otevřelo úpravu
+      // textu — na window, aby předběhlo ostatní zachytávače na dokumentu
+      window.addEventListener('click', e => {
+        if(Date.now() - fired < 800 && e.target?.closest?.(SEL)){ e.stopPropagation(); e.preventDefault(); fired = 0; }
+      }, true);
+      document.addEventListener('contextmenu', e => {
+        if(e.target?.closest?.(SEL) && window.matchMedia('(pointer:coarse)').matches) e.preventDefault();
+      });
+    })();
+
+    // --- Tažení posuvníku: panel zprůhlední, ať je vidět, co se v mapě mění ---
+    (function initSliderPeek(){
+      let el = null;
+      const off = () => {
+        el = null;
+        if(!document.body.classList.contains('pz-peek')) return;
+        document.body.classList.remove('pz-peek');
+        document.querySelectorAll('.pz-peek-keep').forEach(x => x.classList.remove('pz-peek-keep'));
+      };
+      sidebar.addEventListener('touchstart', e => {
+        const r = e.target?.closest?.('input[type=range]');
+        el = r && mq.matches && pzMobilePanelOpen() ? r : null;
+      }, {passive:true});
+      // až když se hodnota opravdu mění — pouhé klepnutí panel neproblikne
+      sidebar.addEventListener('input', e => {
+        if(!el || e.target !== el || document.body.classList.contains('pz-peek')) return;
+        el.classList.add('pz-peek-keep');
+        const lab = el.previousElementSibling;
+        if(lab && lab.tagName === 'LABEL') lab.classList.add('pz-peek-keep');
+        document.body.classList.add('pz-peek');
+      });
+      document.addEventListener('touchend', off, {passive:true});
+      document.addEventListener('touchcancel', off, {passive:true});
+    })();
+
+    // --- Klávesnice na obrazovce ---
+    const vv = window.visualViewport;
+    if(vv){
+      const onViewport = () => {
+        if(Math.abs((vv.scale || 1) - 1) > 0.02) return;   // přiblížení stránky není klávesnice
+        pzSetKeyboardInset(Math.max(window.innerHeight, document.documentElement.clientHeight) - vv.height);
+      };
+      vv.addEventListener('resize', onViewport);
+    }
+    document.addEventListener('focusin', () => { if(document.body.classList.contains('pz-kb-open')) setTimeout(pzMobileKeepFieldVisible, 60); });
 
     document.querySelectorAll('.tab-btn').forEach(tab => {
       tab.addEventListener('click', () => {
@@ -17623,6 +17802,7 @@ document.addEventListener('keydown', e => {
     if(mq.addEventListener) mq.addEventListener('change', syncMode);
     else mq.addListener(syncMode);
     syncMode();
+    pzMobileSyncTouchBar();
   }
   initMobileLayout();
 
@@ -18079,7 +18259,7 @@ function pzDragToMap(el, imgSrc, onDrop){
         ghost = document.createElement('img'); ghost.src = imgSrc; ghost.className = 'pz-drag-ghost'; ghost.alt = '';
         document.body.appendChild(ghost); document.body.classList.add('pz-dragging');
         // na telefonu panel zakrývá mapu — při tažení ho schovat
-        if(document.body.classList.contains('mobile-panel-open')){ el.__pzReopenPanel = true; document.body.classList.remove('mobile-panel-open'); }
+        if(pzMobilePanelOpen()){ el.__pzReopenPanel = true; pzMobilePanel(false); }
       }
       ev.preventDefault();
       ghost.style.transform = 'translate(' + ev.clientX + 'px,' + ev.clientY + 'px)';
@@ -18096,7 +18276,8 @@ function pzDragToMap(el, imgSrc, onDrop){
       const ll = ev.type === 'pointerup' ? pzMapLngLatAt(ev.clientX, ev.clientY) : null;
       if(ll) onDrop(ll);
       else setStatus(t('Pusť ji do mapy — mimo mapu se nic nevložilo.'));
-      if(el.__pzReopenPanel && !ll){ document.body.classList.add('mobile-panel-open'); }
+      // telefon: po vložení zůstane vidět mapa; tablet: panel leží vedle ní, vrátí se
+      if(el.__pzReopenPanel && (!ll || !pzMobileIsModal())) pzMobilePanel(true);
       el.__pzReopenPanel = false;
     };
     document.addEventListener('pointermove', move, true);
@@ -18207,6 +18388,7 @@ function pzColorFromName(v){
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
     serializeProjectSnapshot, applyProjectSnapshot,
+    pzSetKeyboardInset, pzMobilePanel,
     get state(){ return state; }};
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
@@ -18941,6 +19123,204 @@ function pzColorFromName(v){
 /* . */
 /* . */
 /* [css:mobil] pravidla oblasti „mobil" vkládej pod tento řádek */
+/* Bezpečné okraje (výřez, zaoblené rohy, domovský proužek) a výška klávesnice na
+   obrazovce (--pz-kb nastavuje JS z visualViewport). */
+:root{--pz-st:env(safe-area-inset-top,0px);--pz-sr:env(safe-area-inset-right,0px);--pz-sb:env(safe-area-inset-bottom,0px);--pz-sl:env(safe-area-inset-left,0px);--pz-kb:0px}
+/* Pruh „Hotovo": na dotyku není Esc, kterým se vkládání a výběr ukončuje. */
+.pz-touch-bar{display:none;position:absolute;top:calc(66px + var(--pz-st));left:calc(50% + var(--panel-shift,0px));transform:translateX(-50%);z-index:58;gap:6px;padding:4px;background:var(--bg1);border:1px solid var(--border-hi);box-shadow:0 6px 20px rgba(0,0,0,.4)}
+.pz-touch-bar .btn{min-height:44px;min-width:92px;padding:0 16px;font-size:13px}
+.pz-touch-bar .btn[hidden]{display:none}
+
+/* ── Dotyk a úzké šířky: plochy pro prst, pole bez přiblížení stránky ─────── */
+@media (pointer:coarse),(max-width:980px){
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  *{-webkit-tap-highlight-color:transparent}
+  /* bez čekání na dvojité klepnutí a bez přiblížení stránky gestem nad ovládáním */
+  button,summary,label,select,.wp-item,.section h3{touch-action:manipulation}
+  .sidebar,.project-panel,.settings-card,.shortcuts-panel{touch-action:pan-y}
+  .map-actions,.floating-player,.status-bar,.mobile-menu-btn,.pz-touch-bar{touch-action:manipulation}
+  body.pz-touch-on .pz-touch-bar{display:flex}
+  /* iOS při fokusu přiblíží stránku, když má pole písmo menší než 16 px */
+  select,textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]){font-size:16px}
+  select,input[type=text],input[type=number],input[type=search]{min-height:44px}
+  .num-mini{width:76px;min-height:40px}
+  .btn{min-height:44px}
+  .brand-search-row .btn{min-width:44px}
+  .tab-btn{min-height:44px}
+  .settings-gear{min-height:44px}
+  .settings-close{width:44px;height:44px;font-size:22px}
+  .check{min-height:40px}
+  .check input[type=checkbox]{width:22px;height:22px;flex:0 0 auto}
+  input[type=color]{width:44px;height:44px}
+  .compact-details>summary{min-height:44px;display:flex;align-items:center;font-size:11px}
+  .camera-mode-btn{min-height:44px}
+  .nav-suggest-item,.place-search-item{min-height:44px}
+  /* hlavička sekce: plocha přes celou šířku karty včetně jejího horního okraje */
+  .tab-pane > .section-collapsible > h3{margin:-11px -14px 0;padding:11px 14px;min-height:46px}
+  .section-toggle{width:30px;height:30px}
+  .wp-item{min-height:48px}
+  .wp-item .btn-remove{width:44px;height:44px;margin:-8px -8px -8px 0;font-size:20px;flex:0 0 auto}
+  .lang-switcher-inline .lang-btn{width:44px;height:36px}
+  .lang-switcher-inline .lang-btn img{width:24px;height:16px}
+  .sidebar-brand-top .ui-theme-btn,.ui-theme-btn{width:44px;height:36px;font-size:15px}
+  /* táhla: viditelně úzká, ale s plochou pro prst; dráha přes celou výšku pole */
+  input[type=range],input[type=range].player-scrub{height:32px;margin:0;border-radius:0;background:linear-gradient(var(--border),var(--border)) 0 50%/100% 3px no-repeat;touch-action:pan-y}
+  input[type=range]::-webkit-slider-thumb{box-sizing:border-box;width:30px;height:32px;border:solid transparent;border-width:6px 10px;background-clip:padding-box}
+  input[type=range]::-moz-range-thumb{box-sizing:border-box;width:30px;height:32px;border:solid transparent;border-width:6px 10px;background-clip:padding-box}
+  /* lišta nad mapou, přehrávač, ovládání mapy */
+  .map-actions .map-action-btn{min-width:44px;min-height:44px;padding:0 10px;justify-content:center}
+  .map-actions .map-action-btn svg{width:18px;height:18px}
+  .mobile-menu-btn{min-width:44px;min-height:44px}
+  .player-btn{width:44px;height:44px}
+  .player-btn.play-main{width:48px;height:48px}
+  .maplibregl-ctrl-group button{width:44px;height:44px}
+  /* objekty v mapě: křížek popisku, úchyty a malé ikonky jdou trefit prstem */
+  .maplibregl-marker{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+  .map-label-del{width:30px;height:30px;top:-15px;right:-15px;font-size:18px}
+  .map-label-del::after{content:"";position:absolute;inset:-9px}
+  .scene-edit-handle{width:26px;height:26px}
+  .scene-edit-handle::after{width:46px;height:46px}
+  .scene-icon-marker::after{content:"";position:absolute;left:50%;top:50%;width:max(100%,44px);height:max(100%,44px);transform:translate(-50%,-50%)}
+  /* rozostření pozadí je na telefonu drahé (mapa pod ním se kreslí každý snímek) */
+  .mobile-backdrop,.map-loading,.settings-modal,.tnchat-panel,.shortcuts-panel{-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+/* dotykový počítačový režim (iPad na šířku): lišta a ovládání mapy pod sebou bez překryvu */
+@media (pointer:coarse) and (min-width:981px){
+  .map-actions{gap:6px}
+  .maplibregl-ctrl-top-right{top:66px}
+  .tnchat-form input{font-size:16px}
+  /* stav vedle zdroje mapy: dlouhá hláška se láme dřív, než na něj dosáhne */
+  .status-bar{max-width:min(600px, calc(100vw - 2 * var(--panel-shift,204px) - 2 * 250px))}
+}
+
+/* ── Výsuvný panel (telefon, tablet na výšku) ─────────────────────────────── */
+@media (max-width:980px){
+  .sidebar{width:min(calc(100vw - 40px),390px);box-shadow:none;will-change:transform;padding-left:var(--pz-sl)}
+  .mobile-panel-open .sidebar{box-shadow:16px 0 42px rgba(0,0,0,.55)}
+  .sidebar-brand{padding-top:calc(10px + var(--pz-st))}
+  .sidebar-brand-top .mobile-close-btn{width:44px;height:44px;font-size:24px}
+  /* hlavička panelu v jednom řádku (vlajky nezabírají vlastní řádek) */
+  .sidebar-brand-top{flex-wrap:nowrap;gap:6px}
+  .sidebar-brand-top .lang-switcher{order:1;flex:0 0 auto;margin-left:auto;gap:3px}
+  .lang-switcher-inline .lang-btn{width:36px;height:32px}
+  .lang-switcher-inline .lang-btn img{width:22px;height:15px}
+  .sidebar-brand-top .ui-theme-btn{width:40px;height:36px}
+  .sidebar-tabs{padding:4px 6px}
+  .sidebar-tabs .tab-btn{padding:0 1px}
+  .settings-bar{padding-bottom:calc(10px + var(--pz-sb))}
+  .sidebar-content{padding-bottom:0}
+  .mobile-menu-btn{top:calc(8px + var(--pz-st));left:calc(8px + var(--pz-sl));padding:0 14px}
+  .map-actions{top:calc(8px + var(--pz-st));right:calc(8px + var(--pz-sr));left:auto;width:auto;max-width:none;flex-wrap:nowrap;gap:4px}
+  .maplibregl-ctrl-top-right{top:calc(60px + var(--pz-st));right:var(--pz-sr)}
+  .maplibregl-ctrl-top-right .maplibregl-ctrl{margin:0 8px 0 0}
+  .project-panel{top:calc(58px + var(--pz-st));max-height:calc(100dvh - 76px - var(--pz-st) - var(--pz-sb))}
+  .shortcuts-panel{top:calc(58px + var(--pz-st));right:calc(8px + var(--pz-sr));max-width:calc(100vw - 16px)}
+  .settings-card{max-height:calc(100dvh - 24px - var(--pz-st) - var(--pz-sb))}
+  /* hláška na chvíli nad otevřeným panelem (jinak ji panel zakrývá) */
+  body.mobile-panel-open.pz-status-toast .status-bar{z-index:320;box-shadow:0 6px 24px rgba(0,0,0,.55)}
+  /* při tažení táhla panel zprůhlední — je vidět, co se v mapě mění */
+  body.pz-peek .sidebar{background:transparent;border-color:transparent;box-shadow:none}
+  body.pz-peek .sidebar *{visibility:hidden}
+  body.pz-peek .sidebar .pz-peek-keep,body.pz-peek .sidebar .pz-peek-keep *{visibility:visible}
+  body.pz-peek .sidebar .pz-peek-keep{background-color:var(--bg1);box-shadow:0 0 0 8px var(--bg1)}
+  body.pz-peek .mobile-backdrop{opacity:0}
+}
+/* tablet a telefon na šířku: panel nezatemňuje mapu vedle sebe a nechá ji ovladatelnou */
+@media (min-width:700px) and (max-width:980px){
+  .mobile-backdrop{display:none}
+  body.mobile-panel-open .status-bar{left:calc(390px + var(--pz-sl) + 10px)}
+  body.mobile-panel-open .floating-player{left:calc(390px + var(--pz-sl) + 8px);right:calc(8px + var(--pz-sr));transform:none;max-width:none}
+  body.mobile-panel-open .floating-player .player-controls{width:100%;padding:6px 8px;gap:6px}
+  body.mobile-panel-open .floating-player .player-scrub{flex:1 1 40px;min-width:40px}
+  body.mobile-panel-open .export-progress{left:calc(390px + var(--pz-sl) + 8px);right:8px;transform:none;min-width:0;max-width:none}
+  body.mobile-panel-open .pz-touch-bar{left:calc(50% + 195px)}
+}
+/* tablet na výšku: spodní prvky s bezpečným okrajem */
+@media (min-width:761px) and (max-width:980px) and (min-height:501px){
+  .status-bar{left:calc(10px + var(--pz-sl));right:calc(10px + var(--pz-sr));bottom:calc(10px + var(--pz-sb))}
+  .map-source-watermark{bottom:calc(var(--pz-sb) + var(--pz-status-h,34px) + 18px)}
+  .floating-player{bottom:calc(var(--pz-sb) + var(--pz-status-h,34px) + 46px)}
+  .tnchat-fab{bottom:calc(var(--pz-sb) + var(--pz-status-h,34px) + 116px)}
+  .tnchat-panel{bottom:calc(var(--pz-sb) + var(--pz-status-h,34px) + 180px);max-height:calc(100dvh - var(--pz-sb) - var(--pz-status-h,34px) - 250px)}
+}
+/* ── Telefon na výšku ─────────────────────────────────────────────────────── */
+@media (max-width:760px) and (min-height:501px){
+  .map-source-watermark{right:calc(8px + var(--pz-sr));bottom:calc(4px + var(--pz-sb));max-width:72vw}
+  .status-bar{left:calc(8px + var(--pz-sl));right:calc(8px + var(--pz-sr));bottom:calc(24px + var(--pz-sb));padding:8px 12px}
+  .floating-player{left:calc(8px + var(--pz-sl));right:calc(8px + var(--pz-sr));transform:none;max-width:none;bottom:calc(30px + var(--pz-sb) + var(--pz-status-h,34px))}
+  .floating-player .player-controls{width:100%;max-width:none;padding:4px 8px;gap:6px}
+  .floating-player .player-scrub{flex:1 1 60px;min-width:44px}
+  .tnchat-fab{right:calc(10px + var(--pz-sr));bottom:calc(96px + var(--pz-sb) + var(--pz-status-h,34px));width:48px;height:48px}
+  .tnchat-panel{right:calc(8px + var(--pz-sr));bottom:calc(152px + var(--pz-sb) + var(--pz-status-h,34px));max-height:calc(100dvh - 220px - var(--pz-sb) - var(--pz-st) - var(--pz-status-h,34px))}
+  /* průběh exportu a nabídka obnovy nahoře — dole by ležely na přehrávači a asistentovi */
+  .export-progress,#autosaveRestoreBar{left:calc(8px + var(--pz-sl));right:calc(60px + var(--pz-sr));top:calc(60px + var(--pz-st));bottom:auto!important;transform:none;min-width:0;max-width:none}
+  .export-progress-row{flex-wrap:wrap}
+}
+@media (max-width:699px){
+  /* klávesové zkratky na telefonu nejsou k ničemu; „Na začátek" dělá i Stop */
+  #shortcutsBtn,.floating-player #animRewindBtn{display:none}
+  /* přiblížení řeší gesto dvěma prsty — zůstává jen kompas */
+  .maplibregl-ctrl-group .maplibregl-ctrl-zoom-in,.maplibregl-ctrl-group .maplibregl-ctrl-zoom-out{display:none}
+  .map-actions{gap:2px}
+  .floating-player #animInfo{min-width:0;font-size:10px}
+}
+@media (max-width:699px){
+  /* mazání hledání jako křížek — pole pro text je delší */
+  .brand-search-row #clearPlaceSearchBtn{font-size:0!important;width:44px;min-width:44px;padding:0}
+  .brand-search-row #clearPlaceSearchBtn::before{content:"×";font-size:22px;line-height:1}
+}
+@media (max-width:399px){
+  .sidebar-brand-top .brand-copy{display:none}
+  /* jen ikona: sedm tlačítek po 44 px se vedle nápisu Menu nevejde */
+  .mobile-menu-btn{font-size:0;gap:0;padding:0;width:44px;justify-content:center}
+  .mobile-menu-btn svg{width:20px;height:20px}
+}
+@media (max-width:359px){
+  .map-actions{gap:1px}
+  .map-actions .map-action-btn{min-width:40px;padding:0}
+  .sidebar{width:min(calc(100vw - 28px),390px)}
+}
+/* ── Telefon na šířku: přehrávač a stav vedle sebe v jednom řádku ─────────── */
+@media (max-height:500px) and (max-width:980px){
+  .floating-player{left:calc(8px + var(--pz-sl));right:auto;bottom:calc(6px + var(--pz-sb));transform:none;width:min(48vw,372px);max-width:none}
+  .floating-player .player-controls{width:100%;max-width:none;padding:2px 8px;gap:6px}
+  .floating-player .player-scrub{flex:1 1 40px;min-width:40px}
+  .floating-player #animRewindBtn{display:none}
+  .floating-player #animInfo{min-width:0;font-size:10px}
+  .status-bar{left:calc(14px + var(--pz-sl) + min(48vw,372px));right:calc(8px + var(--pz-sr));bottom:calc(6px + var(--pz-sb));max-width:none;transform:none;padding:8px 10px;font-size:11px}
+  body.mobile-panel-open .status-bar{left:calc(14px + var(--pz-sl) + max(min(48vw,372px), min(100vw - 40px, 390px)))}
+  .map-source-watermark{right:calc(8px + var(--pz-sr));bottom:calc(12px + var(--pz-sb) + max(var(--pz-status-h,34px),54px));max-width:40vw}
+  .tnchat-fab{right:calc(10px + var(--pz-sr));bottom:calc(34px + var(--pz-sb) + max(var(--pz-status-h,34px),54px));width:44px;height:44px}
+  .tnchat-panel{right:calc(64px + var(--pz-sr));bottom:calc(6px + var(--pz-sb));max-height:calc(100dvh - 12px - var(--pz-sb))}
+  .maplibregl-ctrl-group .maplibregl-ctrl-zoom-in,.maplibregl-ctrl-group .maplibregl-ctrl-zoom-out{display:none}
+  .export-progress,#autosaveRestoreBar{left:calc(8px + var(--pz-sl));right:calc(60px + var(--pz-sr));top:calc(60px + var(--pz-st));bottom:auto!important;transform:none;min-width:0;max-width:none}
+  .export-progress-row{flex-wrap:wrap}
+  .sidebar-brand{padding-top:calc(6px + var(--pz-st));padding-bottom:6px}
+  .brand-search-bar{padding:6px 12px}
+  /* stav stejně vysoký jako přehrávač vedle něj; Nastavení neubírá z nízkého panelu */
+  .status-bar{min-height:54px;display:flex;align-items:center;justify-content:center}
+  .settings-bar{position:static}
+  /* panel Projekt končí nad spodním řádkem (stav, přehrávač, zdroj mapy) */
+  .project-panel{max-height:calc(100dvh - 148px - var(--pz-st) - var(--pz-sb))}
+}
+/* telefon na šířku s otevřeným panelem: vedle něj zbývá místo jen na stav */
+@media (max-height:500px) and (min-width:700px) and (max-width:980px){
+  body.mobile-panel-open .floating-player{display:none}
+}
+/* ── Klávesnice na obrazovce: panely končí nad ní, pole zůstane vidět ─────── */
+body.pz-kb-open .sidebar{height:auto;bottom:var(--pz-kb)}
+body.pz-kb-open .settings-bar{display:none}
+body.pz-kb-open .settings-modal{bottom:var(--pz-kb)}
+body.pz-kb-open .settings-card{max-height:calc(100dvh - var(--pz-kb) - 16px - var(--pz-st))}
+body.pz-kb-open .project-panel{max-height:calc(100dvh - var(--pz-kb) - 70px - var(--pz-st))}
+body.pz-kb-open .tnchat-panel{bottom:calc(var(--pz-kb) + 6px);max-height:calc(100dvh - var(--pz-kb) - 12px - var(--pz-st))}
+body.pz-kb-open .status-bar{bottom:calc(var(--pz-kb) + 6px)}
+body.pz-kb-open .floating-player,body.pz-kb-open .tnchat-fab,body.pz-kb-open .map-source-watermark{visibility:hidden}
+@media (min-width:981px){ body.pz-kb-open .sidebar{bottom:calc(14px + var(--pz-kb))} }
+/* nad klávesnicí zbývá málo místa (telefon na šířku): z panelu zůstane jen obsah s polem */
+body.pz-kb-tight .sidebar-brand,body.pz-kb-tight .sidebar-tabs,body.pz-kb-tight .brand-search-bar:not(:focus-within){display:none}
+/* světlý režim */
+html[data-ui="light"] .pz-touch-bar{box-shadow:0 6px 20px rgba(20,30,50,.18)}
 /* . */
 /* . */
 /* . */
