@@ -174,7 +174,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .nav-point input{flex:1}
 .nav-connector{width:2px;height:16px;background:var(--border-hi);margin-left:13px;border-radius:1px}
 
-.transport-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:14px}
+.transport-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:14px}
 .transport-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 4px;background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:.2s;color:var(--tx2)}
 .transport-btn:hover{border-color:var(--border-hi);background:var(--bg2)}
 .transport-btn.active{border-color:var(--accent);background:var(--accent);color:#fff}
@@ -986,6 +986,14 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <button type="button" class="transport-btn" data-mode="train" title="Vlak — trasa po železniční síti ČR">
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="13" rx="3"/><path d="M5 10h14"/><circle cx="9" cy="13" r=".6" fill="currentColor"/><circle cx="15" cy="13" r=".6" fill="currentColor"/><path d="m8 16-2.5 5M16 16l2.5 5M7 19h10"/></svg></div>
             <span class="t-label">Vlak</span>
+          </button>
+          <button type="button" class="transport-btn" data-mode="metro" title="Metro — trasa po linkách A, B, C v Praze">
+            <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M7.5 16.5v-9l4.5 6 4.5-6v9"/></svg></div>
+            <span class="t-label">Metro</span>
+          </button>
+          <button type="button" class="transport-btn" data-mode="tram" title="Tramvaj — trasa po tramvajových tratích (Praha, Brno, Ostrava, Plzeň, Olomouc, Liberec, Most)">
+            <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M12 3v3"/><rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M6 12h12"/><circle cx="9" cy="15" r=".6" fill="currentColor"/><circle cx="15" cy="15" r=".6" fill="currentColor"/><path d="m8 18-2 3M16 18l2 3"/></svg></div>
+            <span class="t-label" data-i18n="Tramvaj">Tramvaj</span>
           </button>
           <button type="button" class="transport-btn" data-mode="boat" title="Loď — trasa po řekách a kanálech ČR">
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15h18l-2.5 4h-13Z"/><path d="M6 15V9h9l3 6"/><path d="M9 9V5h3v4"/><path d="M2 21c1.5 0 2.5-.8 3.5-.8s2 .8 3.5.8 2.5-.8 3.5-.8 2 .8 3.5.8 2.5-.8 3.5-.8"/></svg></div>
@@ -4420,7 +4428,7 @@ function pzLegacyIconInverted(){
 // Která ikonka patří ke kterému druhu dopravy — při přepnutí dopravy se
 // ikonka vymění sama (pokud grafik nenahrál vlastní obrázek).
 // Motorka záměrně nemá ikonku — na mapě jen bod jako u pěší trasy.
-const PZ_MODE_ICON = {driving:'car', truck:'truck', train:'train', boat:'boat',
+const PZ_MODE_ICON = {driving:'car', truck:'truck', train:'train', metro:'metro', tram:'tram', boat:'boat',
   planeDirect:'plane', planeArc:'plane', planeCustom:'plane'};
 function pzMatchIconToMode(){
   const want = PZ_MODE_ICON[state.currentTransportMode];
@@ -4546,7 +4554,7 @@ function setActiveButton(groupSel, attr, value, activeClass='active'){
 function getCurrentMoverType(){
   const m = state.currentTransportMode;
   return (m === 'driving' || m === 'truck') ? 'car'
-    : m === 'train' ? 'train' : m === 'boat' ? 'boat'
+    : (m === 'train' || m === 'metro' || m === 'tram') ? 'train' : m === 'boat' ? 'boat'
     : state.currentTransportMode === 'cycle' ? 'bike'
     : state.currentTransportMode.startsWith('plane') ? 'plane'
     : 'dot';
@@ -11947,6 +11955,133 @@ function pzPickStation(g, point, label){
   }
   return best && best.rank <= 3 ? best.st : null;
 }
+const PZ_METRO_STATIONS = {"A":[["Nemocnice Motol",14.34186,50.07548],["Petřiny",14.34482,50.08718],["Nádraží Veleslavín",14.3491,50.09612],["Bořislavka",14.36359,50.09837],["Dejvická",14.39382,50.10044],["Hradčanská",14.40375,50.09721],["Malostranská",14.4094,50.09106],["Staroměstská",14.41814,50.08797],["Můstek",14.42482,50.08321],["Muzeum",14.43193,50.07912],["Náměstí Míru",14.43987,50.07521],["Jiřího z Poděbrad",14.45146,50.07779],["Flora",14.46238,50.07815],["Želivského",14.47633,50.07795],["Strašnická",14.49087,50.07281],["Skalka",14.50863,50.06841],["Depo Hostivař",14.51503,50.07462]],"B":[["Zličín",14.29082,50.0537],["Stodůlky",14.30538,50.04668],["Luka",14.3209,50.04597],["Lužiny",14.32977,50.04448],["Hůrka",14.34216,50.05002],["Nové Butovice",14.35145,50.05084],["Jinonice",14.36911,50.0541],["Radlická",14.38715,50.0583],["Smíchovské nádraží",14.40908,50.06073],["Anděl",14.40364,50.06951],["Karlovo náměstí",14.41629,50.07435],["Národní třída",14.42013,50.07947],["Můstek",14.42278,50.08323],["Náměstí Republiky",14.42986,50.08866],["Florenc",14.43692,50.09055],["Křižíkova",14.45057,50.09244],["Invalidovna",14.4627,50.09672],["Palmovka",14.47381,50.1037],["Českomoravská",14.49152,50.1062],["Vysočanská",14.50055,50.10998],["Kolbenova",14.5157,50.11046],["Hloubětín",14.53592,50.10683],["Rajská zahrada",14.55985,50.10678],["Černý Most",14.57598,50.10885]],"C":[["Letňany",14.5161,50.12421],["Prosek",14.49874,50.1192],["Střížkov",14.48914,50.12651],["Ládví",14.46873,50.12663],["Kobylisy",14.45336,50.12395],["Nádraží Holešovice",14.44036,50.10856],["Vltavská",14.43842,50.09975],["Florenc",14.43888,50.08963],["Hlavní nádraží",14.43386,50.08317],["Muzeum",14.43063,50.07994],["I. P. Pavlova",14.43028,50.07387],["Vyšehrad",14.43051,50.06268],["Pražského povstání",14.43376,50.05651],["Pankrác",14.4399,50.0506],["Budějovická",14.44925,50.04404],["Kačerov",14.45994,50.04169],["Roztyly",14.47763,50.03732],["Chodov",14.49161,50.03129],["Opatov",14.50979,50.02791],["Háje",14.52797,50.03087]]};
+// ===== METRO a TRAMVAJ: trasa po síti MHD =====
+// Síť se staví v prohlížeči z linií, které už aplikace má (PRAHA_METRO_GEOJSON,
+// assets/mhd_cz_tram.json), ve stejném tvaru jako železnice → stejné hledání
+// (pzRailRoute). Metro: uzly ve stanicích, přestup (Můstek, Muzeum, Florenc)
+// je krátká spojka mezi linkami s přirážkou, ať trasa nepřestupuje zbytečně.
+function pzNetFromPolylines(polys, extraKeys, opts = {}){
+  const key = c => Math.round(c[0] * 1e5) + ',' + Math.round(c[1] * 1e5);
+  const seen = new Map();
+  polys.forEach(pl => new Set(pl.map(key)).forEach(k => seen.set(k, (seen.get(k) || 0) + 1)));
+  const nodes = [], idx = new Map(), edges = [], adj = [];
+  const node = c => { const k = key(c); let i = idx.get(k); if(i == null){ i = nodes.length; idx.set(k, i); nodes.push([c[0], c[1]]); adj.push([]); } return i; };
+  const addEdge = (pts, k = 1, extra = 0, props) => {
+    if(pts.length < 2) return;
+    const a = node(pts[0]), b = node(pts[pts.length - 1]);
+    if(a === b && pts.length < 3) return;
+    const cum = [0]; for(let i = 1; i < pts.length; i++) cum.push(cum[i-1] + haversineKm(pts[i-1], pts[i]) * 1000);
+    const len = cum[cum.length - 1] || 1;
+    const ei = edges.length; edges.push(Object.assign({a, b, len, k, cost: len * k + extra, pts, cum}, props || {}));
+    adj[a].push(ei); if(b !== a) adj[b].push(ei);
+  };
+  polys.forEach((pl, pi) => {
+    let start = 0;
+    for(let i = 1; i < pl.length; i++){
+      const k = key(pl[i]);
+      if(i === pl.length - 1 || seen.get(k) > 1 || extraKeys?.has(k)){ addEdge(pl.slice(start, i + 1), 1, 0, opts.props?.(pi)); start = i; }
+    }
+  });
+  // drobné mezery v datech (konec koleje kousek od jiné) → spojka, ať je síť souvislá
+  if(opts.bridgeM){
+    const par = nodes.map((_, i) => i), f = x => { while(par[x] !== x){ par[x] = par[par[x]]; x = par[x]; } return x; };
+    edges.forEach(e => { par[f(e.a)] = f(e.b); });
+    const lim = opts.bridgeM / 111200;
+    nodes.forEach((n, i) => {
+      if(adj[i].length !== 1) return;
+      const kx = Math.cos(n[1] * Math.PI / 180); let best = -1, bd = lim;
+      for(let j = 0; j < nodes.length; j++){
+        if(j === i || f(j) === f(i)) continue;
+        const dy = Math.abs(nodes[j][1] - n[1]); if(dy > bd) continue;
+        const d = Math.hypot((nodes[j][0] - n[0]) * kx, dy); if(d < bd){ bd = d; best = j; }
+      }
+      if(best >= 0){ addEdge([n, nodes[best]]); par[f(i)] = f(best); }
+    });
+  }
+  return {nodes, edges, adj, stations: [], key};
+}
+let _pzMetroNet = null;
+function pzMetroNet(){
+  if(_pzMetroNet) return _pzMetroNet;
+  const lines = {};
+  (PRAHA_METRO_GEOJSON.features || []).forEach(f => { if(f.properties?.kind === 'line') lines[f.properties.line] = f.geometry.coordinates; });
+  const polys = [], names = [], extra = new Set(), stations = [];
+  Object.keys(PZ_METRO_STATIONS).forEach(L => {
+    const line = lines[L]; if(!line) return;
+    // stanice vložit do linie jako body (průmět na nejbližší úsek)
+    const ins = PZ_METRO_STATIONS[L].map(([name, lon, lat]) => {
+      const kx = Math.cos(lat * Math.PI / 180); let best = {d: Infinity};
+      for(let i = 1; i < line.length; i++){
+        const a = line[i-1], b = line[i], ax = (a[0] - lon) * kx, ay = a[1] - lat, dx = (b[0] - a[0]) * kx, dy = b[1] - a[1], l2 = dx*dx + dy*dy || 1e-12;
+        const t = Math.max(0, Math.min(1, -(ax*dx + ay*dy) / l2)), d = Math.hypot(ax + t*dx, ay + t*dy);
+        if(d < best.d) best = {d, i, t, pt: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]};
+      }
+      return {name, ...best};
+    }).sort((x, y) => x.i - y.i || x.t - y.t);
+    const out = [line[0]]; let j = 0;
+    for(let i = 1; i < line.length; i++){
+      while(j < ins.length && ins[j].i === i){ const q = ins[j].pt; if(haversineKm(out[out.length-1], q) > 0.001) out.push(q); j++; }
+      if(haversineKm(out[out.length-1], line[i]) > 0.001) out.push(line[i]);
+    }
+    ins.forEach(st => {
+      const k = Math.round(st.pt[0] * 1e5) + ',' + Math.round(st.pt[1] * 1e5);
+      extra.add(k); stations.push({lon: st.pt[0], lat: st.pt[1], name: st.name, line: L, main: true});
+    });
+    polys.push(out); names.push(L);
+  });
+  const g = pzNetFromPolylines(polys, extra, {props: pi => ({line: names[pi]})});
+  // přestupy: stejné jméno na dvou linkách
+  stations.forEach((a, i) => stations.forEach((b, j) => {
+    if(j <= i || a.name !== b.name) return;
+    const pts = [[a.lon, a.lat], [b.lon, b.lat]];
+    const cum = [0, haversineKm(pts[0], pts[1]) * 1000], ia = g.nodes.findIndex(n => Math.abs(n[0] - a.lon) < 1e-6 && Math.abs(n[1] - a.lat) < 1e-6), ib = g.nodes.findIndex(n => Math.abs(n[0] - b.lon) < 1e-6 && Math.abs(n[1] - b.lat) < 1e-6);
+    if(ia < 0 || ib < 0) return;
+    const ei = g.edges.length; g.edges.push({a: ia, b: ib, len: cum[1] || 1, k: 1, cost: (cum[1] || 1) + 2500, pts, cum, transfer: true});
+    g.adj[ia].push(ei); g.adj[ib].push(ei);
+  }));
+  g.stations = stations;
+  _pzMetroNet = g;
+  return g;
+}
+let _pzTramNet = null;
+async function pzTramNet(){
+  if(_pzTramNet) return _pzTramNet;
+  let gj = window.__pzTramCz;
+  if(!gj){
+    try{ const r = await fetch(new URL('assets/mhd_cz_tram.json', document.baseURI), {cache:'force-cache'}); if(r.ok) gj = window.__pzTramCz = await r.json(); }catch(e){}
+  }
+  gj = gj || PRAHA_TRAM_GEOJSON;
+  const polys = [];
+  (gj.features || []).forEach(f => { const g = f.geometry; if(g?.type === 'MultiLineString') polys.push(...g.coordinates); else if(g?.type === 'LineString') polys.push(g.coordinates); });
+  _pzTramNet = pzNetFromPolylines(polys.filter(pl => pl.length > 1), null, {bridgeM: 30});
+  return _pzTramNet;
+}
+// Stanice metra pro bod A/B: podle jména z pole („Anděl", „Můstek"), jinak nejbližší do 2,5 km.
+function pzPickMetroStation(g, point, label){
+  if(!g?.stations?.length || !point) return null;
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.\s]+/g, ' ').trim();
+  const raw = norm(String(label || '').split(',')[0].replace(/^(stanice\s+)?metr[oa]\s+/i, ''));
+  if(raw && !parseLatLng(label || '')){
+    const hit = g.stations.find(st => norm(st.name) === raw);
+    if(hit) return hit;
+  }
+  let best = null, bd = 2.5;
+  g.stations.forEach(st => { const d = haversineKm(point, [st.lon, st.lat]); if(d < bd){ bd = d; best = st; } });
+  return best;
+}
+// Které linky trasa projede (pořadí) a kde přestupuje — pro stav a barvu trasy.
+function pzMetroLinesOf(coords){
+  const g = pzMetroNet(), seq = [];
+  const lineAt = c => {
+    let best = null, bd = 0.03;
+    g.edges.forEach(e => { if(e.transfer || !e.line) return; for(let i = 1; i < e.pts.length; i += Math.max(1, Math.floor(e.pts.length / 40))){ const d = haversineKm(c, e.pts[i]); if(d < bd){ bd = d; best = e.line; } } });
+    return best;
+  };
+  for(let i = 0; i < coords.length; i += Math.max(1, Math.floor(coords.length / 120))){ const L = lineAt(coords[i]); if(L && seq[seq.length - 1] !== L) seq.push(L); }
+  const L2 = lineAt(coords[coords.length - 1]); if(L2 && seq[seq.length - 1] !== L2) seq.push(L2);
+  return seq;
+}
 async function pzRailRoute(points, g){
   g = g || await pzLoadRail();
   let all = [];
@@ -12000,6 +12135,8 @@ async function routeFromPoints(a,b,mode){
   }
   if(mode === 'planeCustom') return allPoints;
   if(mode === 'train') return pzRailRoute(allPoints);
+  if(mode === 'metro') return pzRailRoute(allPoints, pzMetroNet());
+  if(mode === 'tram') return pzRailRoute(allPoints, await pzTramNet());
   if(mode === 'boat') return pzRailRoute(allPoints, await pzLoadNet('assets/water_cz.json', 'Síť řek'));
   const coordString = allPoints.map(pt => `${pt[0]},${pt[1]}`).join(';');
   let url = '';
@@ -12240,6 +12377,12 @@ async function getPointFromInputOrState(inputId, currentPoint){
     if(parsed){
       return {point: parsed, label: `${parsed[1].toFixed(5)}, ${parsed[0].toFixed(5)}`};
     }
+    // Metro: název stanice („Háje", „metro Anděl") bez hledání míst — to by „Háje"
+    // našlo u Příbrami.
+    if(state.currentTransportMode === 'metro'){
+      const st = pzPickMetroStation(pzMetroNet(), [0, 0], raw);
+      if(st && st.name && haversineKm([0, 0], [st.lon, st.lat]) > 100) return {point: [st.lon, st.lat], label: st.name};
+    }
     let item;
     try{ item = await geocode(raw); }
     catch(e){
@@ -12319,6 +12462,11 @@ function routeErrorText(e){
   if(code === 'geoDown') return t('Hledání míst neodpovídá. Zkus to znovu nebo klikni do mapy.');
   if(code === 'busy') return t('Směrovací služba je přetížená. Zkus to za chvíli znovu.');
   if(code === 'down' || code === 'http') return t('Směrovací služba neodpovídá. Zkus to za chvíli znovu.');
+  if(mode === 'metro'){
+    if(code === 'samestation') return t('Start i cíl jsou ve stejné stanici metra. Zadej jinou stanici.');
+    return t('Metrem to nejde — metro jezdí jen v Praze. Napiš stanici (např. Anděl) nebo klikni blízko ní.');
+  }
+  if(mode === 'tram') return t('Tramvají to nejde — bod je daleko od tramvajové tratě. Klikni blíž ke kolejím.');
   if(mode === 'train' || mode === 'boat'){
     if(/načíst/.test(msg)) return t('Síť tratí a řek se nenačetla. Zkus to znovu.');
     return t(mode === 'train' ? 'Vlakem to nejde — tratě máme jen v Česku. Posuň bod nebo zvol jinou dopravu.'
@@ -12362,11 +12510,23 @@ async function findRoute(){
         if(stB) rb = [stB.lon, stB.lat];
       }catch(e){}
     }
+    if(mode === 'metro'){
+      const g = pzMetroNet();
+      stA = pzPickMetroStation(g, a, aInfo.label); stB = pzPickMetroStation(g, b, bInfo.label);
+      if(!stA || !stB) throw routeErr('offnet');
+      ra = [stA.lon, stA.lat]; rb = [stB.lon, stB.lat];
+      if(stA.name === stB.name) throw routeErr('samestation');
+    }
     const coords = await routeFromPoints(ra,rb,mode);
     // Výsledek patří jen stavu, pro který se hledalo — po smazání, kroku zpět
     // nebo změně dopravy během hledání se zahodí.
     if(stale() || state.pointA !== a || state.pointB !== b || state.currentTransportMode !== mode) return;
     if(!coords || coords.length < 2) throw routeErr('noroute');
+    if(mode === 'tram'){
+      // tramvaje jezdí jen ve městech — bod daleko od kolejí nepřichytávat
+      const off = Math.max(haversineKm(ra, coords[0]), haversineKm(rb, coords[coords.length-1]));
+      if(off > 1.5) throw routeErr('offnet');
+    }
     if(mode === 'train' || mode === 'boat'){
       // Síť je jen česká: bod daleko od ní by se „přichytil" stovky km jinde.
       const off = Math.max(haversineKm(ra, coords[0]), haversineKm(rb, coords[coords.length-1]));
@@ -12375,7 +12535,8 @@ async function findRoute(){
     state.routeCoords = coords;
     state.routeDurationSec = _routeDurationSec;
     if(stA || stB) state.pzTrainStations = [stA?.name || null, stB?.name || null]; else state.pzTrainStations = null;
-    if((mode === 'train' || mode === 'boat') && state.routeCoords.length > 1){
+    if(mode === 'metro' && stA && stB){ $('startInput').value = stA.name; $('endInput').value = stB.name; }
+    if(['train', 'boat', 'metro', 'tram'].includes(mode) && state.routeCoords.length > 1){
       // Body A/B na koleje, ať čára nezačíná uprostřed náměstí.
       state.pointA = state.routeCoords[0].slice(); state.pointB = state.routeCoords[state.routeCoords.length-1].slice();
       restorePointMarkers();
@@ -12390,6 +12551,27 @@ async function findRoute(){
     const sum = routeSummaryText();
     let msg = t('Trasa nalezena.') + (sum ? ' ' + sum : '');
     if(state.pzTrainStations) msg += ' · ' + (state.pzTrainStations[0] || '…') + ' → ' + (state.pzTrainStations[1] || '…');
+    {
+      const rc = $('routeColor'), auto = state._pzAutoRouteColor;
+      if(rc && auto && rc.value.toLowerCase() === auto && mode !== 'metro'){
+        rc.value = state._pzUserRouteColor || '#002ee6'; rc.dispatchEvent(new Event('input', {bubbles:true}));
+        state._pzAutoRouteColor = null;
+      }
+    }
+    if(mode === 'metro'){
+      // linky a barva trasy: jedna linka → trasa v její barvě (A zelená, B žlutá, C červená)
+      const lines = pzMetroLinesOf(state.routeCoords); state.pzMetroLines = lines;
+      if(lines.length) msg += ' · ' + t('linka') + ' ' + lines.join(' → ');
+      const rc = $('routeColor');
+      if(rc){
+        const cur = rc.value.toLowerCase(), isAuto = !!state._pzAutoRouteColor && cur === state._pzAutoRouteColor;
+        // grafikova barva (ne ta naše automatická) se schová pro návrat
+        if(!isAuto) state._pzUserRouteColor = cur;
+        const want = lines.length === 1 && PZ_METRO_LINE_COLORS[lines[0]] ? PZ_METRO_LINE_COLORS[lines[0]].toLowerCase() : (state._pzUserRouteColor || cur);
+        if(want !== cur && (isAuto || lines.length === 1)){ rc.value = want; rc.dispatchEvent(new Event('input', {bubbles:true})); }
+        state._pzAutoRouteColor = lines.length === 1 ? want : null;
+      }
+    }
     if(!isRoutePreDrawOn() && $('showTrail')?.checked) msg += ' · ' + t('Vykreslí se při přehrání.');
     setStatus(msg);
   } catch (e){
@@ -17039,6 +17221,11 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Tramvaj": {cs:"Tramvaj",sk:"Električka",bg:"Трамвай",hr:"Tramvaj",ro:"Tramvai",en:"Tram"},
+  "linka": {cs:"linka",sk:"linka",bg:"линия",hr:"linija",ro:"linia",en:"line"},
+  "Start i cíl jsou ve stejné stanici metra. Zadej jinou stanici.": {cs:"Start i cíl jsou ve stejné stanici metra. Zadej jinou stanici.",sk:"Štart aj cieľ sú v rovnakej stanici metra. Zadaj inú stanicu.",bg:"Началото и целта са в една и съща метростанция. Избери друга станция.",hr:"Početak i cilj su na istoj stanici metroa. Upiši drugu stanicu.",ro:"Startul și destinația sunt în aceeași stație de metrou. Alege altă stație.",en:"Start and destination are the same metro station. Pick another station."},
+  "Metrem to nejde — metro jezdí jen v Praze. Napiš stanici (např. Anděl) nebo klikni blízko ní.": {cs:"Metrem to nejde — metro jezdí jen v Praze. Napiš stanici (např. Anděl) nebo klikni blízko ní.",sk:"Metrom to nejde — metro jazdí len v Prahe. Napíš stanicu (napr. Anděl) alebo klikni blízko nej.",bg:"С метро не става — метрото е само в Прага. Напиши станция (напр. Anděl) или кликни близо до нея.",hr:"Metroom ne ide — metro vozi samo u Pragu. Upiši stanicu (npr. Anděl) ili klikni blizu nje.",ro:"Cu metroul nu se poate — metroul circulă doar în Praga. Scrie o stație (ex. Anděl) sau dă clic lângă ea.",en:"Not possible by metro — the metro only runs in Prague. Type a station (e.g. Anděl) or click near one."},
+  "Tramvají to nejde — bod je daleko od tramvajové tratě. Klikni blíž ke kolejím.": {cs:"Tramvají to nejde — bod je daleko od tramvajové tratě. Klikni blíž ke kolejím.",sk:"Električkou to nejde — bod je ďaleko od električkovej trate. Klikni bližšie ku koľajam.",bg:"С трамвай не става — точката е далеч от трамвайната линия. Кликни по-близо до релсите.",hr:"Tramvajem ne ide — točka je daleko od tramvajske pruge. Klikni bliže tračnicama.",ro:"Cu tramvaiul nu se poate — punctul e departe de linia de tramvai. Dă clic mai aproape de șine.",en:"Not possible by tram — the point is far from a tram line. Click closer to the tracks."},
   "S návěsem": {cs:"S návěsem",sk:"S návesom",bg:"С ремарке",hr:"S poluprikolicom",ro:"Cu semiremorcă",en:"With trailer"},
   "Policie": {cs:"Policie",sk:"Polícia",bg:"Полиция",hr:"Policija",ro:"Poliție",en:"Police"},
   "Sanitka": {cs:"Sanitka",sk:"Sanitka",bg:"Линейка",hr:"Hitna",ro:"Ambulanță",en:"Ambulance"},
@@ -18465,7 +18652,7 @@ document.addEventListener('keydown', e => {
   // =========================================================================
   const TOOL_STYLE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
   const TOOL_TABS = ['scena','trasa','animace','export','styly','projekt','nastaveni'];
-  const TOOL_MODES = ['driving','truck','moto','train','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
+  const TOOL_MODES = ['driving','truck','moto','train','metro','tram','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
 
   function toolOpenSection(sectionId, open = true){
     let sec = $(sectionId);
@@ -19553,8 +19740,10 @@ function pzColorFromName(v){
       if(!from || !to) return {ok:false, error:'Chybí from/to.'};
       if(mode){ const r = window.TNMAP.setTransportMode({mode}); if(!r.ok) return r; }
       let a, b;
-      try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Start „' + from + '" jsem nenašel.'}; }
-      try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Cíl „' + to + '" jsem nenašel.'}; }
+      // metro: jméno stanice bez hledání míst („Háje" by jinak našlo Háje u Příbrami)
+      const metroSt = v => { if(state.currentTransportMode !== 'metro') return null; const st = pzPickMetroStation(pzMetroNet(), [0, 0], String(v)); return st && haversineKm([0, 0], [st.lon, st.lat]) > 100 ? {lon: st.lon, lat: st.lat, display_name: st.name} : null; };
+      try{ a = metroSt(from) || await geocode(String(from)); }catch(e){ return {ok:false, error:'Start „' + from + '" jsem nenašel.'}; }
+      try{ b = metroSt(to) || await geocode(String(to));   }catch(e){ return {ok:false, error:'Cíl „' + to + '" jsem nenašel.'}; }
       // findRoute() trusts state.pointA/B over the input text, so set both.
       state.pointA = [+a.lon, +a.lat];
       state.pointB = [+b.lon, +b.lat];
@@ -19579,7 +19768,8 @@ function pzColorFromName(v){
       try{ const L = lineLength(state.routeCoords); if(isFinite(L)) km = L >= 10 ? Math.round(L) : Math.round(L * 10) / 10; }catch(e){}   // lineLength je v km
       const res = {ok:true, from:a.display_name, to:b.display_name, mode: state.currentTransportMode, points:n, framed};
       if(km != null) res.distanceKm = km;
-      if(state.currentTransportMode === 'train' && state.pzTrainStations) res.stations = state.pzTrainStations;
+      if(['train', 'metro'].includes(state.currentTransportMode) && state.pzTrainStations) res.stations = state.pzTrainStations;
+      if(state.currentTransportMode === 'metro' && state.pzMetroLines?.length) res.lines = state.pzMetroLines;
       return res;
     },
     clearRoute(){ try{ clearRoute(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; },
