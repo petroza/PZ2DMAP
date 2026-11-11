@@ -27,7 +27,7 @@ const ROAD = [[14.42,50.08],[14.5,50.06],[14.55,50.02],[14.52,49.98],[14.6,49.95
       const spec = F.pzConsistSpec(), f = m.getSource('pz-souprava')?.serialize?.().data?.features || [];
       if(!spec || f.length !== spec.units.length){ out.missing++; continue; }
       const size = parseFloat(st.animatedMarkerEl.style.width);
-      let prev = {c: m.project(st.animatedMarker.getLngLat()), rot: F.pzAutoHeading(st.routeCoords, p), back: spec.rear};
+      let prev = {c: m.project(st.animatedMarker.getLngLat()), rot: (F.pzLeadHeading ? F.pzLeadHeading(p) : F.pzAutoHeading(st.routeCoords, p)), back: spec.rear};
       f.forEach((x, i) => {
         const u = spec.units[i], c = m.project(x.geometry.coordinates), da = dir(prev.rot), db = dir(x.properties.rot);
         const g = Math.hypot((prev.c.x - da[0] * prev.back * size) - (c.x + db[0] * u.front * size), (prev.c.y - da[1] * prev.back * size) - (c.y + db[1] * u.front * size)) / size;

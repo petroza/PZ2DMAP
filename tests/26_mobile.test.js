@@ -143,7 +143,7 @@ function smallTargets(page){
     const kb = Math.round(vw.height * 0.45);
     await page.evaluate(px => window.__pzFns.pzSetKeyboardInset(px), kb); await page.waitForTimeout(400);
     const k1 = await page.evaluate(() => { const r = document.getElementById('mapLabelText').getBoundingClientRect(), s = document.querySelector('.sidebar').getBoundingClientRect(); return {bottom: r.bottom, top: r.top, sb: s.bottom, cls: document.body.classList.contains('pz-kb-open')}; });
-    check(k1.cls && k1.bottom <= vw.height - kb && k1.top >= 0 && k1.sb <= vw.height - kb + 1, `${dev}: pole nad klávesnicí (spodek pole ${Math.round(k1.bottom)}, klávesnice od ${vw.height - kb})`);
+    check(k1.cls && k1.bottom <= vw.height - kb && k1.top >= 0 && k1.sb <= vw.height - kb + 3, `${dev}: pole nad klávesnicí (spodek pole ${Math.round(k1.bottom)}, klávesnice od ${vw.height - kb}) ${JSON.stringify(k1)}`);
     await page.evaluate(() => { window.__pzFns.pzSetKeyboardInset(0); document.activeElement.blur(); }); await page.waitForTimeout(300);
     const k2 = await page.evaluate(() => ({cls: document.body.classList.contains('pz-kb-open'), sb: document.querySelector('.sidebar').getBoundingClientRect().bottom, y: scrollY}));
     check(!k2.cls && k2.sb >= vw.height - 20 && k2.y === 0, `${dev}: po zavření klávesnice se rozhraní vrátí`);

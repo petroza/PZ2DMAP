@@ -12713,17 +12713,20 @@ function pzRailPose(progress){
   let F = at(sF), sR = back(F, sF, 2 * bL * U), R = at(sR);
   const push = (F, R) => { const c = [(F[0] + R[0]) / 2, (F[1] + R[1]) / 2]; pose.push({c: toLL(c), xy: c, rot: Math.atan2(F[0] - R[0], F[1] - R[1]) * 180 / Math.PI, dir: [F[0] - R[0], F[1] - R[1]]}); };
   push(F, R);
-  let prevBack = spec.rear, prevB = bL, prevR = R, prevSR = sR;
+  // vagony: přední spřáhlo PŘESNĚ v zadním spřáhle předchozího vozu (souprava se nerozpojí),
+  // zadní podvozek na trati → vůz jede po kolejích a v zatáčce se jen zalomí v kloubu
+  const lp = pose[0], ld = Math.hypot(lp.dir[0], lp.dir[1]) || 1e-9;
+  let hitch = [lp.xy[0] - lp.dir[0] / ld * spec.rear * U, lp.xy[1] - lp.dir[1] / ld * spec.rear * U];
+  let sPrev = sR;
   spec.units.forEach(u => {
-    const b = Math.min(u.front, u.back) * 0.72;      // rozvor vagonu
-    // od zadního podvozku předchozího vozu k přednímu podvozku dalšího přes spřáhla
-    const link = (prevBack - prevB) + (u.front - b);
-    const sF2 = back(prevR, prevSR, link * U), F2 = at(sF2);
-    const sR2 = back(F2, sF2, 2 * b * U), R2 = at(sR2);
-    // střed vozu tak, aby přední spřáhlo leželo na trati za předchozím vozem
-    push(F2, R2);
-    pose[pose.length - 1].scale = u.scale; pose[pose.length - 1].type = u.type;
-    prevBack = u.back; prevB = b; prevR = R2; prevSR = sR2;
+    const b = Math.min(u.front, u.back) * 0.72;      // podvozek ±b od středu vagonu
+    const L = (u.front + b) * U;                       // od spřáhla k zadnímu podvozku
+    const sR2 = back(hitch, Math.min(sPrev, progress * total), L), R2 = at(sR2);
+    let vx = hitch[0] - R2[0], vy = hitch[1] - R2[1]; const vl = Math.hypot(vx, vy) || 1e-9; vx /= vl; vy /= vl;
+    const c = [hitch[0] - vx * u.front * U, hitch[1] - vy * u.front * U];
+    pose.push({c: toLL(c), xy: c, rot: Math.atan2(vx, vy) * 180 / Math.PI, dir: [vx, vy], scale: u.scale, type: u.type});
+    hitch = [c[0] - vx * u.back * U, c[1] - vy * u.back * U];
+    sPrev = sR2;
   });
   _pzRailCache = {key, route, pose};
   return pose;
@@ -18476,6 +18479,9 @@ document.addEventListener('keydown', e => {
     if(open && sec.classList.contains('pz-adv-only') && !pzAdvancedOn()){
       try{ pzApplyAdvanced(true); advNote = 'Zapnul jsem Pokročilé funkce (jdou vypnout v Nastavení).'; }catch(e){}
     }
+    // Slunce a stíny potřebují 3D budovy — na jiném podkladu je sekce schovaná.
+    if(open && sec.id === 'sunShadowSection' && sec.style.display === 'none')
+      return {ok:false, error:'Slunce a stíny jdou jen na podkladu Liberty 3D — nejdřív ho přepni (setBasemap).'};
     // Sekce na jiné záložce: nejdřív na ni přepnout, jinak se otevře „naslepo".
     const pane = sec.closest('.tab-pane')?.dataset?.pane;
     if(open && pane && pane !== state.currentTab){ try{ setTab(pane); }catch(e){} }
@@ -18979,7 +18985,7 @@ function pzColorFromName(v){
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
-    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO,
+    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading,
     pzSetKeyboardInset, pzMobilePanel,
     createSceneArrow, createScenePerimeterAt, createSceneDistance, createSceneIconAt, addMapLabelAt, pzIconDataUrl,   // 21_scene_objects
     get state(){ return state; }};
@@ -19632,7 +19638,8 @@ function pzColorFromName(v){
       sc_route:['Trasa a animace', 1], sc_via:['Trasa a animace', 2], sc_last:['Trasa a animace', 3], sc_play:['Trasa a animace', 4],
       sc_undo:['Obecné', 1], sc_cancel:['Obecné', 2], sc_help:['Obecné', 3]};
     const groups = new Map(['Mapa', 'Objekty', 'Trasa a animace', 'Obecné'].map(g => [g, []]));
-    [...p.querySelectorAll(':scope > .sc-row')].forEach((row, i) => {
+    const host = p.querySelector(':scope > .sc-list') || p;
+    [...host.querySelectorAll(':scope > .sc-row')].forEach((row, i) => {
       const w = WHERE[row.querySelector('[data-i18n]')?.dataset.i18n] || ['Objekty', 50 + i];
       groups.get(w[0]).push([w[1], row]);
     });
@@ -19642,7 +19649,7 @@ function pzColorFromName(v){
       const h = document.createElement('h5'); h.dataset.i18n = name; h.textContent = name;
       box.appendChild(h);
       rows.sort((a, b) => a[0] - b[0]).forEach(([, row]) => box.appendChild(row));
-      p.appendChild(box);
+      host.appendChild(box);
     });
   })();
 
@@ -20016,7 +20023,7 @@ html[data-ui="light"] .floating-player .player-controls{border-color:var(--borde
 .exp-chip.active .exp-ar{border-color:var(--accent);opacity:1}
 .exp-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}
 .exp-act{min-width:0}
-.exp-act .btn{width:100%;padding:10px 6px}
+.exp-act .btn{width:100%;padding:0 6px;height:var(--pz-h,30px)}
 .exp-cap{margin-top:5px;min-height:14px;font-size:10.5px;line-height:1.3;color:var(--tx2);text-align:center;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .exp-cap.warn{color:var(--accent-hi)}
 html[data-ui="light"] .exp-cap.warn{color:#c22532}
@@ -20552,7 +20559,7 @@ html[data-ui="light"] .pz-touch-bar{box-shadow:0 6px 20px rgba(20,30,50,.18)}
 .tnchat-retry:hover{background:var(--accent-hi)}
 .tnchat-noai{margin:10px 0 6px;font:600 11px var(--font);color:var(--tx2)}
 html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
-@media (max-width:760px){ .tnchat-form textarea{font-size:16px} }   /* iOS jinak při fokusu přiblíží stránku */
+@media (max-width:760px),(pointer:coarse){ .tnchat-form textarea{font-size:16px} }   /* iOS jinak při fokusu přiblíží stránku */
 /* Panel zkratek: čtyři skupiny místo jednoho dlouhého seznamu */
 .shortcuts-panel .sc-group + .sc-group{margin-top:10px;padding-top:9px;border-top:1px solid var(--border)}
 .shortcuts-panel h5{margin:0 0 6px;font:700 10px var(--font);letter-spacing:.8px;text-transform:uppercase;color:var(--tx3)}
@@ -20578,10 +20585,10 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
 .layer-visibility-row[hidden],#styleLayersMore[hidden]{display:none!important}
 #styleLayersSection .layer-visibility-row{font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--tx1)}
 /* Státy: hledání + barva + tlačítko v jednom řádku, pod tím seznam obarvených */
-.pz-country-row{display:flex;gap:6px;align-items:stretch}
+.pz-country-row{display:flex;gap:6px;align-items:center}
 .pz-country-row .country-search-wrap{flex:1 1 auto;min-width:0}
-.pz-country-row input[type=text]{width:100%;height:100%}
-.pz-country-row input[type=color]{flex:0 0 36px;width:36px;height:auto;min-height:32px;padding:2px}
+.pz-country-row input[type=text]{width:100%;height:var(--pz-h,30px)}
+.pz-country-row input[type=color]{flex:0 0 36px;width:36px;height:var(--pz-h,30px);padding:2px}
 .pz-country-row .btn{flex:0 0 auto;margin:0}
 #pzCountryColorList .wp-item{cursor:pointer;padding:5px 8px}
 #pzCountryColorList .wp-item input[type=color]{flex:0 0 26px;width:26px;height:22px;padding:1px;cursor:pointer}
