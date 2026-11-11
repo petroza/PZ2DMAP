@@ -751,8 +751,6 @@ html:not(.pz-adv) .pz-adv-only:not(.pz-adv-inuse){display:none!important}
 .pz-tint-sw{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);padding:0;cursor:pointer;background:var(--bg3);color:var(--tx2);font:700 11px var(--font);line-height:1}
 .pz-tint-sw:hover{border-color:var(--border-hi)}
 .pz-tint-sw.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-glow)}
-#animIconColor{width:32px;height:26px;padding:0;border:2px solid var(--border);border-radius:6px;background:none;cursor:pointer}
-#animIconColor.active{border-color:var(--accent)}
 /* přetažení ikonky z palety do mapy; pan-y = svislý tah dál posouvá panel */
 .pz-icon-pick{touch-action:pan-y;cursor:grab}
 .pz-drag-ghost{position:fixed;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;z-index:1000;opacity:.55;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5));transition:opacity .12s}
@@ -18055,7 +18053,7 @@ document.addEventListener('keydown', e => {
           // close-drag: must start on the drawer, but not on a control that needs
           // its own horizontal gesture (sliders, tab strip, dials, selects…)
           if(!sidebar.contains(e.target)) return;
-          if(e.target.closest('input,select,textarea,.sidebar-tabs,.angle-dial,.lang-switcher,.place-search-results,.preset-tile,.transport-grid,.pz-icon-pick,.pz-tpl-btn')) return;
+          if(e.target.closest('input,select,textarea,.sidebar-tabs,.angle-dial,.lang-switcher,.place-search-results,.preset-tile,.transport-grid,.pz-icon-pick')) return;
           opening = false;
         } else {
           if(tch.clientX > 24) return;   // open only from the very left screen edge

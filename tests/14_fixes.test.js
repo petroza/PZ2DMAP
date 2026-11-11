@@ -72,13 +72,6 @@ const {check, done, open, status, tab} = require('./lib');
     window.__pzPushUndo(); window.__pzPushUndo(); return window.__pzUndo(); });
   check(undoOk !== undefined, 'Ctrl+Z bez změny nespadne');
 
-  // Rychlá scéna nenechá na mapě trvalý padding
-  await page.fill('#pzTplPlace', 'Humpolec'); await page.click('.pz-tpl-btn[data-tpl="nehoda"]');
-  await page.waitForFunction(() => /Scéna připravena|nenalezeno/.test(document.getElementById('statusBar').textContent), null, {timeout: 25000}).catch(() => {});
-  await page.waitForTimeout(1200);
-  const pad = await page.evaluate(() => window.__tnMap.getPadding());
-  check(!pad.left && !pad.right && !pad.top && !pad.bottom, 'po Rychlé scéně je padding mapy nulový ' + JSON.stringify(pad));
-
   // trasa: výchozí Auto má ikonku, po zastavení animace objekt zůstane
   const ROAD = [[14.42,50.08],[14.9,49.8],[15.6,49.43],[16.6,49.19]];
   await ctx.route(/routing\.openstreetmap\.de|router\.project-osrm\.org/, r => r.fulfill({status:200, contentType:'application/json',
