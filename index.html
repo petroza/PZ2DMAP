@@ -370,6 +370,9 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
    The map keeps rendering to its buffer underneath (capture is unaffected). */
 .export-cover{position:absolute;inset:0;z-index:65;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0d1119;color:#fff;font:600 14px var(--font);text-align:center;padding:24px}
 .export-cover.show{display:flex}
+/* během renderu: nápis a průběh exportu jako jeden vystředěný celek */
+.export-cover.show{padding-bottom:240px;padding-left:calc(24px + 2 * var(--panel-shift,0px))}
+.map-wrap:has(.export-cover.show) #exportProgress{top:calc(50% - 45px);bottom:auto;transform:translateX(-50%)}
 .export-cover .ec-spinner{width:30px;height:30px;border-radius:50%;border:3px solid rgba(255,255,255,.22);border-top-color:var(--accent);animation:mapSpin .8s linear infinite}
 .export-cover .ec-sub{font-weight:400;font-size:12px;color:var(--tx2);max-width:360px}
 /* Measure tool */
@@ -1037,6 +1040,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
         <label data-i18n="Velikost ikonky" style="margin-top:10px">Velikost ikonky <span class="val" id="animIconSizeVal">34 px</span></label>
         <input id="animIconSize" type="range" min="18" max="96" step="2" value="34">
+        <label class="check" id="pzTrailerRow" style="margin-top:10px" hidden><input id="pzTrailerOn" type="checkbox" checked> <span data-i18n="S návěsem">S návěsem</span></label>
         <div id="pzWagonRow" style="margin-top:10px" hidden>
           <label for="pzWagonCount"><span data-i18n="Počet vagonů">Počet vagonů</span> <span class="val" id="pzWagonCountVal">2</span></label>
           <input id="pzWagonCount" type="range" min="0" max="8" step="1" value="2">
@@ -4653,6 +4657,7 @@ function renderAnimSystemIconSelection(){
   // realistické obrázky nemají barevné vrstvy — barva jen u kreslených (vlak, letadlo)
   $('pzVehiclePalette').hidden = !pal || pzIsSprite(state.animSystemIcon);
   $('pzWagonRow').hidden = state.animSystemIcon !== 'train';
+  if($('pzTrailerRow')) $('pzTrailerRow').hidden = state.animSystemIcon !== 'truck';
   // inverze má smysl jen pro vlastní nahraný obrázek a bod
   $('invertIcons').closest('label').style.display = pal ? 'none' : '';
 }
@@ -7660,6 +7665,7 @@ function serializeProjectSnapshot(){
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
       wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
+      trailer: $('pzTrailerOn') ? !!$('pzTrailerOn').checked : true,
       vehiclePalette: pzVehiclePalette(),
       animStart: $('animStart')?.value || '0',
       animDuration: $('animDuration')?.value || '8',
@@ -7765,6 +7771,7 @@ function applyBasicProjectSnapshot(snapshot){
   state.animSystemIcon = animation.animSystemIcon && ANIM_SYSTEM_ICONS[animation.animSystemIcon] ? animation.animSystemIcon : null;
   pzSetVehiclePalette(animation.vehiclePalette);
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
+  if($('pzTrailerOn')) $('pzTrailerOn').checked = animation.trailer !== false;
   if($('pzWagonCount')){ $('pzWagonCount').value = String(Math.max(0, Math.min(8, parseInt(animation.wagonCount ?? 2, 10) || 0))); $('pzWagonCountVal').textContent = $('pzWagonCount').value; }
   renderAnimSystemIconSelection();
   renderAnimIconPreview();
@@ -12662,7 +12669,85 @@ function finalAngle(progress){
   // Vlastní obrázek nemá nos natočený jako vestavěné auto/letadlo — základní
   // úhel 0, směr si grafik doladí ručním úhlem.
   const base = custom ? 0 : getPathFollowBaseAngle(moverType);
-  return base + pzAutoHeading(state.routeCoords, progress) + getFollowOffset(moverType) + manual;
+  return base + pzLeadHeading(progress) + getFollowOffset(moverType) + manual;
+}
+// ===== Jízda po kolejích (vlak, metro, tramvaj) =====
+// Každý vůz má oba podvozky přímo na trati: přední podvozek na trase, zadní
+// v místě trati vzdáleném o rozvor, střed vozu mezi nimi a natočení podle nich.
+// Další vůz navazuje přes spřáhla (vzdálenost podvozků přes spoj), takže vozy
+// jdou za sebou a v zatáčce se k sobě jen lehce natočí — jako skutečný vlak.
+const PZ_RAIL_TYPES = new Set(['train', 'metro', 'tram']);
+function pzIsRail(type){ return PZ_RAIL_TYPES.has(type) && !!PZ_SPRITE_GEO[type] && !!PZ_SPRITE_IMG[type]; }
+let _pzRailCache = null;
+function pzRailPose(progress){
+  const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
+  if(!pzIsRail(type) || !m || !route || route.length < 2) return null;
+  const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
+  const zoom = m.getZoom(), key = progress + '|' + zoom + '|' + sizePx + '|' + route.length + '|' + type + '|' + ($('pzWagonCount')?.value || '');
+  if(_pzRailCache && _pzRailCache.key === key && _pzRailCache.route === route) return _pzRailCache.pose;
+  const {cum, total} = cumulativeRouteLengths(route);
+  const lead = pointAtProgress(route, progress) || route[0];
+  const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, zoom));
+  const U = sizePx * kmPerPx;
+  const lat0 = lead[1] * Math.PI / 180, kx = 111.32 * Math.cos(lat0), ky = 110.57;
+  const toXY = c => [(c[0] - lead[0]) * kx, (c[1] - lead[1]) * ky];
+  const toLL = q => [lead[0] + q[0] / kx, lead[1] + q[1] / ky];
+  const spec = pzConsistSpec() || {rear:0.5, units:[]};
+  const lenAll = spec.units.reduce((a, u) => a + u.front + u.back, spec.rear + 0.5) * U;
+  const at = d => toXY(pzPointAtKm(route, cum, total, d, lenAll));
+  // bod trati za vzdáleností s0, který je od bodu Q vzdušně L (hledání dozadu)
+  const back = (Q, s0, L) => {
+    let hi = s0, lo = s0, step = Math.max(L / 3, 1e-6), k = 0;
+    while(k++ < 400){ lo = hi - step; const q = at(lo); if(Math.hypot(q[0] - Q[0], q[1] - Q[1]) >= L) break; hi = lo; }
+    for(let i = 0; i < 22; i++){ const mid = (hi + lo) / 2, q = at(mid); if(Math.hypot(q[0] - Q[0], q[1] - Q[1]) >= L) lo = mid; else hi = mid; }
+    return lo;
+  };
+  const pose = [];
+  // vedoucí vůz: přední podvozek je tam, kam podle průběhu dojela souprava
+  const bL = 0.36;                                  // podvozek ±36 % délky od středu vozu
+  let sF = progress * total + bL * U;               // přední podvozek mírně před „bodem jízdy"
+  let F = at(sF), sR = back(F, sF, 2 * bL * U), R = at(sR);
+  const push = (F, R) => { const c = [(F[0] + R[0]) / 2, (F[1] + R[1]) / 2]; pose.push({c: toLL(c), xy: c, rot: Math.atan2(F[0] - R[0], F[1] - R[1]) * 180 / Math.PI, dir: [F[0] - R[0], F[1] - R[1]]}); };
+  push(F, R);
+  let prevBack = spec.rear, prevB = bL, prevR = R, prevSR = sR;
+  spec.units.forEach(u => {
+    const b = Math.min(u.front, u.back) * 0.72;      // rozvor vagonu
+    // od zadního podvozku předchozího vozu k přednímu podvozku dalšího přes spřáhla
+    const link = (prevBack - prevB) + (u.front - b);
+    const sF2 = back(prevR, prevSR, link * U), F2 = at(sF2);
+    const sR2 = back(F2, sF2, 2 * b * U), R2 = at(sR2);
+    // střed vozu tak, aby přední spřáhlo leželo na trati za předchozím vozem
+    push(F2, R2);
+    pose[pose.length - 1].scale = u.scale; pose[pose.length - 1].type = u.type;
+    prevBack = u.back; prevB = b; prevR = R2; prevSR = sR2;
+  });
+  _pzRailCache = {key, route, pose};
+  return pose;
+}
+// Vozidlo z obrázku míří po trase pod sebou: směr = tětiva trasy přes jeho délku
+// (příď i záď leží na lince). Průměr přes ±2 km (pzAutoHeading) ho na klikaté
+// trase stáčel šikmo mimo linku. Bod a kreslené ikony zůstávají u průměru.
+function pzLeadHeading(progress){
+  const rp = pzRailPose(progress); if(rp) return rp[0].rot;
+  const route = state.routeCoords, type = state.animSystemIcon, m = state.map;
+  const sp = PZ_SPRITES[type], g = PZ_SPRITE_GEO[type];
+  if(!sp || !g || !PZ_SPRITE_IMG[type] || !m || !route || route.length < 2) return pzAutoHeading(route, progress);
+  try{
+    const {cum, total} = cumulativeRouteLengths(route);
+    const lead = pointAtProgress(route, progress) || route[0];
+    const sizePx = parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK();
+    const kmPerPx = 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
+    const half = Math.max(sizePx * 0.5, 6) * kmPerPx, d = progress * total;
+    if(total < half * 2.2) return pzAutoHeading(route, progress);
+    const a = pzPointAtKm(route, cum, total, Math.min(total, d + half), half * 2);
+    const b = pzPointAtKm(route, cum, total, Math.max(0, d - half), half * 2);
+    // u startu/cíle chybí kus trasy na jedné straně — tětivu prodloužit od středu
+    const f = d + half > total ? lead : a, r = d - half < 0 ? lead : b;
+    const lat = (f[1] + r[1]) / 2 * Math.PI / 180;
+    const dx = (f[0] - r[0]) * Math.cos(lat), dy = f[1] - r[1];
+    if(Math.abs(dx) + Math.abs(dy) < 1e-12) return pzAutoHeading(route, progress);
+    return Math.atan2(dx, dy) * 180 / Math.PI;
+  }catch(e){ return pzAutoHeading(route, progress); }
 }
 
 
@@ -12682,6 +12767,7 @@ function pzConsistSpec(){
       const n = Math.max(0, Math.min(8, parseInt($('pzWagonCount')?.value ?? '2', 10) || 0));
       return n ? {rear:g.rear, units:Array.from({length:n}, (_, i) => g.units[Math.min(i, g.units.length - 1)])} : null;
     }
+    if(state.animSystemIcon === 'truck' && $('pzTrailerOn') && !$('pzTrailerOn').checked) return null;   // nákladní auto bez návěsu
     return {rear:g.rear, units:g.units};
   }
   if(g && !g.units.length) return null;
@@ -12798,15 +12884,24 @@ function pzUpdateConsist(progress, opts){
     const toXY = c => [(c[0] - lead[0]) * kx, (c[1] - lead[1]) * ky];
     const toLL = q => [lead[0] + q[0] / kx, lead[1] + q[1] / ky];
     // zadní nápravy jedou po trase vyhlazené v měřítku vozu (klička menší než vůz se ignoruje)
-    const coords = pzConsistPath(route, U * 0.7);
+    const coords = pzConsistPath(route, U * 0.25);
     const {cum, total} = cumulativeRouteLengths(coords);
     const len = spec.units.reduce((a, u) => a + u.front + u.back, spec.rear) * U;
     const pathXY = d => toXY(pzPointAtKm(coords, cum, total, d, len));
     // směr vedoucího kusu = stejný úhel, jakým je natočená jeho ikonka
-    const hd = pzAutoHeading(route, progress) * Math.PI / 180;
+    const railPose = pzRailPose(progress);
+    if(railPose){
+      railPose.slice(1).forEach((pt, i) => {
+        const u = spec.units[i], rec = pzConsistImage(pzVehicleImage(u.type), false, '');
+        if(!rec.ready) return;
+        if(!m.hasImage(rec.id)) m.addImage(rec.id, rec.data, {pixelRatio: 256 / 64});
+        feats.push({type:'Feature', geometry:{type:'Point', coordinates:pt.c}, properties:{img:rec.id, rot: pt.rot, sz: size * (u.scale || 1) / 64, k:i}});
+      });
+    }
+    const hd = pzLeadHeading(progress) * Math.PI / 180;
     let hitch = [-Math.sin(hd) * spec.rear * U, -Math.cos(hd) * spec.rear * U];   // spojení za vedoucím kusem
     let s = pzProjectKm(coords, cum, lead, progress * total);                     // kde na trase právě jsme
-    spec.units.forEach((u, i) => {
+    (railPose ? [] : spec.units).forEach((u, i) => {   // vlak/metro/tramvaj už spočítal pzRailPose
       const rec = pzConsistImage(pzVehicleImage(u.type), false, '');
       const L = (u.front + u.axle) * U;
       // zadní náprava: bod trasy za spojením ve vzdálenosti L od něj (půlení intervalu)
@@ -13581,6 +13676,7 @@ function setAnimProgress(progress){
     state.map.triggerRepaint();
   } else {
     if(plane3dLayer.cur) plane3dLayer.cur.visible = false;
+    { const rp = (animDot && point) ? pzRailPose(eased) : null; if(rp) mPoint = rp[0].c; }
     if(animDot && point) ensureAnimMarker(mPoint, finalAngle(eased), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
     try{ pzUpdateConsist(animDot && point ? eased : null); }catch(e){}
     try{ pzUpdateBeacons(state.animatedMarkerEl, eased); }catch(e){}
@@ -14232,7 +14328,7 @@ function createNativeExportMarkers(exportMap){
       const el = createMarkerEl(getCurrentMoverType(), size);
       temp.animatedMarkerEl = el;
       temp.animatedMarker = new maplibregl.Marker({element:el, anchor:'center', rotationAlignment:align.rotationAlignment, pitchAlignment:align.pitchAlignment})
-        .setLngLat(point).addTo(exportMap);
+        .setLngLat((() => { try{ const rp = pzRailPose(progress); return rp ? rp[0].c : point; }catch(e){ return point; } })()).addTo(exportMap);
       // Lift the icon onto the 3D arc in the EXPORT too (state.map is already the export
       // map here, so the lift is computed in export-camera pixels). Without this the plane
       // detached from the arc ribbon in rendered videos on tilted/globe views.
@@ -16271,6 +16367,7 @@ function bindUI(){
   ['pzVehicleBody','pzVehicleAccent'].forEach(id => { ['input','change'].forEach(ev => $(id).addEventListener(ev, () => refreshVehicleColors({body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto:false}))); });
   pzFillSysIconButtons();
   try{ pzLoadSprites(); }catch(e){}
+  $('pzTrailerOn')?.addEventListener('change', () => refreshAnimatedMarkerPreview());
   $('pzWagonCount')?.addEventListener('input', () => { $('pzWagonCountVal').textContent = $('pzWagonCount').value; refreshAnimatedMarkerPreview(); });
   $('invertIcons')?.addEventListener('change', ()=>{
     if(state.animatedMarkerEl) state.animatedMarkerEl.classList.toggle('inverted', pzLegacyIconInverted());
@@ -16935,6 +17032,7 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "S návěsem": {cs:"S návěsem",sk:"S návesom",bg:"С ремарке",hr:"S poluprikolicom",ro:"Cu semiremorcă",en:"With trailer"},
   "Policie": {cs:"Policie",sk:"Polícia",bg:"Полиция",hr:"Policija",ro:"Poliție",en:"Police"},
   "Sanitka": {cs:"Sanitka",sk:"Sanitka",bg:"Линейка",hr:"Hitna",ro:"Ambulanță",en:"Ambulance"},
   "Metro": {cs:"Metro",sk:"Metro",bg:"Метро",hr:"Metro",ro:"Metrou",en:"Metro"},
