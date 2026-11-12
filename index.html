@@ -415,6 +415,8 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
 .map-label-del{display:none;position:absolute;top:-11px;right:-11px;width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;background:#e63946;color:#fff;font:700 14px/1 sans-serif;cursor:pointer;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.35);z-index:2}
 .map-label-marker.selected .map-label-del{display:grid}
 .map-label-marker[data-side="none"] .map-label-square{display:none}
+/* bez čtverečku: cedulka ukotvená svým středem (název státu sedí na místě i při zoomu) */
+.map-label-marker[data-side="none"] .map-label-content{left:0;transform:translate(-50%,-50%)}
 .map-label-resize{display:none;position:absolute;top:-9px;left:-9px;width:14px;height:14px;background:#fff;border:2px solid #2bb3c0;border-radius:3px;cursor:nwse-resize;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.35);touch-action:none}
 .map-label-marker.selected .map-label-resize{display:block}
 /* Styly popisků v barvách TV Nova (manuál: navy #0D1767, červená #F03B3B). Export
