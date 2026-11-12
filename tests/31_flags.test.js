@@ -44,6 +44,25 @@ const {check, done, open, tab} = require('./lib');
   check(lab && lab.text === 'Rakousko' && lab.box && lab.square === 'none', 'klik do státu přidá popisek s jeho názvem, bez červeného čtverečku ' + JSON.stringify(lab));
   const saved = await page.evaluate(() => window.__pzFns.serializeProjectSnapshot().mapLabels?.at?.(-1)?.side);
   check(saved === 'none', 'popisek bez čtverečku se tak i uloží (' + saved + ')');
+  // oddálení: popisek se zmenší, ale ne pod čitelných 14 px; přiblížení ho nezvětší
+  const fs = () => page.evaluate(() => parseFloat(getComputedStyle(window.__pzFns.state.mapLabels.at(-1).marker.getElement().querySelector('.map-label-bubble')).fontSize));
+  const f0 = await fs();
+  await page.evaluate(() => window.__tnMap.jumpTo({zoom: 3})); await page.waitForTimeout(400);
+  const f1 = await fs();
+  await page.evaluate(() => window.__tnMap.jumpTo({zoom: 0.5})); await page.waitForTimeout(400);
+  const f2 = await fs();
+  await page.evaluate(() => window.__tnMap.jumpTo({zoom: 7})); await page.waitForTimeout(400);
+  const f3 = await fs();
+  check(f1 < f0 && f2 >= 13.9 && f2 <= f1 && Math.abs(f3 - f0) < 0.5, `popisek se při oddálení zmenší, ale zůstane čitelný (${f0} → ${f1} → ${f2}, přiblížení ${f3})`);
+  check(await page.evaluate(() => window.__pzFns.serializeProjectSnapshot().mapLabels.at(-1).baseZoom) === 4, 'přiblížení popisku se uloží do projektu');
+  // klik na vlajku s vypnutým „Vlajky států" ho zapne a vlajku vybere
+  await page.evaluate(() => window.__tnMap.jumpTo({center: [17, 50], zoom: 4})); await page.waitForTimeout(800);
+  await page.uncheck('#pzCountryLabelsOn');
+  check(!(await page.isChecked('#pzFlagsOn')), 'vlajky jsou vypnuté');
+  const fp = await page.evaluate(() => window.__pzFns.pzFlagList().find(f => f.iso === 'de').lngLat);
+  p = await px(fp); await page.mouse.click(p.x, p.y); await page.waitForTimeout(600);
+  const selIso = await page.evaluate(() => { const s = window.__pzFns.state; return (s.pzFlagSel && window.__pzFns.pzFlagList().find(f => f.id === s.pzFlagSel)?.iso) || null; });
+  check(await page.isChecked('#pzFlagsOn') && selIso === 'de', 'klik na vlajku zapne Vlajky států a vybere ji (' + selIso + ')');
   check(!errors.length, 'bez chyb v konzoli ' + errors.join(' | '));
   await close(); done();
 })();

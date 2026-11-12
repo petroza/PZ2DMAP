@@ -406,9 +406,9 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
 .map-label-content{position:absolute;top:0;display:flex;align-items:center;gap:8px;transform:translateY(-50%);pointer-events:auto}
 .map-label-marker[data-side="right"] .map-label-content{right:calc(var(--label-dot-size,14px) / -2);flex-direction:row}
 .map-label-marker[data-side="left"] .map-label-content{left:calc(var(--label-dot-size,14px) / -2);flex-direction:row-reverse}
-.map-label-bubble{background:rgba(255,255,255,.98);color:#111;font-weight:800;line-height:1;padding:.38em .5em;border-radius:3px;border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 10px rgba(0,0,0,.18);white-space:nowrap;font-size:var(--label-size,28px)}
+.map-label-bubble{background:rgba(255,255,255,.98);color:#111;font-weight:800;line-height:1;padding:.38em .5em;border-radius:3px;border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 10px rgba(0,0,0,.18);white-space:nowrap;font-size:calc(var(--label-size,28px) * var(--label-zoom-k,1))}
 .map-label-edit-input{font:inherit;font-weight:800;line-height:1;color:#111;background:transparent;border:0;outline:0;padding:0;margin:0;min-width:2.5em;width:12ch;max-width:28ch}
-.map-label-square{width:var(--label-dot-size,14px);height:var(--label-dot-size,14px);background:#ff1434;flex:0 0 auto;box-shadow:0 1px 6px rgba(0,0,0,.2)}
+.map-label-square{width:calc(var(--label-dot-size,14px) * var(--label-zoom-k,1));height:calc(var(--label-dot-size,14px) * var(--label-zoom-k,1));background:#ff1434;flex:0 0 auto;box-shadow:0 1px 6px rgba(0,0,0,.2)}
 .map-label-marker.selected .map-label-bubble{outline:2px solid rgba(38,208,196,.95);outline-offset:2px}
 .map-label-bubble.editing{cursor:text;user-select:text;-webkit-user-select:text}
 /* křížek u vybraného popisku — dřív šel popisek smazat jen nezřejmým Esc + Delete; do exportu se nekreslí */
@@ -5739,6 +5739,7 @@ function initMap(){
   state.map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
   try{ state.map.dragRotate.enable(); state.map.touchZoomRotate.enableRotation(); state.map.touchPitch?.enable?.(); }catch(e){}
   try{ state.map.on('render', () => { try{ pzRenderVehicleLive(); }catch(e){} }); }catch(e){}
+  try{ state.map.on('zoom', () => { const z = state.map.getZoom(); (state.mapLabels || []).forEach(it => pzApplyLabelZoom(it, z)); }); }catch(e){}
   state.map.on('load', () => {
     ensureRouteSources();
     rememberOriginalRoadPaints();
@@ -8034,7 +8035,7 @@ function serializeProjectSnapshot(){
     // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
     // as the same .glb is loaded again; within a session it survives undo/redo + project switch).
     model3d: (state.model3d && state.model3d.lngLat) ? (m=>({lngLat:m.lngLat, altitude:m.altitude, scale:m.scale, sizeMeters:m.sizeMeters, rotationDeg:m.rotationDeg, rotX:m.rotX, rotZ:m.rotZ, upAxis:m.upAxis, snapSurface:m.snapSurface, followRoute:m.followRoute, shadowOn:m.shadowOn, shadowBlur:m.shadowBlur, sun:m.sun}))(state.model3d) : null,
-    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
+    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     animation: {
       currentRotMode: state.currentRotMode,
       animIconSize: $('animIconSize')?.value || '34',
@@ -8198,7 +8199,7 @@ function applyBasicProjectSnapshot(snapshot){
       model3dClear();
     }
   }catch(_e){}
-  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true}));
+  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null}));
   if(state.mapLabels.length){
     const lastSize = state.mapLabels[state.mapLabels.length - 1].size || state.mapLabelGlobalSize || 28;
     applyMapLabelSizeToAll(lastSize);
@@ -10578,6 +10579,11 @@ function onMapClick(e){
     return;
   }
   if(handlePoliticalCountryPaintClick(e)) return;
+  if(!$('pzFlagsOn')?.checked && !isRouteTabActive() && pzFlagAt(e.point)){
+    // klik na existující vlajku zapne „Vlajky států" a vybere ji k úpravám
+    const cb = $('pzFlagsOn'); cb.checked = true; cb.dispatchEvent(new Event('change', {bubbles:true}));
+    pzFlagClick(e); return;
+  }
   if($('pzFlagsOn')?.checked && !isRouteTabActive()){ pzFlagClick(e); return; }
   if($('pzCountryLabelsOn')?.checked && !isRouteTabActive() && pzCountryLabelClick(e)) return;
   if(state.pzFlagSel){ state.pzFlagSel = null; pzFlagsRefresh(); }
@@ -11360,6 +11366,15 @@ function applyMapLabelStyle(el, data){
   el.style.setProperty('--label-dot-size', Math.max(10, Math.round(size * 0.55)) + 'px');
 }
 
+function pzLabelZoomK(item, zoom){
+  if(item?.baseZoom == null || zoom == null) return 1;
+  const k = Math.pow(2, (zoom - item.baseZoom) * 0.75);
+  return Math.max(Math.min(1, 14 / Math.max(14, item.size || 28)), Math.min(1, k));
+}
+function pzApplyLabelZoom(item, zoom, el){
+  const e = el || item?.marker?.getElement?.(); if(!e) return;
+  e.style.setProperty('--label-zoom-k', String(pzLabelZoomK(item, zoom)));
+}
 function getMapLabelById(id){
   return state.mapLabels.find(item => item.id === id) || null;
 }
@@ -11607,8 +11622,12 @@ function addMapLabelAt(lngLatObj, options={}){
     renderMapLabelList();
     setStatus(t('Popisek přesunut.'));
   });
-  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker};
+  // přiblížení, při kterém popisek vznikl: při oddálení se zmenšuje (nejméně na
+  // čitelných 14 px), při přiblížení zůstává. Starší popisky (bez údaje) beze změny.
+  const baseZoom = options.baseZoom !== undefined ? options.baseZoom : (state.map?.getZoom?.() ?? null);
+  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker, baseZoom};
   state.mapLabels.push(item);
+  pzApplyLabelZoom(item, state.map?.getZoom?.());
   selectMapLabel(id);
   renderMapLabelList();
   flashMarkerHint(el);
@@ -11700,7 +11719,7 @@ function pzObjCreate(d, dx, dy){
   const p = d.pts.map(q => offsetLngLat(q, dx, dy));
   let item = null, pre = '';
   if(d.kind === 'icon'){ pre = 'i:'; item = createSceneIconAt(p[0], {data:d.data, size:d.size, silent:true}); }
-  else if(d.kind === 'label'){ pre = 'l:'; item = addMapLabelAt(p[0], {text:d.text, size:d.size, side:d.side, style:d.style, silent:true}); }
+  else if(d.kind === 'label'){ pre = 'l:'; item = addMapLabelAt(p[0], {text:d.text, size:d.size, side:d.side, style:d.style, silent:true, baseZoom:d.baseZoom ?? null}); }
   else if(d.kind === 'arrow'){ pre = 'a:'; item = createSceneArrow(p[0], p[1], {color:d.color, width:d.width, silent:true}); }
   else if(d.kind === 'perimeter'){ pre = 'p:'; item = createScenePerimeterAt(p[0], {radiusMeters:d.radiusMeters, unit:d.unit, color:d.color, opacity:d.opacity, silent:true}); }
   else if(d.kind === 'distance'){ pre = 'd:'; item = createSceneDistance(p[0], p[1], {unit:d.unit, color:d.color, width:d.width, silent:true}); }
@@ -15398,9 +15417,11 @@ function createNativeExportMarkers(exportMap){
   (state.mapLabels || []).forEach(item => {
     if(!item?.lngLat) return;
     const el = createMapLabelElement(item.text || 'Popisek', item.size || state.mapLabelGlobalSize || 28, item.side || 'right', item.style || 'classic');
+    try{ pzApplyLabelZoom(item, exportMap.getZoom() - Math.log2(state._exportMarkerScale || 1), el); }catch(e){}
     const marker = new maplibregl.Marker({element:el, anchor:'center'}).setLngLat(item.lngLat).addTo(exportMap);
     temp.mapLabels.push({...item, marker});
   });
+  try{ exportMap.on('zoom', () => { const z = exportMap.getZoom() - Math.log2(state._exportMarkerScale || 1); (temp.mapLabels || []).forEach(it => pzApplyLabelZoom(it, z)); }); }catch(e){}
   if($('animDot')?.checked && state.routeCoords?.length && !exportUses3dPlane()){
     // (When the 3D plane mesh renders on the globe arc, no 2D icon marker is created —
     // otherwise the export would show BOTH the mesh and the flat icon.)
