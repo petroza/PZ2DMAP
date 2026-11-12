@@ -7444,6 +7444,18 @@ function pzEnsureFlagLayer(map){
   // export: výběrový kroužek do videa nepatří
   if(m !== state.map || state._exporting) try{ m.setLayoutProperty('pz-flags-sel', 'visibility', 'none'); }catch(e){}
 }
+// Těžiště největšího polygonu (vnější prstenec) — pro vlajku do středu státu.
+function pzRingCentroid(geom){
+  if(!geom) return null;
+  const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.type === 'MultiPolygon' ? geom.coordinates : [];
+  let best = null, bestA = 0;
+  for(const poly of polys){
+    const r = poly[0] || []; let a = 0, cx = 0, cy = 0;
+    for(let i = 0, j = r.length - 1; i < r.length; j = i++){ const f = r[j][0] * r[i][1] - r[i][0] * r[j][1]; a += f; cx += (r[j][0] + r[i][0]) * f; cy += (r[j][1] + r[i][1]) * f; }
+    if(Math.abs(a) > bestA){ bestA = Math.abs(a); best = [cx / (3 * a), cy / (3 * a)]; }
+  }
+  return best;
+}
 function pzFlagsRefresh(){ try{ pzEnsureFlagLayer(); pzInitFlagDrag(); }catch(e){ console.warn('flags', e); } }
 // Přesun vlajky tažením (myš i dotyk): chytit vlajku, táhnout, pustit.
 function pzInitFlagDrag(){
@@ -20953,10 +20965,21 @@ function pzColorFromName(v){
       if(!/^[a-z]{2}$/.test(iso)) return {ok:false, error:'Stát „' + country + '" neznám.'};
       const img = await pzLoadFlagImage(iso);
       if(!img) return {ok:false, error:'Pro „' + country + '" vlajku nemám.'};
-      let g; try{ g = await geocode(String(place || country)); }catch(e){ return {ok:false, error:'Místo „' + (place || country) + '" jsem nenašel.'}; }
+      // Bez place: střed největšího území státu (hledání „Polsko" umí najít i stejnojmennou obec).
+      let ll = null;
+      if(!place){
+        try{
+          state.geoDataRequested = true; await ensureGeoDataLoaded();
+          const up = iso.toUpperCase(), alt = Object.keys(PZ_FLAG_ISO_FIX).find(k => PZ_FLAG_ISO_FIX[k] === iso);
+          const f = (state.countriesGeojson?.features || []).find(f => { const p = f.properties || {}; return [p.__appId, p.CNTR_ID, p.ISO_A2, p.iso_a2].some(v => v === up || (alt && v === alt)); });
+          ll = f && pzRingCentroid(f.geometry);
+        }catch(e){}
+      }
+      if(!ll){ let g; try{ g = await geocode(String(place || country)); }catch(e){ return {ok:false, error:'Místo „' + (place || country) + '" jsem nenašel.'}; } ll = [+g.lon, +g.lat]; }
       try{ window.__pzPushUndo?.(); }catch(_e){}
       const id = 'flag_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-      pzFlagList().push({id, iso, lngLat: [+g.lon, +g.lat]});
+      pzFlagList().push({id, iso, lngLat: ll});
+      try{ const m = state.map, b = m.getBounds(); if(!b.contains(ll)) m.easeTo({center: ll, duration: 700}); }catch(e){}
       pzFlagsRefresh();
       return {ok:true, iso, flags: pzFlagList().length};
     },
@@ -21088,6 +21111,18 @@ function pzColorFromName(v){
       return {ok:false, error:'action musí být all, none nebo delete.'};
     },
     // Pomůcky pro panel chatu (ne nástroje — worker je modelu nenabízí a jména s _ odmítá).
+    // Snímek mapy tak, jak vyjde v exportu (pro kontrolu Claudem přes MCP konektor).
+    async _capture({width = 1024} = {}){
+      const c = document.createElement('canvas');
+      let ok = false;
+      try{ ok = await drawCurrentMapFrame(c); }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
+      if(!ok || !c.width) return {ok:false, error:'Snímek se nepodařilo připravit.'};
+      const k = Math.min(1, width / c.width), o = document.createElement('canvas');
+      o.width = Math.round(c.width * k); o.height = Math.round(c.height * k);
+      const g = o.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, o.width, o.height); g.drawImage(c, 0, 0, o.width, o.height);
+      const url = o.toDataURL('image/jpeg', 0.82);
+      return {ok:true, mimeType:'image/jpeg', data: url.slice(url.indexOf(',') + 1), width:o.width, height:o.height};
+    },
     _t: (key, ...args) => t(key, ...args),
     _lang: () => currentLang,
     _afterTool: () => { try{ pzMarkAdvancedInUse(); }catch(e){} },
@@ -21128,6 +21163,15 @@ function pzColorFromName(v){
   font:700 12px var(--font);letter-spacing:.4px;color:var(--tx1);flex:0 0 auto}
 .tnchat-head .tnchat-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
 .tnchat-head button{margin-left:auto;background:none;border:none;color:var(--tx2);font-size:18px;cursor:pointer;line-height:1}
+.tnchat-head .tnchat-claude{margin-left:auto;font:700 11px var(--font);color:var(--tx1);border:1px solid var(--border-hi);border-radius:999px;padding:3px 9px;display:flex;align-items:center;gap:5px}
+.tnchat-head .tnchat-claude + button{margin-left:6px}
+.tnchat-claude-dot{width:7px;height:7px;border-radius:50%;background:var(--tx3,#777)}
+.tnchat-claude.on .tnchat-claude-dot{background:#d97757}.tnchat-claude.live .tnchat-claude-dot{background:var(--green);box-shadow:0 0 0 3px rgba(46,204,113,.25)}
+.tnchat-claudebox{flex:0 0 auto;padding:10px 12px;border-bottom:1px solid var(--border);font:12px/1.45 var(--font);color:var(--tx1);display:flex;flex-direction:column;gap:7px}
+.tnchat-claudebox code{font:700 12px ui-monospace,monospace;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:3px 6px;word-break:break-all;user-select:all}
+.tnchat-claudebox .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tnchat-claudebox button{background:var(--bg3);border:1px solid var(--border);color:var(--tx1);border-radius:6px;padding:3px 8px;font:600 11px var(--font);cursor:pointer}
+.tnchat-claudebox small{color:var(--tx2)}
 .tnchat-log{flex:1 1 auto;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .tnchat-msg{font:13px/1.45 var(--font);padding:8px 11px;border-radius:10px;max-width:88%;white-space:pre-wrap;word-break:break-word}
 .tnchat-msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:3px}
@@ -21893,8 +21937,10 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
 <button type="button" class="tnchat-fab" id="tnchatFab" title="AI asistent mapy" aria-label="AI asistent"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 2 L14.2 9.8 L22 12 L14.2 14.2 L12 22 L9.8 14.2 L2 12 L9.8 9.8 Z" fill="currentColor"/></svg></button>
 <div class="tnchat-panel" id="tnchatPanel" role="dialog" aria-label="AI asistent mapy">
   <div class="tnchat-head"><span class="tnchat-dot"></span><span data-i18n="AI ASISTENT MAPY">AI ASISTENT MAPY</span>
+    <button type="button" id="tnchatClaude" class="tnchat-claude" title="Propojit s Claude" aria-label="Propojit s Claude"><span class="tnchat-claude-dot"></span>Claude</button>
     <button type="button" id="tnchatNew" class="tnchat-new" title="Nová konverzace" aria-label="Nová konverzace" hidden><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg></button>
     <button type="button" id="tnchatClose" aria-label="Zavřít">×</button></div>
+  <div class="tnchat-claudebox" id="tnchatClaudeBox" hidden></div>
   <div class="tnchat-log" id="tnchatLog" aria-live="polite"></div>
   <form class="tnchat-form" id="tnchatForm" autocomplete="off">
     <textarea id="tnchatInput" rows="1" placeholder="Napiš, co má mapa udělat…" aria-label="Zpráva"></textarea>
@@ -22044,6 +22090,76 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
     finally{ try{ api._afterTool?.(); }catch(e){} }   // asistent mohl vložit 3D model / zapnout stíny
   }
+
+  // ---------------------------------------------------------------------------
+  // Propojení s Claude (MCP konektor tnmap-mcp). Mapa se WebSocketem připojí do
+  // „místnosti" se svým kódem; Claude pak přes konektor volá stejné nástroje jako
+  // asistent (window.TNMAP) a vidí snímek mapy. Kód drží prohlížeč (localStorage).
+  // ---------------------------------------------------------------------------
+  const CLAUDE_HOST = 'tnmap-mcp.petrzavorka.workers.dev';
+  const claudeBtn = $q('tnchatClaude'), claudeBox = $q('tnchatClaudeBox');
+  const lsGet = k => { try{ return localStorage.getItem(k); }catch(e){ return null; } };
+  const lsSet = (k, v) => { try{ v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); }catch(e){} };
+  const newCode = () => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', b = crypto.getRandomValues(new Uint8Array(10)); return [...b].map(x => A[x % A.length]).join(''); };
+  let claudeCode = lsGet('pzClaudeCode'); if(!/^[A-Z2-9]{10}$/.test(claudeCode || '')){ claudeCode = newCode(); lsSet('pzClaudeCode', claudeCode); }
+  let claudeOn = lsGet('pzClaudeOn') === '1', claudeWs = null, claudeLive = false, claudeRetry = 0, claudeTimer = null, claudePing = null;
+  const prettyCode = c => c.slice(0, 4) + '-' + c.slice(4, 8) + '-' + c.slice(8);
+  const connectorUrl = () => 'https://' + CLAUDE_HOST + '/mcp/' + claudeCode;
+  function claudeRender(){
+    claudeBtn.classList.toggle('on', claudeOn); claudeBtn.classList.toggle('live', claudeOn && claudeLive);
+    if(claudeBox.hidden) return;
+    const st = !claudeOn ? tr('Vypnuto') : claudeLive ? tr('Připojeno — Claude může ovládat tuto mapu.') : tr('Připojuji…');
+    claudeBox.innerHTML =
+      '<b>' + esc(tr('Ovládání mapy z Claude')) + '</b>' +
+      '<label class="row"><input type="checkbox" id="tnClaudeOn"' + (claudeOn ? ' checked' : '') + '> ' + esc(tr('Povolit Claude ovládat tuto mapu')) + '</label>' +
+      '<div class="row">' + esc(tr('Stav:')) + ' <span>' + esc(st) + '</span></div>' +
+      '<div class="row">' + esc(tr('Kód:')) + ' <code>' + prettyCode(claudeCode) + '</code><button type="button" data-copy="code">' + esc(tr('Kopírovat')) + '</button></div>' +
+      '<div class="row">' + esc(tr('Adresa konektoru:')) + '</div><div class="row"><code>' + esc(connectorUrl()) + '</code><button type="button" data-copy="url">' + esc(tr('Kopírovat')) + '</button></div>' +
+      '<small>' + esc(tr('V Claude: Nastavení → Konektory → Přidat vlastní konektor a vložit adresu (stačí jednou). Se společným konektorem TN mapa stačí Claudovi napsat kód. Pak mu napiš, co má mapa udělat.')) + '</small>' +
+      '<div class="row"><button type="button" data-act="newcode">' + esc(tr('Nový kód')) + '</button></div>';
+  }
+  function claudeConnect(){
+    clearTimeout(claudeTimer); clearInterval(claudePing);
+    if(!claudeOn) return;
+    try{ claudeWs?.close(); }catch(e){}
+    let ws;
+    try{ ws = new WebSocket('wss://' + CLAUDE_HOST + '/ws/' + claudeCode); }catch(e){ return claudeSchedule(); }
+    claudeWs = ws;
+    ws.onopen = () => { claudeRetry = 0; claudeLive = true; claudeRender(); claudePing = setInterval(() => { try{ ws.send('{"type":"ping"}'); }catch(e){} }, 25000); };
+    ws.onclose = ev => { if(claudeWs !== ws) return; claudeLive = false; clearInterval(claudePing); claudeRender(); if(ev.code !== 4000) claudeSchedule(); };
+    ws.onerror = () => {};
+    ws.onmessage = async ev => {
+      let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+      if(m.type !== 'call') return;
+      let result;
+      if(m.tool === '__state') result = (window.TNMAP && window.TNMAP.getState) ? window.TNMAP.getState() : {ok:false};
+      else if(m.tool === '__capture') result = await window.TNMAP._capture(m.args || {});
+      else {
+        undoTaken = false;            // každé volání Clauda = vlastní Krok zpět
+        result = await runTool({tool: m.tool, args: m.args || {}});
+        addAction('Claude: ' + m.tool, result.ok !== false);
+      }
+      try{ ws.send(JSON.stringify({type:'result', id: m.id, result})); }catch(e){}
+    };
+  }
+  function claudeSchedule(){ clearTimeout(claudeTimer); if(!claudeOn) return; claudeTimer = setTimeout(claudeConnect, Math.min(30000, 1000 * Math.pow(2, claudeRetry++))); }
+  function claudeSetOn(on){
+    claudeOn = !!on; lsSet('pzClaudeOn', claudeOn ? '1' : null);
+    if(claudeOn) claudeConnect(); else { clearTimeout(claudeTimer); clearInterval(claudePing); const w = claudeWs; claudeWs = null; claudeLive = false; try{ w?.close(); }catch(e){} }
+    claudeRender();
+  }
+  claudeBtn.addEventListener('click', () => { claudeBox.hidden = !claudeBox.hidden; claudeRender(); });
+  claudeBox.addEventListener('change', e => { if(e.target.id === 'tnClaudeOn') claudeSetOn(e.target.checked); });
+  claudeBox.addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.copy){ const v = b.dataset.copy === 'code' ? prettyCode(claudeCode) : connectorUrl(); try{ navigator.clipboard.writeText(v); b.textContent = tr('Zkopírováno'); setTimeout(claudeRender, 1200); }catch(_e){} }
+    if(b.dataset.act === 'newcode'){ claudeCode = newCode(); lsSet('pzClaudeCode', claudeCode); if(claudeOn) claudeConnect(); claudeRender(); }
+  });
+  // po návratu na kartu hned obnovit spojení (prohlížeč uspává WebSockety na pozadí)
+  document.addEventListener('visibilitychange', () => { if(!document.hidden && claudeOn && !claudeLive) claudeConnect(); });
+  if(claudeOn) claudeConnect();
+  claudeRender();
+  window.__tnClaude = {get code(){ return claudeCode; }, get live(){ return claudeLive; }, setOn: claudeSetOn};
 
   // ---------------------------------------------------------------------------
   // Rychlé povely bez AI: jednoznačné krátké příkazy vyřídíme hned v prohlížeči.
