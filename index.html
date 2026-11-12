@@ -2811,6 +2811,13 @@ const STYLES = {
   libertyHillshade:LIBERTY_STYLE_URL,
   bright:'https://tiles.openfreemap.org/styles/bright',
   positron:'https://tiles.openfreemap.org/styles/positron',
+  // styly OpenMapTiles (BSD / CC-BY 4.0 © OpenMapTiles) na volných dlaždicích OpenFreeMap
+  darkMatter:'https://tiles.openfreemap.org/styles/dark',
+  fiord:'https://tiles.openfreemap.org/styles/fiord',
+  toner:'assets/styles/toner.json',
+  basic:'assets/styles/basic.json',
+  terrain:'assets/styles/terrain.json',
+  omt3d:'assets/styles/omt3d.json',
   satellite:{
     version:8,
     sources:{
@@ -2900,13 +2907,18 @@ const PRESETS = {
   // Podle grafiky TN Live (noční město): temně modré plochy, svítící azurová voda
   // a cesty, fialově modré budovy, bílé popisky.
   tnLive:{land:'#0a2c6c',water:'#36bbee',building:'#1d377f',park:'#0c3a80',landcover:'#0b3277',landuse:'#0c3176',aeroway:'#0f3a82',roadMajor:'#47c6f5',roadMinor:'#164c99',label:'#ffffff',halo:'#04173f',boundary:'#7fd6ff',railway:'#2b5aa8',transit:'#2b5aa8',motorway:'#6fdcff',primary:'#47c6f5',secondary:'#2378c8'},
+  // Původní barevnost Liberty (OpenFreeMap) — přepne podklad na Liberty bez přebarvení.
+  libertyKlasicka:{land:'#f8f4f0',water:'#a0c8f0',building:'#dfdbd7',park:'#d8e8c8',landcover:'#e0ecd0',landuse:'#eee4dc',aeroway:'#e6e2dc',roadMajor:'#ffeeaa',roadMinor:'#ffffff',label:'#333333',halo:'#ffffff',boundary:'#9e9cab',railway:'#bbbbbb',transit:'#bbbbbb',motorway:'#ffcc88',primary:'#ffeeaa',secondary:'#ffffff'},
+  // Svěží zelená mapa v duchu běžných webových map: mátová krajina, sytější lesy,
+  // světlé město, bílé silnice, šedomodré dálnice.
+  zelenaPrirodni:{land:'#daf2e4',water:'#9fd2f3',building:'#e3e1dc',park:'#a6dfbf',landcover:'#b2e5c8',landuse:'#eef0ee',aeroway:'#dfe5ec',roadMajor:'#ffffff',roadMinor:'#ffffff',label:'#3c4043',halo:'#ffffff',boundary:'#4d5257',railway:'#9aa0a6',transit:'#9aa0a6',motorway:'#b9c6d3',primary:'#ffffff',secondary:'#ffffff'},
   tnSvetla:{land:'#eef2f6',water:'#bed8ee',building:'#0080ff',park:'#dddcef',landcover:'#e6edf3',landuse:'#dfe8f1',aeroway:'#f2f4f8',roadMajor:'#ffffff',roadMinor:'#e4ebf2',label:'#162a43',halo:'#ffffff',boundary:'#1a2a44',railway:'#707780',transit:'#8a5a2b',motorway:'#ffffff',primary:'#ffffff',secondary:'#e4ebf2'},
   tnSvetlaKontrast:{land:'#e4eaf1',water:'#a6c9e9',building:'#0080ff',park:'#d2d1ea',landcover:'#dbe3ec',landuse:'#d3dde8',aeroway:'#e9edf3',roadMajor:'#ffffff',roadMinor:'#f6f8fb',label:'#0e1e33',halo:'#ffffff',boundary:'#14233b',railway:'#5c636c',transit:'#8a5a2b',motorway:'#ffffff',primary:'#ffffff',secondary:'#f6f8fb'},
   tnSvetlaVyrazna:{land:'#d8e0ea',water:'#8fbae3',building:'#0080ff',park:'#c6c4e4',landcover:'#cfd8e3',landuse:'#c6d2e0',aeroway:'#dfe5ee',roadMajor:'#ffffff',roadMinor:'#ffffff',label:'#08142a',halo:'#ffffff',boundary:'#0c1a30',railway:'#4a5159',transit:'#8a5a2b',motorway:'#ffffff',primary:'#ffffff',secondary:'#ffffff'},
   mapycz:{land:'#f1eee5',water:'#a7cdeb',building:'#ddd4c8',park:'#c8e6b8',landcover:'#d8e8cd',landuse:'#e8dfcf',aeroway:'#ece8dd',roadMajor:'#f0a03a',roadMinor:'#f5d6a0',label:'#2c2f33',halo:'#ffffff',boundary:'#4f5356'},
   // Matched by eye against mapy.com "Turistická": warm paper base, muted sage forests,
   // dusty-blue water, amber first-class roads and white minor roads with soft casings.
-  mapycomTuristicka:{land:'#f3f0e3',water:'#9fc8e6',building:'#dccdb0',park:'#cfe4b0',landcover:'#cde3ad',landuse:'#ddcfb3',aeroway:'#e6e0cf',roadMajor:'#f0a944',roadMinor:'#ffffff',label:'#1d1d1b',halo:'#ffffff',boundary:'#a283b5',railway:'#7e7e7e',transit:'#8a5a2b',motorway:'#5c9e4a',primary:'#f0a944',secondary:'#f2d35e'},
+  mapycomTuristicka:{land:'#f3f0e3',water:'#9fc8e6',building:'#dccdb0',park:'#cfe4b0',landcover:'#cde3ad',landuse:'#e9e2d0',aeroway:'#e6e0cf',roadMajor:'#f3b456',roadMinor:'#ffffff',label:'#1d1d1b',halo:'#ffffff',boundary:'#a283b5',railway:'#7e7e7e',transit:'#8a5a2b',motorway:'#5c9e4a',primary:'#f3b456',secondary:'#f9e597'},
   waze:{land:'#f5f7f8',water:'#bdefff',building:'#e6eef2',park:'#c8efd3',landcover:'#e1f5e8',landuse:'#eef1f2',aeroway:'#f5f7f8',roadMajor:'#00a9e8',roadMinor:'#d7e1e7',label:'#263238',halo:'#ffffff',boundary:'#535c63'},
   uber:{land:'#111418',water:'#162b3b',building:'#1b2028',park:'#14291f',landcover:'#171d24',landuse:'#20252c',aeroway:'#222830',roadMajor:'#ffffff',roadMinor:'#555c66',label:'#f5f7fa',halo:'#000000',boundary:'#cfd4da'},
   ct24:{land:'#eef2f6',water:'#bed8ee',building:'#dce3ea',park:'#dcefdc',landcover:'#e6edf3',landuse:'#dfe8f1',aeroway:'#f2f4f8',roadMajor:'#ffffff',roadMinor:'#e4ebf2',label:'#162a43',halo:'#ffffff',boundary:'#1a2a44'},
@@ -2960,9 +2972,9 @@ const PRESETS = {
   flightradar:{land:'#879987',water:'#779b9c',building:'#90988e',park:'#78977b',landcover:'#819b83',landuse:'#8d9788',aeroway:'#90958a',roadMajor:'#647182',roadMinor:'#849087',motorway:'#566a82',primary:'#68778a',secondary:'#7b8584',railway:'#69736c',label:'#23282b',halo:'#aab6aa',boundary:'#202828'}
 };
 
-const BUILTIN_PRESET_ORDER = ['tnSvetla','tnSvetlaKontrast','tnSvetlaVyrazna','tnModra','tnStudio','tnLive','mapycz','mapycomTuristicka','flightradar','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
+const BUILTIN_PRESET_ORDER = ['tnSvetla','tnSvetlaKontrast','tnSvetlaVyrazna','tnModra','tnStudio','tnLive','libertyKlasicka','zelenaPrirodni','mapycz','mapycomTuristicka','flightradar','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
 const BUILTIN_PRESET_LABELS = {
-  tnSvetla:'Světlá', tnSvetlaKontrast:'Světlá – kontrast', tnSvetlaVyrazna:'Světlá – výrazná', tnModra:'Modrá – TN', tnStudio:'Studio – TN', tnLive:'Noc – TN Live',
+  tnSvetla:'Světlá', tnSvetlaKontrast:'Světlá – kontrast', tnSvetlaVyrazna:'Světlá – výrazná', tnModra:'Modrá – TN', tnStudio:'Studio – TN', tnLive:'Noc – TN Live', libertyKlasicka:'Liberty klasická', zelenaPrirodni:'Zelená přírodní',
   mapycz:'Čistá navigační', mapycomTuristicka:'Turistická', flightradar:'Letecká olivová', waze:'Navigační světlá', uber:'Městská tmavá', ct24:'Zpravodajská modrá', tnNovaClean:'TN Nova clean',
   modSoft1:'Modrá Jemná 1', modSoft7:'Modrá Jemná 7', modSoft11:'Modrá Jemná 11', modSoft16:'Modrá Jemná 16', modSoft20:'Modrá Jemná 20',
   novaBlue:'TV Modrá', novaTerrain:'TV Reliéf',
@@ -2974,6 +2986,8 @@ const BUILTIN_PRESET_LABELS = {
 const DEFAULT_BUILTIN_PRESET_RANGES = {majorWidth:'1.3', minorWidth:'1.0', buildingOpacity:'0.72', boundaryOpacity:'1', boundaryWidth:'1.2'};
 const DEFAULT_BUILTIN_PRESET_VISIBILITY = {showBuildings:true, showParks:true, showLandcover:true, showLanduse:true, showAeroway:true, showBoundaries:true, showLabels:true, showRoadShields:true, showMinorRoads:true, showMajorRoads:true, showMotorways:true, showPrimaryRoads:true, showSecondaryRoads:true, showWaterways:true, showRailways:true, showMetro:false, showTransit:false};
 const BUILTIN_PRESET_STYLE_OVERRIDES = {
+  libertyKlasicka:{native:true, baseStyle:'liberty'},
+  zelenaPrirodni:{baseStyle:'liberty',ranges:{majorWidth:'1.2',minorWidth:'0.9',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'1.15',primaryWidth:'1.05',secondaryWidth:'1',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnLive:{ranges:{majorWidth:'1.1',minorWidth:'0.7',buildingOpacity:'0.6',boundaryOpacity:'0.9',boundaryWidth:'1.3',motorwayWidth:'1.1',primaryWidth:'1',secondaryWidth:'0.8',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.8'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:false,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnStudio:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0.6',boundaryOpacity:'1',boundaryWidth:'1.2',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.6'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnModra:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0.6',boundaryOpacity:'1',boundaryWidth:'1.6',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.6'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
@@ -2983,7 +2997,7 @@ const BUILTIN_PRESET_STYLE_OVERRIDES = {
   mapycz:{ranges:{majorWidth:'1.3',minorWidth:'1.0',buildingOpacity:'0.72',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
   // Tourist maps lean on terrain and water rather than traffic, so rivers/rail stay on,
   // roads are drawn a touch thinner and buildings sit back.
-  mapycomTuristicka:{hillshade:true,ranges:{majorWidth:'1.25',minorWidth:'0.9',buildingOpacity:'0.9',boundaryOpacity:'0.9',boundaryWidth:'1.3',motorwayWidth:'1.25',primaryWidth:'1.1',secondaryWidth:'1',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
+  mapycomTuristicka:{hillshade:true,baseStyle:'liberty',ranges:{majorWidth:'1.25',minorWidth:'0.85',buildingOpacity:'0.9',boundaryOpacity:'0.9',boundaryWidth:'1.3',motorwayWidth:'1.25',primaryWidth:'1.1',secondaryWidth:'0.9',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   flightradar:{ranges:{majorWidth:'1.05',minorWidth:'0.75',buildingOpacity:'0.42',boundaryOpacity:'1',boundaryWidth:'1.8'},visibility:{showBoundaries:true,showLandcover:true,showParks:true,showWaterways:true,showRailways:false}},
   waze:{ranges:{majorWidth:'1.45',minorWidth:'1.05',buildingOpacity:'0.70',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
   uber:{ranges:{majorWidth:'1.5',minorWidth:'1.05',buildingOpacity:'0.68',boundaryOpacity:'1',boundaryWidth:'1.2'},visibility:{showBoundaries:true}},
@@ -3054,7 +3068,7 @@ function legacyBuiltinPresetNameOverrides(){
 // Ve výchozím stavu nabízíme jen tři presety. Šestatřicet dlaždic je pro
 // grafika, který appku vidí poprvé, spíš překážka než nabídka — zbytek zůstává
 // zapnutelný ve Správě presetů a nic se nemaže.
-const DEFAULT_VISIBLE_BUILTIN_PRESETS = ['tnSvetla', 'tnSvetlaKontrast', 'tnSvetlaVyrazna', 'tnModra', 'tnStudio', 'tnLive', 'mapycomTuristicka'];
+const DEFAULT_VISIBLE_BUILTIN_PRESETS = ['tnSvetla', 'tnSvetlaKontrast', 'tnSvetlaVyrazna', 'tnModra', 'tnStudio', 'tnLive', 'mapycomTuristicka', 'libertyKlasicka', 'zelenaPrirodni'];
 function hasStoredBuiltinPrefs(){
   if(readBuiltinPrefsRecord()) return true;
   try{ if(localStorage.getItem(HIDDEN_BUILTIN_PRESET_KEY) != null) return true; }catch(e){}
@@ -4048,6 +4062,7 @@ function dbDeletePreset(){
 }
 function applyCustomPreset(id){
   const {entry, idx} = findCustomPresetById(id); if(!entry) return;
+  state.pzNativeColors = false;
   applyStylePresetEntry(entry);
   syncPresetSelection(id);
   if($('presetName')) $('presetName').value = entry.name;
@@ -4148,7 +4163,10 @@ function drawMapSourceWatermark(ctx, w, h){
 }
 
 const TILE_DB_KEY = 'map69_tiles_v2';
-const BUILTIN_TILE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain'];
+const BUILTIN_TILE_KEYS = ['liberty','bright','positron','darkMatter','fiord','toner','basic','terrain','omt3d','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain'];
+// Podklady, které se ukazují ve SVÉ barevnosti (barevné presety je nepřebarvují,
+// dokud grafik preset sám nevybere).
+const PZ_NATIVE_BASES = new Set(['darkMatter','fiord','toner','basic','terrain','omt3d']);
 
 function loadTileDB(){
   try{
@@ -4210,7 +4228,7 @@ function refreshBaseStyleSelect(){
   sel.innerHTML = '';
   const builtinGroup = document.createElement('optgroup');
   builtinGroup.label = t('Základní styly');
-  [{k:'liberty',l:'Liberty 3D'},{k:'bright',l:'Bright'},{k:'positron',l:'Positron'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
+  [{k:'liberty',l:'Liberty 3D'},{k:'bright',l:'Bright'},{k:'positron',l:'Positron'},{k:'darkMatter',l:'Dark Matter'},{k:'fiord',l:'Fiord'},{k:'toner',l:'Toner'},{k:'basic',l:'Basic'},{k:'terrain',l:'Terrain (reliéf)'},{k:'omt3d',l:'3D budovy'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
     const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l);
     if(PZ_ADV_STYLES.includes(s.k)){ o.dataset.adv = '1'; o.hidden = !pzAdvancedOn() && s.k !== cur; }
     builtinGroup.appendChild(o);
@@ -4249,7 +4267,7 @@ function renderTileSourceList(){
   const custom = loadTileDB();
   list.innerHTML = '';
   BUILTIN_TILE_KEYS.forEach((key, idx) => {
-    const names = {liberty:'Liberty 3D',bright:'Bright',positron:'Positron',satellite:'Satelitní',hybrid:'Hybrid',osmStandard:'OSM Standard (CZ names)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Esri Terrain',osmHot:'OSM Humanitarian'};
+    const names = {liberty:'Liberty 3D',bright:'Bright',positron:'Positron',darkMatter:'Dark Matter',fiord:'Fiord',toner:'Toner',basic:'Basic',terrain:'Terrain (reliéf)',omt3d:'3D budovy',satellite:'Satelitní',hybrid:'Hybrid',osmStandard:'OSM Standard (CZ names)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Esri Terrain',osmHot:'OSM Humanitarian'};
     const wrap = document.createElement('div'); wrap.className = 'wp-item';
     wrap.innerHTML = `<span class="wp-badge" style="background:var(--green);font-size:8px">B${idx+1}</span><div style="flex:1;"><span style="font-weight:600">${names[key]||key}</span> <span class="small">— vestavěný</span></div>`;
     list.appendChild(wrap);
@@ -7773,6 +7791,7 @@ function serializeProjectSnapshot(){
   return {
     version:2,
     baseStyle: $('baseStyle')?.value || 'liberty',
+    nativeColors: !!state.pzNativeColors,
     globeProjection: isGlobeProjectionOn(),
     view: state.map ? {
       center: state.map.getCenter().toArray(),
@@ -7995,6 +8014,7 @@ function applyBasicProjectSnapshot(snapshot){
 
 function applyProjectSnapshot(snapshot, statusMsg){
   const nextStyle = snapshot?.baseStyle || 'liberty';
+  state.pzNativeColors = snapshot?.nativeColors != null ? !!snapshot.nativeColors : PZ_NATIVE_BASES.has(nextStyle);
   const doApply = () => {
     ensureOverlaySetup();
     window.setTimeout(() => {
@@ -9224,6 +9244,7 @@ function refreshAOOnIdle(){
 
 function applyMapTweaks(){
   if(!state.map?.isStyleLoaded()) return;
+  if(state.pzNativeColors) return;   // podklad ve své původní barevnosti (Liberty klasická, Dark Matter, Toner…)
   const land = $('landColor')?.value || PRESETS.reset.land;
   const water = $('waterColor')?.value || PRESETS.reset.water;
   const building = $('buildingColor')?.value || PRESETS.reset.building;
@@ -9514,10 +9535,23 @@ function updateAnimReadout(){
 function applyPreset(name){
   const p = PRESETS[name]; if(!p || !isBuiltinPresetVisible(name)) return;
   const override = BUILTIN_PRESET_STYLE_OVERRIDES[name] || {};
+  if(override.native){
+    // podklad v původních barvách: přepnout a načíst čistý styl bez přebarvení
+    state.pzNativeColors = true;
+    if(override.baseStyle && $('baseStyle')) $('baseStyle').value = override.baseStyle;
+    state.activePresetToken = 'builtin:' + name;
+    reloadStyle();
+    updatePresetTileActiveState();
+    setStatus(t('Preset použit.', getBuiltinPresetNumber(name)));
+    return;
+  }
+  if(state.pzNativeColors){ state.pzNativeColors = false; }
   const ranges = Object.assign({}, DEFAULT_BUILTIN_PRESET_RANGES, override.ranges || {});
   const visibility = Object.assign({}, DEFAULT_BUILTIN_PRESET_VISIBILITY, override.visibility || {});
   applyStylePresetSnapshot({colors:p, ranges, visibility});
   state.activePresetToken = 'builtin:' + name;
+  // preset s vlastním podkladem (Turistická, Zelená přírodní → Liberty: lesy, štítky silnic)
+  if(override.baseStyle && $('baseStyle') && $('baseStyle').value !== override.baseStyle){ $('baseStyle').value = override.baseStyle; reloadStyle(); }
   try{ ensureLibertyHillshadeOverlay(); }catch(e){}   // turistická mapa má stínovaný reliéf
   if($('savedPresetSelect')) $('savedPresetSelect').value = '';
   if($('presetName')) $('presetName').value = getBuiltinPresetLabel(name);
@@ -16667,7 +16701,7 @@ const PZ_EN_TEXT = {
   'Velikost a průhlednost vrstev':'Layer size and opacity', 'Ambientní okluze (AO)':'Ambient occlusion (AO)', 'Síla AO':'AO strength',
   'Vrhat stíny budov':'Cast building shadows', 'Hranice států':'Country borders', 'Vybarvit stát':'Colour a country',
   'Další nastavení výplně':'More fill settings', 'Průhlednost':'Opacity',
-  'Světlá':'Light', 'Světlá – kontrast':'Light – contrast', 'Světlá – výrazná':'Light – bold', 'Modrá – TN':'Blue – TN', 'Studio – TN':'Studio – TN', 'Noc – TN Live':'Night – TN Live',
+  'Světlá':'Light', 'Světlá – kontrast':'Light – contrast', 'Světlá – výrazná':'Light – bold', 'Modrá – TN':'Blue – TN', 'Studio – TN':'Studio – TN', 'Noc – TN Live':'Night – TN Live', 'Liberty klasická':'Liberty classic', 'Zelená přírodní':'Natural green', 'Terrain (reliéf)':'Terrain (relief)', '3D budovy':'3D buildings',
   'Kamion':'Truck', 'Nákladní auto':'Lorry', 'Nákladní':'Lorry', 'Motorka':'Motorbike', 'Vlak':'Train', 'Loď':'Boat',
   'Měřítko':'Scale', 'Velikost':'Size', 'Osa nahoru':'Up axis', 'Nahrát GLB soubor':'Upload GLB file',
   'Ikona se natáčí po směru jízdy / letu automaticky.':'The icon turns along the direction of travel automatically.',
@@ -16822,7 +16856,11 @@ function bindUI(){
       section?.remove();
     }
   })();
-  $('baseStyle')?.addEventListener('change', reloadStyle);
+  $('baseStyle')?.addEventListener('change', () => {
+    // nové podklady OpenMapTiles se ukážou ve svém vzhledu; ostatní jako dřív s presetem
+    state.pzNativeColors = PZ_NATIVE_BASES.has($('baseStyle').value);
+    reloadStyle();
+  });
   updateMapSourceWatermark();
   $('shortcutsPanelClose')?.addEventListener('click', () => { const p = $('shortcutsPanel'); if(p) p.hidden = true; $('shortcutsBtn')?.focus(); });
   // Zkratky se zavírají z pěti míst (klik, klik mimo, Esc, „?", otevření Projektu) —
