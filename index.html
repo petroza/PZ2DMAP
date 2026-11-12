@@ -9579,7 +9579,7 @@ function applyMapTweaks(){
     const showPoliticalCountries = !!$('showPoliticalCountries')?.checked || (($('baseStyle')?.value || '') === 'political');
     const showStandaloneCountryBorders = borderVisible && borderMode === 'all' && !showPoliticalCountries;
     const showSelectedCountryBorder = borderVisible && borderMode === 'selected' && selectedCountryId;
-    const showPoliticalOutline = showPoliticalCountries;
+    const showPoliticalOutline = ($('baseStyle')?.value || '') === 'political';   // jinde kreslí hranice podklad — jinak dvojité čáry
     safeSetPaint('pz-country-borders-all', 'line-color', borderColor);
     safeSetPaint('pz-country-borders-all', 'line-width', pzZoomWidth(borderWidth));
     safeSetPaint('pz-country-borders-all', 'line-opacity', showStandaloneCountryBorders ? borderOpacity : 0);
@@ -9656,7 +9656,7 @@ function applyPoliticalOverlayTweaks(){
   const showPoliticalCountries = !!$('showPoliticalCountries')?.checked || (($('baseStyle')?.value || '') === 'political');
   const showStandaloneCountryBorders = borderVisible && borderMode === 'all' && !showPoliticalCountries;
   const showSelectedCountryBorder = borderVisible && borderMode === 'selected' && selectedCountryId;
-  const showPoliticalOutline = showPoliticalCountries;
+  const showPoliticalOutline = ($('baseStyle')?.value || '') === 'political';   // jinde kreslí hranice podklad — jinak dvojité čáry
 
   safeSetPaint('pz-country-borders-all', 'line-color', borderColor);
   safeSetPaint('pz-country-borders-all', 'line-width', pzZoomWidth(borderWidth));
