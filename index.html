@@ -414,6 +414,7 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
 /* křížek u vybraného popisku — dřív šel popisek smazat jen nezřejmým Esc + Delete; do exportu se nekreslí */
 .map-label-del{display:none;position:absolute;top:-11px;right:-11px;width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;background:#e63946;color:#fff;font:700 14px/1 sans-serif;cursor:pointer;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.35);z-index:2}
 .map-label-marker.selected .map-label-del{display:grid}
+.map-label-marker[data-side="none"] .map-label-square{display:none}
 .map-label-resize{display:none;position:absolute;top:-9px;left:-9px;width:14px;height:14px;background:#fff;border:2px solid #2bb3c0;border-radius:3px;cursor:nwse-resize;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.35);touch-action:none}
 .map-label-marker.selected .map-label-resize{display:block}
 /* Styly popisků v barvách TV Nova (manuál: navy #0D1767, červená #F03B3B). Export
@@ -1209,7 +1210,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <div><label data-i18n="Velikost všech popisků">Velikost všech popisků <span class="val" id="mapLabelSizeVal">28 px</span></label><input id="mapLabelSize" type="range" min="14" max="80" step="1" value="28"></div>
         </div>
         <div class="row">
-          <div><label data-i18n="Červený čtvereček">Červený čtvereček</label><select id="mapLabelSide"><option value="right" selected data-i18n="Vpravo">Vpravo</option><option value="left" data-i18n="Vlevo">Vlevo</option></select></div>
+          <div><label data-i18n="Červený čtvereček">Červený čtvereček</label><select id="mapLabelSide"><option value="right" selected data-i18n="Vpravo">Vpravo</option><option value="left" data-i18n="Vlevo">Vlevo</option><option value="none" data-i18n="Bez čtverečku">Bez čtverečku</option></select></div>
           <div><label>Styl</label><select id="mapLabelStyle">
             <option value="classic" selected>Bílý (klasický)</option>
             <option value="navy">Nova modrý</option>
@@ -7505,7 +7506,7 @@ function pzCountryLabelClick(e){
   const f = getPoliticalCountryFeatureAtPoint(e.point); if(!f) return false;
   const name = getCountryNameById(f.properties.__appId) || f.properties.__appName; if(!name) return false;
   try{ window.__pzPushUndo?.(); }catch(_e){}
-  addMapLabelAt(e.lngLat, {text: name, silent: true});
+  addMapLabelAt(e.lngLat, {text: name, silent: true, side: 'none'});   // název státu bez červeného čtverečku
   setStatus(t('{0} — popisek přidán.', name));
   return true;
 }
@@ -11343,12 +11344,14 @@ function createMapLabelElement(text, size, side='right', style='classic'){
   return el;
 }
 
+// Strana červeného čtverečku: vpravo / vlevo / žádný (popisky států)
+function pzLabelSide(v){ return v === 'left' ? 'left' : v === 'none' ? 'none' : 'right'; }
 function applyMapLabelStyle(el, data){
   if(!el || !data) return;
   const bubble = el.querySelector('.map-label-bubble');
   if(bubble) bubble.textContent = data.text || 'Popisek';
   const size = Math.max(14, parseInt(data.size || 28, 10));
-  const side = data.side === 'left' ? 'left' : 'right';
+  const side = pzLabelSide(data.side);
   el.dataset.side = side;
   el.dataset.lstyle = ['navy','red','dark'].includes(data.style) ? data.style : 'classic';
   el.style.setProperty('--label-size', size + 'px');
@@ -11380,7 +11383,7 @@ function selectMapLabel(id, syncInputs=true){
   if(syncInputs && item){
     if($('mapLabelText')) $('mapLabelText').value = item.text || '';
     if($('mapLabelSize')) $('mapLabelSize').value = String(state.mapLabelGlobalSize || item.size || 28);
-    if($('mapLabelSide')) $('mapLabelSide').value = item.side === 'left' ? 'left' : 'right';
+    if($('mapLabelSide')) $('mapLabelSide').value = pzLabelSide(item.side);
     if($('mapLabelStyle')) $('mapLabelStyle').value = item.style || 'classic';
   }
   updateReadouts();
@@ -11540,7 +11543,7 @@ function addMapLabelAt(lngLatObj, options={}){
   const textVal = (options.text != null ? String(options.text) : ($('mapLabelText')?.value || '')).trim() || 'Popisek';
   const sizeVal = Math.max(14, Math.min(80, parseInt(options.size ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
   state.mapLabelGlobalSize = sizeVal;
-  const sideVal = (options.side ?? $('mapLabelSide')?.value) === 'left' ? 'left' : 'right';
+  const sideVal = pzLabelSide(options.side ?? $('mapLabelSide')?.value);
   const styleVal = String(options.style ?? $('mapLabelStyle')?.value ?? 'classic');
   const ll = normalizeLngLatInput(lngLatObj);
   const lngLat = [ll.lng, ll.lat];
@@ -11616,7 +11619,7 @@ function updateMapLabel(id, updates={}){
   if(!item) return;
   if(updates.text != null) item.text = updates.text;
   if(updates.size != null) item.size = Math.max(12, Math.min(160, parseInt(updates.size, 10) || 28));
-  if(updates.side != null) item.side = updates.side === 'left' ? 'left' : 'right';
+  if(updates.side != null) item.side = pzLabelSide(updates.side);
   if(updates.style != null) item.style = String(updates.style);
   applyMapLabelStyle(item.marker?.getElement?.(), item);
   renderMapLabelList();
@@ -16102,7 +16105,7 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
         ctx.fillText(text, b.x + padLeft, b.y + b.h / 2, Math.max(1, b.w - padLeft - padRight));
       }
 
-      if(square){
+      if(square && getComputedStyle(square).display !== 'none' && square.getBoundingClientRect().width > 0){
         const s = toExportRect(square.getBoundingClientRect());
         const ss = window.getComputedStyle(square);
         ctx.shadowColor = 'rgba(0,0,0,0.20)';
@@ -18171,6 +18174,7 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Bez čtverečku": {cs:"Bez čtverečku",sk:"Bez štvorčeka",bg:"Без квадратче",hr:"Bez kvadratića",ro:"Fără pătrat",en:"No square"},
   "Popisky států": {cs:"Popisky států",sk:"Popisy štátov",bg:"Надписи на държавите",hr:"Natpisi država",ro:"Etichetele țărilor",en:"Country labels"},
   "{0} — popisek přidán.": {cs:"{0} — popisek přidán.",sk:"{0} — popis pridaný.",bg:"{0} — надписът е добавен.",hr:"{0} — natpis dodan.",ro:"{0} — etichetă adăugată.",en:"{0} — label added."},
   "Klikni do státu — přidá se jeho název jako popisek.": {cs:"Klikni do státu — přidá se jeho název jako popisek.",sk:"Klikni do štátu — pridá sa jeho názov ako popis.",bg:"Кликни в държава — името ѝ се добавя като надпис.",hr:"Klikni u državu — dodat će se njezin naziv kao natpis.",ro:"Dă clic într-o țară — numele ei se adaugă ca etichetă.",en:"Click inside a country to add its name as a label."},
