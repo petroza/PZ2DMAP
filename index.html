@@ -313,6 +313,13 @@ input[type=color]:hover{border-color:var(--accent)}
 .animated-marker.pz-sprite-vehicle{filter:drop-shadow(0 0 1px rgba(0,0,0,.5)) drop-shadow(0 0 4px rgba(0,0,0,.42))}
 .animated-marker.pz-lead-in-layer{filter:none}
 .animated-marker.pz-lead-in-layer > img,.animated-marker.pz-lead-in-layer .pz-beacon{opacity:0!important}
+.pz-extra-row{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.pz-extra-row select{min-width:0;width:100%}
+.pz-extra-delay{grid-column:1 / -1;display:block;margin:0}
+.pz-extra-delay input{width:100%}
+.pz-line-row{margin-top:8px}.pz-line-row input{width:100%}
+.pz-line-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;margin:8px 0}
+.pz-line-grid select{width:100%;min-width:0}
 .pz-vehicle-canvas{position:absolute;left:0;top:0;pointer-events:none;z-index:4}
 /* majáky hasičů, sanitky a policie — blikají střídavě, jen když vozidlo jede */
 .pz-beacon{position:absolute;width:22%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;opacity:0;background:radial-gradient(circle,rgba(255,255,255,.95) 0 18%,rgba(60,140,255,.85) 32%,rgba(40,110,255,.35) 58%,rgba(40,110,255,0) 72%)}
@@ -401,6 +408,8 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
 /* křížek u vybraného popisku — dřív šel popisek smazat jen nezřejmým Esc + Delete; do exportu se nekreslí */
 .map-label-del{display:none;position:absolute;top:-11px;right:-11px;width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;background:#e63946;color:#fff;font:700 14px/1 sans-serif;cursor:pointer;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.35);z-index:2}
 .map-label-marker.selected .map-label-del{display:grid}
+.map-label-resize{display:none;position:absolute;top:-9px;left:-9px;width:14px;height:14px;background:#fff;border:2px solid #2bb3c0;border-radius:3px;cursor:nwse-resize;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.35);touch-action:none}
+.map-label-marker.selected .map-label-resize{display:block}
 /* Styly popisků v barvách TV Nova (manuál: navy #0D1767, červená #F03B3B). Export
    kreslí bublinu i čtvereček podle vypočtených stylů, takže platí i ve videu/PNG. */
 .map-label-marker[data-lstyle="navy"] .map-label-bubble{background:#0D1767;color:#fff;border-color:#0D1767}
@@ -1035,6 +1044,18 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <button type="button" class="btn nav-clear" id="clearRouteBtn" data-i18n="Smazat">Smazat</button>
         </div>
         <div class="nav-summary" id="routeSummary" hidden></div>
+        <details class="compact-details" id="pzLineSection">
+          <summary data-i18n="Trasa podle linky MHD">Trasa podle linky MHD</summary>
+          <div class="pz-line-row">
+            <input id="pzLineInput" type="text" list="pzLineList" placeholder="22, A, S1, 136…" autocomplete="off" aria-label="Linka">
+            <datalist id="pzLineList"></datalist>
+          </div>
+          <div class="pz-line-grid">
+            <label for="pzLineFrom" data-i18n="Od">Od</label><select id="pzLineFrom"></select>
+            <label for="pzLineTo" data-i18n="Do">Do</label><select id="pzLineTo"></select>
+          </div>
+          <button type="button" class="btn btn-sm btn-primary" id="pzLineApply" data-i18n="Použít linku" disabled>Použít linku</button>
+        </details>
       </div>
 
       <div class="section anim-sys-icon-section" id="animationSystemIconsSection">
@@ -1076,6 +1097,11 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div><label for="pzVehicleBody" data-i18n="Karoserie">Karoserie</label><input type="color" id="pzVehicleBody" value="#f8fafc"></div>
             <div><label for="pzVehicleAccent" data-i18n="Akcent">Akcent</label><input type="color" id="pzVehicleAccent" value="#48cfa5"></div>
           </div>
+        </div>
+        <div id="pzExtraBox" style="margin-top:12px">
+          <label data-i18n="Další vozidla na trase">Další vozidla na trase</label>
+          <div id="pzExtraList"></div>
+          <button type="button" class="btn btn-sm" id="pzExtraAdd" data-i18n="+ Přidat vozidlo">+ Přidat vozidlo</button>
         </div>
         <label class="check" id="pzVehicleShadowRow" style="margin-top:10px"><input id="pzVehicleShadow" type="checkbox" checked> <span data-i18n="Stín pod vozidlem">Stín pod vozidlem</span></label>
         <label class="check" style="margin-top:10px"><input id="invertIcons" type="checkbox">  Invertovat ikonky (pro světlou mapu)</label>
@@ -2812,9 +2838,6 @@ const STYLES = {
   bright:'https://tiles.openfreemap.org/styles/bright',
   positron:'https://tiles.openfreemap.org/styles/positron',
   // styly OpenMapTiles (BSD / CC-BY 4.0 © OpenMapTiles) na volných dlaždicích OpenFreeMap
-  darkMatter:'https://tiles.openfreemap.org/styles/dark',
-  fiord:'https://tiles.openfreemap.org/styles/fiord',
-  toner:'assets/styles/toner.json',
   basic:'assets/styles/basic.json',
   terrain:'assets/styles/terrain.json',
   omt3d:'assets/styles/omt3d.json',
@@ -2990,7 +3013,7 @@ const DEFAULT_BUILTIN_PRESET_VISIBILITY = {showBuildings:true, showParks:true, s
 const BUILTIN_PRESET_STYLE_OVERRIDES = {
   libertyKlasicka:{native:true, baseStyle:'liberty'},
   zelenaPrirodni:{baseStyle:'liberty',ranges:{majorWidth:'1.2',minorWidth:'0.9',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'1.15',primaryWidth:'1.05',secondaryWidth:'1',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
-  modraPrirodni:{baseStyle:'liberty',ranges:{majorWidth:'1.2',minorWidth:'0.9',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'1.15',primaryWidth:'1.05',secondaryWidth:'1',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
+  modraPrirodni:{ranges:{majorWidth:'1.2',minorWidth:'0.9',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'1.15',primaryWidth:'1.05',secondaryWidth:'1',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnLive:{ranges:{majorWidth:'1.1',minorWidth:'0.7',buildingOpacity:'0.6',boundaryOpacity:'0.9',boundaryWidth:'1.3',motorwayWidth:'1.1',primaryWidth:'1',secondaryWidth:'0.8',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.8'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:false,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnStudio:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0.6',boundaryOpacity:'1',boundaryWidth:'1.2',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.6'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnModra:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0.6',boundaryOpacity:'1',boundaryWidth:'1.6',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.6'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
@@ -3295,11 +3318,13 @@ function readRawPresetDB(){
 }
 function getDefaultPresetToken(){
   const rec = readRawPresetDB().find(i => i && i.id === PZ_DEFAULT_PRESET_ID);
+  // dřívější výchozí „Světlá" → nový výchozí vzhled (jednorázově, přání grafika)
+  if(rec && rec.token === 'builtin:tnSvetla' && !rec.migrated2026){ try{ setDefaultPresetToken(PZ_HOME_PRESET_TOKEN); }catch(e){} return PZ_HOME_PRESET_TOKEN; }
   return (rec && typeof rec.token === 'string') ? rec.token : '';
 }
 function setDefaultPresetToken(token){
   const raw = readRawPresetDB().filter(i => !(i && i.id === PZ_DEFAULT_PRESET_ID));
-  if(token) raw.push({id:PZ_DEFAULT_PRESET_ID, token, updatedAt: Date.now()});
+  if(token) raw.push({id:PZ_DEFAULT_PRESET_ID, token, migrated2026: true, updatedAt: Date.now()});
   trySetLocal(PRESET_DB_KEY, JSON.stringify(raw));
   scheduleEntityPush('presets', raw);
 }
@@ -3603,15 +3628,17 @@ function presetTokenLabel(token){
 // Apply the shared default once at startup. Only touches a map the user hasn't
 // styled yet: if a project/session restore already set a look, that wins.
 // Výchozí vzhled, když si tým jiný nezvolil (hvězdička u presetu).
-const PZ_HOME_PRESET_TOKEN = 'builtin:tnSvetla';
+const PZ_HOME_PRESET_TOKEN = 'builtin:modraPrirodni';   // výchozí vzhled: Positron + Modrá přírodní
 // „Domů" (logo TN): stejný vzhled jako po startu. Builtin se aplikuje přímo
 // ze snapshotu — applyPreset() by skrytý preset tiše přeskočil.
 function pzApplyHomePreset(){
   const token = getDefaultPresetToken() || PZ_HOME_PRESET_TOKEN;
+  // výchozí vzhled je na podkladu Positron
+  if(token === PZ_HOME_PRESET_TOKEN && $('baseStyle') && $('baseStyle').value !== 'positron'){ state.pzNativeColors = false; $('baseStyle').value = 'positron'; try{ reloadStyle(); }catch(e){} }
   const [kind, key] = token.split(':');
   try{
     if(kind === 'custom' && findCustomPresetById(key)?.entry){ applyCustomPreset(key); return; }
-    const name = (kind === 'builtin' && PRESETS[key]) ? key : 'tnSvetla';
+    const name = (kind === 'builtin' && PRESETS[key]) ? key : 'modraPrirodni';
     const o = BUILTIN_PRESET_STYLE_OVERRIDES[name] || {};
     applyStylePresetSnapshot({colors: PRESETS[name],
       ranges: Object.assign({}, DEFAULT_BUILTIN_PRESET_RANGES, o.ranges || {}),
@@ -4166,10 +4193,10 @@ function drawMapSourceWatermark(ctx, w, h){
 }
 
 const TILE_DB_KEY = 'map69_tiles_v2';
-const BUILTIN_TILE_KEYS = ['liberty','bright','positron','darkMatter','fiord','toner','basic','terrain','omt3d','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain'];
+const BUILTIN_TILE_KEYS = ['liberty','bright','positron','basic','terrain','omt3d','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain'];
 // Podklady, které se ukazují ve SVÉ barevnosti (barevné presety je nepřebarvují,
 // dokud grafik preset sám nevybere).
-const PZ_NATIVE_BASES = new Set(['darkMatter','fiord','toner','basic','terrain','omt3d']);
+const PZ_NATIVE_BASES = new Set(['basic','terrain','omt3d']);
 
 function loadTileDB(){
   try{
@@ -4231,7 +4258,7 @@ function refreshBaseStyleSelect(){
   sel.innerHTML = '';
   const builtinGroup = document.createElement('optgroup');
   builtinGroup.label = t('Základní styly');
-  [{k:'liberty',l:'Liberty 3D'},{k:'bright',l:'Bright'},{k:'positron',l:'Positron'},{k:'darkMatter',l:'Dark Matter'},{k:'fiord',l:'Fiord'},{k:'toner',l:'Toner'},{k:'basic',l:'Basic'},{k:'terrain',l:'Terrain (reliéf)'},{k:'omt3d',l:'3D budovy'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
+  [{k:'liberty',l:'Liberty 3D'},{k:'bright',l:'Bright'},{k:'positron',l:'Positron'},{k:'basic',l:'Basic'},{k:'terrain',l:'Terrain (reliéf)'},{k:'omt3d',l:'3D budovy'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
     const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l);
     if(PZ_ADV_STYLES.includes(s.k)){ o.dataset.adv = '1'; o.hidden = !pzAdvancedOn() && s.k !== cur; }
     builtinGroup.appendChild(o);
@@ -4270,7 +4297,7 @@ function renderTileSourceList(){
   const custom = loadTileDB();
   list.innerHTML = '';
   BUILTIN_TILE_KEYS.forEach((key, idx) => {
-    const names = {liberty:'Liberty 3D',bright:'Bright',positron:'Positron',darkMatter:'Dark Matter',fiord:'Fiord',toner:'Toner',basic:'Basic',terrain:'Terrain (reliéf)',omt3d:'3D budovy',satellite:'Satelitní',hybrid:'Hybrid',osmStandard:'OSM Standard (CZ names)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Esri Terrain',osmHot:'OSM Humanitarian'};
+    const names = {liberty:'Liberty 3D',bright:'Bright',positron:'Positron',basic:'Basic',terrain:'Terrain (reliéf)',omt3d:'3D budovy',satellite:'Satelitní',hybrid:'Hybrid',osmStandard:'OSM Standard (CZ names)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Esri Terrain',osmHot:'OSM Humanitarian'};
     const wrap = document.createElement('div'); wrap.className = 'wp-item';
     wrap.innerHTML = `<span class="wp-badge" style="background:var(--green);font-size:8px">B${idx+1}</span><div style="flex:1;"><span style="font-weight:600">${names[key]||key}</span> <span class="small">— vestavěný</span></div>`;
     list.appendChild(wrap);
@@ -7842,6 +7869,7 @@ function serializeProjectSnapshot(){
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
       wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
+      extraVehicles: pzExtraVehicles().map(v => ({type: v.type, reverse: !!v.reverse, delay: +v.delay || 0})),
       routeHold: parseInt($('pzRouteHold')?.value ?? '60', 10),
       vehiclePalette: pzVehiclePalette(),
       vehicleShadow: $('pzVehicleShadow') ? !!$('pzVehicleShadow').checked : true,
@@ -7951,6 +7979,8 @@ function applyBasicProjectSnapshot(snapshot){
   pzSetVehiclePalette(animation.vehiclePalette);
   if($('pzVehicleShadow')) $('pzVehicleShadow').checked = animation.vehicleShadow !== false;
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
+  state.pzExtraVehicles = Array.isArray(animation.extraVehicles) ? animation.extraVehicles.filter(v => v && PZ_EXTRA_LABELS[v.type]).map(v => ({type: v.type, reverse: !!v.reverse, delay: Math.max(0, Math.min(0.9, +v.delay || 0))})) : [];
+  try{ pzRenderExtraList(); }catch(e){}
   if($('pzRouteHold')){ const h = Number.isFinite(+animation.routeHold) ? Math.max(0, Math.min(100, +animation.routeHold)) : 60; $('pzRouteHold').value = String(h); $('pzRouteHoldVal').textContent = h + ' %'; }
   if($('pzWagonCount')){ $('pzWagonCount').value = String(Math.max(0, Math.min(8, parseInt(animation.wagonCount ?? 2, 10) || 0))); $('pzWagonCountVal').textContent = $('pzWagonCount').value; }
   renderAnimSystemIconSelection();
@@ -9574,6 +9604,9 @@ function updateStylePanelVisibility(){
   const hideAdvancedStyleUi = ['political','satellite','hybrid','osmStandard','openTopo','cyclOsm','cartoVoyager','esriTerrain','osmHot'].includes(key);
   const el = $('stylePresetSection');
   if(el) el.style.display = hideAdvancedStyleUi ? 'none' : '';
+  // politická mapa je o státech — metro a tramvaje (jediné vrstvy, které tam zbyly) nemají smysl
+  const ly = $('styleLayersSection');
+  if(ly) ly.style.display = key === 'political' ? 'none' : '';
 }
 // Řádek ve „Vrstvách" má smysl jen tehdy, když podklad takovou vrstvu má. Na
 // satelitu a dalších rastrových podkladech by většina voleb nedělala nic.
@@ -9926,6 +9959,21 @@ function armSceneAddMode(mode){
   try{ updateSceneAddButtonStates(); }catch(e){}
   return on;
 }
+// Klik jinam v menu (mimo sekci, do které se právě vkládá) vkládání ukončí —
+// jinak po pár popiscích každé posunutí mapy přidávalo další.
+document.addEventListener('pointerdown', e => {
+  try{
+    if(!e.target.closest?.('.sidebar')) return;
+    const armed = Object.values(SCENE_ADD_FLAGS).some(f => state[f]);
+    if(!armed) return;
+    const sec = state.activeEditSection ? document.getElementById(state.activeEditSection) : null;
+    if(sec && sec.contains(e.target)) return;
+    clearAllSceneAddModes(); setActiveEditSection(null);
+    try{ state.sceneArrowDraft = null; state.sceneArrowPreview = null; setSceneArrowData(); }catch(_e){}
+    updateSceneAddButtonStates();
+    setStatus(t('Vkládání do mapy ukončeno.'));
+  }catch(_e){}
+}, true);
 function makeModel3dLayer(){
   const T = _THREE;
   return {
@@ -11104,7 +11152,7 @@ function deleteSceneIcon(id){
 function createMapLabelElement(text, size, side='right', style='classic'){
   const el = document.createElement('div');
   el.className = 'map-label-marker';
-  el.innerHTML = `<span class="map-label-content"><span class="map-label-bubble"></span><span class="map-label-square"></span><button type="button" class="map-label-del" title="Smazat popisek" aria-label="Smazat popisek">×</button></span>`;
+  el.innerHTML = `<span class="map-label-content"><span class="map-label-bubble"></span><span class="map-label-square"></span><button type="button" class="map-label-del" title="Smazat popisek" aria-label="Smazat popisek">×</button><span class="map-label-resize" title="Táhni pro změnu velikosti" aria-hidden="true"></span></span>`;
   applyMapLabelStyle(el, {text, size, side, style});
   return el;
 }
@@ -11319,9 +11367,32 @@ function addMapLabelAt(lngLatObj, options={}){
     try{ window.__pzPushUndo?.(); }catch(e){}
     deleteMapLabel(id);
   });
+  // Velikost tažením za levý horní roh (jako v grafickém editoru): poměr vzdálenosti
+  // ukazatele od středu popisku k počáteční vzdálenosti.
+  const rz = el.querySelector('.map-label-resize');
+  if(rz){
+    ['mousedown','touchstart'].forEach(ev => rz.addEventListener(ev, e => e.stopPropagation()));
+    rz.addEventListener('pointerdown', e => {
+      e.preventDefault(); e.stopPropagation();
+      const item = getMapLabelById(id); if(!item) return;
+      try{ window.__pzPushUndo?.(); }catch(_e){}
+      const box = el.querySelector('.map-label-bubble')?.getBoundingClientRect() || el.getBoundingClientRect();
+      const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+      const d0 = Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0 = item.size || 28;
+      state.suppressMapLabelEdit = true;
+      try{ rz.setPointerCapture(e.pointerId); }catch(_e){}
+      const move = ev => {
+        const sz = Math.round(Math.max(12, Math.min(160, s0 * Math.hypot(ev.clientX - cx, ev.clientY - cy) / d0)));
+        if(sz !== item.size){ updateMapLabel(id, {size: sz}); setStatus(t('Velikost popisku: {0} px', sz)); }
+      };
+      const up = () => { rz.removeEventListener('pointermove', move); rz.removeEventListener('pointerup', up); rz.removeEventListener('pointercancel', up);
+        setTimeout(() => { state.suppressMapLabelEdit = false; }, 120); try{ renderMapLabelList(); }catch(_e){} };
+      rz.addEventListener('pointermove', move); rz.addEventListener('pointerup', up); rz.addEventListener('pointercancel', up);
+    });
+  }
   el.addEventListener('click', ev => {
     ev.stopPropagation();
-    if(ev.target.closest?.('.map-label-del')) return;
+    if(ev.target.closest?.('.map-label-del') || ev.target.closest?.('.map-label-resize')) return;
     if(state.suppressMapLabelEdit) return;
     startMapLabelInlineEdit(id);
   });
@@ -11358,7 +11429,7 @@ function updateMapLabel(id, updates={}){
   const item = getMapLabelById(id);
   if(!item) return;
   if(updates.text != null) item.text = updates.text;
-  if(updates.size != null) item.size = Math.max(14, parseInt(updates.size, 10) || 28);
+  if(updates.size != null) item.size = Math.max(12, Math.min(160, parseInt(updates.size, 10) || 28));
   if(updates.side != null) item.side = updates.side === 'left' ? 'left' : 'right';
   if(updates.style != null) item.style = String(updates.style);
   applyMapLabelStyle(item.marker?.getElement?.(), item);
@@ -12149,6 +12220,125 @@ function pzPickStation(g, point, label){
   return best && best.rank <= 3 ? best.st : null;
 }
 const PZ_METRO_STATIONS = {"A":[["Nemocnice Motol",14.34186,50.07548],["Petřiny",14.34482,50.08718],["Nádraží Veleslavín",14.3491,50.09612],["Bořislavka",14.36359,50.09837],["Dejvická",14.39382,50.10044],["Hradčanská",14.40375,50.09721],["Malostranská",14.4094,50.09106],["Staroměstská",14.41814,50.08797],["Můstek",14.42482,50.08321],["Muzeum",14.43193,50.07912],["Náměstí Míru",14.43987,50.07521],["Jiřího z Poděbrad",14.45146,50.07779],["Flora",14.46238,50.07815],["Želivského",14.47633,50.07795],["Strašnická",14.49087,50.07281],["Skalka",14.50863,50.06841],["Depo Hostivař",14.51503,50.07462]],"B":[["Zličín",14.29082,50.0537],["Stodůlky",14.30538,50.04668],["Luka",14.3209,50.04597],["Lužiny",14.32977,50.04448],["Hůrka",14.34216,50.05002],["Nové Butovice",14.35145,50.05084],["Jinonice",14.36911,50.0541],["Radlická",14.38715,50.0583],["Smíchovské nádraží",14.40908,50.06073],["Anděl",14.40364,50.06951],["Karlovo náměstí",14.41629,50.07435],["Národní třída",14.42013,50.07947],["Můstek",14.42278,50.08323],["Náměstí Republiky",14.42986,50.08866],["Florenc",14.43692,50.09055],["Křižíkova",14.45057,50.09244],["Invalidovna",14.4627,50.09672],["Palmovka",14.47381,50.1037],["Českomoravská",14.49152,50.1062],["Vysočanská",14.50055,50.10998],["Kolbenova",14.5157,50.11046],["Hloubětín",14.53592,50.10683],["Rajská zahrada",14.55985,50.10678],["Černý Most",14.57598,50.10885]],"C":[["Letňany",14.5161,50.12421],["Prosek",14.49874,50.1192],["Střížkov",14.48914,50.12651],["Ládví",14.46873,50.12663],["Kobylisy",14.45336,50.12395],["Nádraží Holešovice",14.44036,50.10856],["Vltavská",14.43842,50.09975],["Florenc",14.43888,50.08963],["Hlavní nádraží",14.43386,50.08317],["Muzeum",14.43063,50.07994],["I. P. Pavlova",14.43028,50.07387],["Vyšehrad",14.43051,50.06268],["Pražského povstání",14.43376,50.05651],["Pankrác",14.4399,50.0506],["Budějovická",14.44925,50.04404],["Kačerov",14.45994,50.04169],["Roztyly",14.47763,50.03732],["Chodov",14.49161,50.03129],["Opatov",14.50979,50.02791],["Háje",14.52797,50.03087]]};
+// ===== TRASA PODLE LINKY MHD (PID) =====
+// Data: assets/pid_lines.json (tools/build_pid.py z otevřených dat PID, CC BY 4.0)
+// — pro každou linku a směr tvar trasy, zastávky a barva linky. Načtou se, až
+// když grafik sekci otevře. Úsek se vyřízne mezi vybranými zastávkami.
+let _pzLines = null, _pzLinesLoading = null;
+const PZ_LINE_TYPE_LABEL = {metro:'Metro', tram:'Tramvaj', bus:'Autobus', trolejbus:'Trolejbus', vlak:'Vlak', privoz:'Přívoz', lanovka:'Lanovka'};
+const PZ_LINE_MODE = {metro:'metro', tram:'tram', lanovka:'tram', vlak:'train', bus:'driving', trolejbus:'driving', privoz:'boat'};
+const PZ_LINE_ICON = {metro:'metro', tram:'tram', lanovka:'tram', vlak:'train', bus:'bus', trolejbus:'bus', privoz:'boat'};
+async function pzLoadLines(){
+  if(_pzLines) return _pzLines;
+  if(!_pzLinesLoading) _pzLinesLoading = fetch(new URL('assets/pid_lines.json', document.baseURI)).then(r => { if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(d => {
+    const Q = d.q || 1e5;
+    _pzLines = d.lines.map(l => {
+      const g = []; let x = 0, y = 0;
+      for(let i = 0; i < l.g.length; i += 2){ x += l.g[i]; y += l.g[i+1]; g.push([x / Q, y / Q]); }
+      return {n: l.n, t: l.t, c: l.c, d: l.d, coords: g, stops: l.s.map(s => ({name: s[0], p: [s[1] / Q, s[2] / Q]}))};
+    });
+    return _pzLines;
+  }).finally(() => { _pzLinesLoading = null; });
+  return _pzLinesLoading;
+}
+const pzLineKey = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^(linka|tramvaj|tram|bus|autobus|metro|vlak|trolejbus)\s+/, '').replace(/\s+/g, '').trim();
+function pzFindLine(lines, v){ const k = pzLineKey(v); return lines.filter(l => pzLineKey(l.n) === k); }
+// poloha bodu na trase (km od začátku), hledá se jen od „minKm" dál
+function pzAlongKm(coords, p, minKm = 0){
+  let best = {d: Infinity, km: 0}, acc = 0;
+  const kx = Math.cos(p[1] * Math.PI / 180);
+  for(let i = 1; i < coords.length; i++){
+    const a = coords[i-1], b = coords[i], seg = haversineKm(a, b);
+    const ax = (a[0] - p[0]) * kx, ay = a[1] - p[1], dx = (b[0] - a[0]) * kx, dy = b[1] - a[1], L = dx*dx + dy*dy || 1e-12;
+    const t = Math.max(0, Math.min(1, -(ax*dx + ay*dy) / L)), km = acc + seg * t;
+    const d = Math.hypot(ax + t*dx, ay + t*dy);
+    if(km + 1e-9 >= minKm && d < best.d) best = {d, km};
+    acc += seg;
+  }
+  return best.km;
+}
+function pzSliceKm(coords, a, b){
+  const out = []; let acc = 0;
+  const at = (i, km) => { const p = coords[i-1], q = coords[i], seg = haversineKm(p, q) || 1e-9, t = (km - acc) / seg; return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; };
+  for(let i = 1; i < coords.length; i++){
+    const seg = haversineKm(coords[i-1], coords[i]);
+    if(acc + seg >= a && !out.length) out.push(at(i, a));
+    if(out.length && acc + seg < b) out.push(coords[i].slice());
+    if(acc + seg >= b){ out.push(at(i, b)); break; }
+    acc += seg;
+  }
+  return out;
+}
+// Vybere směr linky, ve kterém je zastávka „od" před „do", a vyřízne úsek.
+function pzLineSegment(dirs, fromName, toName){
+  for(const l of dirs){
+    const i = l.stops.findIndex(s => s.name === fromName), j = l.stops.findIndex((s, k) => k > i && s.name === toName);
+    if(i < 0 || j < 0) continue;
+    const a = pzAlongKm(l.coords, l.stops[i].p), b = pzAlongKm(l.coords, l.stops[j].p, a);
+    const seg = pzSliceKm(l.coords, a, b);
+    if(seg.length > 1) return {line: l, coords: seg, stops: l.stops.slice(i, j + 1)};
+  }
+  return null;
+}
+function pzFillLineStops(dirs){
+  const from = $('pzLineFrom'), to = $('pzLineTo'); if(!from || !to) return;
+  const base = dirs[0]?.stops || [];
+  const opt = (s, i) => `<option value="${escapeHtml(s.name)}">${escapeHtml(s.name)}</option>`;
+  from.innerHTML = base.map(opt).join(''); to.innerHTML = base.map(opt).join('');
+  if(base.length){ from.value = base[0].name; to.value = base[base.length - 1].name; }
+  $('pzLineApply').disabled = !base.length;
+}
+// Doprava bez nového hledání trasy (trasa je dána linkou)
+function pzSetModeSilently(mode, icon){
+  state.currentTransportMode = mode;
+  setActiveButton('.transport-btn', 'mode', mode);
+  try{ updateTransportSections(); }catch(e){}
+  try{ if(icon && !(state.animIconData && !state.animSystemIcon)) setAnimSystemIcon(icon, {silent:true, refresh:false}); else pzMatchIconToMode(); }catch(e){}
+}
+async function pzApplyLine(){
+  try{
+    const lines = await pzLoadLines(), dirs = pzFindLine(lines, $('pzLineInput').value);
+    if(!dirs.length){ setStatus(t('Linku „{0}“ neznám.', $('pzLineInput').value), 'error'); return; }
+    const seg = pzLineSegment(dirs, $('pzLineFrom').value, $('pzLineTo').value);
+    if(!seg){ setStatus(t('Mezi těmito zastávkami linka nejede.'), 'error'); return; }
+    try{ window.__pzPushUndo?.(); }catch(e){}
+    cancelRouteSearch();
+    const l = seg.line;
+    pzSetModeSilently(PZ_LINE_MODE[l.t] || 'driving', PZ_LINE_ICON[l.t]);
+    state.manualViaPoints = []; try{ refreshManualViaMarkers(); renderWaypointList(); }catch(e){}
+    state.pointA = seg.coords[0].slice(); state.pointB = seg.coords[seg.coords.length - 1].slice(); state.clickPhase = 'done';
+    $('startInput').value = seg.stops[0].name; $('endInput').value = seg.stops[seg.stops.length - 1].name;
+    state.routeCoords = seg.coords; state.routeDurationSec = null; state.pzTrainStations = [seg.stops[0].name, seg.stops[seg.stops.length - 1].name];
+    state.pzLineRoute = {n: l.n, t: l.t, stops: seg.stops.map(s => s.name)};
+    restorePointMarkers(); redrawRoute(); fitRoute(); state._pzLastRouteOk = true; updateRouteSummary();
+    // trasa v barvě linky (vrátí se jako u metra, když se pak trasa najde jinak)
+    const rc = $('routeColor');
+    if(rc && /^#[0-9a-f]{6}$/i.test(l.c)){
+      const cur = rc.value.toLowerCase();
+      if(!(state._pzAutoRouteColor && cur === state._pzAutoRouteColor)) state._pzUserRouteColor = cur;
+      rc.value = l.c.toLowerCase(); rc.dispatchEvent(new Event('input', {bubbles:true})); state._pzAutoRouteColor = l.c.toLowerCase();
+    }
+    setTimeout(() => { try{ refreshAnimatedMarkerPreview(); }catch(e){} }, 0);
+    setStatus(t('Linka {0}: {1} → {2} · {3} zastávek · {4}', l.n, seg.stops[0].name, seg.stops[seg.stops.length - 1].name, seg.stops.length, routeSummaryText()));
+    try{ tnFeature('line:' + l.t); }catch(e){}
+  }catch(e){ console.warn(e); setStatus(t('Linky MHD se nepodařilo načíst. Zkus to znovu.'), 'error'); }
+}
+function pzInitLineUi(){
+  const sec = $('pzLineSection'); if(!sec) return;
+  const fillList = async () => {
+    try{
+      const lines = await pzLoadLines(), seen = new Set(), list = $('pzLineList');
+      list.innerHTML = lines.filter(l => !seen.has(l.n) && seen.add(l.n)).map(l => `<option value="${escapeHtml(l.n)}">${escapeHtml(t(PZ_LINE_TYPE_LABEL[l.t] || l.t))}</option>`).join('');
+    }catch(e){}
+  };
+  sec.addEventListener('toggle', () => { if(sec.open) fillList(); });
+  $('pzLineInput').addEventListener('input', async () => {
+    try{ const dirs = pzFindLine(await pzLoadLines(), $('pzLineInput').value); pzFillLineStops(dirs); }catch(e){}
+  });
+  $('pzLineInput').addEventListener('keydown', e => { if(e.key === 'Enter' && !$('pzLineApply').disabled){ e.preventDefault(); pzApplyLine(); } });
+  $('pzLineApply').addEventListener('click', pzApplyLine);
+}
+
 // ===== METRO a TRAMVAJ: trasa po síti MHD =====
 // Síť se staví v prohlížeči z linií, které už aplikace má (PRAHA_METRO_GEOJSON,
 // assets/mhd_cz_tram.json), ve stejném tvaru jako železnice → stejné hledání
@@ -12669,6 +12859,7 @@ function routeErrorText(e){
 }
 
 async function findRoute(){
+  state.pzLineRoute = null;
   const req = ++_routeReq;
   const stale = () => req !== _routeReq;   // mezitím spuštěno nové hledání nebo trasa smazána
   state._pzLastRouteOk = false;
@@ -13079,12 +13270,91 @@ function pzClipSquare(planes){
 }
 // Průběh animace (0–1) → poloha přídě: od bodu A až do chvíle, kdy celé vozidlo
 // zajede do bodu B (pak je pod maskou schované). Hodnota > 1 = příď za cílem.
+// Velikost vozidla v px; u dalších vozidel (kreslí se s dočasně přepnutým typem)
+// se počítá z posuvníku pro jejich typ, ne z HTML značky hlavního vozidla.
+function pzVehBaseSizePx(){
+  if(state._pzSizeOverride) return state._pzSizeOverride;
+  return parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK();
+}
+// ===== Další vozidla na trase =====
+// Každé: {type, reverse (proti směru), delay (0–0,9 = vyjede později)}. Jedou po
+// stejné trase jako hlavní vozidlo, kreslí je stejná funkce (pzDrawVehicle) se
+// stejnou maskou u bodů A/B, v náhledu i v exportu.
+const PZ_EXTRA_LABELS = {car:'Auto', truck:'Kamion', lorry:'Nákladní', train:'Vlak', boat:'Loď', bus:'Autobus', fire:'Hasiči', police:'Policie', ambulance:'Sanitka', metro:'Metro', tram:'Tramvaj'};
+function pzExtraVehicles(){ return Array.isArray(state.pzExtraVehicles) ? state.pzExtraVehicles : (state.pzExtraVehicles = []); }
+let _pzRevRoute = {src:null, rev:null};
+function pzReversedRoute(route){
+  if(_pzRevRoute.src !== route){ _pzRevRoute = {src: route, rev: route.slice().reverse()}; }
+  return _pzRevRoute.rev;
+}
+// Kreslí hlavní i další vozidla (další pod hlavním).
+function pzDrawAllVehicles(ctx, map, toOut, k){
+  const extras = pzExtraVehicles(), raw = state._pzVehRaw;
+  if(extras.length && raw != null && state.routeCoords?.length > 1){
+    const keep = {icon: state.animSystemIcon, route: state.routeCoords, size: state._pzSizeOverride};
+    const main = keep.icon;
+    try{
+      extras.forEach(v => {
+        if(!PZ_SPRITES[v.type] || !PZ_SPRITE_IMG[v.type]) return;
+        state.animSystemIcon = v.type;
+        state.routeCoords = v.reverse ? pzReversedRoute(keep.route) : keep.route;
+        state._pzSizeOverride = parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK();
+        const d = Math.max(0, Math.min(0.9, +v.delay || 0)), e = Math.max(0, Math.min(1, (raw - d) / (1 - d)));
+        if(raw < d) return;                                  // ještě nevyjelo
+        pzDrawVehicle(ctx, map, toOut, k, pzVehicleProgress(e));
+      });
+    }finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; state._pzSizeOverride = keep.size; }
+    void main;
+  }
+  if(state._pzVehVp != null && pzIsRail(state.animSystemIcon)) pzDrawVehicle(ctx, map, toOut, k, state._pzVehVp);
+}
+function pzRenderExtraList(){
+  const box = $('pzExtraList'); if(!box) return;
+  const types = Object.keys(PZ_EXTRA_LABELS);
+  box.innerHTML = pzExtraVehicles().map((v, i) => `
+    <div class="pz-extra-row" data-i="${i}">
+      <select class="pz-extra-type" aria-label="${escapeHtml(t('Vozidlo'))}">${types.map(k => `<option value="${k}"${k === v.type ? ' selected' : ''}>${escapeHtml(t(PZ_EXTRA_LABELS[k]))}</option>`).join('')}</select>
+      <select class="pz-extra-dir" aria-label="${escapeHtml(t('Směr'))}"><option value="0"${v.reverse ? '' : ' selected'}>${escapeHtml(t('Stejným směrem'))}</option><option value="1"${v.reverse ? ' selected' : ''}>${escapeHtml(t('Proti směru'))}</option></select>
+      <button type="button" class="btn btn-sm pz-extra-del" title="${escapeHtml(t('Odebrat'))}" aria-label="${escapeHtml(t('Odebrat'))}">×</button>
+      <label class="pz-extra-delay"><span>${escapeHtml(t('Vyjede později'))}</span> <span class="val">${Math.round((+v.delay || 0) * 100)} %</span>
+        <input type="range" class="pz-extra-delay-in" min="0" max="90" step="5" value="${Math.round((+v.delay || 0) * 100)}"></label>
+    </div>`).join('');
+}
+function pzExtraChanged(){ try{ refreshAnimatedMarkerPreview(); pzRenderVehicleLive(); state.map?.triggerRepaint?.(); }catch(e){} }
+function pzInitExtraUi(){
+  const box = $('pzExtraList'), add = $('pzExtraAdd'); if(!box || !add) return;
+  add.addEventListener('click', () => {
+    try{ window.__pzPushUndo?.(); }catch(e){}
+    const main = PZ_SPRITES[state.animSystemIcon] ? state.animSystemIcon : 'car';
+    pzExtraVehicles().push({type: main, reverse: pzExtraVehicles().length % 2 === 0, delay: 0});
+    pzRenderExtraList(); pzExtraChanged();
+  });
+  box.addEventListener('change', e => {
+    const row = e.target.closest('.pz-extra-row'); if(!row) return; const v = pzExtraVehicles()[+row.dataset.i]; if(!v) return;
+    if(e.target.classList.contains('pz-extra-type')) v.type = e.target.value;
+    if(e.target.classList.contains('pz-extra-dir')) v.reverse = e.target.value === '1';
+    pzExtraChanged();
+  });
+  box.addEventListener('input', e => {
+    if(!e.target.classList.contains('pz-extra-delay-in')) return;
+    const row = e.target.closest('.pz-extra-row'), v = pzExtraVehicles()[+row.dataset.i]; if(!v) return;
+    v.delay = (+e.target.value || 0) / 100; row.querySelector('.pz-extra-delay .val').textContent = e.target.value + ' %';
+    pzExtraChanged();
+  });
+  box.addEventListener('click', e => {
+    if(!e.target.classList.contains('pz-extra-del')) return;
+    const row = e.target.closest('.pz-extra-row');
+    try{ window.__pzPushUndo?.(); }catch(err){}
+    pzExtraVehicles().splice(+row.dataset.i, 1); pzRenderExtraList(); pzExtraChanged();
+  });
+  pzRenderExtraList();
+}
 function pzVehicleProgress(e){
   try{
     const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
     if(!pzIsRail(type) || !m || !route || route.length < 2) return e;
     const {total} = cumulativeRouteLengths(route); if(!(total > 0)) return e;
-    const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
+    const sizePx = pzVehBaseSizePx() * ((state._exporting && state._exportMarkerScale) || 1);
     const lead = pointAtProgress(route, Math.min(1, e)) || route[0];
     const U = sizePx * 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
     const spec = pzConsistSpec() || {rear:0.5, units:[]};
@@ -13095,7 +13365,7 @@ function pzVehicleProgress(e){
 function pzRailPose(progress){
   const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
   if(!pzIsRail(type) || !m || !route || route.length < 2) return null;
-  const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
+  const sizePx = pzVehBaseSizePx() * ((state._exporting && state._exportMarkerScale) || 1);
   const zoom = m.getZoom(), key = [progress, zoom, sizePx, route.length, type, $('pzWagonCount')?.value || '', $('pzRouteHold')?.value || ''].join('|');
   if(_pzRailCache && _pzRailCache.key === key && _pzRailCache.route === route) return _pzRailCache.pose;
   const {cum, total} = cumulativeRouteLengths(route);
@@ -13212,7 +13482,7 @@ function pzVehicleParts(vp){
   if(vp == null) return [];
   const pose = pzRailPose(vp); if(!pose) return [];
   const type = state.animSystemIcon, spec = pzConsistSpec() || {units:[]};
-  const sizePx = (parseFloat(state.animatedMarkerEl?.style.width) || parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK()) * ((state._exporting && state._exportMarkerScale) || 1);
+  const sizePx = pzVehBaseSizePx() * ((state._exporting && state._exportMarkerScale) || 1);
   return pose.map((pt, i) => {
     const u = i ? (pt.unit || spec.units[i - 1]) : null;
     return {c: pt.c, rot: pt.rot, dir: pt.dir, side: sizePx * (u ? (u.scale || 1) : 1), url: pzVehicleImage(i ? u.type : type), clip: pt.clip, lead: !i,
@@ -13272,8 +13542,8 @@ function pzRenderVehicleLive(){
   const W = m.getCanvas().clientWidth, H = m.getCanvas().clientHeight;
   if(cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)){ cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
   const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height);
-  const on = $('animDot')?.checked && state.routeCoords?.length > 1 && state._pzVehVp != null && pzIsRail(state.animSystemIcon);
-  if(on) try{ pzDrawVehicle(ctx, m, p => [p[0] * dpr, p[1] * dpr], dpr, state._pzVehVp); }catch(e){}
+  const on = $('animDot')?.checked && state.routeCoords?.length > 1 && (state._pzVehVp != null || pzExtraVehicles().length);
+  if(on) try{ pzDrawAllVehicles(ctx, m, p => [p[0] * dpr, p[1] * dpr], dpr); }catch(e){}
 }
 // Maska vedoucího dílu (HTML značka): ořez v souřadnicích prvku + údaj pro export.
 function pzApplyLeadClip(el, pose){
@@ -15702,11 +15972,12 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
   for(const item of state.mapLabels){ await drawElement(item.marker?.getElement?.(), false); }
   try{ pzDrawSceneTagLabels(ctx, crop); }catch(e){}
   // vozidlo nad objekty scény, ale POD body A a B (vyjíždí z bodu A, zajíždí pod bod B)
-  if(state.animatedMarkerEl?.classList?.contains('pz-lead-in-layer')){
+  if(state.animatedMarkerEl?.classList?.contains('pz-lead-in-layer') || pzExtraVehicles().length){
+    if(!state.animatedMarkerEl?.classList?.contains('pz-lead-in-layer')) await drawElement(state.animatedMarkerEl, true);
     try{
       const mm = state.map, mr = mm.getContainer().getBoundingClientRect();
       const k = scaleX * outScaleX;
-      pzDrawVehicle(ctx, mm, p => [(((p[0] + mr.left - mapRect.left) * scaleX) - crop.x) * outScaleX, (((p[1] + mr.top - mapRect.top) * scaleY) - crop.y) * outScaleY], k, state._pzVehVp);
+      pzDrawAllVehicles(ctx, mm, p => [(((p[0] + mr.left - mapRect.left) * scaleX) - crop.x) * outScaleX, (((p[1] + mr.top - mapRect.top) * scaleY) - crop.y) * outScaleY], k);
     }catch(e){}
   } else await drawElement(state.animatedMarkerEl, true);
   await drawElement(state.markerA?.getElement?.(), false);
@@ -17034,6 +17305,8 @@ function bindUI(){
     refreshVehicleColors({body:$('pzVehicleBody').value, accent:$('pzVehicleAccent').value, auto:false, accentOn});
   })); });
   pzFillSysIconButtons();
+  try{ pzInitLineUi(); }catch(e){}
+  try{ pzInitExtraUi(); }catch(e){}
   try{ pzLoadSprites(); }catch(e){}
   $('pzRouteHold')?.addEventListener('input', () => { $('pzRouteHoldVal').textContent = $('pzRouteHold').value + ' %'; refreshAnimatedMarkerPreview(); });
   $('pzVehicleShadow')?.addEventListener('change', () => { try{ pzRenderVehicleLive(); state.map?.triggerRepaint?.(); }catch(e){} });
@@ -17701,6 +17974,28 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Velikost popisku: {0} px": {cs:"Velikost popisku: {0} px",sk:"Veľkosť popisu: {0} px",bg:"Размер на надписа: {0} px",hr:"Veličina natpisa: {0} px",ro:"Mărimea etichetei: {0} px",en:"Label size: {0} px"},
+  "Vkládání do mapy ukončeno.": {cs:"Vkládání do mapy ukončeno.",sk:"Vkladanie do mapy ukončené.",bg:"Добавянето в картата е спряно.",hr:"Dodavanje na kartu završeno.",ro:"Adăugarea pe hartă s-a oprit.",en:"Adding to the map stopped."},
+  "Další vozidla na trase": {cs:"Další vozidla na trase",sk:"Ďalšie vozidlá na trase",bg:"Още превозни средства по маршрута",hr:"Još vozila na ruti",ro:"Alte vehicule pe traseu",en:"More vehicles on the route"},
+  "+ Přidat vozidlo": {cs:"+ Přidat vozidlo",sk:"+ Pridať vozidlo",bg:"+ Добави превозно средство",hr:"+ Dodaj vozilo",ro:"+ Adaugă vehicul",en:"+ Add vehicle"},
+  "Stejným směrem": {cs:"Stejným směrem",sk:"Rovnakým smerom",bg:"В същата посока",hr:"Istim smjerom",ro:"În aceeași direcție",en:"Same direction"},
+  "Proti směru": {cs:"Proti směru",sk:"Proti smeru",bg:"В обратна посока",hr:"Suprotnim smjerom",ro:"În sens opus",en:"Opposite direction"},
+  "Vyjede později": {cs:"Vyjede později",sk:"Vyrazí neskôr",bg:"Тръгва по-късно",hr:"Kreće kasnije",ro:"Pornește mai târziu",en:"Starts later"},
+  "Odebrat": {cs:"Odebrat",sk:"Odobrať",bg:"Премахни",hr:"Ukloni",ro:"Elimină",en:"Remove"},
+  "Vozidlo": {cs:"Vozidlo",sk:"Vozidlo",bg:"Превозно средство",hr:"Vozilo",ro:"Vehicul",en:"Vehicle"},
+  "Směr": {cs:"Směr",sk:"Smer",bg:"Посока",hr:"Smjer",ro:"Direcție",en:"Direction"},
+  "Trasa podle linky MHD": {cs:"Trasa podle linky MHD",sk:"Trasa podľa linky MHD",bg:"Маршрут по линия на градския транспорт",hr:"Ruta po liniji javnog prijevoza",ro:"Traseu după linia de transport public",en:"Route by transit line"},
+  "Od": {cs:"Od",sk:"Od",bg:"От",hr:"Od",ro:"De la",en:"From"},
+  "Do": {cs:"Do",sk:"Do",bg:"До",hr:"Do",ro:"Până la",en:"To"},
+  "Použít linku": {cs:"Použít linku",sk:"Použiť linku",bg:"Използвай линията",hr:"Koristi liniju",ro:"Folosește linia",en:"Use line"},
+  "Linku „{0}“ neznám.": {cs:"Linku „{0}“ neznám.",sk:"Linku „{0}“ nepoznám.",bg:"Не познавам линия „{0}“.",hr:"Ne poznajem liniju „{0}“.",ro:"Nu cunosc linia „{0}“.",en:"Unknown line “{0}”."},
+  "Mezi těmito zastávkami linka nejede.": {cs:"Mezi těmito zastávkami linka nejede.",sk:"Medzi týmito zastávkami linka nejazdí.",bg:"Линията не минава между тези спирки.",hr:"Linija ne vozi između tih stanica.",ro:"Linia nu circulă între aceste stații.",en:"The line does not run between these stops."},
+  "Linka {0}: {1} → {2} · {3} zastávek · {4}": {cs:"Linka {0}: {1} → {2} · {3} zastávek · {4}",sk:"Linka {0}: {1} → {2} · {3} zastávok · {4}",bg:"Линия {0}: {1} → {2} · {3} спирки · {4}",hr:"Linija {0}: {1} → {2} · {3} stanica · {4}",ro:"Linia {0}: {1} → {2} · {3} stații · {4}",en:"Line {0}: {1} → {2} · {3} stops · {4}"},
+  "Linky MHD se nepodařilo načíst. Zkus to znovu.": {cs:"Linky MHD se nepodařilo načíst. Zkus to znovu.",sk:"Linky MHD sa nepodarilo načítať. Skús to znova.",bg:"Линиите не се заредиха. Опитай отново.",hr:"Linije se nisu učitale. Pokušaj ponovno.",ro:"Liniile nu s-au încărcat. Încearcă din nou.",en:"Transit lines failed to load. Try again."},
+  "Autobus": {cs:"Autobus",sk:"Autobus",bg:"Автобус",hr:"Autobus",ro:"Autobuz",en:"Bus"},
+  "Trolejbus": {cs:"Trolejbus",sk:"Trolejbus",bg:"Тролейбус",hr:"Trolejbus",ro:"Troleibuz",en:"Trolleybus"},
+  "Přívoz": {cs:"Přívoz",sk:"Prievoz",bg:"Ферибот",hr:"Skela",ro:"Bac",en:"Ferry"},
+  "Lanovka": {cs:"Lanovka",sk:"Lanovka",bg:"Лифт",hr:"Uspinjača",ro:"Funicular",en:"Funicular"},
   "Držet se trasy": {cs:"Držet se trasy",sk:"Držať sa trasy",bg:"Следване на маршрута",hr:"Držati se rute",ro:"Urmărește traseul",en:"Stick to route"},
   "Stín pod vozidlem": {cs:"Stín pod vozidlem",sk:"Tieň pod vozidlom",bg:"Сянка под превозното средство",hr:"Sjena ispod vozila",ro:"Umbră sub vehicul",en:"Shadow under vehicle"},
   "Nákladní auto": {cs:"Nákladní auto",sk:"Nákladné auto",bg:"Товарен автомобил",hr:"Teretno vozilo",ro:"Camion",en:"Lorry"},
@@ -19657,7 +19952,7 @@ function pzColorFromName(v){
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
-    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading, pzVehicleParts,
+    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading, pzVehicleParts, pzExtraVehicles,
     pzSetKeyboardInset, pzMobilePanel,
     createSceneArrow, createScenePerimeterAt, createSceneDistance, createSceneIconAt, addMapLabelAt, pzIconDataUrl,   // 21_scene_objects
     get state(){ return state; }};
@@ -20220,6 +20515,20 @@ function pzColorFromName(v){
       if(!btn) return {ok:false, error:'Přepínač režimu nenalezen.'};
       btn.click();
       return {ok:true, mode};
+    },
+    // Trasa podle linky MHD: {line:'22', from:'Bílá Hora', to:'Nádraží Hostivař'} (bez from/to celá linka)
+    async routeLine({line, from, to} = {}){
+      const lines = await pzLoadLines(), dirs = pzFindLine(lines, line);
+      if(!dirs.length) return {ok:false, error:'Linku „' + line + '“ neznám.'};
+      if($('pzLineInput')) $('pzLineInput').value = dirs[0].n;
+      pzFillLineStops(dirs);
+      const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const pick = (sel, v, def) => { const o = [...sel.options].find(o => norm(o.value) === norm(v)) || [...sel.options].find(o => norm(o.value).includes(norm(v))); sel.value = v && o ? o.value : def; };
+      const st = dirs[0].stops;
+      pick($('pzLineFrom'), from, st[0].name); pick($('pzLineTo'), to, st[st.length - 1].name);
+      await pzApplyLine();
+      return state.pzLineRoute ? {ok:true, line: state.pzLineRoute.n, type: state.pzLineRoute.t, stops: state.pzLineRoute.stops.length, from: state.pzLineRoute.stops[0], to: state.pzLineRoute.stops[state.pzLineRoute.stops.length - 1]}
+                               : {ok:false, error:($('statusBar')?.textContent || '').trim()};
     },
     async routeBetween({from, to, mode} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to.'};
