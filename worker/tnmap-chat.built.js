@@ -310,6 +310,30 @@ function extractPlan(text) {
   return null;
 }
 __name(extractPlan, "extractPlan");
+// Klient ukládá své odpovědi do historie jako text „věta\n[provedeno: nástroj({…}) → ok; …]".
+// Model pak ten tvar napodobil a z jeho prózy se jako „plán" vytáhly jen argumenty
+// (→ prázdné „Hotovo." a nic se nestalo). Historii proto posíláme jako JSON plány
+// a napodobeninu, když přece jen přijde, převedeme na skutečná volání.
+function parseDoneCalls(text) {
+  const m = /\[provedeno:\s*([\s\S]*?)\]\s*$/.exec(String(text || ""));
+  if (!m) return null;
+  const calls = [];
+  for (const part of m[1].split(/;\s*(?=[a-zA-Z][a-zA-Z0-9]*\()/)) {
+    const mm = /^([a-zA-Z][a-zA-Z0-9]*)\(([\s\S]*)\)(?:\s*→[\s\S]*)?$/.exec(part.trim());
+    if (!mm) continue;
+    let args = {};
+    try { args = mm[2].trim() ? JSON.parse(mm[2]) : {}; } catch (_) { continue; }
+    calls.push({ tool: mm[1], args: args && typeof args === "object" ? args : {}, label: mm[1] });
+  }
+  return { say: String(text).slice(0, m.index).trim(), calls };
+}
+__name(parseDoneCalls, "parseDoneCalls");
+function historyAsPlan(text) {
+  const p = parseDoneCalls(text);
+  if (!p) return JSON.stringify({ say: String(text || "").trim(), calls: [], done: true });
+  return JSON.stringify({ say: p.say, calls: p.calls.map((c) => ({ tool: c.tool, args: c.args })), done: true });
+}
+__name(historyAsPlan, "historyAsPlan");
 function sanitizePlan(plan) {
   if (typeof plan === "string") plan = extractPlan(plan);
   if (!plan || typeof plan !== "object") return { say: "Nerozumím, zkus to prosím jinak.", calls: [], done: true };
@@ -321,6 +345,8 @@ function sanitizePlan(plan) {
       }
     }
   }
+  if (!plan.say && !plan.calls && !plan.tool) return { say: "Nerozumím, zkus to prosím jinak.", calls: [], done: true };
+  if (!plan.calls && typeof plan.tool === "string") plan = { say: "", calls: [plan], done: true };
   const calls = Array.isArray(plan.calls) ? plan.calls.slice(0, 8) : [];
   let say = plan.say;
   if (typeof say !== "string") say = say == null ? "" : Array.isArray(say) ? say.filter((x) => typeof x === "string").join(" ") : "";
@@ -352,7 +378,8 @@ var worker_default = {
     const messages = [{ role: "system", content: systemPrompt(body.mapState, typeof body.lang === "string" ? body.lang.slice(0, 2).toLowerCase() : "cs") }];
     for (const m of history) {
       const role = m && m.role === "assistant" ? "assistant" : "user";
-      const content = String(m && m.content || "").slice(0, 2e3);
+      let content = String(m && m.content || "").slice(0, 2e3);
+      if (role === "assistant" && content && !/^\s*\{/.test(content)) content = historyAsPlan(content);
       if (content) messages.push({ role, content });
     }
     if (Array.isArray(body.toolResults) && body.toolResults.length) {
@@ -394,6 +421,10 @@ var worker_default = {
       }
       // Když i tak přišla próza, je to skoro vždy použitelná odpověď nebo doptání.
       // Ukázat ji je vždy lepší než ji zahodit a napsat "Nerozumím".
+      if (typeof r === "string" && /\[provedeno:/.test(r)) {
+        const p = parseDoneCalls(r.trim());
+        if (p && p.calls.length) plan = { say: p.say, calls: p.calls, done: true };
+      }
       if (!plan && typeof r === "string" && r.trim().length > 2 && !r.includes("{")) {
         plan = { say: r.trim().slice(0, 400), calls: [], done: true };
       }
