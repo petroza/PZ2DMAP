@@ -36,6 +36,12 @@ const {check, done, open, tab} = require('./lib');
   await page.keyboard.press('Control+z'); await page.waitForTimeout(1500);   // vrátí smazání
   fl = await page.evaluate(() => window.__pzFns.pzFlagList().map(f => f.iso).sort().join(','));
   check(fl === 'cz,de', 'krok zpět vrátí smazanou vlajku (' + fl + ')');
+  // popisky států: klik do Rakouska → popisek „Rakousko" v boxu jako ostatní popisky
+  await page.check('#pzCountryLabelsOn');
+  check(!(await page.isChecked('#pzFlagsOn')), 'popisky států vypnou vkládání vlajek');
+  p = await px([14.5, 47.5]); await page.mouse.click(p.x, p.y); await page.waitForTimeout(600);
+  const lab = await page.evaluate(() => { const l = window.__pzFns.state.mapLabels.at(-1); return l && {text: l.text, box: !!l.marker.getElement().querySelector('.map-label-bubble')}; });
+  check(lab && lab.text === 'Rakousko' && lab.box, 'klik do státu přidá popisek s jeho názvem ' + JSON.stringify(lab));
   check(!errors.length, 'bez chyb v konzoli ' + errors.join(' | '));
   await close(); done();
 })();

@@ -867,6 +867,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <label class="check" style="margin-top:8px"><input id="globeProjection" type="checkbox"> Glóbus</label>
         <div id="pzPoliticalTools" hidden>
           <label class="check" style="margin-top:8px"><input id="pzFlagsOn" type="checkbox"> <span data-i18n="Vlajky států">Vlajky států</span></label>
+          <label class="check" style="margin-top:8px"><input id="pzCountryLabelsOn" type="checkbox"> <span data-i18n="Popisky států">Popisky států</span></label>
           <label class="check" style="margin-top:8px"><input id="pzClickPaintOn" type="checkbox" checked> <span data-i18n="Barvit stát kliknutím">Barvit stát kliknutím</span></label>
         </div>
       </div>
@@ -7467,7 +7468,8 @@ function pzInitFlagDrag(){
     const moved = drag.moved; drag = null;
     try{ m.dragPan.enable(); }catch(_e){}
     m.getCanvas().style.cursor = '';
-    if(moved){ state.ignoreNextMapClick = true; setStatus(t('Vlajka přesunuta.')); }
+    // klik, který prohlížeč pošle hned po puštění, nesmí přidat další vlajku — ale jen ten jeden
+    if(moved){ state.ignoreNextMapClick = true; setTimeout(() => { state.ignoreNextMapClick = false; }, 80); setStatus(t('Vlajka přesunuta.')); }
     pzFlagsRefresh();
   };
   m.on('mousedown', start); m.on('touchstart', e => { if(e.points?.length === 1) start(e); });
@@ -7495,6 +7497,16 @@ async function pzFlagClick(e){
   await pzLoadFlagImage(iso);
   pzFlagsRefresh();
   setStatus(t('{0} — vlajka přidána.', getCountryNameById(f.properties.__appId) || iso.toUpperCase()));
+  return true;
+}
+// Popisky států: klik do státu přidá jeho název jako běžný popisek (box, přesun,
+// velikost za roh, Delete) na místo kliknutí.
+function pzCountryLabelClick(e){
+  const f = getPoliticalCountryFeatureAtPoint(e.point); if(!f) return false;
+  const name = getCountryNameById(f.properties.__appId) || f.properties.__appName; if(!name) return false;
+  try{ window.__pzPushUndo?.(); }catch(_e){}
+  addMapLabelAt(e.lngLat, {text: name, silent: true});
+  setStatus(t('{0} — popisek přidán.', name));
   return true;
 }
 function pzDeleteSelectedFlag(){
@@ -10564,6 +10576,7 @@ function onMapClick(e){
   }
   if(handlePoliticalCountryPaintClick(e)) return;
   if($('pzFlagsOn')?.checked && !isRouteTabActive()){ pzFlagClick(e); return; }
+  if($('pzCountryLabelsOn')?.checked && !isRouteTabActive() && pzCountryLabelClick(e)) return;
   if(state.pzFlagSel){ state.pzFlagSel = null; pzFlagsRefresh(); }
   if(pzPoliticalClickPalette(e)) return;
   clearRoutePointSelection();
@@ -17479,7 +17492,13 @@ function bindUI(){
   })); });
   pzFillSysIconButtons();
   try{ pzInitLineUi(); }catch(e){}
+  // vlajky a popisky států se navzájem vypínají (jeden klik = jedna věc)
+  $('pzCountryLabelsOn')?.addEventListener('change', () => {
+    if($('pzCountryLabelsOn').checked && $('pzFlagsOn')) $('pzFlagsOn').checked = false;
+    setStatus($('pzCountryLabelsOn').checked ? t('Klikni do státu — přidá se jeho název jako popisek.') : t('Přidávání popisků států vypnuto.'));
+  });
   $('pzFlagsOn')?.addEventListener('change', () => {
+    if($('pzFlagsOn').checked && $('pzCountryLabelsOn')) $('pzCountryLabelsOn').checked = false;
     setStatus($('pzFlagsOn').checked ? t('Klikni do státu — přidá se jeho vlajka. Klik na vlajku ji vybere, Delete smaže.') : t('Přidávání vlajek vypnuto.'));
     if(!$('pzFlagsOn').checked && state.pzFlagSel){ state.pzFlagSel = null; pzFlagsRefresh(); }
   });
@@ -18152,6 +18171,10 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Popisky států": {cs:"Popisky států",sk:"Popisy štátov",bg:"Надписи на държавите",hr:"Natpisi država",ro:"Etichetele țărilor",en:"Country labels"},
+  "{0} — popisek přidán.": {cs:"{0} — popisek přidán.",sk:"{0} — popis pridaný.",bg:"{0} — надписът е добавен.",hr:"{0} — natpis dodan.",ro:"{0} — etichetă adăugată.",en:"{0} — label added."},
+  "Klikni do státu — přidá se jeho název jako popisek.": {cs:"Klikni do státu — přidá se jeho název jako popisek.",sk:"Klikni do štátu — pridá sa jeho názov ako popis.",bg:"Кликни в държава — името ѝ се добавя като надпис.",hr:"Klikni u državu — dodat će se njezin naziv kao natpis.",ro:"Dă clic într-o țară — numele ei se adaugă ca etichetă.",en:"Click inside a country to add its name as a label."},
+  "Přidávání popisků států vypnuto.": {cs:"Přidávání popisků států vypnuto.",sk:"Pridávanie popisov štátov vypnuté.",bg:"Добавянето на надписи е изключено.",hr:"Dodavanje natpisa država isključeno.",ro:"Adăugarea etichetelor oprită.",en:"Adding country labels turned off."},
   "Vlajka přesunuta.": {cs:"Vlajka přesunuta.",sk:"Vlajka presunutá.",bg:"Знамето е преместено.",hr:"Zastava premještena.",ro:"Steag mutat.",en:"Flag moved."},
   "Vlajka vybrána — Delete ji smaže.": {cs:"Vlajka vybrána — Delete ji smaže.",sk:"Vlajka vybraná — Delete ju zmaže.",bg:"Знамето е избрано — Delete го изтрива.",hr:"Zastava odabrana — Delete je briše.",ro:"Steag selectat — Delete îl șterge.",en:"Flag selected — press Delete to remove it."},
   "{0} — vlajka přidána.": {cs:"{0} — vlajka přidána.",sk:"{0} — vlajka pridaná.",bg:"{0} — знамето е добавено.",hr:"{0} — zastava dodana.",ro:"{0} — steag adăugat.",en:"{0} — flag added."},
