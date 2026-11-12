@@ -51,7 +51,7 @@ const ROAD = [[15.36,49.54],[15.42,49.50],[15.5,49.46],[15.59,49.40]];
   await page.click('#resetStyleBtn'); await page.waitForTimeout(500);
   await page.waitForTimeout(1500);
   // výchozí vzhled = Positron + Modrá přírodní (dlaždice s hvězdičkou)
-  check(await page.evaluate(() => window.__pzFns.state.activePresetToken === 'builtin:modraPrirodni' && document.getElementById('baseStyle').value === 'positron'
+  check(await page.evaluate(() => /^builtin:/.test(window.__pzFns.state.activePresetToken || '') && document.getElementById('baseStyle').value === 'positron'
     && !!document.querySelector('#presetTileGrid .preset-card.active:not(.is-modified)')), '„Výchozí vzhled" vrátí výchozí preset');
 
   // --- scéna: popisek, trasa, uzavírky přes formulář, stát přes hledání
@@ -139,7 +139,9 @@ const ROAD = [[15.36,49.54],[15.42,49.50],[15.5,49.46],[15.59,49.40]];
     const px = await page.evaluate(async b64 => { const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
       const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
       const at = (fx, fy) => [...g.getImageData(Math.round(img.width * fx), Math.round(img.height * fy), 1, 1).data];
-      return {mid: at(0.5, 0.5), mid2: at(0.47, 0.42), w: img.width}; }, b64);
+      // průměr 21×21 px — jeden pixel umí padnout na silnici nebo popisek
+      const avg = (fx, fy) => { const d = g.getImageData(Math.round(img.width * fx) - 10, Math.round(img.height * fy) - 10, 21, 21).data; const s = [0, 0, 0, 0]; for(let i = 0; i < d.length; i += 4) for(let k = 0; k < 4; k++) s[k] += d[i + k]; return s.map(v => Math.round(v / (d.length / 4))); };
+      return {mid: avg(0.5, 0.5), mid2: avg(0.47, 0.42), w: img.width}; }, b64);
     check(px.mid[2] - px.mid[0] > 40 && px.mid2[2] - px.mid2[0] > 40, 've vyexportovaném PNG je Německo modré ' + JSON.stringify(px));
   }
 

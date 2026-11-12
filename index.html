@@ -1717,7 +1717,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sc-row"><kbd>← ↑ ↓ →</kbd><span data-i18n="sc_nudge">Posunout vybrané (Shift = 10 px)</span></div>
     <div class="sc-row"><kbd>Ctrl+klik do mapy</kbd><span data-i18n="sc_via">Přidat zastávku na trase</span></div>
     <div class="sc-row"><kbd>Pravé tl. / Ctrl+táhnout</kbd><span data-i18n="sc_tilt">Naklonit a otočit mapu</span></div>
-    <div class="sc-row"><kbd>Shift+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
+    <div class="sc-row"><kbd>Shift+táhnout</kbd> <kbd data-i18n="Kolečko+táhnout">Kolečko+táhnout</kbd><span data-i18n="sc_pan">Posunout glóbus po obrazovce</span></div>
     <div class="sc-row"><kbd>?</kbd><span data-i18n="sc_help">Zobrazit zkratky</span></div>
     </div>
   </div>
@@ -5173,6 +5173,10 @@ function isAccordionDefaultOpen(section, idx){
 
 function setAccordionOpen(section, open, storageKey, persist=true){
   section.classList.toggle('collapsed', !open);
+  // zavřená sekce = její vkládání klikem do mapy končí (popisky, ikonky, šipky…)
+  if(!open && state.activeEditSection && section.id === state.activeEditSection){
+    try{ clearAllSceneAddModes(); setActiveEditSection(null); updateSceneAddButtonStates(); }catch(_e){}
+  }
   const btn = section.querySelector(':scope > h3 .section-toggle');
   if(btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
   if(persist && storageKey){
@@ -5878,8 +5882,12 @@ function initScreenPan(){
   state._screenPanInit = true;
   state.screenPan = state.screenPan || {x:0, y:0};
   let active = false, startX = 0, startY = 0, baseX = 0, baseY = 0;
+  // Prostřední tlačítko (stisk kolečka) posouvá glóbus stejně jako Shift+tažení.
+  // Bez preventDefault by Chrome na Windows zapnul automatické rolování.
+  mapEl.addEventListener('mousedown', e => { if(e.button === 1) e.preventDefault(); }, true);
+  mapEl.addEventListener('auxclick', e => { if(e.button === 1) e.preventDefault(); }, true);
   mapEl.addEventListener('pointerdown', (e) => {
-    if(!e.shiftKey || e.button !== 0) return;
+    if(!(e.button === 1 || (e.shiftKey && e.button === 0))) return;
     active = true;
     startX = e.clientX; startY = e.clientY;
     baseX = state.screenPan.x; baseY = state.screenPan.y;
@@ -7395,8 +7403,17 @@ function getPoliticalCountryFeatureAtPoint(point){
 // ===== Politická mapa: barva státu kliknutím (paleta u kurzoru) a vlajky =====
 const PZ_COUNTRY_SWATCHES = ['#e63946','#f4a261','#ffd166','#2a9d8f','#3a86ff','#1d3557','#8338ec','#ff006e','#6c757d','#ffffff'];
 function pzCloseCountryPop(){ document.querySelectorAll('.pz-country-pop').forEach(el => el.remove()); }
+// Klikací nástroje (barvení států, vlajky, popisky států) fungují jen tehdy, když je
+// jejich volba právě vidět — otevřená záložka i rozbalená sekce. Se zavřeným
+// nástrojem klik do mapy nic nepřidá ani nepřebarví (grafik se neuklikne).
+function pzToolOpen(id){
+  const el = $(id);
+  if(!el || !el.checked) return false;
+  if(el.offsetParent === null || el.closest('.section.collapsed')) return false;
+  const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0;
+}
 function pzPoliticalClickPalette(e){
-  if(($('baseStyle')?.value || '') !== 'political' || $('pzClickPaintOn')?.checked === false) return false;
+  if(($('baseStyle')?.value || '') !== 'political' || !pzToolOpen('pzClickPaintOn')) return false;
   if(isRouteTabActive()) return false;
   const f = getPoliticalCountryFeatureAtPoint(e.point); if(!f) { pzCloseCountryPop(); return false; }
   const id = f.properties.__appId, name = getCountryNameById(id) || f.properties.__appName || id;
@@ -7563,7 +7580,7 @@ document.addEventListener('keydown', e => {
   if(pzDeleteSelectedFlag()){ e.preventDefault(); e.stopImmediatePropagation(); }
 }, true);
 function handlePoliticalCountryPaintClick(e){
-  if(!$('paintPoliticalCountryOnClick')?.checked) return false;
+  if(!pzToolOpen('paintPoliticalCountryOnClick')) return false;
   const feature = getPoliticalCountryFeatureAtPoint(e.point);
   if(!feature) return false;
   const id = feature.properties.__appId;
@@ -10623,13 +10640,13 @@ function onMapClick(e){
     return;
   }
   if(handlePoliticalCountryPaintClick(e)) return;
-  if(!$('pzFlagsOn')?.checked && !isRouteTabActive() && pzFlagAt(e.point)){
+  if(!pzToolOpen('pzFlagsOn') && !isRouteTabActive() && pzFlagAt(e.point)){
     // klik na existující vlajku zapne „Vlajky států" a vybere ji k úpravám
     const cb = $('pzFlagsOn'); cb.checked = true; cb.dispatchEvent(new Event('change', {bubbles:true}));
     pzFlagClick(e); return;
   }
-  if($('pzFlagsOn')?.checked && !isRouteTabActive()){ pzFlagClick(e); return; }
-  if($('pzCountryLabelsOn')?.checked && !isRouteTabActive() && pzCountryLabelClick(e)) return;
+  if(pzToolOpen('pzFlagsOn') && !isRouteTabActive()){ pzFlagClick(e); return; }
+  if(pzToolOpen('pzCountryLabelsOn') && !isRouteTabActive() && pzCountryLabelClick(e)) return;
   if(state.pzFlagSel){ state.pzFlagSel = null; pzFlagsRefresh(); }
   if(pzPoliticalClickPalette(e)) return;
   clearRoutePointSelection();
@@ -17194,6 +17211,7 @@ const PZ_EN_TEXT = {
   "Klávesové zkratky (?)": "Keyboard shortcuts (?)",
   "Nastavení": "Settings",
   "Na začátek — podklad Positron, celé Česko v rámečku": "Start over — Positron base map, whole Czechia in frame",
+  "Na začátek — smaže scénu i projekt (Ctrl+Z vrátí)": "Start over — clears the scene and project (Ctrl+Z undoes)",
   "Přepnout na světlý režim aplikace": "Switch to light mode",
   "Přepnout na tmavý režim aplikace": "Switch to dark mode",
   "Zavřít menu": "Close menu",
@@ -18511,6 +18529,8 @@ Object.assign(I18N, {
   "vynutí správný tah": {cs:"vynutí správný tah",sk:"vynúti správny ťah",bg:"налага правилното трасе",hr:"nameće ispravan pravac",ro:"impune traseul corect",en:"forces the right road"},
   "Klávesové zkratky (?)": {cs:"Klávesové zkratky (?)",sk:"Klávesové skratky (?)",bg:"Клавишни комбинации (?)",hr:"Tipkovni prečaci (?)",ro:"Scurtături de tastatură (?)",en:"Keyboard shortcuts (?)"},
   "Pravé tl. / Ctrl+táhnout": {cs:"Pravé tl. / Ctrl+táhnout",sk:"Pravé tl. / Ctrl+ťahať",bg:"Десен бутон / Ctrl+влачене",hr:"Desna tipka / Ctrl+povlačenje",ro:"Clic dreapta / Ctrl+tragere",en:"Right button / Ctrl+drag"},
+  "Na začátek — smaže scénu i projekt (Ctrl+Z vrátí)": {cs:"Na začátek — smaže scénu i projekt (Ctrl+Z vrátí)",sk:"Na začiatok — zmaže scénu aj projekt (Ctrl+Z vráti)",bg:"В началото — изтрива сцената и проекта (Ctrl+Z връща)",hr:"Na početak — briše scenu i projekt (Ctrl+Z vraća)",ro:"De la început — șterge scena și proiectul (Ctrl+Z anulează)",en:"Start over — clears the scene and project (Ctrl+Z undoes)"},
+  "Kolečko+táhnout": {cs:"Kolečko+táhnout",sk:"Koliesko+ťahať",bg:"Колелце+влачене",hr:"Kotačić+povlačenje",ro:"Rotiță+tragere",en:"Wheel+drag"},
   "Shift+táhnout": {cs:"Shift+táhnout",sk:"Shift+ťahať",bg:"Shift+влачене",hr:"Shift+povlačenje",ro:"Shift+tragere",en:"Shift+drag"},
   "Alt+táhnout": {cs:"Alt+táhnout",sk:"Alt+ťahať",bg:"Alt+влачене",hr:"Alt+povlačenje",ro:"Alt+tragere",en:"Alt+drag"},
   "Ctrl+klik": {cs:"Ctrl+klik",sk:"Ctrl+klik",bg:"Ctrl+клик",hr:"Ctrl+klik",ro:"Ctrl+clic",en:"Ctrl+click"},
