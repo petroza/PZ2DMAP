@@ -19669,7 +19669,23 @@ document.addEventListener('keydown', e => {
   //
   // Every tool returns a plain object the chat can read back and narrate.
   // =========================================================================
-  const TOOL_STYLE_KEYS = ['liberty','bright','positron','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
+  const TOOL_STYLE_KEYS = ['liberty','bright','positron','basic','terrain','omt3d','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
+  const TOOL_CZ_COUNTRY = {
+        nemecko:'DE', rakousko:'AT', polsko:'PL', slovensko:'SK', cesko:'CZ',
+        'ceska republika':'CZ', ukrajina:'UA', rusko:'RU', francie:'FR', italie:'IT',
+        spanelsko:'ES', 'velka britanie':'GB', britanie:'GB', anglie:'GB',
+        usa:'US', 'spojene staty':'US', amerika:'US', madarsko:'HU', svycarsko:'CH',
+        nizozemsko:'NL', holandsko:'NL', belgie:'BE', chorvatsko:'HR', srbsko:'RS',
+        rumunsko:'RO', bulharsko:'BG', recko:'GR', turecko:'TR', svedsko:'SE',
+        norsko:'NO', finsko:'FI', dansko:'DK', irsko:'IE', portugalsko:'PT',
+        cina:'CN', japonsko:'JP', izrael:'IL', egypt:'EG', belorusko:'BY',
+        litva:'LT', lotyssko:'LV', estonsko:'EE', slovinsko:'SI', kanada:'CA',
+        indie:'IN', brazilie:'BR', australie:'AU', moldavsko:'MD', gruzie:'GE',
+        armenie:'AM', azerbajdzan:'AZ', kazachstan:'KZ', syrie:'SY', irak:'IQ',
+        iran:'IR', afghanistan:'AF', 'severni korea':'KP', 'jizni korea':'KR',
+        bosna:'BA', albanie:'AL', makedonie:'MK', kosovo:'XK', cernahora:'ME',
+        'cerna hora':'ME', kypr:'CY', island:'IS', lucembursko:'LU', malta:'MT'
+      };
   const TOOL_TABS = ['scena','trasa','animace','export','styly','projekt','nastaveni'];
   const TOOL_MODES = ['driving','truck','moto','train','metro','tram','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
 
@@ -19707,6 +19723,7 @@ document.addEventListener('keydown', e => {
       baseStyle: $('baseStyle')?.value || null,
       globe: isGlobeProjectionOn(),
       transportMode: state.currentTransportMode,
+      preset: String(state.activePresetToken || "").replace(/^builtin:/, "") || null,
       tab: state.currentTab,
       hasRoute: (state.routeCoords||[]).length > 0,
       shadows: !!$('sunShadowsOn')?.checked,
@@ -19735,6 +19752,9 @@ document.addEventListener('keydown', e => {
     if(state.multiSel?.size) sc.selected = state.multiSel.size;
     if(state.sceneIcons?.length) sc.icons = state.sceneIcons.length;
     if(state.sceneArrows?.length) sc.arrows = state.sceneArrows.length;
+    if((state.pzFlags || []).length) sc.flags = state.pzFlags.map(f => f.iso.toUpperCase());
+    if(state.pzLineRoute) sc.line = state.pzLineRoute.n;
+    if((state.pzExtraVehicles || []).length) sc.extraVehicles = state.pzExtraVehicles.length;
     if(state.scenePerimeters?.length) sc.perimeters = state.scenePerimeters.map(x => Math.round(x.radiusMeters || 0) + ' m');
     if(state.sceneDistances?.length) sc.distances = state.sceneDistances.length;
     if((state.pzClosures || []).length) sc.closures = state.pzClosures.map(c => c.title || c.label).slice(0, 6);
@@ -20325,7 +20345,7 @@ function pzColorFromName(v){
           pos = offsetLngLat(ll, 0, -Math.round((ic.size || 44) * 0.5 + lsz * 1.05 + 12));
         }
       }catch(e){}
-      const opts = {text: label, size: size, side: side === 'left' ? 'left' : undefined};
+      const opts = {text: label, size: size, side: side === 'left' ? 'left' : (side === 'none' ? 'none' : undefined)};
       if(st) opts.style = st;
       const item = addMapLabelAt(pos, opts);
       if(!item && item !== undefined) return {ok:false, error:'Popisek se nepodařilo přidat.'};
@@ -20365,22 +20385,7 @@ function pzColorFromName(v){
       // Select má státy v DOMÁCÍCH názvech („Deutschland"), ale redakce píše česky
       // („Německo"). Bez tohohle překladu selhalo i tak základní zadání jako
       // „zvýrazni Německo". Mapujeme na ISO kód = hodnotu optionu.
-      const CZ_COUNTRY = {
-        nemecko:'DE', rakousko:'AT', polsko:'PL', slovensko:'SK', cesko:'CZ',
-        'ceska republika':'CZ', ukrajina:'UA', rusko:'RU', francie:'FR', italie:'IT',
-        spanelsko:'ES', 'velka britanie':'GB', britanie:'GB', anglie:'GB',
-        usa:'US', 'spojene staty':'US', amerika:'US', madarsko:'HU', svycarsko:'CH',
-        nizozemsko:'NL', holandsko:'NL', belgie:'BE', chorvatsko:'HR', srbsko:'RS',
-        rumunsko:'RO', bulharsko:'BG', recko:'GR', turecko:'TR', svedsko:'SE',
-        norsko:'NO', finsko:'FI', dansko:'DK', irsko:'IE', portugalsko:'PT',
-        cina:'CN', japonsko:'JP', izrael:'IL', egypt:'EG', belorusko:'BY',
-        litva:'LT', lotyssko:'LV', estonsko:'EE', slovinsko:'SI', kanada:'CA',
-        indie:'IN', brazilie:'BR', australie:'AU', moldavsko:'MD', gruzie:'GE',
-        armenie:'AM', azerbajdzan:'AZ', kazachstan:'KZ', syrie:'SY', irak:'IQ',
-        iran:'IR', afghanistan:'AF', 'severni korea':'KP', 'jizni korea':'KR',
-        bosna:'BA', albanie:'AL', makedonie:'MK', kosovo:'XK', cernahora:'ME',
-        'cerna hora':'ME', kypr:'CY', island:'IS', lucembursko:'LU', malta:'MT'
-      };
+      const CZ_COUNTRY = TOOL_CZ_COUNTRY;
       const pick = (selId, needle) => {
         const sel = $(selId); if(!sel) return null;
         const n = dia(needle).trim();
@@ -20828,13 +20833,14 @@ function pzColorFromName(v){
         distances: () => clearSceneDistances?.(), vzdalenosti: 'distances',
         closures: () => { state.pzClosures = []; pzRedrawClosures(); }, uzavirky: 'closures',
         colors: () => clearPoliticalPainting?.(), barvy: 'colors',
+        flags: () => { state.pzFlags = []; state.pzFlagSel = null; pzFlagsRefresh(); }, vlajky: 'flags',
         route: () => clearRoute?.(), trasa: 'route',
         // „smaž všechno": celá scéna i trasa; podklad a vzhled mapy zůstávají
-        all: () => { ['labels','icons','arrows','perimeters','distances','closures','colors','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
+        all: () => { ['labels','icons','arrows','perimeters','distances','closures','colors','flags','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
         vse: 'all', vsechno: 'all'
       };
       let fn = map[W]; if(typeof fn === 'string') fn = map[fn];
-      if(typeof fn !== 'function') return {ok:false, error:'what musí být labels, icons, arrows, perimeters, distances, closures, colors, route nebo all.'};
+      if(typeof fn !== 'function') return {ok:false, error:'what musí být labels, icons, arrows, perimeters, distances, closures, colors, flags, route nebo all.'};
       try{ fn(); }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
       return {ok:true, cleared:W};
     },
@@ -20931,7 +20937,52 @@ function pzColorFromName(v){
   Object.assign(window.TNMAP, {
     // Barvy vestavěného vozidla na trase. Jen nastaví ovládací prvky a ohlásí změnu —
     // všechno ostatní (překreslení ikonky, uložení) si řeší sekce Ikona objektu sama.
-    setVehicleColors({preset, body, accent} = {}){
+    // Vlajka státu na mapu (jako klik s „Vlajky států"): {country:'Německo', place?:'Berlín'}
+    async placeFlag({country, place} = {}){
+      if(!country) return {ok:false, error:'Chybí country.'};
+      const dia = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+      let iso = TOOL_CZ_COUNTRY[dia(country)] || (/^[a-z]{2}$/i.test(String(country).trim()) ? String(country).trim().toUpperCase() : '');
+      if(!iso){
+        state.geoDataRequested = true;
+        try{ await ensureGeoDataLoaded(); populateCountrySelects(); }catch(e){}
+        const opts = [...($('politicalCountrySelect')?.options || [])].filter(o => o.value);
+        const n = dia(country), o = opts.find(o => dia(o.textContent) === n) || opts.find(o => dia(o.textContent).startsWith(n));
+        if(o && /^[A-Z]{2}$/.test(o.value)) iso = o.value;
+      }
+      iso = (PZ_FLAG_ISO_FIX[iso] || iso || '').toLowerCase();
+      if(!/^[a-z]{2}$/.test(iso)) return {ok:false, error:'Stát „' + country + '" neznám.'};
+      const img = await pzLoadFlagImage(iso);
+      if(!img) return {ok:false, error:'Pro „' + country + '" vlajku nemám.'};
+      let g; try{ g = await geocode(String(place || country)); }catch(e){ return {ok:false, error:'Místo „' + (place || country) + '" jsem nenašel.'}; }
+      try{ window.__pzPushUndo?.(); }catch(_e){}
+      const id = 'flag_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      pzFlagList().push({id, iso, lngLat: [+g.lon, +g.lat]});
+      pzFlagsRefresh();
+      return {ok:true, iso, flags: pzFlagList().length};
+    },
+    // Ikona objektu na trase: car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat,
+    // fire, police, ambulance, plane. Bez trasy se jen předvybere.
+    setVehicle({type} = {}){
+      const k = String(type || '').toLowerCase();
+      const alias = {auto:'car', kamion:'truck', nakladni:'lorry', 'nákladní':'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', 'loď':'boat', hasici:'fire', 'hasiči':'fire', policie:'police', sanitka:'ambulance', letadlo:'plane'};
+      const t = ANIM_SYSTEM_ICONS[k] ? k : alias[k];
+      if(!t || !ANIM_SYSTEM_ICONS[t]) return {ok:false, error:'Vozidlo „' + type + '" neznám. Mám: ' + Object.keys(ANIM_SYSTEM_ICONS).join(', ') + '.'};
+      setAnimSystemIcon(t, {silent:true});
+      return {ok:true, vehicle:t};
+    },
+    // Další vozidlo na stejné trase (víc vozidel v jedné animaci).
+    addVehicle({type, reverse, delay} = {}){
+      const k = String(type || '').toLowerCase();
+      const alias = {auto:'car', kamion:'truck', nakladni:'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', policie:'police', sanitka:'ambulance'};
+      const t = PZ_EXTRA_LABELS[k] ? k : alias[k];
+      if(!t) return {ok:false, error:'Vozidlo „' + type + '" neznám. Mám: ' + Object.keys(PZ_EXTRA_LABELS).join(', ') + '.'};
+      if(!(state.routeCoords || []).length) return {ok:false, error:'Nejdřív je potřeba trasa — další vozidlo jede po ní.'};
+      try{ window.__pzPushUndo?.(); }catch(e){}
+      pzExtraVehicles().push({type: t, reverse: !!reverse, delay: Math.max(0, Math.min(0.9, +delay || 0))});
+      pzRenderExtraList(); pzExtraChanged();
+      return {ok:true, vehicle:t, reverse:!!reverse, count: pzExtraVehicles().length + 1};
+    },
+    setVehicleColors({preset, body, accent, shadow} = {}){
       const sel = $('pzVehiclePreset'), bodyEl = $('pzVehicleBody'), accEl = $('pzVehicleAccent');
       if(!sel && !bodyEl && !accEl) return {ok:false, error:'Barvy vozidla nejsou dostupné.'};
       const fire = el => el.dispatchEvent(new Event('change', {bubbles:true}));
@@ -20950,7 +21001,8 @@ function pzColorFromName(v){
         if(!hex) return {ok:false, error:'Barvu „' + v + '" neznám.'};
         el.value = hex; fire(el); res[key] = hex;
       }
-      if(Object.keys(res).length === 1) return {ok:false, error:'Zadej preset (light, dark, blue), body (karoserie) nebo accent.'};
+      if(shadow != null && $('pzVehicleShadow')){ const cb = $('pzVehicleShadow'); if(!!cb.checked !== !!shadow){ cb.checked = !!shadow; fire(cb); } res.shadow = !!shadow; }
+      if(Object.keys(res).length === 1) return {ok:false, error:'Zadej preset (light, dark, blue), body (karoserie), accent nebo shadow.'};
       if($('pzVehiclePalette')?.hidden) res.note = 'Vyber nejdřív vozidlo v záložce Trasa, sekce Ikona objektu.';
       return res;
     },
