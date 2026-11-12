@@ -313,6 +313,12 @@ input[type=color]:hover{border-color:var(--accent)}
 .animated-marker.pz-sprite-vehicle{filter:drop-shadow(0 0 1px rgba(0,0,0,.5)) drop-shadow(0 0 4px rgba(0,0,0,.42))}
 .animated-marker.pz-lead-in-layer{filter:none}
 .animated-marker.pz-lead-in-layer > img,.animated-marker.pz-lead-in-layer .pz-beacon{opacity:0!important}
+.pz-country-pop{position:absolute;z-index:30;background:var(--bg1,#11151c);border:1px solid var(--border);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.35);display:grid;gap:6px;min-width:176px;transform:translate(-50%,calc(-100% - 12px))}
+.pz-country-pop b{font:600 12px/1.2 inherit;color:var(--tx1)}
+.pz-country-pop .sw{display:grid;grid-template-columns:repeat(5,26px);gap:5px}
+.pz-country-pop .sw button{width:26px;height:26px;border-radius:6px;border:2px solid rgba(255,255,255,.7);cursor:pointer;padding:0}
+.pz-country-pop .row{display:flex;gap:6px;align-items:center}
+.pz-country-pop input[type=color]{width:34px;height:26px;padding:1px}
 .pz-extra-row{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin:6px 0 8px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .pz-extra-row select{min-width:0;width:100%}
 .pz-extra-delay{grid-column:1 / -1;display:block;margin:0}
@@ -912,6 +918,11 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <input id="tileType" type="hidden" value="raster">
         <div class="btns"><button type="button" class="btn btn-sm btn-primary" id="addTileSourceBtn" data-i18n="+ Přidat zdroj">+ Přidat zdroj</button></div>
         <div id="tileSourceList" class="wp-list"></div>
+      </div>
+      <div class="section" id="pzPoliticalTools" hidden>
+        <h3 data-i18n="Státy">Státy</h3>
+        <label class="check"><input id="pzFlagsOn" type="checkbox"> <span data-i18n="Vlajky států">Vlajky států</span></label>
+        <label class="check" style="margin-top:8px"><input id="pzClickPaintOn" type="checkbox" checked> <span data-i18n="Barvit stát kliknutím">Barvit stát kliknutím</span></label>
       </div>
       <div class="section" id="styleLayersSection">
         <h3 data-i18n="Vrstvy">Vrstvy</h3>
@@ -7352,6 +7363,125 @@ function getPoliticalCountryFeatureAtPoint(point){
   return hits.find(item => item?.properties?.__appId) || null;
 }
 
+// ===== Politická mapa: barva státu kliknutím (paleta u kurzoru) a vlajky =====
+const PZ_COUNTRY_SWATCHES = ['#e63946','#f4a261','#ffd166','#2a9d8f','#3a86ff','#1d3557','#8338ec','#ff006e','#6c757d','#ffffff'];
+function pzCloseCountryPop(){ document.querySelectorAll('.pz-country-pop').forEach(el => el.remove()); }
+function pzPoliticalClickPalette(e){
+  if(($('baseStyle')?.value || '') !== 'political' || $('pzClickPaintOn')?.checked === false) return false;
+  if(isRouteTabActive()) return false;
+  const f = getPoliticalCountryFeatureAtPoint(e.point); if(!f) { pzCloseCountryPop(); return false; }
+  const id = f.properties.__appId, name = getCountryNameById(id) || f.properties.__appName || id;
+  pzCloseCountryPop();
+  const pop = document.createElement('div'); pop.className = 'pz-country-pop';
+  pop.style.left = e.point.x + 'px'; pop.style.top = e.point.y + 'px';
+  const cur = state.countryColorMap[id];
+  pop.innerHTML = `<b>${escapeHtml(name)}</b><div class="sw">${PZ_COUNTRY_SWATCHES.map(c => `<button type="button" data-c="${c}" style="background:${c}" title="${c}" aria-label="${c}"></button>`).join('')}</div>
+    <div class="row"><input type="color" value="${escapeHtml(cur || $('politicalCountryColor')?.value || '#e63946')}" aria-label="${escapeHtml(t('Vlastní barva'))}"><button type="button" class="btn btn-sm" data-act="clear">${escapeHtml(t('Zrušit barvu'))}</button></div>`;
+  const apply = c => {
+    try{ window.__pzPushUndo?.(); }catch(_e){}
+    if($('politicalCountryColor')) $('politicalCountryColor').value = c;
+    pzPaintCountry(id, {color: c});
+    try{ renderCountryColorList?.(); }catch(_e){}
+  };
+  pop.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const b = ev.target.closest('button'); if(!b) return;
+    if(b.dataset.c){ apply(b.dataset.c); pzCloseCountryPop(); }
+    else if(b.dataset.act === 'clear'){ try{ window.__pzPushUndo?.(); }catch(_e){} pzUnpaintCountry(id); pzCloseCountryPop(); }
+  });
+  pop.querySelector('input[type=color]').addEventListener('change', ev => { apply(ev.target.value); pzCloseCountryPop(); });
+  ['mousedown','pointerdown','wheel','dblclick'].forEach(t2 => pop.addEventListener(t2, ev => ev.stopPropagation()));
+  state.map.getContainer().appendChild(pop);
+  state.map.once('movestart', pzCloseCountryPop);
+  return true;
+}
+// Vlajky: obrázky z assets/flags (flag-icons, MIT), bod uvnitř největší části státu.
+const _pzFlagImg = {};           // iso → ImageData (sdílené s exportní mapou)
+let _pzFlagPoints = null, _pzFlagSrc = null;
+const PZ_FLAG_ISO_FIX = {EL:'gr', UK:'gb'};
+function pzFlagIso(props){
+  const raw = String(props?.CNTR_ID || props?.cntr_id || props?.ISO_A2 || props?.iso_a2 || props?.__appIso || '').toUpperCase();
+  if(!/^[A-Z]{2}$/.test(raw)) return '';
+  return (PZ_FLAG_ISO_FIX[raw] || raw).toLowerCase();
+}
+// bod uvnitř polygonu (polylabel — nejvzdálenější od okraje, mřížkou)
+function pzPolyLabel(rings){
+  const outer = rings[0]; let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  outer.forEach(([x, y]) => { minX = Math.min(minX, x); minY = Math.min(minY, y); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); });
+  const dist = (x, y) => {
+    let inside = false, d = Infinity;
+    rings.forEach(r => { for(let i = 0, j = r.length - 1; i < r.length; j = i++){
+      const a = r[i], b = r[j];
+      if((a[1] > y) !== (b[1] > y) && x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]) inside = !inside;
+      const dx = b[0] - a[0], dy = b[1] - a[1], L = dx*dx + dy*dy || 1e-12, tt = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L));
+      d = Math.min(d, Math.hypot(a[0] + tt*dx - x, a[1] + tt*dy - y));
+    } });
+    return inside ? d : -d;
+  };
+  let best = [(minX + maxX) / 2, (minY + maxY) / 2], bd = dist(best[0], best[1]);
+  for(let n = 12, w = maxX - minX, h = maxY - minY, cx = minX, cy = minY, it = 0; it < 3; it++){
+    for(let i = 0; i <= n; i++) for(let j = 0; j <= n; j++){
+      const x = cx + w * i / n, y = cy + h * j / n, d = dist(x, y);
+      if(d > bd){ bd = d; best = [x, y]; }
+    }
+    w /= 3; h /= 3; cx = best[0] - w / 2; cy = best[1] - h / 2;
+  }
+  return best;
+}
+function pzFlagPoints(){
+  const gj = state.countriesGeojson; if(!gj) return null;
+  if(_pzFlagPoints && _pzFlagSrc === gj) return _pzFlagPoints;
+  const feats = [];
+  (gj.features || []).forEach(f => {
+    const iso = pzFlagIso(f.properties); if(!iso) return;
+    const g = f.geometry; if(!g) return;
+    const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    let big = null, area = 0;
+    polys.forEach(pl => { const r = pl[0]; let a = 0; for(let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] - r[i][0]) * (r[j][1] + r[i][1]); a = Math.abs(a / 2); if(a > area){ area = a; big = pl; } });
+    if(!big) return;
+    feats.push({type:'Feature', geometry:{type:'Point', coordinates: pzPolyLabel(big)}, properties:{iso, img:'pzflag-' + iso, k: -area}});
+  });
+  _pzFlagSrc = gj; _pzFlagPoints = {type:'FeatureCollection', features: feats};
+  return _pzFlagPoints;
+}
+function pzLoadFlagImage(iso){
+  if(_pzFlagImg[iso] !== undefined) return Promise.resolve(_pzFlagImg[iso]);
+  _pzFlagImg[iso] = null;
+  return new Promise(res => {
+    const im = new Image();
+    im.onload = () => {
+      const W = 96, H = 72, P = 6, c = document.createElement('canvas'); c.width = W + P * 2; c.height = H + P * 2;
+      const x = c.getContext('2d');
+      x.shadowColor = 'rgba(0,0,0,.35)'; x.shadowBlur = 5; x.shadowOffsetY = 1.5;
+      x.fillStyle = '#fff'; x.fillRect(P - 2, P - 2, W + 4, H + 4);
+      x.shadowColor = 'transparent'; x.drawImage(im, P, P, W, H);
+      _pzFlagImg[iso] = x.getImageData(0, 0, c.width, c.height); res(_pzFlagImg[iso]);
+    };
+    im.onerror = () => res(null);
+    im.src = new URL('assets/flags/' + iso + '.svg', document.baseURI).href;
+  });
+}
+function pzEnsureFlagLayer(map){
+  const m = map || state.map; if(!m?.isStyleLoaded?.()) return;
+  const on = !!$('pzFlagsOn')?.checked && !!state.countriesGeojson;
+  if(!on){ try{ if(m.getLayer('pz-flags')) m.setLayoutProperty('pz-flags', 'visibility', 'none'); }catch(e){} return; }
+  const pts = pzFlagPoints(); if(!pts) return;
+  pts.features.forEach(f => { const im = _pzFlagImg[f.properties.iso]; if(im && !m.hasImage(f.properties.img)) try{ m.addImage(f.properties.img, im, {pixelRatio: 2}); }catch(e){} });
+  if(!m.getSource('pz-flags')) m.addSource('pz-flags', {type:'geojson', data: pts}); else m.getSource('pz-flags').setData(pts);
+  if(!m.getLayer('pz-flags')) m.addLayer({id:'pz-flags', type:'symbol', source:'pz-flags', layout:{
+    'icon-image':['get','img'], 'icon-size':['interpolate',['linear'],['zoom'], 1, 0.32, 3, 0.45, 5, 0.65, 7, 0.9],
+    'icon-allow-overlap':false, 'icon-padding':2, 'symbol-sort-key':['get','k']}});
+  else m.setLayoutProperty('pz-flags', 'visibility', 'visible');
+}
+async function pzFlagsRefresh(){
+  try{
+    if($('pzFlagsOn')?.checked){
+      if(!state.countriesGeojson) try{ await ensureGeoDataLoaded(); }catch(e){}
+      const pts = pzFlagPoints(); if(pts) await Promise.all(pts.features.map(f => pzLoadFlagImage(f.properties.iso)));
+    }
+    pzEnsureFlagLayer();
+  }catch(e){ console.warn('flags', e); }
+}
 function handlePoliticalCountryPaintClick(e){
   if(!$('paintPoliticalCountryOnClick')?.checked) return false;
   const feature = getPoliticalCountryFeatureAtPoint(e.point);
@@ -7663,6 +7793,7 @@ function buildMatchColorExpression(mapObj, defaultColor){
 
 function ensurePoliticalLayers(){
   if(!state.map?.isStyleLoaded()) return;
+  try{ setTimeout(() => pzEnsureFlagLayer(), 0); pzEnsureFlagLayer(); }catch(e){}
   const beforeId = getOverlayBeforeId();
   if(state.countriesGeojson){
     if(!state.map.getSource('pz-countries')) state.map.addSource('pz-countries', {type:'geojson', data: state.countriesGeojson});
@@ -7822,6 +7953,7 @@ function serializeProjectSnapshot(){
     version:2,
     baseStyle: $('baseStyle')?.value || 'liberty',
     nativeColors: !!state.pzNativeColors,
+    countryFlags: !!$('pzFlagsOn')?.checked,
     globeProjection: isGlobeProjectionOn(),
     view: state.map ? {
       center: state.map.getCenter().toArray(),
@@ -8048,6 +8180,7 @@ function applyBasicProjectSnapshot(snapshot){
 function applyProjectSnapshot(snapshot, statusMsg){
   const nextStyle = snapshot?.baseStyle || 'liberty';
   state.pzNativeColors = snapshot?.nativeColors != null ? !!snapshot.nativeColors : PZ_NATIVE_BASES.has(nextStyle);
+  if($('pzFlagsOn')){ $('pzFlagsOn').checked = !!snapshot?.countryFlags; setTimeout(() => { try{ pzFlagsRefresh(); updateStylePanelVisibility(); }catch(e){} }, 400); }
   const doApply = () => {
     ensureOverlaySetup();
     window.setTimeout(() => {
@@ -9607,6 +9740,12 @@ function updateStylePanelVisibility(){
   // politická mapa je o státech — metro a tramvaje (jediné vrstvy, které tam zbyly) nemají smysl
   const ly = $('styleLayersSection');
   if(ly) ly.style.display = key === 'political' ? 'none' : '';
+  const pt = $('pzPoliticalTools');
+  if(pt){
+    const show = key === 'political' || !!$('pzFlagsOn')?.checked;
+    if(show && pt.hidden){ try{ setAccordionOpen(pt, true, null, false); }catch(e){ pt.classList.remove('collapsed'); } }
+    pt.hidden = !show;
+  }
 }
 // Řádek ve „Vrstvách" má smysl jen tehdy, když podklad takovou vrstvu má. Na
 // satelitu a dalších rastrových podkladech by většina voleb nedělala nic.
@@ -10393,6 +10532,7 @@ function onMapClick(e){
     return;
   }
   if(handlePoliticalCountryPaintClick(e)) return;
+  if(pzPoliticalClickPalette(e)) return;
   clearRoutePointSelection();
   clearSceneIconSelection();
   clearScenePerimeterSelection();
@@ -17306,6 +17446,8 @@ function bindUI(){
   })); });
   pzFillSysIconButtons();
   try{ pzInitLineUi(); }catch(e){}
+  $('pzFlagsOn')?.addEventListener('change', () => { try{ window.__pzPushUndo?.(); }catch(e){} pzFlagsRefresh(); updateStylePanelVisibility(); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape') pzCloseCountryPop(); });
   try{ pzInitExtraUi(); }catch(e){}
   try{ pzLoadSprites(); }catch(e){}
   $('pzRouteHold')?.addEventListener('input', () => { $('pzRouteHoldVal').textContent = $('pzRouteHold').value + ' %'; refreshAnimatedMarkerPreview(); });
@@ -17974,6 +18116,10 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Vlajky států": {cs:"Vlajky států",sk:"Vlajky štátov",bg:"Знамена на държавите",hr:"Zastave država",ro:"Steagurile țărilor",en:"Country flags"},
+  "Barvit stát kliknutím": {cs:"Barvit stát kliknutím",sk:"Farbiť štát kliknutím",bg:"Оцвети държава с клик",hr:"Boji državu klikom",ro:"Colorează țara la clic",en:"Colour a country by clicking"},
+  "Zrušit barvu": {cs:"Zrušit barvu",sk:"Zrušiť farbu",bg:"Премахни цвета",hr:"Ukloni boju",ro:"Elimină culoarea",en:"Clear colour"},
+  "Vlastní barva": {cs:"Vlastní barva",sk:"Vlastná farba",bg:"Собствен цвят",hr:"Vlastita boja",ro:"Culoare proprie",en:"Custom colour"},
   "Velikost popisku: {0} px": {cs:"Velikost popisku: {0} px",sk:"Veľkosť popisu: {0} px",bg:"Размер на надписа: {0} px",hr:"Veličina natpisa: {0} px",ro:"Mărimea etichetei: {0} px",en:"Label size: {0} px"},
   "Vkládání do mapy ukončeno.": {cs:"Vkládání do mapy ukončeno.",sk:"Vkladanie do mapy ukončené.",bg:"Добавянето в картата е спряно.",hr:"Dodavanje na kartu završeno.",ro:"Adăugarea pe hartă s-a oprit.",en:"Adding to the map stopped."},
   "Další vozidla na trase": {cs:"Další vozidla na trase",sk:"Ďalšie vozidlá na trase",bg:"Още превозни средства по маршрута",hr:"Još vozila na ruti",ro:"Alte vehicule pe traseu",en:"More vehicles on the route"},
@@ -19952,7 +20098,7 @@ function pzColorFromName(v){
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
   window.__pzFns = {setStatus, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
-    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading, pzVehicleParts, pzExtraVehicles,
+    serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading, pzVehicleParts, pzExtraVehicles, pzFlagPoints,
     pzSetKeyboardInset, pzMobilePanel,
     createSceneArrow, createScenePerimeterAt, createSceneDistance, createSceneIconAt, addMapLabelAt, pzIconDataUrl,   // 21_scene_objects
     get state(){ return state; }};
