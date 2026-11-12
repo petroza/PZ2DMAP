@@ -12,9 +12,9 @@ GET /client/v4/accounts/{account_id}/workers/services/tnmap-chat/environments/pr
 (endpoint `/workers/scripts/tnmap-chat/content` vrací API tokenu chybu 10405
 „Method not allowed for this authentication scheme")
 
-**Aktuálně nasazeno: verze 18** = `483cfa46-b23f-417f-8b95-94ea029a99c2`
-(fáze 1, viz `NAVRH_ZLEPSENI.md`). Předchůdce byla verze 15 =
-`322f21b1-8685-4b2d-bcbc-9ef5497b9e46`. Model
+**Aktuálně nasazeno:** `aaedbf8d-7b5c-4fc9-9347-ab7620aca255` = tento soubor
+(nové podklady a presety, metro/tramvaj, linky MHD, vlajky, vozidla; historie jako JSON plány).
+Předchůdce (rollback) byla verze 18 = `483cfa46-b23f-417f-8b95-94ea029a99c2`. Model
 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, `temperature 0.2`, `max_tokens 1200`.
 
 ### Nasazení a rollback přes API
