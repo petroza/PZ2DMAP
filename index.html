@@ -865,6 +865,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <h3 data-i18n="Podklad">Podklad</h3>
         <select id="baseStyle" autocomplete="off"></select>
         <label class="check" style="margin-top:8px"><input id="globeProjection" type="checkbox"> Glóbus</label>
+        <div id="pzPoliticalTools" hidden>
+          <label class="check" style="margin-top:8px"><input id="pzFlagsOn" type="checkbox"> <span data-i18n="Vlajky států">Vlajky států</span></label>
+          <label class="check" style="margin-top:8px"><input id="pzClickPaintOn" type="checkbox" checked> <span data-i18n="Barvit stát kliknutím">Barvit stát kliknutím</span></label>
+        </div>
       </div>
       
       
@@ -918,11 +922,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <input id="tileType" type="hidden" value="raster">
         <div class="btns"><button type="button" class="btn btn-sm btn-primary" id="addTileSourceBtn" data-i18n="+ Přidat zdroj">+ Přidat zdroj</button></div>
         <div id="tileSourceList" class="wp-list"></div>
-      </div>
-      <div class="section" id="pzPoliticalTools" hidden>
-        <h3 data-i18n="Státy">Státy</h3>
-        <label class="check"><input id="pzFlagsOn" type="checkbox"> <span data-i18n="Vlajky států">Vlajky států</span></label>
-        <label class="check" style="margin-top:8px"><input id="pzClickPaintOn" type="checkbox" checked> <span data-i18n="Barvit stát kliknutím">Barvit stát kliknutím</span></label>
       </div>
       <div class="section" id="styleLayersSection">
         <h3 data-i18n="Vrstvy">Vrstvy</h3>
@@ -3023,8 +3022,8 @@ const DEFAULT_BUILTIN_PRESET_RANGES = {majorWidth:'1.3', minorWidth:'1.0', build
 const DEFAULT_BUILTIN_PRESET_VISIBILITY = {showBuildings:true, showParks:true, showLandcover:true, showLanduse:true, showAeroway:true, showBoundaries:true, showLabels:true, showRoadShields:true, showMinorRoads:true, showMajorRoads:true, showMotorways:true, showPrimaryRoads:true, showSecondaryRoads:true, showWaterways:true, showRailways:true, showMetro:false, showTransit:false};
 const BUILTIN_PRESET_STYLE_OVERRIDES = {
   libertyKlasicka:{native:true, baseStyle:'liberty'},
-  zelenaPrirodni:{baseStyle:'liberty',ranges:{majorWidth:'1.2',minorWidth:'0.9',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'1.15',primaryWidth:'1.05',secondaryWidth:'1',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
-  modraPrirodni:{ranges:{majorWidth:'1.2',minorWidth:'0.9',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'1.15',primaryWidth:'1.05',secondaryWidth:'1',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
+  zelenaPrirodni:{baseStyle:'liberty',ranges:{majorWidth:'0.85',minorWidth:'0.8',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'0.7',primaryWidth:'0.7',secondaryWidth:'0.75',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
+  modraPrirodni:{ranges:{majorWidth:'0.85',minorWidth:'0.8',buildingOpacity:'0.8',boundaryOpacity:'1',boundaryWidth:'1.4',motorwayWidth:'0.7',primaryWidth:'0.7',secondaryWidth:'0.75',railwayWidth:'0.9',metroWidth:'1',transitWidth:'1',parkOpacity:'1'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnLive:{ranges:{majorWidth:'1.1',minorWidth:'0.7',buildingOpacity:'0.6',boundaryOpacity:'0.9',boundaryWidth:'1.3',motorwayWidth:'1.1',primaryWidth:'1',secondaryWidth:'0.8',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.8'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:false,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnStudio:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0.6',boundaryOpacity:'1',boundaryWidth:'1.2',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.6'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnModra:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0.6',boundaryOpacity:'1',boundaryWidth:'1.6',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.6'},visibility:{showBuildings:true,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:false,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
@@ -9743,7 +9742,6 @@ function updateStylePanelVisibility(){
   const pt = $('pzPoliticalTools');
   if(pt){
     const show = key === 'political' || !!$('pzFlagsOn')?.checked;
-    if(show && pt.hidden){ try{ setAccordionOpen(pt, true, null, false); }catch(e){ pt.classList.remove('collapsed'); } }
     pt.hidden = !show;
   }
 }

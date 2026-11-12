@@ -49,8 +49,10 @@ const ROAD = [[15.36,49.54],[15.42,49.50],[15.5,49.46],[15.59,49.40]];
   await page.click('#undoActionBtn'); await page.waitForTimeout(900);
   check(await page.$eval('#motorwayWidth', e => e.value) === '1', 'krok zpět vrátí i tloušťku dálnic');
   await page.click('#resetStyleBtn'); await page.waitForTimeout(500);
-  check(await page.$eval('#presetTileGrid .preset-card:nth-child(1)', e => e.classList.contains('active') && !e.classList.contains('is-modified'))
-    && await page.$eval('#waterColor', e => e.value) === waterBefore, '„Výchozí vzhled" vrátí výchozí preset');
+  await page.waitForTimeout(1500);
+  // výchozí vzhled = Positron + Modrá přírodní (dlaždice s hvězdičkou)
+  check(await page.evaluate(() => window.__pzFns.state.activePresetToken === 'builtin:modraPrirodni' && document.getElementById('baseStyle').value === 'positron'
+    && !!document.querySelector('#presetTileGrid .preset-card.active:not(.is-modified)')), '„Výchozí vzhled" vrátí výchozí preset');
 
   // --- scéna: popisek, trasa, uzavírky přes formulář, stát přes hledání
   const built = await page.evaluate(async () => { const T = window.TNMAP;
