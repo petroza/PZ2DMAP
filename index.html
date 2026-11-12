@@ -5,6 +5,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>PZ MAP</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="assets/manifest.webmanifest">
+<meta name="theme-color" content="#e63946">
 <link rel="stylesheet" href="assets/vendor/maplibre-gl.css" onerror="this.onerror=null;this.href='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css'">
 <!-- defer: download the 1 MB engine in parallel with HTML/inline-JS parsing instead
      of blocking the parser in <head>. onerror keeps the CDN fallback working under
@@ -827,7 +832,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
   <div class="sidebar-brand">
     <div class="sidebar-brand-top">
       <div class="brand-meta">
-        <div class="brand-icon" id="brandLogo" role="button" tabindex="0" title="Na začátek — podklad Positron, celé Česko v rámečku"><span>TN</span></div>
+        <div class="brand-icon" id="brandLogo" role="button" tabindex="0" title="Na začátek — smaže scénu i projekt (Ctrl+Z vrátí)"><span>TN</span></div>
         <div class="brand-copy"><span class="brand-title">PZ MAP</span></div>
       </div>
       <div class="lang-switcher lang-switcher-inline" id="langSwitcherSlot"></div>
@@ -4979,6 +4984,26 @@ function pzFrameHomeCountry(duration = 750){
       state.map.fitBounds(CZ, { padding, bearing:0, pitch:0, maxZoom:9, duration });
     }
   }catch(_e){}
+}
+// Logo TN = čistý začátek: smaže celou scénu (trasu, popisky, ikony, šipky,
+// perimetry, vzdálenosti, uzavírky, barvy a vlajky států, další vozidla, 3D model)
+// a odpojí rozdělaný projekt (další Uložit založí nový). Vrátí se krokem zpět.
+function pzClearWholeScene(){
+  try{ window.__pzPushUndo?.(); }catch(_e){}
+  window.__pzUndoHoldUntil = Date.now() + 3000;   // smazání + návrat podkladu a presetu = jeden Krok zpět
+  try{ window.TNMAP?.clearScene({what:'all'}); }catch(_e){}
+  try{ state.pzExtraVehicles = []; pzRenderExtraList(); }catch(_e){}
+  try{ state.pzLineRoute = null; }catch(_e){}
+  try{ if(model3dHasModel()) $('deleteModel3dBtn')?.click(); }catch(_e){}
+  try{ state.multiSel?.clear?.(); }catch(_e){}
+  try{ if($('projectName')) $('projectName').value = ''; const sel = $('savedProjectSelect'); if(sel){ sel.value = ''; sel.dispatchEvent(new Event('change', {bubbles:true})); } }catch(_e){}
+}
+function pzLogoReset(){
+  pzClearWholeScene();
+  resetAppToStart();
+  // logo = všechny sekce zavřené (grafik si otevře, co potřebuje)
+  try{ $$('.sidebar .tab-pane .section.section-collapsible').forEach(s => setAccordionOpen(s, false, null, false)); }catch(_e){}
+  setStatus(t('Nový čistý projekt — vše smazáno. Vrátíš to přes Ctrl+Z.'));
 }
 function resetAppToStart(){
   try{ setTab('scena'); }catch(_e){}
@@ -17331,9 +17356,9 @@ function bindUI(){
     logo.style.cursor = 'pointer';
     logo.setAttribute('role', 'button');
     logo.setAttribute('tabindex', '0');
-    logo.title = 'Na začátek — podklad Positron, celé Česko v rámečku';
-    logo.addEventListener('click', resetAppToStart);
-    logo.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); resetAppToStart(); } });
+    logo.title = 'Na začátek — smaže scénu i projekt (Ctrl+Z vrátí)';
+    logo.addEventListener('click', pzLogoReset);
+    logo.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); pzLogoReset(); } });
   })();
   // Move the language flags up into the brand row (saves a whole sidebar row).
   (() => {
@@ -18209,6 +18234,7 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Nový čistý projekt — vše smazáno. Vrátíš to přes Ctrl+Z.": {cs:"Nový čistý projekt — vše smazáno. Vrátíš to přes Ctrl+Z.",sk:"Nový čistý projekt — všetko zmazané. Vrátiš to cez Ctrl+Z.",bg:"Нов чист проект — всичко е изтрито. Връщане с Ctrl+Z.",hr:"Novi čisti projekt — sve obrisano. Vraćaš s Ctrl+Z.",ro:"Proiect nou curat — totul șters. Revii cu Ctrl+Z.",en:"Fresh project — everything cleared. Undo with Ctrl+Z."},
   "Bez čtverečku": {cs:"Bez čtverečku",sk:"Bez štvorčeka",bg:"Без квадратче",hr:"Bez kvadratića",ro:"Fără pătrat",en:"No square"},
   "Popisky států": {cs:"Popisky států",sk:"Popisy štátov",bg:"Надписи на държавите",hr:"Natpisi država",ro:"Etichetele țărilor",en:"Country labels"},
   "{0} — popisek přidán.": {cs:"{0} — popisek přidán.",sk:"{0} — popis pridaný.",bg:"{0} — надписът е добавен.",hr:"{0} — natpis dodan.",ro:"{0} — etichetă adăugată.",en:"{0} — label added."},
@@ -19229,7 +19255,7 @@ document.addEventListener('keydown', e => {
     if(redoBtn) redoBtn.disabled = redoStack.length === 0;
   }
   function pushUndo(){
-    if(applyingUndo) return;
+    if(applyingUndo || Date.now() < (window.__pzUndoHoldUntil || 0)) return;   // hromadná akce (logo) = jeden krok
     const snap = snapshotNow();
     if(!snap) return;
     // Don't push duplicates of the last snapshot

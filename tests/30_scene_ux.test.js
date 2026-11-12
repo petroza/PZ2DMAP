@@ -32,7 +32,19 @@ const {check, done, open, tab} = require('./lib');
   await tab(page, 'styly');
   await page.click('#resetStyleBtn'); await page.waitForTimeout(2500);
   const look = await page.evaluate(() => ({base: document.getElementById('baseStyle').value, preset: window.__pzFns.state.activePresetToken}));
-  check(look.base === 'positron' && look.preset === 'builtin:modraPrirodni', 'Výchozí vzhled = Positron + Modrá přírodní ' + JSON.stringify(look));
+  // výchozí preset si redakce může přenastavit (sdílená data) — bez toho je to Modrá přírodní
+  check(look.base === 'positron' && /^builtin:/.test(look.preset || ''), 'Výchozí vzhled = Positron + výchozí preset ' + JSON.stringify(look));
+  // logo TN = čistý projekt: smaže scénu i vlajky, vrátí se krokem zpět
+  await page.evaluate(() => { const F = window.__pzFns; F.addMapLabelAt({lng: 15, lat: 50}, {text: 'X', silent: true}); F.state.pzFlags = [{id: 'f1', iso: 'cz', lngLat: [15, 50]}];
+    document.getElementById('projectName').value = 'Starý projekt'; document.activeElement?.blur?.(); });
+  const nBefore = await page.evaluate(() => window.__pzFns.state.mapLabels.length);
+  await page.click('.brand-icon');
+  await page.waitForTimeout(1500);
+  const cleaned = await page.evaluate(() => ({labels: window.__pzFns.state.mapLabels.length, flags: (window.__pzFns.state.pzFlags || []).length, name: document.getElementById('projectName').value}));
+  check(cleaned.labels === 0 && cleaned.flags === 0 && cleaned.name === '', 'klik na logo TN smaže scénu i projekt ' + JSON.stringify(cleaned));
+  check(await page.evaluate(() => [...document.querySelectorAll('.sidebar .tab-pane .section.section-collapsible')].every(s => s.classList.contains('collapsed'))), 'po kliknutí na logo jsou všechny sekce zavřené');
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(1500);
+  check(await page.evaluate(() => window.__pzFns.state.mapLabels.length) === nBefore, 'krok zpět vrátí smazané popisky');
   check(!errors.length, 'bez chyb v konzoli ' + errors.join(' | '));
   await close(); done();
 })();
