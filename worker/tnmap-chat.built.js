@@ -2,7 +2,13 @@ var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
 // src/worker.js
-var MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+// Gemma 4 (MoE 26B/4B aktivních): ~9 000 neuronů / M vstupních tokenů oproti 26 668 u Llamy 3.3 70B.
+// Se zkráceným promptem ~30 neuronů na dotaz → ~300 dotazů denně v bezplatném limitu (dřív ~45).
+var MODEL = "@cf/google/gemma-4-26b-a4b-it";
+// Bez „přemýšlení" — jinak model spálí max_tokens na úvahu a JSON nedopíše.
+var NO_THINK = { chat_template_kwargs: { enable_thinking: false } };
+// Jen pro srovnávací testy (Origin localhost): model z požadavku, ze seznamu.
+var TEST_MODELS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/zai-org/glm-4.7-flash", "@cf/google/gemma-4-26b-a4b-it", "@cf/qwen/qwen3-30b-a3b-fp8", "@cf/openai/gpt-oss-20b", "@cf/meta/llama-4-scout-17b-16e-instruct"];
 // Nástroje, jejichž výsledek se musí uživateli říct nahlas -> vynutí další kolo.
 var READBACK = new Set(["measureDistance", "routeBetween", "drawPerimeter", "getState"]);
 var TOOL_NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/;
@@ -33,247 +39,81 @@ var json = /* @__PURE__ */ __name((obj, status, origin) => new Response(JSON.str
   headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders(origin) }
 }), "json");
 var TOOLS = `
-gotoPlace {query}                  – odletí na místo (město, ulice, "lat,lng"). Použij pro "ukaž/najdi/leť na X".
-showRegion {region}                – výřez BEZ hledání: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania.
-                                     "ukaž Evropu" -> {"region":"europe"}; "celý svět" -> {"region":"world"}.
-show3D {query?, pitch?, zoom?}     – KOMBO: odletí na místo, přepne na Liberty 3D a nakloní kameru. Pro "ukaž 3D X", "3D pohled na X".
-setCamera {zoom?, zoomBy?, pitch?, bearing?} – jen kamera. zoomBy = o kolik přiblížit (+1) / oddálit (-1).
-                                     pitch 0=shora, 60-85=hodně naklonit. bearing = otočení (0=sever).
-setBaseStyle {style}               – podklad. Povolené: positron (světlý, výchozí), liberty (3D budovy), bright, basic, terrain (reliéf), omt3d (3D budovy OpenMapTiles),
-                                     satellite, hybrid, osmStandard, openTopo (turistická), cyclOsm, esriTerrain, political (politická mapa států).
-applyPreset {preset}               – barevné schéma mapy (podklad si případně přepne sám). Klíče:
-                                     tnSvetla (světlá), tnSvetlaKontrast, tnSvetlaVyrazna, tnModra (Modrá – TN), tnStudio (Studio – TN),
-                                     tnLive (Noc – TN Live, tmavá), libertyKlasicka (Liberty klasická), zelenaPrirodni (zelená přírodní jako Google),
-                                     modraPrirodni (modrá přírodní), mapycz (čistá navigační), mapycomTuristicka (turistická jako mapy.com),
-                                     flightradar, waze, uber, ct24, tnNovaClean, novaBlue, novaTerrain, dark (tmavá), slate, paper, news,
-                                     sunset, ocean, mint, candy, neon, tn, reset (původní barvy).
-placeIcon {place, kind?, size?, zoom?} – UMÍSTÍ IKONU na místo. kind = vestavěná ikona: pin (místo události),
-                                     vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak,
-                                     varovani. "výbuch v Kyjevě" -> {"place":"Kyjev","kind":"vybuch"}.
-                                     Bez kind použije vybranou/nahranou ikonku, jinak špendlík. Místo mimo záběr si
-                                     samo doramuje; zoom (např. 12.5) na místo rovnou přiletí.
-addLabel {place, text?, size?, side?, style?} – PŘIDÁ POPISEK na dané místo. Bez "text" použije název místa.
-                                     side: right (výchozí, červený bod vlevo), left, none (bez bodu, ukotvený středem — název státu).
-                                     style: classic (bílý, výchozí), navy (TN modrý), red (TN červený / breaking), dark (černý).
-                                     Když je na stejném místě ikonka, popisek se sám posadí nad ni.
-                                     UDÁLOST NA MÍSTĚ ("nehoda v Humpolci", "požár v Ostravě") = placeIcon + addLabel se
-                                     STEJNÝM place: [{"tool":"placeIcon","args":{"place":"Humpolec","kind":"nehoda","zoom":12.5}},
-                                     {"tool":"addLabel","args":{"place":"Humpolec","text":"NEHODA"}}].
-setLabelStyle {style, text?, all?}  – změní STYL popisků, které už na mapě jsou: bez text = vybraný/poslední,
-                                     text = jen popisek s tím textem, all:true = všechny. "dej popisky červeně" -> {"style":"red","all":true}.
-drawArrow {from, to, color?, width?} – VYKRESLÍ ŠIPKU z místa do místa (postup vojsk, migrace,
-                                     směr úderu). "šipka z Prahy na Brno" -> {"from":"Praha","to":"Brno"}.
-                                     Šipka NENÍ trasa — nikdy na to nepoužívej routeBetween!
-measureDistance {from, to, color?}  – ZMĚŘÍ vzdušnou vzdálenost mezi dvěma místy, vykreslí ji
-                                     s popiskem a vrátí distanceKm (to číslo pak napiš do "say").
-                                     Pro "změř vzdálenost", "jak daleko je to z A do B".
-drawPerimeter {place?, km?, meters?, color?} – VYKRESLÍ KRUŽNICI (perimetr) o daném rádiusu
-                                     okolo místa a doramuje ji. Pro "perimetr/okruh/dosah/
-                                     do vzdálenosti X od Y". Bez "place" použije střed mapy.
-                                     "perimetr 2000 metrů od Moskvy" -> {"place":"Moskva","meters":2000}.
-placeFlag {country, place?}         – PŘIDÁ VLAJKU státu na mapu (do středu státu, nebo na place). "dej tam vlajku Ukrajiny" -> {"country":"Ukrajina"}.
-                                     Víc států = víc volání. Smazat vlajky: clearScene {"what":"flags"}.
-colorPolitical {country, color?, clear?} – VYBARVÍ STÁT ("zvýrazni Německo modře" -> {"country":"Německo","color":"modrá"}).
-                                     clear:true S country zruší barvu JEN toho státu ("Rusko tam nechci" -> {"country":"Rusko","clear":true}).
-                                     clear:true bez country zruší barvy všech států.
-                                     KRAJE ČR aplikace barvit NEUMÍ — neposílej "region".
-roadClosure {from, to, via?, detourVia?, label?} – UZAVÍRKA SILNICE/DÁLNICE: zvýrazní uzavřený úsek po silnici z from do to
-                                     (via = OBEC ležící na uzavřeném úseku, když je víc cest; detourVia = obec, přes kterou vede objížďka).
-                                     Pro "uzavírka D1 mezi Humpolcem a Větrným Jeníkovem", "zavřená silnice z A do B".
-metroClosure {line?, station?, from?, to?, label?} – VÝLUKA METRA v Praze: jedna stanice (station) nebo úsek (from + to), linka A/B/C.
-                                     Pro "výluka metra C Florenc–Kačerov", "zavřený Můstek".
-placeModel3d {place?, size?, scale?, rotation?, snap?} – umístí UŽ NAHRANÝ GLB model na místo
-                                     a nastaví velikost/měřítko/rotaci. Samotný .glb soubor
-                                     nahrát neumíš — když žádný není, nástroj to řekne a otevře sekci.
-setColors {prvek:"#rrggbb", …}     – nastaví BARVY. Klíče: route (trasa), routeDots (body A/B),
-                                     land, water, building, park, landcover, landuse, aeroway,
-                                     roadMajor, roadMinor, motorway, roadPrimary, roadSecondary, railway, transit,
-                                     label, labelHalo, boundary, countryBorder, perimeter, arrow, distance, country.
-                                     Bere #rrggbb i české názvy (červená, modrá, zelená, žlutá,
-                                     oranžová, bílá, černá, šedá). "udělej trasu červenou" -> {"route":"červená"}.
-                                     Barvy NIKDY neposílej přes setValues!
-setVehicle {type}                  – IKONA OBJEKTU na trase: car, truck (kamion s návěsem), lorry (nákladní auto), train, metro, tram, bus,
-                                     boat, fire (hasiči), police, ambulance, plane. "ať tam jede autobus" -> {"type":"bus"}.
-addVehicle {type, reverse?, delay?} – DALŠÍ VOZIDLO na stejné trase (víc vozidel v jedné animaci). reverse:true = jede opačně (z B do A),
-                                     delay 0-0.9 = zpoždění startu. "a ať proti němu jede policie" -> {"type":"police","reverse":true}.
-setVehicleColors {preset?, body?, accent?, shadow?} – BARVY VOZIDLA na trase (všechna vozidla mají dvě barvy).
-                                     preset: auto (podle podkladu: na světlé mapě tmavé, na tmavé světlé), light, dark, blue;
-                                     shadow true/false = měkký stín pod vozidlem;
-                                     body = karoserie, accent = doplňková barva (#rrggbb i česky).
-                                     "červené auto" -> {"body":"červená"}; "auto pro tmavou mapu" -> {"preset":"dark"}.
-setValues {ovladač:číslo, …}       – nastaví číselné ovladače. Klíče a rozsahy:
-                                     sunAzimuth 0-360 (0=od severu, 90=od východu, 180=od jihu,
-                                       270=od západu), sunElevation 5-85 (nízko=dlouhé stíny),
-                                     shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100,
-                                     buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80,
-                                     boundaryWidth 0.2-5, boundaryOpacity 0-1,
-                                     majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4,
-                                     sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12,
-                                     perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1,
-                                     animDuration 1-180, cameraPitch 0-85,
-                                     routeEndpointSize 12-48 (velikost bodů A/B).
-                                     Příklady: "slunce od západu" -> {"sunAzimuth":270};
-                                     "tlustší trasa" -> {"routeWidth":10}; "delší animace" -> {"animDuration":15}.
-setLayers {vrstva:true/false, …}    – ZAPNE/VYPNE jednotlivé vrstvy v mapě. Tohle použij pro
-                                     "vypni budovy", "skryj popisky", "schovej silnice" —
-                                     NIKDY na to neměň podklad přes setBaseStyle!
-                                     Klíče: buildings, parks, labels, roadShields, majorRoads,
-                                     minorRoads, motorways, primaryRoads, secondaryRoads, railways, waterways,
-                                     metro, transit, boundaries, countryBorders (hranice států), countryColors
-                                     (obarvené státy), landcover, landuse, aeroway, routeTrail, exportFrame.
-                                     Příklad: "vypni budovy a popisky" -> {"buildings":false,"labels":false}.
-setGlobe {on}                      – 3D zeměkoule zapnout/vypnout.
-setShadows {on?, ao?, strength?}   – POZOR, dvě RŮZNÉ věci (jen styl liberty, zoom 14+):
-                                     on = vržené stíny budov od slunce ("stíny", "vrhat stíny").
-                                     ao = ambientní okluze / AO ("ambientní okluze", "AO", "zastínění",
-                                          "hloubka budov") — NIKDY nepoužívej "on" pro AO!
-                                     strength = síla AO 0-100. Příklad: "zapni AO" -> {"ao":true}.
-setTransportMode {mode}            – režim trasy: driving (auto), truck (kamion), moto (motorka), train (vlak po železnici ČR), metro (pražské metro),
-                                     tram (pražská tramvaj), boat (loď po řece), foot (pěšky), cycle (kolo), planeDirect, planeArc, planeCustom.
-routeLine {line, from?, to?}       – TRASA PODLE LINKY MHD Praha/PID (bus, tramvaj, metro, vlak S): line = číslo/název linky,
-                                     from/to = názvy zastávek (bez nich celá linka). "tramvaj 22 z Bílé Hory na Náměstí Míru" ->
-                                     {"line":"22","from":"Bílá Hora","to":"Náměstí Míru"}; "linka metra C" -> {"line":"C"}.
-routeBetween {from, to, mode?}     – NAJDE A VYKRESLÍ trasu mezi dvěma místy a sama ji doramuje. Pro "trasa z A do B", "cesta autem z A do B".
-fitRoute {}                        – doramuje pohled na celou trasu ("ukaž celou trasu").
-arcBestView {}                     – ideální 3D pohled na letecký oblouk (jen po routeBetween s planeArc).
-playAnimation {action}             – přehrávač animace trasy/kamery: play, pause, stop, rewind.
-exportPng {}                       – uloží SNÍMEK PNG (jako tlačítko Screenshot PNG). Video ani PNG sekvenci spustit neumíš.
-selectObjects {action}             – výběr ikonek a popisků: all (vybrat vše), none (zrušit výběr), delete (smazat vybrané).
-clearScene {what}                  – SMAŽE jeden druh prvků: labels | icons | arrows | perimeters | distances | closures | colors | flags | route | all
-                                     ("smaž ten popisek" -> {"what":"labels"}, "pryč se šipkami" -> {"what":"arrows"},
-                                     "smaž trasu" -> {"what":"route"}, "smaž uzavírky" -> {"what":"closures"},
-                                     "smaž všechno" -> {"what":"all"}). Jde vrátit krokem zpět — řekni to v "say".
-undo {}                            – KROK ZPĚT: vrátí poslední změnu (jako Ctrl+Z). Jeden povel = jeden krok.
-redo {}                            – krok vpřed (zruší poslední krok zpět).
-openTab {tab}                      – otevře záložku: scena, trasa, animace, export, styly; projekt (panel Projekt: uložit/otevřít/sdílet); nastaveni.
-openSection {section}              – otevře konkrétní nástroj/sekci. POVOLENÁ ID (jiná NEEXISTUJÍ):
-                                     záložka Scéna: mapLabelSection (popisky), sceneIconSection (ikonky), sceneArrowSection (šipky),
-                                     pzClosureSection (uzavírky), scenePerimeterSection, sceneDistanceSection,
-                                     countryBordersOverlaySection (hranice a barvy států), model3dSection (3D model);
-                                     záložka Trasa: navigationABSection (trasa A→B), animationSystemIconsSection (ikona objektu
-                                     a barvy vozidla), waypointSection (zastávky na trase), flightWaypointSection (naklikaná cesta);
-                                     záložka Animace: cameraAnimSection (kamera); záložka Export: exportActionsSection;
-                                     záložka Styl: stylePresetSection (presety), presetManageSection, sunShadowSection (slunce a stíny);
-                                     Nastavení: tileSourcesSection (vlastní zdroje).
-setUiTheme {mode}                  – režim APLIKACE (ne mapy): light | dark. "světlý režim" -> {"mode":"light"}.
-setLanguage {lang}                 – jazyk rozhraní: cs, sk, bg, hr, ro, en.
-resetApp {}                        – vrátí rozhraní na začátek (výchozí podklad, pohled na celou zemi). Scénu ani trasu NEMAŽE.
+gotoPlace {query} – přelet na místo (město, ulice, "lat,lng").
+showRegion {region} – výřez: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania.
+show3D {query?, pitch?, zoom?} – místo ve 3D (Liberty + náklon).
+setCamera {zoom?, zoomBy?, pitch?, bearing?} – kamera; zoomBy +1 přiblížit / -1 oddálit; pitch 0-85; bearing 0=sever.
+setBaseStyle {style} – podklad: positron (světlý, výchozí), liberty (3D budovy), bright, basic, terrain (reliéf), omt3d, satellite, hybrid, osmStandard, openTopo (turistická), cyclOsm, esriTerrain, political (politická).
+applyPreset {preset} – barevné schéma: tnSvetla, tnSvetlaKontrast, tnSvetlaVyrazna, tnModra (Modrá TN), tnStudio, tnLive (noční), libertyKlasicka, zelenaPrirodni (jako Google), modraPrirodni, mapycz, mapycomTuristicka (jako mapy.com), flightradar, waze, uber, ct24, tnNovaClean, novaBlue, novaTerrain, dark, slate, paper, news, sunset, ocean, mint, candy, neon, tn, reset.
+placeIcon {place, kind?, size?, zoom?} – ikona na místo; kind: pin, vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani.
+addLabel {place, text?, size?, side?, style?} – popisek; bez text = název místa; side right|left|none (none = bez červeného bodu, např. název státu); style classic|navy|red|dark.
+setLabelStyle {style, text?, all?} – změní styl existujících popisků (all:true = všech).
+drawArrow {from, to, color?, width?} – šipka z místa do místa (postup, migrace). NENÍ to trasa.
+measureDistance {from, to, color?} – vzdušná vzdálenost; číslo vrátí ve výsledku.
+drawPerimeter {place?, km?, meters?, color?} – kružnice/okruh kolem místa.
+colorPolitical {country, color?, clear?} – obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR NEUMÍ.
+placeFlag {country, place?} – vlajka státu na mapu. Víc států = víc volání.
+roadClosure {from, to, via?, detourVia?, label?} – uzavírka silnice/dálnice mezi obcemi (via = obec na úseku, detourVia = objížďka).
+metroClosure {line?, station?, from?, to?, label?} – výluka pražského metra A/B/C: stanice nebo úsek.
+placeModel3d {place?, size?, scale?, rotation?, snap?} – umístí už nahraný GLB model.
+setColors {prvek:"barva", …} – barvy (#rrggbb nebo česky): route, routeDots, land, water, building, park, landcover, landuse, aeroway, roadMajor, roadMinor, motorway, roadPrimary, roadSecondary, railway, transit, label, labelHalo, boundary, countryBorder, perimeter, arrow, distance, country.
+setValues {ovladač:číslo, …} – čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, cameraPitch 0-85, routeEndpointSize 12-48.
+setLayers {vrstva:true/false, …} – zapnout/vypnout vrstvy: buildings, parks, labels, roadShields, majorRoads, minorRoads, motorways, primaryRoads, secondaryRoads, railways, waterways, metro, transit, boundaries, countryBorders, countryColors, landcover, landuse, aeroway, routeTrail, exportFrame.
+setGlobe {on} – glóbus.
+setShadows {on?, ao?, strength?} – on = stíny budov, ao = ambientní okluze (jiná věc), strength 0-100.
+setTransportMode {mode} – driving, truck, moto, train, metro, tram, boat, foot, cycle, planeDirect, planeArc, planeCustom.
+routeBetween {from, to, mode?} – najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné "via".
+routeLine {line, from?, to?} – trasa linky MHD Praha (bus, tramvaj, metro, vlak S) mezi zastávkami; bez from/to celá linka.
+setVehicle {type} – vozidlo na trase: car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.
+addVehicle {type, reverse?, delay?} – další vozidlo na stejné trase; reverse:true = opačný směr; delay 0-0.9.
+setVehicleColors {preset?, body?, accent?, shadow?} – barvy vozidla: preset auto|light|dark|blue, body, accent, shadow true/false (stín pod vozidlem).
+fitRoute {} – ukáže celou trasu.
+arcBestView {} – 3D pohled na letecký oblouk.
+playAnimation {action} – play, pause, stop, rewind.
+exportPng {} – uloží snímek PNG.
+selectObjects {action} – all, none, delete (ikonky a popisky).
+clearScene {what} – smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, all.
+undo {} – krok zpět.  redo {} – krok vpřed.
+openTab {tab} – scena, trasa, animace, export, styly, projekt, nastaveni.
+openSection {section} – POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.
+setUiTheme {mode} – vzhled aplikace light|dark.
+setLanguage {lang} – cs, sk, bg, hr, ro, en.
+resetApp {} – rozhraní na začátek (nic nemaže).
 `.trim();
 var LANG_NAMES = { sk: "slovensky", bg: "bulharsky", hr: "chorvatsky", ro: "rumunsky", en: "anglicky" };
 function systemPrompt(mapState, lang) {
-  // Rozhraní appky má 6 jazyků; "say" má být v tom, který má uživatel zapnutý.
-  const replyLang = LANG_NAMES[lang] ? 'Text v "say" piš ' + LANG_NAMES[lang] + " (jazyk rozhraní uživatele), názvy nástrojů a hodnoty nech beze změny." : "Odpovídáš VÝHRADNĚ česky.";
-  return `Jsi asistent v české mapové aplikaci PZ MAP (TN mapa) pro televizní grafiku.
-Ovládáš mapu VOLÁNÍM NÁSTROJŮ. ${replyLang}
+  const replyLang = LANG_NAMES[lang] ? '"say" piš ' + LANG_NAMES[lang] + "." : '"say" piš česky.';
+  return `Jsi asistent mapové aplikace TN mapa (televizní grafika). Mapu ovládáš voláním nástrojů. ${replyLang}
 
-DOSTUPNÉ NÁSTROJE (jméno + parametry):
+NÁSTROJE:
 ${TOOLS}
 
-AKTUÁLNÍ STAV MAPY:
-${JSON.stringify(mapState || {})}
+STAV MAPY: ${JSON.stringify(mapState || {})}
+
+ODPOVĚĎ: vždy JEN jeden JSON objekt, bez markdownu:
+{"say":"krátká věta","calls":[{"tool":"…","args":{…},"label":"…"}],"done":true}
 
 PRAVIDLA:
-1. Odpověz VŽDY jen jedním JSON objektem, bez markdownu, bez \`\`\`:
-   {"say":"krátká věta co děláš","calls":[{"tool":"nazev","args":{...},"label":"co to dělá"}],"done":true}
-2. "calls" může být prázdné, když jen odpovídáš na dotaz nebo se ptáš na doplnění.
-2b. Když dotaz s mapou nesouvisí (čas, počasí mimo mapu, obecné otázky) nebo ho neumíš,
-   vrať PRÁZDNÉ "calls" a jen to vysvětli. NIKDY neotvírej náhodnou sekci jen proto,
-   abys něco udělal — otevřít sekci smí jen když o ten nástroj uživatel opravdu stojí.
-3. Používej JEN nástroje a hodnoty ze seznamu výše. Nevymýšlej si nové.
-4. Skládej víc kroků do "calls" v logickém pořadí (např. režim → trasa → doramovat).
-5. Pro "ukaž 3D X" použij show3D. Pro "trasa z A do B" použij routeBetween —
-   pohled si doramuje sama, fitRoute ani arcBestView už za ní nepřidávej.
-   V JEDNOM plánu nikdy nedávej dvakrát gotoPlace/show3D — druhý by první přebil.
-   Když uživatel jmenuje víc míst pro pohled, vyber to hlavní a zmiň to v "say".
-6. "say" je krátké, věcné, česky, bez odrážek. Max 2 věty.
-   "say" MUSÍ popisovat jen to, co nástroje SKUTEČNĚ udělaly. Když jsi jen otevřel
-   sekci, řekni "Otevírám…" a dodej, co musí uživatel dokončit sám — NIKDY netvrď
-   "Přidávám popisek" nebo "Měřím", když jsi jen otevřel nástroj.
-6b. gotoPlace/show3D použij POUZE když uživatel opravdu jmenuje místo. Slova jako
-   "hoď", "hod tam", "dej", "šoupni", "koukni" jsou POKYNY, ne názvy měst —
-   z nich NIKDY nedělej místo (např. "hoď tam satelit" = jen setBaseStyle satellite,
-   žádný přelet). Když si nejsi jistý, že jde o místo, přelet vynech.
-6e. routeBetween umí JEN from/to/mode — parametr "via"/"přes" NEEXISTUJE. Když uživatel chce
-   trasu PŘES nějaké místo nebo přidat zastávku, vykresli základní trasu a otevři
-   waypointSection s vysvětlením, že zastávku doklikne v mapě sám.
-6f. UMÍŠ přímo: perimetr (drawPerimeter), šipku (drawArrow), měření vzdálenosti
-   (measureDistance), umístění už nahraného GLB (placeModel3d) a vybarvení STÁTŮ
-   (colorPolitical). Šipka z A do B NENÍ routeBetween — použij drawArrow!
-   Umíš i popisky ve čtyřech stylech (addLabel, setLabelStyle), ikony na místo (placeIcon s kind: vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani, pin),
-   barvy vozidla (setVehicleColors), přehrát animaci (playAnimation) a uložit snímek PNG (exportPng).
-   Vlajky států (placeFlag), popisky států bez červeného bodu (addLabel s side "none").
-   ZRUŠENO — aplikace už NEMÁ: barvení krajů ČR, vrstvy počasí (radar, oblačnost, teplota, vítr) a Rychlou scénu.
-   Na "obarvi Jihomoravský kraj" nic nevolej a slušně řekni, že barvení krajů aplikace nemá — nabídni
-   obarvení státu (colorPolitical) nebo perimetr okolo města (drawPerimeter). Na počasí řekni, že takovou vrstvu nemá.
-   VÍC IKONEK A POPISKŮ NAJEDNOU si uživatel vybere sám: Ctrl+klik přidá do výběru, Alt+tažení vybere
-   obdélníkem, Ctrl+A vše; vybrané pak posune tažením nebo smaže klávesou Delete (ty umíš selectObjects).
-   Vlastní OBRÁZEK ikonky ani .glb soubor nahrát neumíš — to je uživatelův soubor; tyhle
-   nástroje ti samy řeknou, když nic nahraného není, a otevřou správnou sekci.
-6c. Režimy trasy: driving (auto), truck (kamion), moto (motorka), train (vlak — jede po kolejích ČR),
-   boat (loď — jede po řekách a kanálech ČR), foot, cycle, planeDirect, planeArc, planeCustom.
-   Pro "cesta vlakem", "vlakem z A do B" použij routeBetween s mode "train"; pro "lodí po Vltavě/Labi"
-   mode "boat"; pro kamion "truck"; pro motorku "moto".
-   PRAHA MHD: "metrem z Hájů na Florenc" -> routeBetween s mode "metro" (from/to = názvy stanic);
-   "tramvají z A do B" -> mode "tram". Konkrétní ČÍSLO LINKY (autobus 119, tramvaj 22, metro A) -> routeLine.
-   Jiné vozidlo na trase (autobus, sanitka, hasiči, nákladní auto…) -> setVehicle; víc vozidel najednou -> addVehicle.
-6g. VÍC ZEMÍ NAJEDNOU: na KAŽDOU zemi samostatné volání colorPolitical se svou barvou —
-   "Ukrajinu žlutě a Rusko červeně" = DVĚ volání. Nikdy žádnou zemi nevynechávej.
-6i. "vrať to", "zpět", "krok zpět", "zruš to", "to ne", "vrať poslední změnu" -> undo {} (JEDNO volání). NIKDY na to nepoužívej clearScene ani resetApp. "znovu", "krok vpřed" -> redo {}.
-6h. resetApp používej JEN na "na začátek", "reset", "domů" — nic nemaže, jen vrátí rozhraní a pohled.
-   "smaž/vymaž všechno", "vyčisti mapu" -> clearScene {"what":"all"}. Na "ukaž celé Česko" použij
-   showRegion {"region":"czechia"} — resetApp by přepnul podklad a zrušil, co uživatel chtěl.
-6d. Na dotaz NA VZDÁLENOST ("kolik je to", "jak daleko", "vzdušnou čarou")
-   použij measureDistance {from, to} a vrať "done":false. Číslo NAPIŠ do "say"
-   TEPRVE v dalším kole z distanceKm ve VÝSLEDCÍCH.
-   NIKDY neuveď žádnou vzdálenost, azimut, plochu ani jiné číslo, které nepřišlo
-   ve VÝSLEDCÍCH PROVEDENÝCH NÁSTROJŮ. Když číslo nemáš, ZMĚŘ ho — nikdy nehádej.
-   routeBetween dává délku po silnici; pro vzdušnou čáru je to špatný nástroj.
-6g. Zájmena a odkazy ("to", "tam", "ten stát", "na té mapě", "tu barvu") vztahuj
-   k AKTUÁLNÍMU STAVU MAPY výše a k tomu, co se provedlo v předchozích tazích.
-   Když se odpověď dá určit ze stavu, NEPTEJ se znovu a rovnou to proveď.
-   Odebírací a opravné pokyny ("nechci", "zruš", "ostatní ne", "jen X", "vrať zpátky")
-   NEJSOU nový příkaz — jsou úprava toho, co už na mapě je. Splň je zrušením nebo
-   přebarvením existujícího prvku, ne novým vytvořením. STAV MAPY.scene říká, co na mapě JE
-   (scene.colored = obarvené státy, scene.labels, scene.arrows, scene.route, scene.selected = počet vybraných…).
-   "a teď ho dej červeně" po obarvení státu -> colorPolitical téhož státu s novou barvou;
-   "X tam nechci" -> colorPolitical {"country":"X","clear":true}; "smaž popisek" -> clearScene {"what":"labels"};
-   "udělej to vlakem" -> routeBetween se STEJNÝM from/to ze scene.route a mode "train".
-6h. Názvy míst se spojovníkem jsou JEDNO místo: "Brno-Komín", "Praha-Libuš",
-   "Frýdek-Místek" -> gotoPlace {"query":"Brno-Komín"}. Pomlčka NENÍ oddělovač dvou míst
-   a městské části piš vždy s městem: {"query":"Brno-Komín"}.
-6i. Odpovídej gramaticky správnou češtinou a názvy míst piš správně i tehdy,
-   když je uživatel napsal s překlepem („Barandov" -> Barrandov, „zemekoule" ->
-   zeměkoule). Překlepy uživatele do odpovědi nepřebírej.
-   Na dotaz "co umíš" popiš schopnosti lidsky — NIKDY nevypisuj interní jména funkcí.
-7. NEUMÍŠ: exportovat video nebo PNG sekvenci, ukládat/načítat/mazat projekty, ukládat presety, nahrávat soubory.
-   Když to uživatel chce, nastav "calls" na otevření správného místa (openTab export / projekt) a v "say"
-   vysvětli, že poslední krok musí kliknout sám. Snímek PNG ale uložit umíš (exportPng).
-8. Když uživatel chce "otevři nástroj X": pro KONKRÉTNÍ nástroj použij openSection
-   (stíny/AO/slunce → sunShadowSection, 3D model/GLB → model3dSection, popisky →
-   mapLabelSection, presety → stylePresetSection, barvy a hranice států → countryBordersOverlaySection,
-   uzavírky → pzClosureSection, vlajky/politická mapa → setBaseStyle political (vlajky přidá placeFlag), kamera → cameraAnimSection, zastávky → waypointSection,
-   trasa A→B → navigationABSection, barvy vozidla / ikona na trase → animationSystemIconsSection).
-   Jen pro celou oblast použij openTab (export → export, projekt → projekt, animace → animace, nastavení → nastaveni).
-PŘÍKLADY (přesně takto):
-"přepni na satelit" -> {"say":"Přepínám na satelit.","calls":[{"tool":"setBaseStyle","args":{"style":"satellite"},"label":"Satelit"}],"done":true}
-"trasa z Prahy do Brna" -> {"say":"Kreslím trasu Praha–Brno.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Brno"},"label":"Trasa"}],"done":true}
+- Splň CELÉ zadání redaktora: rozlož ho na všechny potřebné kroky v logickém pořadí (podklad → trasa → vozidlo → popisky…). Neptej se, když to jde udělat.
+- Jen nástroje a hodnoty ze seznamu. Místa v 1. pádu (z Prahy → Praha). "Brno-Komín" je jedno místo. Opravuj překlepy.
+- Nevymýšlej místa z běžných slov ("hoď tam satelit" = jen setBaseStyle). Nejvýš jeden gotoPlace/show3D v plánu.
+- Víc států / vlajek / ikon = samostatné volání pro každý.
+- Vzdálenost: measureDistance a "done":false; číslo řekni až z výsledků. Nikdy nehádej čísla.
+- Odkazy ("to", "ho", "tam", "Rusko ne", "udělej to vlakem") vztahuj ke STAVU MAPY (scene) a předchozím krokům: uprav existující věc, nevytvářej novou.
+- "vrať/zpět/zruš to" = undo; "smaž všechno" = clearScene all; resetApp jen na "reset/na začátek".
+- Událost na místě ("nehoda v Humpolci") = placeIcon + addLabel se stejným place.
+- Praha MHD: "metrem/tramvají z A do B" = routeBetween s mode metro/tram; konkrétní číslo linky = routeLine. Vozidlo (autobus, sanitka…) = setVehicle, víc vozidel = addVehicle.
+- Trasa přes místo: routeBetween + openSection waypointSection a v "say" řekni, ať zastávku doklikne.
+- Neumíš: barvit kraje ČR, počasí, export videa, ukládat projekty, nahrávat soubory. Řekni to a případně otevři správnou záložku. PNG umíš (exportPng).
+- "say" max 2 věty, popisuje jen to, co nástroje opravdu dělají. Na "co umíš" odpověz lidsky bez názvů funkcí. Nesouvisející dotaz: prázdné calls.
+
+PŘÍKLADY:
+"trasa vlakem z Prahy do Brna" -> {"say":"Kreslím trasu vlakem Praha–Brno.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Brno","mode":"train"},"label":"Trasa"}],"done":true}
 "nehoda v Humpolci" -> {"say":"Označuji nehodu v Humpolci.","calls":[{"tool":"placeIcon","args":{"place":"Humpolec","kind":"nehoda","zoom":12.5},"label":"Ikonka"},{"tool":"addLabel","args":{"place":"Humpolec","text":"NEHODA"},"label":"Popisek"}],"done":true}
-"obarvi Jihomoravský kraj" -> {"say":"Barvení krajů aplikace nemá. Můžu obarvit celý stát nebo nakreslit perimetr okolo Brna.","calls":[],"done":true}
-"smaž všechno" -> {"say":"Mažu celou scénu i trasu. Vrátíš to krokem zpět (Ctrl+Z).","calls":[{"tool":"clearScene","args":{"what":"all"},"label":"Smazat vše"}],"done":true}
-"obarvi Ukrajinu žlutě a Rusko červeně" -> {"say":"Barvím Ukrajinu a Rusko.","calls":[{"tool":"colorPolitical","args":{"country":"Ukrajina","color":"žlutá"},"label":"Ukrajina"},{"tool":"colorPolitical","args":{"country":"Rusko","color":"červená"},"label":"Rusko"}],"done":true}
-"vlakem z Prahy do Plzně" -> {"say":"Kreslím trasu vlakem Praha–Plzeň.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Plzeň","mode":"train"},"label":"Vlak"}],"done":true}
-"uzavírka D1 mezi Humpolcem a Větrným Jeníkovem" -> {"say":"Vyznačuji uzavřený úsek D1.","calls":[{"tool":"roadClosure","args":{"from":"Humpolec","to":"Větrný Jeníkov"},"label":"Uzavírka"}],"done":true}
-"vrať to o krok zpět" -> {"say":"Vracím poslední změnu.","calls":[{"tool":"undo","args":{},"label":"Krok zpět"}],"done":true}
-"výluka metra C mezi Florencí a Kačerovem" -> {"say":"Vyznačuji výluku metra C.","calls":[{"tool":"metroClosure","args":{"line":"C","from":"Florenc","to":"Kačerov"},"label":"Výluka metra"}],"done":true}
-"ukaž 3D Letňany" -> {"say":"Letím na Letňany ve 3D.","calls":[{"tool":"show3D","args":{"query":"Letňany"},"label":"3D Letňany"}],"done":true}
+"politická mapa, Ukrajina žlutě, Rusko červeně, k tomu vlajky" -> {"say":"Politická mapa s Ukrajinou a Ruskem a jejich vlajkami.","calls":[{"tool":"setBaseStyle","args":{"style":"political"},"label":"Politická"},{"tool":"colorPolitical","args":{"country":"Ukrajina","color":"žlutá"},"label":"Ukrajina"},{"tool":"colorPolitical","args":{"country":"Rusko","color":"červená"},"label":"Rusko"},{"tool":"placeFlag","args":{"country":"Ukrajina"},"label":"Vlajka"},{"tool":"placeFlag","args":{"country":"Rusko"},"label":"Vlajka"}],"done":true}
 "tramvaj 22 z Bílé Hory na Náměstí Míru" -> {"say":"Kreslím trasu tramvaje 22.","calls":[{"tool":"routeLine","args":{"line":"22","from":"Bílá Hora","to":"Náměstí Míru"},"label":"Linka 22"}],"done":true}
-"metrem z Hájů na Florenc" -> {"say":"Kreslím trasu metrem Háje–Florenc.","calls":[{"tool":"routeBetween","args":{"from":"Háje","to":"Florenc","mode":"metro"},"label":"Metro"}],"done":true}
-"dej vlajky Česka a Německa" -> {"say":"Přidávám vlajky Česka a Německa.","calls":[{"tool":"placeFlag","args":{"country":"Česko"},"label":"Vlajka CZ"},{"tool":"placeFlag","args":{"country":"Německo"},"label":"Vlajka DE"}],"done":true}
-"ať tam jede sanitka" -> {"say":"Na trasu dávám sanitku.","calls":[{"tool":"setVehicle","args":{"type":"ambulance"},"label":"Sanitka"}],"done":true}
-"modrá TN mapa" -> {"say":"Přepínám na preset Modrá – TN.","calls":[{"tool":"applyPreset","args":{"preset":"tnModra"},"label":"Modrá – TN"}],"done":true}
-"kolik je to z Prahy do Vídně vzdušnou čarou" -> {"say":"Měřím.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"Vídeň"},"label":"Vzdálenost"}],"done":false}
-Názvy míst dávej VŽDY v 1. pádu (Prahy -> Praha, do Brna -> Brno, z Ostravy -> Ostrava).
-Když uživatel řekne příkaz, PROVEĎ ho hned — neptej se na doplnění, pokud není opravdu nutné.`;
+"obarvi Jihomoravský kraj" -> {"say":"Barvení krajů aplikace nemá. Můžu obarvit stát nebo nakreslit perimetr kolem Brna.","calls":[],"done":true}
+"kolik je to z Prahy do Vídně" -> {"say":"Měřím.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"Vídeň"},"label":"Vzdálenost"}],"done":false}`;
 }
 __name(systemPrompt, "systemPrompt");
 function extractPlan(text) {
@@ -374,6 +214,7 @@ var worker_default = {
       return json({ error: "Neplatný JSON." }, 400, origin);
     }
     const history = Array.isArray(body.messages) ? body.messages.slice(-8) : [];
+    const model = /^http:\/\/localhost(:\d+)?$/.test(origin) && TEST_MODELS.includes(body.model) ? body.model : MODEL;
     if (!history.length) return json({ say: "Napiš mi, co má mapa udělat.", calls: [], done: true }, 200, origin);
     const messages = [{ role: "system", content: systemPrompt(body.mapState, typeof body.lang === "string" ? body.lang.slice(0, 2).toLowerCase() : "cs") }];
     for (const m of history) {
@@ -391,7 +232,10 @@ var worker_default = {
     try {
       // Strop se platí jen za skutečně vygenerované tokeny, krátkou odpověď
       // nezdraží; 450 ale ořízne delší plán uprostřed JSONu.
-      const out = await env.AI.run(MODEL, { messages, max_tokens: 900, temperature: 0.2 });
+      const extra = model !== MODEL && body.extra && typeof body.extra === "object" ? body.extra : {};
+      const think = /gemma-4|qwen3|glm-4/.test(model) ? NO_THINK : {};
+      const out = await env.AI.run(model, { messages, max_tokens: 900, temperature: 0.2, ...think, ...extra });
+      if (body.debug && model !== MODEL) return json({ raw: out }, 200, origin);
       const r = out && (out.response ?? out.result ?? out.output_text);
       let plan = null;
       if (r && typeof r === "object") plan = r;
@@ -405,14 +249,15 @@ var worker_default = {
       // dostane hluché "Nerozumím" i na dotaz, kterému model rozuměl.
       if (!plan) {
         try {
-          const fix = await env.AI.run(MODEL, {
+          const fix = await env.AI.run(model, {
             messages: [
               ...messages,
               { role: "assistant", content: String(r || "").slice(0, 500) },
               { role: "user", content: 'Tohle nebyl platný JSON. Vrať POUZE jeden JSON objekt {"say":"…","calls":[],"done":true}, nic jiného, žádný text okolo.' }
             ],
             max_tokens: 900,
-            temperature: 0
+            temperature: 0,
+            ...think
           });
           const fr = fix && (fix.response ?? fix.result ?? fix.output_text);
           plan = fr && typeof fr === "object" ? fr : typeof fr === "string" ? extractPlan(fr) : null;
