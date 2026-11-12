@@ -2891,6 +2891,12 @@ const STYLES = {
 const PRESETS = {
   // Výchozí vzhled TN: Positron + presety „Světlá“. Kontrastní varianty drží
   // stejnou barevnost, jen tmavší plochy, sytější vodu a tmavší popisky a hranice.
+  // Podle zpravodajské grafiky TN (mapa Evropy s obarvenými státy): tmavě modré
+  // moře, světle modrá pevnina, tmavě modré hranice států, bez silnic a popisků.
+  tnModra:{land:'#a8c4e8',water:'#3d6094',building:'#a8c4e8',park:'#a8c4e8',landcover:'#a8c4e8',landuse:'#a8c4e8',aeroway:'#a8c4e8',roadMajor:'#c3d6ef',roadMinor:'#b6cdeb',label:'#0e1e33',halo:'#ffffff',boundary:'#2f5185',railway:'#7f9bc4',transit:'#7f9bc4',motorway:'#c3d6ef',primary:'#c3d6ef',secondary:'#b6cdeb'},
+  // Podle grafiky TN na obrazovce ve studiu: tmavě modré moře, světle šedomodrá
+  // pevnina, tenké tmavé hranice, bez silnic a popisků.
+  tnStudio:{land:'#e2e8ef',water:'#1e3866',building:'#e2e8ef',park:'#e2e8ef',landcover:'#e2e8ef',landuse:'#e2e8ef',aeroway:'#e2e8ef',roadMajor:'#f3f6f9',roadMinor:'#eaeff4',label:'#0e1e33',halo:'#ffffff',boundary:'#2b3647',railway:'#8b96a5',transit:'#8b96a5',motorway:'#f3f6f9',primary:'#f3f6f9',secondary:'#eaeff4'},
   tnSvetla:{land:'#eef2f6',water:'#bed8ee',building:'#0080ff',park:'#dddcef',landcover:'#e6edf3',landuse:'#dfe8f1',aeroway:'#f2f4f8',roadMajor:'#ffffff',roadMinor:'#e4ebf2',label:'#162a43',halo:'#ffffff',boundary:'#1a2a44',railway:'#707780',transit:'#8a5a2b',motorway:'#ffffff',primary:'#ffffff',secondary:'#e4ebf2'},
   tnSvetlaKontrast:{land:'#e4eaf1',water:'#a6c9e9',building:'#0080ff',park:'#d2d1ea',landcover:'#dbe3ec',landuse:'#d3dde8',aeroway:'#e9edf3',roadMajor:'#ffffff',roadMinor:'#f6f8fb',label:'#0e1e33',halo:'#ffffff',boundary:'#14233b',railway:'#5c636c',transit:'#8a5a2b',motorway:'#ffffff',primary:'#ffffff',secondary:'#f6f8fb'},
   tnSvetlaVyrazna:{land:'#d8e0ea',water:'#8fbae3',building:'#0080ff',park:'#c6c4e4',landcover:'#cfd8e3',landuse:'#c6d2e0',aeroway:'#dfe5ee',roadMajor:'#ffffff',roadMinor:'#ffffff',label:'#08142a',halo:'#ffffff',boundary:'#0c1a30',railway:'#4a5159',transit:'#8a5a2b',motorway:'#ffffff',primary:'#ffffff',secondary:'#ffffff'},
@@ -2951,9 +2957,9 @@ const PRESETS = {
   flightradar:{land:'#879987',water:'#779b9c',building:'#90988e',park:'#78977b',landcover:'#819b83',landuse:'#8d9788',aeroway:'#90958a',roadMajor:'#647182',roadMinor:'#849087',motorway:'#566a82',primary:'#68778a',secondary:'#7b8584',railway:'#69736c',label:'#23282b',halo:'#aab6aa',boundary:'#202828'}
 };
 
-const BUILTIN_PRESET_ORDER = ['tnSvetla','tnSvetlaKontrast','tnSvetlaVyrazna','mapycz','mapycomTuristicka','flightradar','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
+const BUILTIN_PRESET_ORDER = ['tnSvetla','tnSvetlaKontrast','tnSvetlaVyrazna','tnModra','tnStudio','mapycz','mapycomTuristicka','flightradar','waze','uber','ct24','tnNovaClean','modSoft1','modSoft7','modSoft11','modSoft16','modSoft20','novaBlue','novaTerrain','ua','dark','slate','paper','news','sunset','ocean','mint','candy','neon','tn','reset','newsPro','newsDark','newsWarm','newsPrint','newsBlue','newsSoft','newsClean','newsNight','gptBlue','gptWhite'];
 const BUILTIN_PRESET_LABELS = {
-  tnSvetla:'Světlá', tnSvetlaKontrast:'Světlá – kontrast', tnSvetlaVyrazna:'Světlá – výrazná',
+  tnSvetla:'Světlá', tnSvetlaKontrast:'Světlá – kontrast', tnSvetlaVyrazna:'Světlá – výrazná', tnModra:'Modrá – TN', tnStudio:'Studio – TN',
   mapycz:'Čistá navigační', mapycomTuristicka:'Turistická', flightradar:'Letecká olivová', waze:'Navigační světlá', uber:'Městská tmavá', ct24:'Zpravodajská modrá', tnNovaClean:'TN Nova clean',
   modSoft1:'Modrá Jemná 1', modSoft7:'Modrá Jemná 7', modSoft11:'Modrá Jemná 11', modSoft16:'Modrá Jemná 16', modSoft20:'Modrá Jemná 20',
   novaBlue:'TV Modrá', novaTerrain:'TV Reliéf',
@@ -2965,6 +2971,8 @@ const BUILTIN_PRESET_LABELS = {
 const DEFAULT_BUILTIN_PRESET_RANGES = {majorWidth:'1.3', minorWidth:'1.0', buildingOpacity:'0.72', boundaryOpacity:'1', boundaryWidth:'1.2'};
 const DEFAULT_BUILTIN_PRESET_VISIBILITY = {showBuildings:true, showParks:true, showLandcover:true, showLanduse:true, showAeroway:true, showBoundaries:true, showLabels:true, showRoadShields:true, showMinorRoads:true, showMajorRoads:true, showMotorways:true, showPrimaryRoads:true, showSecondaryRoads:true, showWaterways:true, showRailways:true, showMetro:false, showTransit:false};
 const BUILTIN_PRESET_STYLE_OVERRIDES = {
+  tnStudio:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0',boundaryOpacity:'1',boundaryWidth:'1.2',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0'},visibility:{showBuildings:false,showParks:false,showLandcover:false,showLanduse:false,showAeroway:false,showBoundaries:true,showLabels:false,showRoadShields:false,showMinorRoads:false,showMajorRoads:false,showMotorways:false,showPrimaryRoads:false,showSecondaryRoads:false,showWaterways:false,showRailways:false,showMetro:false,showTransit:false}},
+  tnModra:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'0',boundaryOpacity:'1',boundaryWidth:'1.6',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0'},visibility:{showBuildings:false,showParks:false,showLandcover:false,showLanduse:false,showAeroway:false,showBoundaries:true,showLabels:false,showRoadShields:false,showMinorRoads:false,showMajorRoads:false,showMotorways:false,showPrimaryRoads:false,showSecondaryRoads:false,showWaterways:false,showRailways:false,showMetro:false,showTransit:false}},
   tnSvetla:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'1',boundaryOpacity:'1',boundaryWidth:'1.2',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.56'},visibility:{showBuildings:false,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnSvetlaKontrast:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'1',boundaryOpacity:'1',boundaryWidth:'1.45',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1.1',metroWidth:'1',transitWidth:'1',parkOpacity:'0.7'},visibility:{showBuildings:false,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
   tnSvetlaVyrazna:{ranges:{majorWidth:'1.3',minorWidth:'1',buildingOpacity:'1',boundaryOpacity:'1',boundaryWidth:'1.7',motorwayWidth:'1',primaryWidth:'1',secondaryWidth:'1',railwayWidth:'1.25',metroWidth:'1',transitWidth:'1',parkOpacity:'0.85'},visibility:{showBuildings:false,showParks:true,showLandcover:true,showLanduse:true,showAeroway:true,showBoundaries:true,showLabels:true,showRoadShields:true,showMinorRoads:true,showMajorRoads:true,showMotorways:true,showPrimaryRoads:true,showSecondaryRoads:true,showWaterways:true,showRailways:true,showMetro:false,showTransit:false}},
@@ -3042,7 +3050,7 @@ function legacyBuiltinPresetNameOverrides(){
 // Ve výchozím stavu nabízíme jen tři presety. Šestatřicet dlaždic je pro
 // grafika, který appku vidí poprvé, spíš překážka než nabídka — zbytek zůstává
 // zapnutelný ve Správě presetů a nic se nemaže.
-const DEFAULT_VISIBLE_BUILTIN_PRESETS = ['tnSvetla', 'tnSvetlaKontrast', 'tnSvetlaVyrazna'];
+const DEFAULT_VISIBLE_BUILTIN_PRESETS = ['tnSvetla', 'tnSvetlaKontrast', 'tnSvetlaVyrazna', 'tnModra', 'tnStudio'];
 function hasStoredBuiltinPrefs(){
   if(readBuiltinPrefsRecord()) return true;
   try{ if(localStorage.getItem(HIDDEN_BUILTIN_PRESET_KEY) != null) return true; }catch(e){}
@@ -16640,7 +16648,7 @@ const PZ_EN_TEXT = {
   'Velikost a průhlednost vrstev':'Layer size and opacity', 'Ambientní okluze (AO)':'Ambient occlusion (AO)', 'Síla AO':'AO strength',
   'Vrhat stíny budov':'Cast building shadows', 'Hranice států':'Country borders', 'Vybarvit stát':'Colour a country',
   'Další nastavení výplně':'More fill settings', 'Průhlednost':'Opacity',
-  'Světlá':'Light', 'Světlá – kontrast':'Light – contrast', 'Světlá – výrazná':'Light – bold',
+  'Světlá':'Light', 'Světlá – kontrast':'Light – contrast', 'Světlá – výrazná':'Light – bold', 'Modrá – TN':'Blue – TN', 'Studio – TN':'Studio – TN',
   'Kamion':'Truck', 'Nákladní auto':'Lorry', 'Nákladní':'Lorry', 'Motorka':'Motorbike', 'Vlak':'Train', 'Loď':'Boat',
   'Měřítko':'Scale', 'Velikost':'Size', 'Osa nahoru':'Up axis', 'Nahrát GLB soubor':'Upload GLB file',
   'Ikona se natáčí po směru jízdy / letu automaticky.':'The icon turns along the direction of travel automatically.',
