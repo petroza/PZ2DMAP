@@ -24,9 +24,16 @@ const {check, done, open, tab} = require('./lib');
   await page.keyboard.press('Delete'); await page.waitForTimeout(500);
   fl = await page.evaluate(() => window.__pzFns.pzFlagList().map(f => f.iso).join(','));
   check(fl === 'de', 'klik na vlajku + Delete ji smaže (' + fl + ')');
+  // přesun tažením
+  const before = await page.evaluate(() => window.__pzFns.pzFlagList()[0].lngLat);
+  p = await px(before); await page.mouse.move(p.x, p.y); await page.mouse.down(); await page.mouse.move(p.x + 60, p.y + 40, {steps: 8}); await page.mouse.up(); await page.waitForTimeout(500);
+  const after = await page.evaluate(() => window.__pzFns.pzFlagList()[0].lngLat);
+  const n = await page.evaluate(() => window.__pzFns.pzFlagList().length);
+  check(n === 1 && after[0] > before[0] + 0.5 && after[1] < before[1] - 0.3, 'vlajku jde přetáhnout jinam (' + before.map(v => v.toFixed(2)) + ' → ' + after.map(v => v.toFixed(2)) + ', vlajek ' + n + ')');
   const snap = await page.evaluate(() => window.__pzFns.serializeProjectSnapshot().countryFlags);
   check(Array.isArray(snap) && snap.length === 1 && snap[0].iso === 'de', 'vlajky se ukládají do projektu');
-  await page.keyboard.press('Control+z'); await page.waitForTimeout(1500);
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(1500);   // vrátí přesun
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(1500);   // vrátí smazání
   fl = await page.evaluate(() => window.__pzFns.pzFlagList().map(f => f.iso).sort().join(','));
   check(fl === 'cz,de', 'krok zpět vrátí smazanou vlajku (' + fl + ')');
   check(!errors.length, 'bez chyb v konzoli ' + errors.join(' | '));

@@ -7439,7 +7439,42 @@ function pzEnsureFlagLayer(map){
   // export: výběrový kroužek do videa nepatří
   if(m !== state.map || state._exporting) try{ m.setLayoutProperty('pz-flags-sel', 'visibility', 'none'); }catch(e){}
 }
-function pzFlagsRefresh(){ try{ pzEnsureFlagLayer(); }catch(e){ console.warn('flags', e); } }
+function pzFlagsRefresh(){ try{ pzEnsureFlagLayer(); pzInitFlagDrag(); }catch(e){ console.warn('flags', e); } }
+// Přesun vlajky tažením (myš i dotyk): chytit vlajku, táhnout, pustit.
+function pzInitFlagDrag(){
+  const m = state.map; if(!m || m._pzFlagDrag) return;
+  m._pzFlagDrag = true;
+  let drag = null;
+  const start = e => {
+    if(state._exporting || !m.getLayer('pz-flags')) return;
+    const id = pzFlagAt(e.point); if(!id) return;
+    const f = pzFlagList().find(x => x.id === id); if(!f) return;
+    e.preventDefault();
+    try{ window.__pzPushUndo?.(); }catch(_e){}
+    drag = {f, moved: false};
+    state.pzFlagSel = id; state.ignoreNextMapClick = false;
+    try{ m.dragPan.disable(); }catch(_e){}
+    m.getCanvas().style.cursor = 'grabbing';
+    pzFlagsRefresh();
+  };
+  const move = e => {
+    if(!drag) return;
+    drag.moved = true; drag.f.lngLat = [e.lngLat.lng, e.lngLat.lat];
+    try{ m.getSource('pz-flags')?.setData(pzFlagsFC()); }catch(_e){}
+  };
+  const end = () => {
+    if(!drag) return;
+    const moved = drag.moved; drag = null;
+    try{ m.dragPan.enable(); }catch(_e){}
+    m.getCanvas().style.cursor = '';
+    if(moved){ state.ignoreNextMapClick = true; setStatus(t('Vlajka přesunuta.')); }
+    pzFlagsRefresh();
+  };
+  m.on('mousedown', start); m.on('touchstart', e => { if(e.points?.length === 1) start(e); });
+  m.on('mousemove', e => { if(drag) move(e); else if(m.getLayer('pz-flags')) m.getCanvas().style.cursor = pzFlagAt(e.point) ? 'move' : ''; });
+  m.on('touchmove', move);
+  m.on('mouseup', end); m.on('touchend', end);
+}
 function pzFlagAt(point){
   const m = state.map; if(!m?.getLayer?.('pz-flags')) return null;
   const hit = m.queryRenderedFeatures([[point.x - 14, point.y - 11], [point.x + 14, point.y + 11]], {layers:['pz-flags']}) || [];
@@ -18117,6 +18152,7 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Vlajka přesunuta.": {cs:"Vlajka přesunuta.",sk:"Vlajka presunutá.",bg:"Знамето е преместено.",hr:"Zastava premještena.",ro:"Steag mutat.",en:"Flag moved."},
   "Vlajka vybrána — Delete ji smaže.": {cs:"Vlajka vybrána — Delete ji smaže.",sk:"Vlajka vybraná — Delete ju zmaže.",bg:"Знамето е избрано — Delete го изтрива.",hr:"Zastava odabrana — Delete je briše.",ro:"Steag selectat — Delete îl șterge.",en:"Flag selected — press Delete to remove it."},
   "{0} — vlajka přidána.": {cs:"{0} — vlajka přidána.",sk:"{0} — vlajka pridaná.",bg:"{0} — знамето е добавено.",hr:"{0} — zastava dodana.",ro:"{0} — steag adăugat.",en:"{0} — flag added."},
   "Vlajka smazána.": {cs:"Vlajka smazána.",sk:"Vlajka zmazaná.",bg:"Знамето е изтрито.",hr:"Zastava obrisana.",ro:"Steag șters.",en:"Flag removed."},
