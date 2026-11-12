@@ -2,7 +2,7 @@
 
 Claude (claude.ai, desktop) ovládá otevřenou TN mapu přes MCP (Streamable HTTP, bez přihlášení).
 
-- `https://tnmap-mcp.petrzavorka.workers.dev/mcp` — **společný konektor** (přidá jednou správce
+- `https://tnmap.pages.dev/mcp` (Pages Function `functions/mcp` přeposílá sem; přímo i `https://tnmap-mcp.petrzavorka.workers.dev/mcp`) — **společný konektor** (přidá jednou správce
   organizace nebo kdokoli pro sebe). Claude se k mapě připojí nástrojem `pripojit_mapu {kod}`.
 - `https://tnmap-mcp.petrzavorka.workers.dev/mcp/<KÓD>` — konektor napevno pro jednu mapu (prohlížeč).
 - `wss://…/ws/<KÓD>` — připojení mapy z prohlížeče (TN mapa → asistent → Claude → Povolit).

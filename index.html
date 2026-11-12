@@ -22104,7 +22104,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   let claudeCode = lsGet('pzClaudeCode'); if(!/^[A-Z2-9]{10}$/.test(claudeCode || '')){ claudeCode = newCode(); lsSet('pzClaudeCode', claudeCode); }
   let claudeOn = lsGet('pzClaudeOn') === '1', claudeWs = null, claudeLive = false, claudeRetry = 0, claudeTimer = null, claudePing = null;
   const prettyCode = c => c.slice(0, 4) + '-' + c.slice(4, 8) + '-' + c.slice(8);
-  const connectorUrl = () => 'https://' + CLAUDE_HOST + '/mcp/' + claudeCode;
+  // Konektor na adrese aplikace (Pages Function functions/mcp přeposílá na worker).
+  const connectorUrl = () => (/^https:\/\//.test(location.origin) ? location.origin : 'https://tnmap.pages.dev') + '/mcp/' + claudeCode;
   function claudeRender(){
     claudeBtn.classList.toggle('on', claudeOn); claudeBtn.classList.toggle('live', claudeOn && claudeLive);
     if(claudeBox.hidden) return;
