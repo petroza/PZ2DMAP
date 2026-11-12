@@ -7810,11 +7810,18 @@ async function ensureGeoDataLoaded(){
   if(state.geoDataLoading) return state.geoDataLoading;
   state.geoDataLoading = Promise.allSettled([
     fetchGeoJsonWithFallback(COUNTRY_SOURCE_URLS),
-    fetchGeoJsonWithFallback(COUNTRY_BORDER_SOURCE_URLS)
-  ]).then(([countriesRes, countryBordersRes]) => {
+    fetchGeoJsonWithFallback(COUNTRY_BORDER_SOURCE_URLS),
+    fetch('assets/countries_ce_hires.geojson').then(r => r.ok ? r.json() : null).catch(() => null)
+  ]).then(([countriesRes, countryBordersRes, hiresRes]) => {
     state.geoDataError = null;
     if(countriesRes.status === 'fulfilled'){
       state.countriesGeojson = normalizeCountryGeoJSON(countriesRes.value);
+      // Česko a sousedé v podrobném měřítku 1:1 mil. (GISCO), ať obarvený stát sedí
+      // na hranice v podkladu; zbytek světa zůstává v lehkém 1:20 mil.
+      try{
+        const hi = {}; (hiresRes?.value?.features || []).forEach(f => { if(f?.properties?.CNTR_ID) hi[f.properties.CNTR_ID] = f.geometry; });
+        state.countriesGeojson.features.forEach(f => { const g = hi[f.properties.CNTR_ID || f.properties.__appId]; if(g) f.geometry = g; });
+      }catch(e){}
       populateCountrySelects();
     }else{
       console.error(countriesRes.reason);
