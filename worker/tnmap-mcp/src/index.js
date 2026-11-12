@@ -1,7 +1,7 @@
 // TN mapa — MCP konektor pro Claude.
 //
 // Claude (vlastní konektor, Streamable HTTP, bez přihlášení) volá nástroje mapy.
-// Mapa běží v prohlížeči redaktora; ten se připojí WebSocketem do „místnosti"
+// Mapa běží v prohlížeči grafika; ten se připojí WebSocketem do „místnosti"
 // (Durable Object) se svým kódem. Volání nástroje = zpráva do místnosti → prohlížeč
 // ho provede přes window.TNMAP → výsledek se vrátí Claudovi.
 //
@@ -17,12 +17,12 @@ const normCode = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
 const INSTRUCTIONS = `Ovládáš TN mapu — webovou aplikaci TV Nova na mapovou grafiku do zpráv (trasy, uzavírky, vlajky, popisky, animace vozidel, export).
-Mapa běží v prohlížeči redaktora. Když nástroj vrátí, že mapa není připojená, popros redaktora, ať v TN mapě otevře asistenta → „Claude" a pošle ti kód; pak zavolej pripojit_mapu.
-Postup: splň celé zadání redaktora — rozlož ho na kroky a volej nástroje postupně. Místa piš v 1. pádu česky. Po větších změnách zavolej snimek_mapy a zkontroluj výsledek očima; když něco nesedí, oprav to.
+Mapa běží v prohlížeči grafika. Když nástroj vrátí, že mapa není připojená, popros grafika, ať v TN mapě otevře asistenta → „Claude" a pošle ti kód; pak zavolej pripojit_mapu.
+Postup: splň celé zadání grafika — rozlož ho na kroky a volej nástroje postupně. Místa piš v 1. pádu česky. Po větších změnách zavolej snimek_mapy a zkontroluj výsledek očima; když něco nesedí, oprav to.
 Kraje ČR barvit nejde, video ani projekty neuložíš (export videa je tlačítko v záložce Export).`;
 
 const EXTRA_TOOLS = [
-  {name: 'pripojit_mapu', description: 'Připojí tento rozhovor k otevřené TN mapě redaktora. Kód (10 znaků) najde redaktor v TN mapě: asistent → tlačítko Claude.', inputSchema: {type: 'object', properties: {kod: {type: 'string', description: 'Kód z TN mapy, např. K7F3-X9Q2-AB'}}, required: ['kod']}},
+  {name: 'pripojit_mapu', description: 'Připojí tento rozhovor k otevřené TN mapě grafika. Kód (10 znaků) najde grafik v TN mapě: asistent → tlačítko Claude.', inputSchema: {type: 'object', properties: {kod: {type: 'string', description: 'Kód z TN mapy, např. K7F3-X9Q2-AB'}}, required: ['kod']}},
   {name: 'stav_mapy', description: 'Aktuální stav mapy: podklad, výřez, režim trasy a co je ve scéně (trasa, popisky, obarvené státy, vlajky…).', inputSchema: {type: 'object', properties: {}}},
   {name: 'snimek_mapy', description: 'Snímek mapy tak, jak vyjde v exportu (obrázek). Použij ke kontrole výsledku.', inputSchema: {type: 'object', properties: {sirka: {type: 'number', description: 'šířka v px, výchozí 1024'}}}},
 ];
@@ -111,13 +111,13 @@ async function callTool(env, code, sid, name, args){
     const c = normCode(args.kod);
     if(!CODE.test(c)) return textResult('Kód má 10 znaků (písmena a číslice), např. K7F3-X9Q2-AB. Najdeš ho v TN mapě: asistent → Claude.', true);
     const st = await (await env.ROOMS.get(env.ROOMS.idFromName(c)).fetch('https://room/status')).json();
-    if(!st.connected) return textResult('Mapa s kódem ' + c + ' teď není otevřená. Redaktor ji musí mít otevřenou v prohlížeči (asistent → Claude).', true);
+    if(!st.connected) return textResult('Mapa s kódem ' + c + ' teď není otevřená. Grafik ji musí mít otevřenou v prohlížeči (asistent → Claude).', true);
     if(sid) await setSessionCode(env, sid, c);
     else return textResult('Připojeno, ale tento klient nepodporuje sezení — použij konektor s kódem v adrese: /mcp/' + c, true);
     return textResult({ok: true, connected: c, note: 'Mapa připojena. Nejdřív se podívej na stav_mapy.'});
   }
   if(!code) code = await sessionCode(env, sid);
-  if(!code) return textResult('Mapa zatím není připojená. Požádej redaktora o kód z TN mapy (asistent → Claude) a zavolej pripojit_mapu.', true);
+  if(!code) return textResult('Mapa zatím není připojená. Požádej grafika o kód z TN mapy (asistent → Claude) a zavolej pripojit_mapu.', true);
   if(name === 'stav_mapy'){ const r = await roomCall(env, code, '__state', {}); return textResult(r, r.ok === false); }
   if(name === 'snimek_mapy'){
     const r = await roomCall(env, code, '__capture', {width: Math.max(320, Math.min(1600, +args.sirka || 1024))});
