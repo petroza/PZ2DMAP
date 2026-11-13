@@ -12719,6 +12719,10 @@ function pzPickMetroStation(g, point, label){
   if(raw && !parseLatLng(label || '')){
     const hit = g.stations.find(st => norm(st.name) === raw);
     if(hit) return hit;
+    // skloňovaný název („z Hájů", „na Florenci", „od Anděla") — shoda začátku slova
+    const stem = raw.slice(0, Math.max(3, raw.length - 2));
+    const fuzzy = raw.length >= 4 && g.stations.find(st => norm(st.name).startsWith(stem));
+    if(fuzzy) return fuzzy;
   }
   let best = null, bd = 2.5;
   g.stations.forEach(st => { const d = haversineKm(point, [st.lon, st.lat]); if(d < bd){ bd = d; best = st; } });
@@ -22073,7 +22077,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   const EXAMPLES = ['Nehoda v Humpolci', 'Trasa autem z Prahy do Brna', 'Uzavírka D1 mezi Humpolcem a Jihlavou',
                     'Obarvi Ukrajinu žlutě', 'Přepni na satelit', 'Export PNG'];
   // Co funguje i bez AI (vyčerpaný limit, výpadek sítě).
-  const NO_AI = ['Zpět', 'Přepni na satelit', 'Nehoda v Brně', 'Smaž popisky', 'Export PNG'];
+  const NO_AI = ['Trasa autem z Prahy do Brna', 'Nehoda v Brně', 'Obarvi Polsko modře', 'Vlajky Česka a Německa', 'Tramvaj 22', 'Šipka z Kyjeva na Charkov', 'Perimetr 5 km kolem Ostravy', 'Zpět'];
   function showEmpty(){
     log.replaceChildren();
     const row = chipRow(EXAMPLES, 'tnchat-empty');
@@ -22304,8 +22308,97 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [new RegExp('^' + DEL + '(?: vsechny| vsechna| vsechnu| ty| ten| tu)? (\\w+)( statu| zemi)?$'), m => { const k = KINDS.find(([re]) => re.test(m[1])); return k ? clearPlan(k[1], k[2], k[3]) : null; }],
     // --- událost na místě: „nehoda v Humpolci", „dej požár do Ostravy"
     [new RegExp('^(?:(?:dej|pridej|vloz|oznac|ukaz|zobraz|vyznac) )?(nehod[au]|bourack[au]|havari[ei]|pozar|ohen|vybuch|exploz[ei]|polici[ei]|zasah|zachrank[au]|sanitk[au]|povoden|zaplav[ay]|varovani|spendlik|misto|bod) (?:je |byla? |se stala? )?(v|ve|na|u|do|pobliz|pri) (.+)$'),
-      (m, words) => { const ev = EVENTS.find(([re]) => re.test(m[1])); const n = m[3].split(' ').length; return ev ? {prepare: () => eventPlan(ev, words.slice(-n).join(' '))} : null; }]
+      (m, words) => { const ev = EVENTS.find(([re]) => re.test(m[1])); const n = m[3].split(' ').length; return ev ? {prepare: () => eventPlan(ev, words.slice(-n).join(' '))} : null; }],
+    // --- bez AI i složitější povely (fungují i při vyčerpaném limitu) ---------------
+    // trasa / cesta [dopravou] z X do Y   ·   vlakem z X do Y
+    [/^(?:(?:udelej|nakresli|ukaz|dej|vykresli|chci) )?(?:(?:trasu|trasa|cestu|cesta|jizda|jizdu|let|prejezd|presun) )?(?:(autem|vlakem|lodi|lodi po \w+|kamionem|nakladakem|motorkou|pesky|peso|na kole|kolem|letadlem|metrem|tramvaji|autobusem) )?(?:z|ze|od) (.+) (?:do|na|k|ke) (.+?)(?: (autem|vlakem|lodi|kamionem|nakladakem|motorkou|pesky|na kole|letadlem|metrem|tramvaji|autobusem))?$/,
+      (m, words) => { const mode = OFF_MODE(m[1] || m[4]) || (/ (na kole|kolem)$/.test(m.input) ? 'cycle' : null); if(m[1] == null && m[4] == null && !/^(udelej |nakresli |vykresli )?(trasu|trasa|cestu|cesta|let|jizd)/.test(m.input)) return null;
+        const [a, b] = splitFromTo(words); if(!a || !b) return null;
+        const plan = ([x, y]) => ({say: tr('Kreslím trasu {0} – {1}.', x, y), calls: one('routeBetween', {from: x, to: y, ...(mode ? {mode} : {})}, tr('Trasa'))});
+        // metro a tramvaj: stanice hledá síť MHD sama (i skloňované), geokodér by našel jiné místo
+        if(mode === 'metro' || mode === 'tram') return plan([a, b]);
+        return {prepare: () => offPlan([a, b], plan)}; }],
+    // šipka z X do Y
+    [/^(?:(?:udelej|nakresli|dej|pridej) )?sipk[auy]? (?:z|ze|od) (.+) (?:do|na|k|ke) (.+)$/,
+      (m, words) => { const [a, b] = splitFromTo(words); if(!a || !b) return null;
+        return {prepare: () => offPlan([a, b], ([x, y]) => ({say: tr('Kreslím šipku {0} → {1}.', x, y), calls: one('drawArrow', {from: x, to: y}, tr('Šipka'))}))}; }],
+    // vzdálenost z X do Y / kolik je to z X do Y / jak daleko
+    [/^(?:zmer |zmerit |zmer mi )?(?:vzdalenost|vzdusnou carou|kolik (?:je to|km)|jak daleko(?: je to)?)(?: vzdusnou carou)? (?:z|ze|mezi|od) (.+) (?:do|a|k) (.+?)(?: vzdusnou carou)?$/,
+      (m, words) => { const [a, b] = splitFromTo(words, true); if(!a || !b) return null;
+        return {prepare: () => offPlan([a, b], ([x, y]) => ({say: tr('Měřím vzdálenost {0} – {1}.', x, y), calls: one('measureDistance', {from: x, to: y}, tr('Vzdálenost'))}))}; }],
+    // perimetr 5 km kolem X
+    [/^(?:(?:udelej|nakresli|dej) )?(?:perimetr|okruh|kruh|kruznici)(?: o polomeru)? (\d+(?:[.,]\d+)?) ?(km|kilometru|kilometry|m|metru|metry) (?:kolem|okolo|od|z|v|u) (.+)$/,
+      (m, words) => { const v = parseFloat(m[1].replace(',', '.')); const km = /^k/.test(m[2]) ? v : v / 1000; const n = m[3].split(' ').length; const place = words.slice(-n).join(' ');
+        return {prepare: () => offPlan([place], ([x]) => ({say: tr('Perimetr {0} km kolem {1}.', String(km).replace('.', ','), x), calls: one('drawPerimeter', {place: x, km}, tr('Perimetr'))}))}; }],
+    // obarvi Polsko modře (a Ukrajinu žlutě)
+    [/^(?:obarvi|vybarvi|zvyrazni)( .+)$/,
+      (m, words) => { if(/\b(kraj|kraje|trasu|trasa|silnic|dalnic|cestu|popisk|budov|reku|vodu|more|jezer|les)/.test(m[1])) return null; const parts = countryColorParts(words.slice(1)); if(!parts.length) return null;
+        return {say: tr('Barvím: {0}.', parts.map(p => p.name).join(', ')), calls: parts.map(p => ({tool: 'colorPolitical', args: {country: p.name, ...(p.color ? {color: p.color} : {})}, label: p.name}))}; }],
+    // vlajka / vlajky X a Y
+    [/^(?:(?:dej|pridej|vloz|ukaz) )?(?:tam )?vlajk[auy]?(?: statu)? (.+)$/,
+      (m, words) => { const i = words.findIndex(w => /^vlajk/i.test(stripDia(w))); const names = countryList(words.slice(i + 1)); if(!names.length) return null;
+        return {say: tr('Přidávám vlajky: {0}.', names.join(', ')), calls: names.map(n => ({tool: 'placeFlag', args: {country: n}, label: tr('Vlajka') + ' ' + n}))}; }],
+    // linka MHD: tramvaj 22 / autobus 119 / linka C (z A do B)
+    [/^(?:(?:ukaz|udelej|nakresli|trasa|trasu) )?(?:linka|linku|linky|tramvaj|tramvaje|autobus|autobusu|bus|metro|metra) (?:linky |cislo |c\. )?([a-z]?\d{1,3}|[abc])(?: (?:z|ze|od) (.+) (?:do|na) (.+))?$/,
+      (m, words) => { const args = {line: m[1].toUpperCase()}; if(m[2]){ const [a, b] = splitFromTo(words); if(a) args.from = a; if(b) args.to = b; }
+        return {say: tr('Kreslím trasu linky {0}.', args.line), calls: one('routeLine', args, tr('Linka') + ' ' + args.line)}; }],
+    // preset / barevné schéma
+    [/^(?:(?:prepni|dej|pouzij|chci|nastav) )?(?:na |do )?(?:(?:preset|styl|schema|barvy|vzhled) )?(modr[aye] tn|tn modr[aay]|studio(?: tn)?|nocni(?: mapa)?|tn live|live|mapy ?cz|mapy\.cz|mapy ?com|turisticky styl|jako google|zelena prirodni|modra prirodni|liberty klasick[aa]|tmav[aye] (?:mapa|styl)|svetl[aye] (?:styl|preset))$/,
+      m => { const k = m[1]; const P = [[/modr. tn|tn modr/, 'tnModra', 'Modrá – TN'], [/^studio/, 'tnStudio', 'Studio – TN'], [/nocni|live/, 'tnLive', 'Noc – TN Live'], [/mapy ?\.?cz/, 'mapycz', 'Mapy.cz'],
+          [/mapy ?com|turistick/, 'mapycomTuristicka', 'Turistická'], [/google|zelena/, 'zelenaPrirodni', 'Zelená přírodní'], [/modra prirodni/, 'modraPrirodni', 'Modrá přírodní'], [/liberty/, 'libertyKlasicka', 'Liberty klasická'],
+          [/tmav/, 'dark', 'Tmavá'], [/svetl/, 'tnSvetla', 'Světlá']].find(([re]) => re.test(k));
+        return P ? {say: tr('Přepínám preset: {0}.', P[2]), calls: one('applyPreset', {preset: P[1]}, P[2])} : null; }],
+    // vozidlo na trase: ať tam jede sanitka / dej tam autobus
+    [/^(?:at (?:tam |po trase )?jede |dej (?:tam |na trasu )?|vozidlo |ikona )(auto|kamion|nakladak|nakladni auto|vlak|metro|tramvaj|autobus|lod|hasici|hasice|policie|policejni auto|sanitka|sanitku|letadlo)$/,
+      m => { const V = {auto:'car', kamion:'truck', nakladak:'lorry', 'nakladni auto':'lorry', vlak:'train', metro:'metro', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', hasice:'fire', policie:'police', 'policejni auto':'police', sanitka:'ambulance', sanitku:'ambulance', letadlo:'plane'};
+        return {say: tr('Na trasu dávám: {0}.', m[1]), calls: one('setVehicle', {type: V[m[1]]}, m[1])}; }]
   ];
+  // --- pomůcky pro povely bez AI ---
+  const OFF_MODE = w => { const k = String(w || ''); return /^autem/.test(k) ? 'driving' : /^vlakem/.test(k) ? 'train' : /^lodi/.test(k) ? 'boat' : /^(kamionem|nakladakem)/.test(k) ? 'truck'
+    : /^motorkou/.test(k) ? 'moto' : /^pes/.test(k) ? 'foot' : /kol/.test(k) ? 'cycle' : /^letadlem/.test(k) ? 'planeArc' : /^metrem/.test(k) ? 'metro' : /^tramvaji/.test(k) ? 'tram' : /^autobusem/.test(k) ? 'driving' : null; };
+  const MODE_WORDS = /^(autem|vlakem|lodi|kamionem|nakladakem|motorkou|pesky|peso|kolem|letadlem|metrem|tramvaji|autobusem|vzdusnou|carou)$/;
+  // „… z Prahy do Brna vlakem" → ['Prahy', 'Brna'] (původní slova s diakritikou)
+  function splitFromTo(words, allowA){
+    const sw = words.map(stripDia);
+    const i = sw.findIndex(w => w === 'z' || w === 'ze' || w === 'od' || (allowA && w === 'mezi'));
+    if(i < 0) return [];
+    let j = -1; for(let k = sw.length - 1; k > i + 1; k--) if((['do', 'na', 'k', 'ke'].includes(sw[k]) && sw[k + 1] !== 'kole') || (allowA && sw[k] === 'a')){ j = k; break; }
+    if(j < 0) return [];
+    const tail = words.slice(j + 1).filter((w, k) => !MODE_WORDS.test(sw[j + 1 + k]) && !(sw[j + 1 + k] === 'na' && sw[j + 2 + k] === 'kole') && sw[j + 1 + k] !== 'kole');
+    return [words.slice(i + 1, j).join(' '), tail.join(' ')];
+  }
+  // místa převést do 1. pádu (tabulka + ověření v geokodéru), jinak nechat, jak je
+  async function offPlan(places, make){
+    const out = [];
+    for(const p of places){ const hit = await resolvePlace(p).catch(() => null); out.push(hit?.name || p); }
+    return make(out);
+  }
+  // státy ve 4. pádě → 1. pád (Ukrajinu → Ukrajina); barvy (modře → modrá)
+  const COLOR_W = {cerven:'červená', modr:'modrá', zelen:'zelená', zlut:'žlutá', oranz:'oranžová', fialov:'fialová', ruzov:'růžová', sed:'šedá', cern:'černá', bil:'bílá', hned:'hnědá'};
+  const colorOf = w => { const k = stripDia(w); const c = Object.keys(COLOR_W).find(c => k.startsWith(c)); return c ? COLOR_W[c] : null; };
+  const countryNom = w => { const t = String(w).replace(/[.,]$/, ''); const k = stripDia(t);
+    const fix = {ukrajinu:'Ukrajina', francii:'Francie', italii:'Itálie', belgii:'Belgie', britanii:'Británie', anglii:'Anglie', cinu:'Čína', indii:'Indie', ameriku:'Amerika', gruzii:'Gruzie', litvu:'Litva', albanii:'Albánie', makedonii:'Makedonie', brazilii:'Brazílie', australii:'Austrálie', kanadu:'Kanada', turecko:'Turecko'};
+    if(fix[k]) return fix[k];
+    const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
+    if(/(sk|ck|zsk)a$/.test(k)) return cap(t.slice(0, -1) + 'o');          // Česka, Německa, Polska → -o
+    if(/y$/.test(k) && k.length > 4) return cap(t.slice(0, -1) + 'a');     // Ukrajiny, Litvy → -a
+    if(/u$/.test(k) && k.length > 4) return cap(t.slice(0, -1) + 'a');     // Ukrajinu → -a
+    if(/ie$/.test(k)) return cap(t);                                        // Francie, Itálie
+    return cap(t); };
+  function countryList(ws){
+    return ws.filter(w => !/^(a|i|tam|taky|statu|state|vlajky|vlajku)$/.test(stripDia(w)) && !colorOf(w)).map(countryNom).filter(n => n.length > 1);
+  }
+  function countryColorParts(ws){
+    const out = []; let cur = null;
+    for(const w of ws){
+      const k = stripDia(w);
+      if(/^(a|i|tam|na|stat|statu|mape|mapu|politicke|politickou)$/.test(k)) continue;
+      const c = colorOf(w);
+      if(c){ if(cur && !cur.color) cur.color = c; continue; }
+      cur = {name: countryNom(w)}; out.push(cur);
+    }
+    return out;
+  }
   function base(style, name){ return {say: tr('Přepínám podklad: {0}.', name), calls: one('setBaseStyle', {style}, name)}; }
   function tab(id, name){ return {say: tr('Otevírám: {0}.', tr(name)), calls: one('openTab', {tab: id}, tr(name))}; }
   function clearPlan(what, name, count){
@@ -22383,7 +22476,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     const FILL = /^(prosim|pls|hned|rychle|mi|te|ted)$/;
     const words = String(text || '').replace(/[.!?,;:„“”"'`()]+/g, ' ').split(/\s+/).filter(Boolean).filter(w => !FILL.test(stripDia(w)));
     const k = words.map(stripDia).join(' ');
-    if(!k || k.length > 60) return null;
+    if(!k || k.length > 110) return null;
     for(const [re, make] of QUICK){
       const m = re.exec(k);
       if(m){ const plan = make(m, words); if(plan) return plan; }
@@ -22587,7 +22680,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   try{ new MutationObserver(applyAttrs).observe(document.documentElement, {attributes:true, attributeFilter:['lang']}); }catch(e){}
   applyAttrs();
   // Háček pro testy: rozpoznání povelu bez odeslání.
-  window.__tnchat = {quick: text => { const q = quickCommand(text); return q ? {say: q.say || '', calls: q.calls || [], local: !!q.local, prepare: !!q.prepare} : null; }, guesses: nominativeGuesses};
+  window.__tnchat = {plan: async text => { let q = quickCommand(text); if(q && q.prepare) q = await q.prepare(); return q ? {say: q.say || '', calls: q.calls || []} : null; }, quick: text => { const q = quickCommand(text); return q ? {say: q.say || '', calls: q.calls || [], local: !!q.local, prepare: !!q.prepare} : null; }, guesses: nominativeGuesses};
 })();
 </script>
 <!-- defer: only used by video/PNG-sequence export (a much later user action), so it

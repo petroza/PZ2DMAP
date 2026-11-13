@@ -65,7 +65,7 @@ const PLANS = {
   m = await ask('ulož projekt'); check(n === 0 && /ulož|Ulož/.test(m), '„ulož projekt" uloží bez modelu — ' + m);
   const recog = await page.evaluate(() => ['hybrid', 'prepni podklad na satelit', 'politická mapa', 'smaž uzavírky', 'zruš barvy států', 'vymaž trasu', 'ukaž celou trasu', 'pauza', 'screenshot', 'celý svět', 'dej požár do Ostravy', 'otevři trasu', 'slovensky', 'co umíš'].filter(q => !window.__tnchat.quick(q)));
   check(recog.length === 0, 'rozpoznání dalších povelů bez modelu' + (recog.length ? ' — nepoznal: ' + recog.join(', ') : ''));
-  const notQuick = await page.evaluate(() => ['trasa z Prahy do Brna', 'obarvi Polsko zeleně', 'nehoda na D1 u Humpolce směr Brno', 'ukaž Brno'].filter(q => { const p = window.__tnchat.quick(q); return p && !p.prepare; }));
+  const notQuick = await page.evaluate(() => ['trasa z Prahy do Brna', 'udělej z toho volební mapu', 'nehoda na D1 u Humpolce směr Brno', 'ukaž Brno'].filter(q => { const p = window.__tnchat.quick(q); return p && !p.prepare; }));
   check(notQuick.length === 0, 'složitější zadání zůstávají modelu' + (notQuick.length ? ' — chybně rychlé: ' + notQuick.join(', ') : ''));
   check(JSON.stringify(await page.evaluate(() => [window.__tnchat.guesses('Brně'), window.__tnchat.guesses('Humpolci').list[0], window.__tnchat.guesses('Zlíně').sure, window.__tnchat.guesses('Jihlavě').sure])) === JSON.stringify([{sure:'Brno'}, 'Humpolec', 'Zlín', 'Jihlava']), 'skloněné názvy míst se převedou do 1. pádu');
 

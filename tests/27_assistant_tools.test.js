@@ -133,7 +133,7 @@ const {check, done, open, status} = require('./lib');
   check(await page.$$eval('.tnchat-msg', e => e.length) === msgs && msgs >= 4, 'historie po zavření a otevření zůstává (' + msgs + ' zpráv)');
   // výpadek sítě → hláška, Zkusit znovu, povely bez AI
   mode = 'fail'; n = 0;
-  await page.fill('#tnchatInput', 'obarvi Polsko zeleně'); await page.press('#tnchatInput', 'Enter'); await idle(); await sleep(300);
+  await page.fill('#tnchatInput', 'udělej z toho volební mapu'); await page.press('#tnchatInput', 'Enter'); await idle(); await sleep(300);
   const err = await page.evaluate(() => { const e = [...document.querySelectorAll('.tnchat-msg.err')].pop(); return e ? {txt: e.textContent, retry: !!e.querySelector('.tnchat-retry'), chips: e.querySelectorAll('.tnchat-chip').length} : null; });
   check(n === 1 && err && /neodpovídá/.test(err.txt) && err.retry && err.chips >= 4, 'výpadek sítě: česká hláška, Zkusit znovu a povely bez AI');
   mode = 'ok'; const users = await page.$$eval('.tnchat-msg.user', e => e.length);
@@ -141,7 +141,7 @@ const {check, done, open, status} = require('./lib');
   check(n === 2 && await page.$$eval('.tnchat-msg.user', e => e.length) === users && await page.$$eval('.tnchat-msg.err', e => e.length) === 0, 'Zkusit znovu pošle dotaz znovu bez zdvojení zprávy');
   // vyčerpaný denní limit
   mode = 'quota'; n = 0;
-  await page.fill('#tnchatInput', 'obarvi Německo modře'); await page.press('#tnchatInput', 'Enter'); await idle(); await sleep(300);
+  await page.fill('#tnchatInput', 'udělej z toho mapu na téma volby'); await page.press('#tnchatInput', 'Enter'); await idle(); await sleep(300);
   const q = await page.evaluate(() => { const e = [...document.querySelectorAll('.tnchat-msg.err')].pop(); return e ? {txt: e.textContent, chips: [...e.querySelectorAll('.tnchat-chip')].map(b => b.textContent)} : null; });
   check(q && /Denní limit AI je vyčerpaný/.test(q.txt) && /Bez AI funguje dál/.test(q.txt) && q.chips.includes('Zpět'), 'vyčerpaný limit: hláška + co funguje bez AI — ' + (q ? q.chips.join(' | ') : ''));
   n = 0; await page.click('.tnchat-msg.err:last-of-type .tnchat-chip'); await idle(); await sleep(300);
