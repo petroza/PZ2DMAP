@@ -1,6 +1,14 @@
 {
-  "name": "tnmap-cf",
+  "name": "tnmap",
   "private": true,
-  "type": "module",
-  "description": "TN mapa na Cloudflare Pages (statika + Functions: presety/projekty na D1, proxy ČHMÚ a OpenWeather)."
+  "description": "TN mapa — mapová grafika pro zpravodajství",
+  "scripts": {
+    "test": "node tests/run.mjs",
+    "test:slow": "SLOW=1 node tests/run.mjs",
+    "serve": "node tests/serve.mjs",
+    "eval:assistant": "node worker/tools/eval.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
 }

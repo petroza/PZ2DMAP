@@ -18,11 +18,8 @@ Browser-based 2D map editor for drawing routes, markers, labels, camera moves an
 
 ```text
 index.html      Main application
-PZ2DMAP         Compatibility copy of the same app
 map_api.php     Optional PHP API for saving/loading projects on PHP hosting
-presets.json    Style presets
-projects.json   Example/project data
-map_data/       Runtime data directory placeholders
+map_data/       Backup of presets/projects from D1 (8 Nov 2026), used by map_api.php
 assets/         Original local icons
 ```
 

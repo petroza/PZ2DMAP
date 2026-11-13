@@ -1,58 +1,38 @@
-// Proxy + edge cache pro DEM dlaždice terénu (Terrarium, elevation-tiles-prod).
-//
-// Zdrojový bucket je HOLÝ S3 bez CDN — naměřeno ~550-670 ms na dlaždici (proti
-// ~30-75 ms u satelitních dlaždic Esri). Při táhnutí mapy nad novým územím na
-// to appka čeká, dokud terén nedostane výšková data — přesně to čekání, které
-// se hlásí jako "seká se to". Elevační data se NIKDY nemění, takže je to ideální
-// kandidát na dlouhou cache na Cloudflare edge: první požadavek na danou dlaždici
-// (kýmkoliv, odkudkoliv) je pomalý, každý další (tímtéž uživatelem při dalším
-// posunu, i kterýmkoliv jiným uživatelem poblíž) už jede z edge cache.
-//
-// GET /api/dem?z=Z&x=X&y=Y
+// /api/dem?z=&x=&y= — výškové dlaždice (Terrarium PNG) pro stínovaný reliéf.
+// Přímý S3 bucket je bez CDN pomalý (~0,6 s na dlaždici); tady jde přes edge
+// cache Cloudflare (výška se nemění → 30 dní). Když první zdroj selže, zkusí se
+// záložní adresa téhož bucketu. Nic se neukládá, jen se čte.
+import { preflight, CORS } from './_shared.js';
 
-const UPSTREAM = [
-  'https://elevation-tiles-prod.s3.amazonaws.com/terrarium',
-  'https://s3.amazonaws.com/elevation-tiles-prod/terrarium',
+const SOURCES = [
+  (z, x, y) => `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`,
+  (z, x, y) => `https://elevation-tiles-prod.s3.amazonaws.com/terrarium/${z}/${x}/${y}.png`,
 ];
 
-// 1×1 průhledný PNG — ať terén na chybějící dlaždici jen tiše nedosáhne dál,
-// místo aby se cyklil na chybě.
-const BLANK = Uint8Array.from(atob(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M8AAAMBAQDJ/pLvAAAAAElFTkSuQmCC'
-), c => c.charCodeAt(0));
-
-const png = (body, maxAge) =>
-  new Response(body, {
-    headers: {
-      'Content-Type': 'image/png',
-      'Cache-Control': `public, max-age=${maxAge}, immutable`,
-      'Access-Control-Allow-Origin': '*',
-    },
-  });
-
-export async function onRequest({ request }) {
-  const q = new URL(request.url).searchParams;
-  const z = parseInt(q.get('z') ?? '-1', 10);
-  const x = parseInt(q.get('x') ?? '-1', 10);
-  const y = parseInt(q.get('y') ?? '-1', 10);
-  if (!(z >= 0 && z <= 15) || !(x >= 0) || !(y >= 0)) return png(BLANK, 300);
-
-  // Terén na tento zdroj sahá až po zoom 11 (TERRAIN_DEM_MAXZOOM v appce), takže
-  // reálný provoz je jen pár desítek unikátních dlaždic — 30 dní edge cache je
-  // bezpečné i levné.
-  const CACHE_SECONDS = 30 * 24 * 3600;
-
-  for (const base of UPSTREAM) {
-    try {
-      const r = await fetch(`${base}/${z}/${x}/${y}.png`, {
-        headers: { 'User-Agent': 'PZMAP-dem-proxy' },
-        cf: { cacheTtl: CACHE_SECONDS, cacheEverything: true },
-      });
-      if (!r.ok) continue;
-      const buf = await r.arrayBuffer();
-      if (buf.byteLength < 8) continue;
-      return png(buf, CACHE_SECONDS);
-    } catch (_) { /* zkus další zrcadlo */ }
+export async function onRequest({ request, waitUntil }) {
+  if (request.method === 'OPTIONS') return preflight();
+  const url = new URL(request.url);
+  const z = Number(url.searchParams.get('z')), x = Number(url.searchParams.get('x')), y = Number(url.searchParams.get('y'));
+  const n = 2 ** z;
+  if (!Number.isInteger(z) || !Number.isInteger(x) || !Number.isInteger(y) || z < 0 || z > 15 || x < 0 || y < 0 || x >= n || y >= n) {
+    return new Response('bad tile', { status: 400, headers: CORS });
   }
-  return png(BLANK, 60);
+
+  const key = new Request(`https://tnmap.internal/dem/${z}/${x}/${y}.png`);
+  const cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit) return hit;
+
+  for (const src of SOURCES) {
+    try {
+      const r = await fetch(src(z, x, y), { cf: { cacheTtl: 2592000, cacheEverything: true } });
+      if (!r.ok) continue;
+      const out = new Response(r.body, {
+        headers: { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=2592000, immutable', ...CORS },
+      });
+      waitUntil(cache.put(key, out.clone()));
+      return out;
+    } catch (e) { /* další zdroj */ }
+  }
+  return new Response('dem unavailable', { status: 502, headers: CORS });
 }

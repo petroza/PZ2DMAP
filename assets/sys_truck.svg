@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- ikona tlačítka Kamion: tahač s návěsem shora, styl MINT -->
+  <g fill="#1a2028">
+    <rect x="78" y="30" width="12" height="22" rx="4"/><rect x="166" y="30" width="12" height="22" rx="4"/>
+    <rect x="76" y="196" width="12" height="22" rx="4"/><rect x="168" y="196" width="12" height="22" rx="4"/>
+    <rect x="76" y="222" width="12" height="22" rx="4"/><rect x="168" y="222" width="12" height="22" rx="4"/>
+  </g>
+  <rect x="112" y="76" width="32" height="20" fill="#5f6873"/>
+  <rect x="84" y="10" width="88" height="70" rx="16" fill="#fff"/>
+  <rect x="89" y="15" width="78" height="60" rx="12" fill="#3ECF9E"/>
+  <rect x="96" y="22" width="64" height="46" rx="8" fill="#f4f7f9"/>
+  <path fill="#18212b" d="M98 26 Q128 18 158 26 L156 42 Q128 37 100 42 Z"/>
+  <rect x="82" y="92" width="92" height="160" rx="10" fill="#fff"/>
+  <rect x="87" y="97" width="82" height="150" rx="7" fill="#eef2f5" stroke="#c3ccd4" stroke-width="2"/>
+  <rect x="90" y="240" width="10" height="5" rx="2" fill="#e5484d"/><rect x="156" y="240" width="10" height="5" rx="2" fill="#e5484d"/>
+</svg>
