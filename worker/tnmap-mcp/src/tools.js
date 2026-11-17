@@ -274,7 +274,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setValues",
-  "description": "čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, cameraPitch 0-85, routeEndpointSize 12-48.",
+  "description": "čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, animStart 0-10 (prodleva startu), animEndHold 0-10 (pauza na konci — záběr po doběhnutí stojí), cameraPitch 0-85, routeEndpointSize 12-48.",
   "inputSchema": {
    "type": "object",
    "properties": {},

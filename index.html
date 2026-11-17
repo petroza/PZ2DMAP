@@ -1434,6 +1434,13 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           </div>
           <div class="anim-field">
             <div class="anim-field-head">
+              <label for="animEndHold" data-i18n="Pauza na konci">Pauza na konci</label>
+              <span class="anim-num"><input id="animEndHoldNum" class="num-mini" type="number" min="0" max="10" step="0.5" value="0" aria-label="Pauza na konci"><span class="anim-unit">s</span></span>
+            </div>
+            <input id="animEndHold" type="range" min="0" max="10" step="0.5" value="0">
+          </div>
+          <div class="anim-field">
+            <div class="anim-field-head">
               <label for="objSmooth" data-i18n="Plynulost pohybu">Plynulost pohybu</label>
               <span class="anim-num"><input id="objSmoothNum" class="num-mini" type="number" min="0" max="100" step="1" value="0" aria-label="Plynulost pohybu"><span class="anim-unit">%</span></span>
             </div>
@@ -4732,7 +4739,7 @@ const state = {
 };
 
 const SLIDER_NUM_PAIRS = [['cameraPitch','cameraPitchNum'],['camHeadingSmooth','camHeadingSmoothNum'],
-  ['animDuration','animDurationNum'],['animStart','animStartNum'],['objSmooth','objSmoothNum']];
+  ['animDuration','animDurationNum'],['animStart','animStartNum'],['animEndHold','animEndHoldNum'],['objSmooth','objSmoothNum']];
 function syncSliderNumbers(){
   SLIDER_NUM_PAIRS.forEach(([rid, nid]) => {
     const r = $(rid), n = $(nid);
@@ -8115,6 +8122,7 @@ function serializeProjectSnapshot(){
       vehiclePalette: pzVehiclePalette(),
       vehicleShadow: $('pzVehicleShadow') ? !!$('pzVehicleShadow').checked : true,
       animStart: $('animStart')?.value || '0',
+      animEndHold: $('animEndHold')?.value || '0',
       animDuration: $('animDuration')?.value || '8',
       cameraPitch: $('cameraPitch')?.value || '45',
       camHeadingSmooth: $('camHeadingSmooth')?.value || '80',
@@ -8201,6 +8209,7 @@ function applyBasicProjectSnapshot(snapshot){
   state.currentRotMode = animation.currentRotMode || 'fixed';
   setActiveButton('.rotation-mode-btn', 'rotmode', state.currentRotMode);
   if($('camHeadingSmooth') && animation.camHeadingSmooth != null) $('camHeadingSmooth').value = String(animation.camHeadingSmooth);
+  if($('animEndHold')){ const h = Math.max(0, Math.min(10, parseFloat(animation.animEndHold) || 0)); $('animEndHold').value = String(h); if($('animEndHoldNum')) $('animEndHoldNum').value = String(h); }
   ['animIconSize','animStart','animDuration','cameraPitch','animManualAngle'].forEach(id => {
     if($(id) && animation[id] != null) $(id).value = String(animation[id]);
   });
@@ -13336,12 +13345,14 @@ function updateRouteStyle(){
   safeSetPaint('route-anim-pruhy','line-opacity',isTrain && !hideGround ? 0.95 : 0);
 }
 
-function animationTotal(){ return parseFloat($('animStart')?.value || '0') + parseFloat($('animDuration')?.value || '8'); }
+// Pauza na konci: záběr po doběhnutí animace ještě stojí (video je o ni delší).
+function animEndHold(){ return Math.max(0, Math.min(10, parseFloat($('animEndHold')?.value || '0') || 0)); }
+function animationTotal(){ return parseFloat($('animStart')?.value || '0') + parseFloat($('animDuration')?.value || '8') + animEndHold(); }
 // Časování animace na jednom místě: prodleva, délka pohybu a celkový čas (s).
 function animTiming(){
   const delay = Math.max(0, parseFloat($('animStart')?.value || '0') || 0);
   const dur = Math.max(0.001, parseFloat($('animDuration')?.value || '8') || 8);
-  return {delay, dur, total: delay + dur};
+  return {delay, dur, total: delay + dur + animEndHold()};
 }
 function animProgressAt(elapsed, tm = animTiming()){
   return elapsed <= tm.delay ? 0 : Math.min(1, (elapsed - tm.delay) / tm.dur);
@@ -17746,7 +17757,7 @@ function bindUI(){
     const b = e.target.closest('.exp-chip'); if(!b || b.disabled) return;
     pzSetExportResolution(b.dataset.res);
   });
-  ['exportFps','exportVideoFormat','exportTransparent','animDuration','animStart'].forEach(id => {
+  ['exportFps','exportVideoFormat','exportTransparent','animDuration','animStart','animEndHold'].forEach(id => {
     ['input','change'].forEach(ev => $(id)?.addEventListener(ev, () => { try{ updateExportSummary(); }catch(_e){} }));
   });
   // Trasa i kamera se mění mimo tuto záložku (i z asistenta) — shrnutí u tlačítek držet aktuální.
@@ -17946,7 +17957,7 @@ function bindUI(){
     scrub.addEventListener('change', endScrub);
   }
   state._animTimingPrev = animTiming();
-  ['animDuration','animStart'].forEach(id => $(id)?.addEventListener('input', retimeAnimation));
+  ['animDuration','animStart','animEndHold'].forEach(id => $(id)?.addEventListener('input', retimeAnimation));
   $('followCameraRotate')?.addEventListener('change', e => {
     // Po vypnutí otáčení srovnat kameru zpátky (jinak zůstala natočená podle posledního směru jízdy).
     if(!e.target.checked && $('followCamera')?.checked && state.map){ try{ state.map.jumpTo({bearing: state._camHomeView?.bearing ?? 0}); }catch(_e){} }
@@ -18340,6 +18351,7 @@ let currentLang = localStorage.getItem('mapLang') || 'cs';
 // Doplňkové překlady (po přestavbě sekcí a z testu jazyků). Bez řádku v I18N
 // zůstávaly ve slovenštině, bulharštině, chorvatštině a rumunštině česky.
 Object.assign(I18N, {
+  "Pauza na konci": {cs:"Pauza na konci",sk:"Pauza na konci",bg:"Пауза в края",hr:"Pauza na kraju",ro:"Pauză la final",en:"Hold at end"},
   "Cedulka u vozidla": {cs:"Cedulka u vozidla",sk:"Štítok pri vozidle",bg:"Табелка до превозното средство",hr:"Oznaka uz vozilo",ro:"Etichetă la vehicul",en:"Vehicle tag"},
   "Barva vozidla": {cs:"Barva vozidla",sk:"Farba vozidla",bg:"Цвят на превозното средство",hr:"Boja vozila",ro:"Culoarea vehiculului",en:"Vehicle colour"},
   "Např. Os 9409": {cs:"Např. Os 9409",sk:"Napr. Os 9409",bg:"Напр. Os 9409",hr:"Npr. Os 9409",ro:"De ex. Os 9409",en:"e.g. Os 9409"},
@@ -20830,7 +20842,7 @@ function pzColorFromName(v){
         boundaryWidth:'boundaryWidth', boundaryOpacity:'boundaryOpacity',
         majorRoadWidth:'majorWidth', minorRoadWidth:'minorWidth',
         sceneIconSize:'sceneIconSize', animIconSize:'animIconSize',
-        animDuration:'animDuration', cameraPitch:'cameraPitch',
+        animDuration:'animDuration', animStart:'animStart', animEndHold:'animEndHold', cameraPitch:'cameraPitch',
         routeEndpointSize:'routeEndpointSize',
         routeGlow:'routeGlow', arrowWidth:'sceneArrowWidth', distanceWidth:'sceneDistanceWidth',
         perimeterOpacity:'scenePerimeterOpacity', countryBorderWidth:'countryBorderWidth',
