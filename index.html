@@ -8344,6 +8344,11 @@ function initAutosave(){
   state._autosaveInit = true;
   setInterval(writeAutosave, 30000);
   window.addEventListener('beforeunload', writeAutosave);
+  // Obnovení stránky na pokyn Clauda (konektor): scénu vrátit hned, bez dotazu.
+  try{
+    const r = sessionStorage.getItem('pzReloadSnap');
+    if(r){ sessionStorage.removeItem('pzReloadSnap'); const snap = JSON.parse(r); setTimeout(() => { try{ applyProjectSnapshot(snap); setStatus(t('Rozdělaná práce obnovena.')); }catch(e){} }, 400); return; }
+  }catch(e){}
   // User opted out of the restore offer — keep recovery data off the screen.
   if(autosaveOfferDisabled()) return;
   let saved = null;
@@ -21301,6 +21306,24 @@ function pzColorFromName(v){
       const url = o.toDataURL('image/jpeg', 0.82);
       return {ok:true, mimeType:'image/jpeg', data: url.slice(url.indexOf(',') + 1), width:o.width, height:o.height};
     },
+    // Snímek ŽIVÉHO náhledu (mapa + vrstva vozidel), jak ho grafik vidí — pro kontrolu Claudem.
+    async _preview({width = 1280} = {}){
+      const m = state.map; if(!m) return {ok:false, error:'Mapa není načtená.'};
+      const src = await new Promise(res => { m.once('render', () => { try{ const c = document.createElement('canvas'), mc = m.getCanvas(); c.width = mc.width; c.height = mc.height; c.getContext('2d').drawImage(mc, 0, 0); res(c); }catch(e){ res(null); } }); m.triggerRepaint(); });
+      if(!src) return {ok:false, error:'Náhled se nepodařilo zachytit.'};
+      try{ pzRenderVehicleLive(); }catch(e){}            // vozidla dokreslit pro tenhle snímek mapy
+      const layers = [...m.getCanvasContainer().querySelectorAll('.pz-vehicle-canvas')];
+      const g = src.getContext('2d'); layers.forEach(cv => { try{ g.drawImage(cv, 0, 0, src.width, src.height); }catch(e){} });
+      const k = Math.min(1, width / src.width), o = document.createElement('canvas'); o.width = Math.round(src.width * k); o.height = Math.round(src.height * k);
+      o.getContext('2d').drawImage(src, 0, 0, o.width, o.height);
+      const url = o.toDataURL('image/jpeg', 0.8);
+      return {ok:true, mimeType:'image/jpeg', data: url.slice(url.indexOf(',') + 1), width:o.width, height:o.height, vehicleLayers: layers.length, note:'Popisky a ikonky (HTML) v náhledu nejsou, jen mapa a vozidla.'};
+    },
+    _reload(){
+      try{ sessionStorage.setItem('pzReloadSnap', JSON.stringify(serializeProjectSnapshot())); }catch(e){}
+      setTimeout(() => location.reload(), 300);
+      return {ok:true, reloading:true};
+    },
     _t: (key, ...args) => t(key, ...args),
     _lang: () => currentLang,
     _afterTool: () => { try{ pzMarkAdvancedInUse(); }catch(e){} },
@@ -22314,6 +22337,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
       let result;
       if(m.tool === '__state') result = (window.TNMAP && window.TNMAP.getState) ? window.TNMAP.getState() : {ok:false};
       else if(m.tool === '__capture') result = await window.TNMAP._capture(m.args || {});
+      else if(m.tool === '__preview') result = await window.TNMAP._preview(m.args || {});
+      else if(m.tool === '__reload') result = window.TNMAP._reload();
       else {
         undoTaken = false;            // každé volání Clauda = vlastní Krok zpět
         result = await runTool({tool: m.tool, args: m.args || {}});

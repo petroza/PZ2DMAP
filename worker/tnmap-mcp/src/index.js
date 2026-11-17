@@ -24,6 +24,8 @@ Kraje ČR barvit nejde, video ani projekty neuložíš (export videa je tlačít
 const EXTRA_TOOLS = [
   {name: 'pripojit_mapu', description: 'Připojí tento rozhovor k otevřené TN mapě grafika. Kód (10 znaků) najde grafik v TN mapě: asistent → tlačítko Claude.', inputSchema: {type: 'object', properties: {kod: {type: 'string', description: 'Kód z TN mapy, např. K7F3-X9Q2-AB'}}, required: ['kod']}},
   {name: 'stav_mapy', description: 'Aktuální stav mapy: podklad, výřez, režim trasy a co je ve scéně (trasa, popisky, obarvené státy, vlajky…).', inputSchema: {type: 'object', properties: {}}},
+  {name: 'nahled_mapy', description: 'Snímek ŽIVÉHO náhledu v prohlížeči grafika (mapa a vozidla, bez HTML popisků) a počet vrstev vozidel — pro kontrolu, co grafik vidí.', inputSchema: {type: 'object', properties: {sirka: {type: 'number'}}}},
+  {name: 'obnovit_stranku', description: 'Obnoví stránku TN mapy u grafika (načte nejnovější verzi). Scéna se uloží a po načtení sama vrátí; mapa se k Claudovi znovu připojí za pár sekund.', inputSchema: {type: 'object', properties: {}}},
   {name: 'snimek_mapy', description: 'Snímek mapy tak, jak vyjde v exportu (obrázek). Použij ke kontrole výsledku.', inputSchema: {type: 'object', properties: {sirka: {type: 'number', description: 'šířka v px, výchozí 1024'}}}},
 ];
 const ALL_TOOLS = [...EXTRA_TOOLS, ...MAP_TOOLS];
@@ -124,6 +126,12 @@ async function callTool(env, code, sid, name, args){
     if(!r.ok || !r.data) return textResult(r, true);
     return {content: [{type: 'image', data: r.data, mimeType: r.mimeType || 'image/jpeg'}, {type: 'text', text: 'Snímek ' + (r.width || '') + '×' + (r.height || '') + ' px.'}]};
   }
+  if(name === 'nahled_mapy'){
+    const r = await roomCall(env, code, '__preview', {width: Math.max(320, Math.min(1600, +args.sirka || 1280))});
+    if(!r.ok || !r.data) return textResult(r, true);
+    return {content: [{type: 'image', data: r.data, mimeType: r.mimeType || 'image/jpeg'}, {type: 'text', text: 'Náhled ' + r.width + '×' + r.height + ' px, vrstev vozidel: ' + r.vehicleLayers + '. ' + (r.note || '')}]};
+  }
+  if(name === 'obnovit_stranku'){ const r = await roomCall(env, code, '__reload', {}); return textResult(r, r.ok === false); }
   if(!TOOL_NAMES.has(name)) return textResult('Neznámý nástroj ' + name, true);
   const r = await roomCall(env, code, name, args || {});
   return textResult(r, r && r.ok === false);
