@@ -13591,20 +13591,25 @@ function pzDrawVehicleTag(ctx, map, toOut, k, vp, text, color, below){
   if(!text) return;
   const parts = pzVehicleParts(vp); if(!parts.length) return;
   const vis = parts.filter(q => !q.hidden && !q.clip); if(vis.length < Math.max(1, Math.ceil(parts.length / 2))) return;
-  // cedulka u ZADNÍHO dílu soupravy: příď (a místo střetu) zůstane volná
-  const mid = vis[vis.length - 1], c = map.project(mid.c), [ox, oy] = toOut([c.x, c.y]);
+  // cedulka u ZADNÍHO dílu soupravy, který je v záběru: příď (a místo střetu) zůstane volná.
+  // Vozidlo mimo záběr cedulku nemá (dřív visela u okraje obrazu daleko od vlaku).
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  const onScr = vis.map(q => { const c = map.project(q.c); return toOut([c.x, c.y]); }).filter(([x, y]) => x > W * 0.03 && x < W * 0.97 && y > H * 0.04 && y < H * 0.96);
+  if(onScr.length < Math.max(1, Math.ceil(vis.length / 2))) return;
+  const [ox, oy] = onScr[onScr.length - 1];
   const fs = Math.round(Math.max(12, parseInt($('animIconSize')?.value || '34', 10) * 0.5) * k);
   ctx.save();
   ctx.font = `800 ${fs}px Inter, Arial, sans-serif`;
   const padX = fs * 0.55, padY = fs * 0.38, bar = fs * 0.28, w = ctx.measureText(text).width + padX * 2 + bar, h = fs + padY * 2;
-  const x = ox - w / 2, y = below ? oy + fs * 1.6 : oy - h - fs * 1.6;
+  const mX = W * 0.05, mY = H * 0.05;   // cedulka zůstane v titulkové bezpečné zóně
+  const x = Math.max(mX, Math.min(W - mX - w, ox - w / 2)), y = Math.max(mY, Math.min(H - mY - h, below ? oy + fs * 1.6 : oy - h - fs * 1.6));
   ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8 * k; ctx.shadowOffsetY = 2 * k;
   ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, w, h);
   ctx.shadowColor = 'transparent';
   ctx.fillStyle = color || '#e63946'; ctx.fillRect(x, y, bar, h);
   // tenká spojnice k vozidlu
   ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1, 1.5 * k);
-  ctx.beginPath(); if(below){ ctx.moveTo(ox, y); ctx.lineTo(ox, oy + fs * 0.5); } else { ctx.moveTo(ox, y + h); ctx.lineTo(ox, oy - fs * 0.5); } ctx.stroke();
+  const lx = Math.max(x + bar, Math.min(x + w - 2, ox)); ctx.beginPath(); if(below){ ctx.moveTo(lx, y); ctx.lineTo(ox, oy + fs * 0.5); } else { ctx.moveTo(lx, y + h); ctx.lineTo(ox, oy - fs * 0.5); } ctx.stroke();
   ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + bar + padX, y + h / 2 + fs * 0.04);
   ctx.restore();
 }
@@ -21196,6 +21201,24 @@ function pzColorFromName(v){
         if(!Array.isArray(c) || !isFinite(c[0]) || !isFinite(c[1]) || !isFinite(+k.zoom)) return {ok:false, error:'Každý záběr potřebuje center a zoom.'};
         views.push({center:[+c[0], +c[1]], zoom: Math.max(1, Math.min(20, +k.zoom)), pitch: Math.max(0, Math.min(85, +k.pitch || 0)), bearing: +k.bearing || 0});
       }
+      // center/zoom = co bude v EXPORTU (střed výřezu, zoom pro výřez široký 1280 px).
+      // Výřez je posunutý od středu mapy (panel vlevo) a jeho šířka závisí na okně —
+      // bez přepočtu by stejná scéna u každého grafika vyšla jinak.
+      try{
+        const fr = $('exportFrame'), mr = state.map.getCanvas().getBoundingClientRect();
+        if(fr && !fr.classList.contains('hidden') && mr.width > 0){
+          const r = fr.getBoundingClientRect();
+          const dx = (r.left + r.width / 2) - (mr.left + mr.width / 2), dy = (r.top + r.height / 2) - (mr.top + mr.height / 2);
+          const dz = Math.log2(Math.max(60, r.width) / 1280);
+          for(const v of views){
+            v.zoom = Math.max(1, Math.min(20, v.zoom + dz));
+            const W = 512 * Math.pow(2, v.zoom), mc = maplibregl.MercatorCoordinate.fromLngLat({lng: v.center[0], lat: v.center[1]});
+            const b = (v.bearing || 0) * Math.PI / 180, rx = dx * Math.cos(b) - dy * Math.sin(b), ry = dx * Math.sin(b) + dy * Math.cos(b);
+            const ll = new maplibregl.MercatorCoordinate(mc.x - rx / W, mc.y - ry / W).toLngLat();
+            v.center = [ll.lng, ll.lat];
+          }
+        }
+      }catch(e){}
       try{ window.__pzPushUndo?.(); }catch(e){}
       state.cameraAnim.keyframes = views.map(v => ({t:0, view:v}));
       if(arc != null) state.cameraAnim.arc = !!arc;
