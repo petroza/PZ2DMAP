@@ -452,11 +452,12 @@ export const MAP_TOOLS = [
  },
  {
   "name": "playAnimation",
-  "description": "play, pause, stop, rewind.",
+  "description": "play, pause, stop, rewind; seek + time (s) = zastavit na daném okamžiku.",
   "inputSchema": {
    "type": "object",
    "properties": {
-    "action": {}
+    "action": {},
+    "time": {}
    },
    "required": [
     "action"

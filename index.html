@@ -21364,15 +21364,22 @@ function pzColorFromName(v){
       return {ok:true, region:k};
     },
     // Přehrávač animace: play | pause | stop | rewind.
-    playAnimation({action = 'play'} = {}){
+    playAnimation({action = 'play', time} = {}){
       const a = toolKey(action);
+      // seek: zastavit na čase (s od začátku videa) — kontrola konkrétního okamžiku snímkem
+      if(a === 'seek'){
+        const tot = animTiming().total, tt = Math.max(0, Math.min(tot, +time || 0));
+        if(state.animPlaying) pauseAnimation();
+        seekAnimationToTime(tt);
+        return {ok:true, action:'seek', time: +tt.toFixed(2), total: tot};
+      }
       if(a === 'play'){
         if(!(state.routeCoords || []).length && !cameraAnimReady()) return {ok:false, error:'Není co přehrát — nejdřív je potřeba trasa nebo animace kamery.'};
         playAnimation();
       } else if(a === 'pause') pauseAnimation();
       else if(a === 'stop') stopAnimation();
       else if(a === 'rewind') $('animRewindBtn')?.click();
-      else return {ok:false, error:'action musí být play, pause, stop nebo rewind.'};
+      else return {ok:false, error:'action musí být play, pause, stop, rewind nebo seek (+ time v s).'};
       return {ok:true, action:a, playing: !!state.animPlaying};
     },
     // Snímek PNG (stejné jako tlačítko Screenshot PNG). Video z chatu spustit nejde záměrně.

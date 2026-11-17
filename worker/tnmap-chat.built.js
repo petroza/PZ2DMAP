@@ -70,7 +70,7 @@ setVehicleColors {preset?, body?, accent?, shadow?} – barvy vozidla: preset au
 setCameraFlight {keyframes, arc?, off?} – PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:"lat,lng" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; záběr = co bude ve videu (center = střed výřezu exportu, zoom pro výřez široký 1280 px); arc:false = bez oddálení mezi záběry; off:true = statická kamera.
 fitRoute {} – ukáže celou trasu.
 arcBestView {} – 3D pohled na letecký oblouk.
-playAnimation {action} – play, pause, stop, rewind.
+playAnimation {action, time?} – play, pause, stop, rewind; seek + time (s) = zastavit na daném okamžiku.
 exportPng {} – uloží snímek PNG.
 selectObjects {action} – all, none, delete (ikonky a popisky).
 clearScene {what} – smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, all.
