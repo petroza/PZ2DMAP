@@ -418,7 +418,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setCameraFlight",
-  "description": "PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:\"lat,lng\" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; arc:false = bez oddálení mezi záběry; off:true = statická kamera.",
+  "description": "PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:\"lat,lng\" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; záběr = co bude ve videu (center = střed výřezu exportu, zoom pro výřez široký 1280 px); arc:false = bez oddálení mezi záběry; off:true = statická kamera.",
   "inputSchema": {
    "type": "object",
    "properties": {

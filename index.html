@@ -8138,7 +8138,8 @@ function serializeProjectSnapshot(){
         start: null,
         end: null,
         keyframes: state.cameraAnim?.keyframes || [],
-        arc: state.cameraAnim?.arc !== false
+        arc: state.cameraAnim?.arc !== false,
+        ...(state.cameraAnim?.space === 'frame' ? {space: 'frame'} : {})
       }
     },
     overlays: getOverlaySnapshot()
@@ -14747,8 +14748,36 @@ function normalizeCameraAnim(cam){
     arc = cam.mode !== 'zoom';
   }
   kfs.forEach((kf, i) => { kf.t = kfs.length <= 1 ? 0 : i / (kfs.length - 1); });
-  return {enabled: !!cam.enabled, mode:'keyframes', start:null, end:null, keyframes:kfs, arc};
+  return {enabled: !!cam.enabled, mode:'keyframes', start:null, end:null, keyframes:kfs, arc, space: cam.space === 'frame' ? 'frame' : null};
 }
+// Záběry kamery ve „výřezu exportu" (space:'frame'): střed = střed výřezu, zoom = zoom
+// pro výřez široký 1280 px. Na mapu v okně se převádí až při použití podle AKTUÁLNÍHO
+// rozvržení (panel vlevo, velikost okna), takže video vyjde stejně u každého grafika.
+// Starší projekty (bez space) mají záběry jako střed mapy — beze změny.
+function pzCamFrameGeom(){
+  const m = state.map; if(!m) return null;
+  const mr = m.getCanvas().getBoundingClientRect(); if(!(mr.width > 0)) return null;
+  const fr = $('exportFrame');
+  const r = (fr && $('showExportFrame')?.checked && !fr.classList.contains('hidden')) ? fr.getBoundingClientRect() : mr;
+  if(!(r.width > 0)) return null;
+  return {dx: (r.left + r.width / 2) - (mr.left + mr.width / 2), dy: (r.top + r.height / 2) - (mr.top + mr.height / 2), dz: Math.log2(r.width / 1280)};
+}
+function pzCamShift(v, g, dir){
+  const z = v.zoom + (dir > 0 ? g.dz : 0), W = 512 * Math.pow(2, z);
+  const mc = maplibregl.MercatorCoordinate.fromLngLat({lng: v.center[0], lat: v.center[1]});
+  const b = (v.bearing || 0) * Math.PI / 180, rx = g.dx * Math.cos(b) - g.dy * Math.sin(b), ry = g.dx * Math.sin(b) + g.dy * Math.cos(b);
+  const ll = new maplibregl.MercatorCoordinate(mc.x - dir * rx / W, mc.y - dir * ry / W).toLngLat();
+  return {...v, center: [ll.lng, ll.lat]};
+}
+function pzFrameToMapView(v){
+  const g = pzCamFrameGeom(); if(!g || !v) return v;
+  try{ const o = pzCamShift(v, g, 1); o.zoom = Math.max(0, Math.min(22, v.zoom + g.dz)); return o; }catch(e){ return v; }
+}
+function pzMapToFrameView(v){
+  const g = pzCamFrameGeom(); if(!g || !v) return v;
+  try{ const o = pzCamShift(v, g, -1); o.zoom = v.zoom - g.dz; return o; }catch(e){ return v; }
+}
+const pzCamToMap = v => state.cameraAnim?.space === 'frame' ? pzFrameToMapView(v) : v;
 function getCameraStateAtProgress(t){
   const kfs = state.cameraAnim?.keyframes || [];   // pořadí v seznamu = pořadí přeletu
   const n = kfs.length;
@@ -14770,7 +14799,7 @@ function getCameraStateAtProgress(t){
 }
 function applyCameraAnimProgress(progress){
   if(!cameraAnimReady()) return false;
-  const cam = getCameraStateAtProgress(progress);
+  const cam = pzCamToMap(getCameraStateAtProgress(progress));
   if(cam && state.map){
     state.map.jumpTo({ center: cam.center, zoom: cam.zoom, pitch: cam.pitch, bearing: cam.bearing });
     return true;
@@ -14831,8 +14860,10 @@ function redistributeKeyframeTimes(){
 }
 function pzAnimUndoSnap(){ try{ window.__pzPushUndo?.(); }catch(e){} }
 function addCameraKeyframe(){
-  const v = captureCameraView(); if(!v) return;
+  let v = captureCameraView(); if(!v) return;
   pzAnimUndoSnap();
+  if(!state.cameraAnim.keyframes.length) state.cameraAnim.space = 'frame';   // nové přelety ve výřezu exportu
+  if(state.cameraAnim.space === 'frame') v = pzMapToFrameView(v);
   state.cameraAnim.keyframes.push({ t: 0, view: v });
   redistributeKeyframeTimes();
   renderCameraKeyframeList();
@@ -14891,7 +14922,7 @@ function renderCameraKeyframeList(){
     row.appendChild(mkBtn('kf-up', '↑', t('Posunout výš'), () => moveCameraKeyframe(i, -1), i === 0));
     row.appendChild(mkBtn('kf-down', '↓', t('Posunout níž'), () => moveCameraKeyframe(i, 1), i === kfs.length - 1));
     row.appendChild(mkBtn('kf-view', '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
-      t('Náhled'), () => { if(state.map && !state.animPlaying) state.map.flyTo({ ...kf.view, duration: 700 }); }));
+      t('Náhled'), () => { if(state.map && !state.animPlaying) state.map.flyTo({ ...pzCamToMap(kf.view), duration: 700 }); }));
     row.appendChild(mkBtn('kf-del btn-danger', '×', t('Smazat'), () => removeCameraKeyframe(i)));
     list.appendChild(row);
   });
@@ -19943,6 +19974,10 @@ document.addEventListener('keydown', e => {
       transportMode: state.currentTransportMode,
       preset: String(state.activePresetToken || "").replace(/^builtin:/, "") || null,
       tab: state.currentTab,
+      visible: !document.hidden,
+      // Výřez exportu na obrazovce: velikosti vozidel, popisků a cedulek jsou v px
+      // obrazovky, ve videu se násobí scale (= šířka videa / šířka výřezu).
+      exportFrame: (() => { try{ const fr = $('exportFrame'), mr = m.getCanvas().getBoundingClientRect(); const r = (fr && !fr.classList.contains('hidden')) ? fr.getBoundingClientRect() : mr; const {w} = getExportSize(); return {width: Math.round(r.width), height: Math.round(r.height), scale: +(w / Math.max(1, r.width)).toFixed(2)}; }catch(e){ return null; } })(),
       hasRoute: (state.routeCoords||[]).length > 0,
       shadows: !!$('sunShadowsOn')?.checked,
       ao: !!$('aoOn')?.checked,
@@ -21201,32 +21236,17 @@ function pzColorFromName(v){
         if(!Array.isArray(c) || !isFinite(c[0]) || !isFinite(c[1]) || !isFinite(+k.zoom)) return {ok:false, error:'Každý záběr potřebuje center a zoom.'};
         views.push({center:[+c[0], +c[1]], zoom: Math.max(1, Math.min(20, +k.zoom)), pitch: Math.max(0, Math.min(85, +k.pitch || 0)), bearing: +k.bearing || 0});
       }
-      // center/zoom = co bude v EXPORTU (střed výřezu, zoom pro výřez široký 1280 px).
-      // Výřez je posunutý od středu mapy (panel vlevo) a jeho šířka závisí na okně —
-      // bez přepočtu by stejná scéna u každého grafika vyšla jinak.
-      try{
-        const fr = $('exportFrame'), mr = state.map.getCanvas().getBoundingClientRect();
-        if(fr && !fr.classList.contains('hidden') && mr.width > 0){
-          const r = fr.getBoundingClientRect();
-          const dx = (r.left + r.width / 2) - (mr.left + mr.width / 2), dy = (r.top + r.height / 2) - (mr.top + mr.height / 2);
-          const dz = Math.log2(Math.max(60, r.width) / 1280);
-          for(const v of views){
-            v.zoom = Math.max(1, Math.min(20, v.zoom + dz));
-            const W = 512 * Math.pow(2, v.zoom), mc = maplibregl.MercatorCoordinate.fromLngLat({lng: v.center[0], lat: v.center[1]});
-            const b = (v.bearing || 0) * Math.PI / 180, rx = dx * Math.cos(b) - dy * Math.sin(b), ry = dx * Math.sin(b) + dy * Math.cos(b);
-            const ll = new maplibregl.MercatorCoordinate(mc.x - rx / W, mc.y - ry / W).toLngLat();
-            v.center = [ll.lng, ll.lat];
-          }
-        }
-      }catch(e){}
+      // center/zoom = co bude v EXPORTU (střed výřezu, zoom pro výřez široký 1280 px);
+      // na mapu v okně se převádí až při přehrávání (pzFrameToMapView).
       try{ window.__pzPushUndo?.(); }catch(e){}
       state.cameraAnim.keyframes = views.map(v => ({t:0, view:v}));
+      state.cameraAnim.space = 'frame';
       if(arc != null) state.cameraAnim.arc = !!arc;
       if($('cameraArc')) $('cameraArc').checked = state.cameraAnim.arc !== false;
       redistributeKeyframeTimes();
       setCameraUiMode('keyframes');
       renderCameraKeyframeList();
-      try{ state.map.jumpTo(views[0]); }catch(e){}
+      try{ state.map.jumpTo(pzFrameToMapView(views[0])); }catch(e){}
       return {ok:true, camera:'keyframes', count: views.length};
     },
     // Ikona objektu na trase: car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat,
@@ -22433,6 +22453,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
       if(m.type !== 'call') return;
       let result;
       if(m.tool === '__state') result = (window.TNMAP && window.TNMAP.getState) ? window.TNMAP.getState() : {ok:false};
+      // Karta na pozadí: Chrome mapu nevykresluje → snímek ani export by nedoběhly.
+      else if(document.hidden && /^(__capture|__preview|exportVideo|exportPng)$/.test(m.tool)) result = {ok:false, error:'Karta s TN mapou je u grafika na pozadí (Chrome ji nevykresluje). Popros ho, ať se na ni přepne a nechá ji vepředu, pak to zkus znovu.', hidden:true};
       else if(m.tool === '__capture') result = await window.TNMAP._capture(m.args || {});
       else if(m.tool === '__preview') result = await window.TNMAP._preview(m.args || {});
       else if(m.tool === '__reload') result = window.TNMAP._reload();

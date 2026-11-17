@@ -19,7 +19,7 @@ const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS = `Ovládáš TN mapu — webovou aplikaci TV Nova na mapovou grafiku do zpráv (trasy, uzavírky, vlajky, popisky, animace vozidel, export).
 Mapa běží v prohlížeči grafika. Když nástroj vrátí, že mapa není připojená, popros grafika, ať v TN mapě otevře asistenta → „Claude" a pošle ti kód; pak zavolej pripojit_mapu.
 Postup: splň celé zadání grafika — rozlož ho na kroky a volej nástroje postupně. Místa piš v 1. pádu česky. Po větších změnách zavolej snimek_mapy a zkontroluj výsledek očima; když něco nesedí, oprav to.
-Kraje ČR barvit nejde a projekty neuložíš. Video vyexportuješ nástrojem export_videa (uloží se grafikovi do stažených souborů).`;
+Kraje ČR barvit nejde a projekty neuložíš. Video vyexportuješ nástrojem export_videa (uloží se grafikovi do stažených souborů). Záběry kamery (setCameraFlight) jsou nezávislé na okně grafika. Velikosti vozidel, popisků a cedulek jsou ale v px výřezu na jeho obrazovce: stav_mapy vrací exportFrame.width — při šířce kolem 1200 px platí výchozí velikosti, u jiné šířky je přepočítej úměrně (animIconSize, size popisků). Kontroluj snimek_mapy (to je skutečný export); nahled_mapy je jen živé okno.`;
 
 const EXTRA_TOOLS = [
   {name: 'pripojit_mapu', description: 'Připojí tento rozhovor k otevřené TN mapě grafika. Kód (10 znaků) najde grafik v TN mapě: asistent → tlačítko Claude.', inputSchema: {type: 'object', properties: {kod: {type: 'string', description: 'Kód z TN mapy, např. K7F3-X9Q2-AB'}}, required: ['kod']}},

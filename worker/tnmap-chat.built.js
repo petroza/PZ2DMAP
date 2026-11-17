@@ -67,7 +67,7 @@ routeLine {line, from?, to?} – trasa linky MHD Praha (bus, tramvaj, metro, vla
 setVehicle {type, label?, color?} – vozidlo na trase (label = cedulka, která jede s vozidlem; color = barva vozidla): car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.
 addVehicle {type, reverse?, delay?, crash?, crashAt?, crashLabel?, speed?, label?, color?} – další vozidlo na stejné trase (label = cedulka u vozidla, color = vlastní barva); reverse:true = opačný směr; delay 0-0.9; crashAt = místo srážky ("lat,lng"/název): vozidlo jede proti a obě se zastaví tam, kde se srazí (místo musí být v 2. polovině trasy od A); při srážce se v místě rozsvítí záblesk s cedulkou crashLabel (výchozí „SRÁŽKA", "" = bez cedulky); speed = rychlost protijedoucího vůči vozidlu na trase (výchozí 0,7).
 setVehicleColors {preset?, body?, accent?, shadow?} – barvy vozidla: preset auto|light|dark|blue, body, accent, shadow true/false (stín pod vozidlem).
-setCameraFlight {keyframes, arc?, off?} – PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:"lat,lng" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; arc:false = bez oddálení mezi záběry; off:true = statická kamera.
+setCameraFlight {keyframes, arc?, off?} – PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:"lat,lng" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; záběr = co bude ve videu (center = střed výřezu exportu, zoom pro výřez široký 1280 px); arc:false = bez oddálení mezi záběry; off:true = statická kamera.
 fitRoute {} – ukáže celou trasu.
 arcBestView {} – 3D pohled na letecký oblouk.
 playAnimation {action} – play, pause, stop, rewind.
