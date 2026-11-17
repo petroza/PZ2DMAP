@@ -1,0 +1,28 @@
+{
+  // TNmap na Cloudflare Workers. Statické soubory jdou přes Workers Assets,
+  // data (presety, projekty) do R2 bucketu tn-map.
+  //
+  // Před nasazením spusť tools/build-site.sh — složí dist/ z index.html
+  // a assets/, aby se do nasazení nedostalo .git, PHP ani dokumentace.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tnmap",
+  "main": "src/tnmap-worker.js",
+  "compatibility_date": "2026-07-29",
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "persist": true, "invocation_logs": true }
+  },
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    // Statické soubory mají přednost; Worker se volá jen pro /map_api.php,
+    // /wx_owm.php, /chmi_vystrahy.php a /api/*.
+    "not_found_handling": "single-page-application"
+  },
+  "r2_buckets": [
+    { "binding": "TNMAP_DATA", "bucket_name": "tn-map" }
+  ]
+  // Secrets (nastav přes `wrangler secret put`, NIKDY sem):
+  //   OWM_KEY    – klíč OpenWeatherMap pro proxy dlaždic
+  //   API_TOKEN  – shodný s SERVER_API_TOKEN v index.html; bez něj jsou zápisy volné
+}

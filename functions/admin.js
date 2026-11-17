@@ -1,3 +1,4 @@
+import { listHistory, restoreHistory } from './api/_history.js';
 // /admin — přehled používání TN mapy (kolik se toho vyrobilo, kdo kolik odpracoval).
 //
 // Bezpečnost: e-mail ani heslo NEJSOU v kódu ani v prohlížeči. Leží v Cloudflare
@@ -77,6 +78,8 @@ input{width:100%;padding:9px 10px;background:#0f131a;border:1px solid #2c333f;co
 button{margin-top:16px;width:100%;padding:10px;background:#e63946;border:1px solid #e63946;color:#fff;font:600 14px inherit;cursor:pointer}
 .err{background:rgba(230,57,70,.12);border:1px solid #e63946;color:#ff9aa2;padding:8px 10px;font-size:12px;margin-bottom:6px}
 a{color:#4da6ff}
+form.inline{background:none;border:0;padding:0;margin:0;max-width:none}
+button.small{margin:0;width:auto;padding:5px 12px;font-size:12px}
 `;
 
 const loginPage = (err = '') => html(`<!doctype html><meta charset="utf-8">
@@ -104,7 +107,7 @@ const fmtWhen = ms => {
   return d.toLocaleString('cs-CZ', { timeZone: 'Europe/Prague' });
 };
 
-async function statsPage(env) {
+async function statsPage(env, notice = '') {
   const q = async (sql, ...bind) => {
     try { const { results } = await env.DB.prepare(sql).bind(...bind).all(); return results || []; }
     catch (_) { return []; }
@@ -123,6 +126,27 @@ async function statsPage(env) {
     'SELECT day, SUM(seconds) s, SUM(exports) e, SUM(routes) r, SUM(chat) c, ' +
     'COUNT(DISTINCT client_id) u FROM usage_daily GROUP BY day ORDER BY day DESC LIMIT 30'
   );
+
+  // Použití funkcí za 30 dní — co grafici opravdu používají (a co je zbytečné).
+  const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const features = await q(
+    'SELECT feature, SUM(count) n, COUNT(DISTINCT day) d FROM usage_features WHERE day >= ? ' +
+    'GROUP BY feature ORDER BY n DESC LIMIT 300', since
+  );
+  const featureRows = features.length ? features.map(f => `<tr>
+      <td>${esc(f.feature)}</td><td class="num">${f.n || 0}</td><td class="num">${f.d || 0}</td>
+    </tr>`).join('') : '';
+
+  // Historie verzí presetů a projektů (před každým zápisem z appky).
+  const hist = await listHistory(env, 60);
+  const ENT = { projects: 'Projekty', presets: 'Presety' };
+  const histRows = hist.map(h => `<tr>
+      <td>${esc(fmtWhen(h.saved_at))}</td><td>${esc(ENT[h.entity] || h.entity)}</td>
+      <td class="num">${h.count || 0}</td><td style="color:#8b94a6;font-size:12px">${esc(h.reason || '')}</td>
+      <td><form method="POST" action="/admin" class="inline" onsubmit="return confirm('Vrátit ${esc(ENT[h.entity] || h.entity).toLowerCase()} do stavu z ${esc(fmtWhen(h.saved_at))}? Současný stav se předtím sám uloží do historie.')">
+        <input type="hidden" name="action" value="restore"><input type="hidden" name="id" value="${h.id}">
+        <button type="submit" class="small">Obnovit</button></form></td>
+    </tr>`).join('');
 
   const peopleRows = people.length ? people.map(p => `<tr>
       <td>${esc(p.nm || '—')}</td>
@@ -147,6 +171,7 @@ async function statsPage(env) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TN mapa — admin</title><style>${CSS}</style>
 <h1>TN mapa — statistiky používání</h1>
+${notice ? `<div class="err" style="max-width:900px;background:rgba(60,191,96,.12);border-color:#3cbf60;color:#a7f0bb">${esc(notice)}</div>` : ''}
 <div class="sub">Data se sbírají z appky na <a href="/">tnmap.pages.dev</a>. Jméno se ukáže, jen když si ho člověk v Nastavení zadá.</div>
 <div class="cards">
   <div class="card"><div class="n">${fmtMin(totals.s)}</div><div class="l">Čas nad mapou</div></div>
@@ -159,6 +184,16 @@ async function statsPage(env) {
 <h2>Kdo kolik odpracoval</h2>
 ${peopleRows ? `<table><tr><th>Jméno</th><th>ID</th><th class="num">Čas</th><th class="num">Exporty</th><th class="num">Trasy</th><th class="num">AI</th><th>Naposledy</th></tr>${peopleRows}</table>`
              : '<div class="empty">Zatím nic — data začnou přitékat, jak lidé appku použijí.</div>'}
+
+<h2>Použití funkcí (30 dní)</h2>
+<div class="sub">b: = tlačítko, chk: = zaškrtávátko, mode: = druh dopravy, tpl: = Rychlá scéna, style: = podklad, open: = otevřená sekce, tool: = nástroj asistenta, ai:quick = rychlý povel bez AI.</div>
+${featureRows ? `<table><tr><th>Funkce</th><th class="num">Použití</th><th class="num">Dní</th></tr>${featureRows}</table>`
+              : '<div class="empty">Zatím nic — počítá se od 9. 11. 2026.</div>'}
+
+<h2>Historie projektů a presetů</h2>
+<div class="sub">Stav PŘED každým uložením z appky (30 dní, aspoň posledních 50). Obnovení vrátí celý seznam do dané chvíle; aktuální stav se předtím uloží sem, takže jde vzít zpět.</div>
+${histRows ? `<table><tr><th>Kdy</th><th>Co</th><th class="num">Položek</th><th>Důvod</th><th></th></tr>${histRows}</table>`
+           : '<div class="empty">Zatím žádná historie — vzniká od 10. 11. 2026 s každým uložením.</div>'}
 
 <h2>Po dnech (30 dní)</h2>
 ${dayRows ? `<table><tr><th>Den</th><th class="num">Lidí</th><th class="num">Čas</th><th class="num">Exporty</th><th class="num">Trasy</th><th class="num">AI</th></tr>${dayRows}</table>`
@@ -179,6 +214,14 @@ export async function onRequest({ request, env }) {
 
   if (request.method === 'POST') {
     const form = await request.formData().catch(() => null);
+    // Obnova verze — jen přihlášený (cookie je SameSite=Strict, cizí stránka ji nepošle).
+    if (String(form?.get('action') || '') === 'restore') {
+      if (!(await validSession(secret, getCookie(request, COOKIE)))) return loginPage();
+      const id = parseInt(String(form.get('id') || ''), 10);
+      const r = Number.isFinite(id) ? await restoreHistory(env, id) : { ok: false, error: 'Chybí id.' };
+      return statsPage(env, r.ok ? `Obnoveno: ${r.entity === 'projects' ? 'projekty' : 'presety'} (${r.count} položek). Grafikům se projeví po obnovení stránky.`
+                                 : 'Obnova se nepovedla: ' + r.error);
+    }
     const e = String(form?.get('email') || '').trim().toLowerCase();
     const p = String(form?.get('password') || '');
     // Obě podmínky vyhodnotíme vždy, ať odpověď neprozradí, co bylo špatně.
