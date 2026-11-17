@@ -64,8 +64,8 @@ setShadows {on?, ao?, strength?} – on = stíny budov, ao = ambientní okluze (
 setTransportMode {mode} – driving, truck, moto, train, metro, tram, boat, foot, cycle, planeDirect, planeArc, planeCustom.
 routeBetween {from, to, mode?} – najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné "via".
 routeLine {line, from?, to?} – trasa linky MHD Praha (bus, tramvaj, metro, vlak S) mezi zastávkami; bez from/to celá linka.
-setVehicle {type} – vozidlo na trase: car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.
-addVehicle {type, reverse?, delay?} – další vozidlo na stejné trase; reverse:true = opačný směr; delay 0-0.9.
+setVehicle {type, label?, color?} – vozidlo na trase (label = cedulka, která jede s vozidlem; color = barva vozidla): car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.
+addVehicle {type, reverse?, delay?, crash?, crashAt?, label?, color?} – další vozidlo na stejné trase (label = cedulka u vozidla, color = vlastní barva); reverse:true = opačný směr; delay 0-0.9; crashAt = místo srážky ("lat,lng"/název): vozidlo jede proti a obě se zastaví tam, kde se srazí (místo musí být v 2. polovině trasy od A).
 setVehicleColors {preset?, body?, accent?, shadow?} – barvy vozidla: preset auto|light|dark|blue, body, accent, shadow true/false (stín pod vozidlem).
 fitRoute {} – ukáže celou trasu.
 arcBestView {} – 3D pohled na letecký oblouk.

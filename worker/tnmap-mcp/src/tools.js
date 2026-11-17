@@ -366,11 +366,13 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setVehicle",
-  "description": "vozidlo na trase: car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.",
+  "description": "vozidlo na trase (label = cedulka, která jede s vozidlem; color = barva vozidla): car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.",
   "inputSchema": {
    "type": "object",
    "properties": {
-    "type": {}
+    "type": {},
+    "label": {},
+    "color": {}
    },
    "required": [
     "type"
@@ -380,13 +382,17 @@ export const MAP_TOOLS = [
  },
  {
   "name": "addVehicle",
-  "description": "další vozidlo na stejné trase; reverse:true = opačný směr; delay 0-0.9.",
+  "description": "další vozidlo na stejné trase (label = cedulka u vozidla, color = vlastní barva); reverse:true = opačný směr; delay 0-0.9; crashAt = místo srážky (\"lat,lng\"/název): vozidlo jede proti a obě se zastaví tam, kde se srazí (místo musí být v 2. polovině trasy od A).",
   "inputSchema": {
    "type": "object",
    "properties": {
     "type": {},
     "reverse": {},
-    "delay": {}
+    "delay": {},
+    "crash": {},
+    "crashAt": {},
+    "label": {},
+    "color": {}
    },
    "required": [
     "type"
