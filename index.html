@@ -21111,6 +21111,27 @@ function pzColorFromName(v){
       pzFlagsRefresh();
       return {ok:true, iso, flags: pzFlagList().length};
     },
+    // Přelet kamery: záběry v pořadí (rovnoměrně v čase animace). keyframes: [{center:"lat,lng"|[lng,lat]|místo, zoom, pitch?, bearing?}]
+    async setCameraFlight({keyframes, arc, off} = {}){
+      if(off){ setCameraUiMode('static'); return {ok:true, camera:'static'}; }
+      if(!Array.isArray(keyframes) || keyframes.length < 2) return {ok:false, error:'Přelet potřebuje aspoň 2 záběry (keyframes).'};
+      const views = [];
+      for(const k of keyframes){
+        let c = k && k.center;
+        if(typeof c === 'string'){ try{ const g = await geocode(c); c = [+g.lon, +g.lat]; }catch(e){ return {ok:false, error:'Záběr „' + k.center + '" jsem nenašel.'}; } }
+        if(!Array.isArray(c) || !isFinite(c[0]) || !isFinite(c[1]) || !isFinite(+k.zoom)) return {ok:false, error:'Každý záběr potřebuje center a zoom.'};
+        views.push({center:[+c[0], +c[1]], zoom: Math.max(1, Math.min(20, +k.zoom)), pitch: Math.max(0, Math.min(85, +k.pitch || 0)), bearing: +k.bearing || 0});
+      }
+      try{ window.__pzPushUndo?.(); }catch(e){}
+      state.cameraAnim.keyframes = views.map(v => ({t:0, view:v}));
+      if(arc != null) state.cameraAnim.arc = !!arc;
+      if($('cameraArc')) $('cameraArc').checked = state.cameraAnim.arc !== false;
+      redistributeKeyframeTimes();
+      setCameraUiMode('keyframes');
+      renderCameraKeyframeList();
+      try{ state.map.jumpTo(views[0]); }catch(e){}
+      return {ok:true, camera:'keyframes', count: views.length};
+    },
     // Ikona objektu na trase: car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat,
     // fire, police, ambulance, plane. Bez trasy se jen předvybere.
     setVehicle({type, label, color} = {}){
