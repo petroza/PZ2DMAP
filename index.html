@@ -20974,7 +20974,8 @@ function pzColorFromName(v){
         closures: () => { state.pzClosures = []; pzRedrawClosures(); }, uzavirky: 'closures',
         colors: () => clearPoliticalPainting?.(), barvy: 'colors',
         flags: () => { state.pzFlags = []; state.pzFlagSel = null; pzFlagsRefresh(); }, vlajky: 'flags',
-        route: () => clearRoute?.(), trasa: 'route',
+        route: () => { clearRoute?.(); state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} if($('pzMainVehLabel')) $('pzMainVehLabel').value = ''; }, trasa: 'route',
+        vehicles: () => { state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} }, vozidla: 'vehicles',
         // „smaž všechno": celá scéna i trasa; podklad a vzhled mapy zůstávají
         all: () => { ['labels','icons','arrows','perimeters','distances','closures','colors','flags','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
         vse: 'all', vsechno: 'all'
