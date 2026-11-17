@@ -382,7 +382,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "addVehicle",
-  "description": "další vozidlo na stejné trase (label = cedulka u vozidla, color = vlastní barva); reverse:true = opačný směr; delay 0-0.9; crashAt = místo srážky (\"lat,lng\"/název): vozidlo jede proti a obě se zastaví tam, kde se srazí (místo musí být v 2. polovině trasy od A); při srážce se v místě rozsvítí záblesk s cedulkou crashLabel (výchozí „SRÁŽKA\", \"\" = bez cedulky).",
+  "description": "další vozidlo na stejné trase (label = cedulka u vozidla, color = vlastní barva); reverse:true = opačný směr; delay 0-0.9; crashAt = místo srážky (\"lat,lng\"/název): vozidlo jede proti a obě se zastaví tam, kde se srazí (místo musí být v 2. polovině trasy od A); při srážce se v místě rozsvítí záblesk s cedulkou crashLabel (výchozí „SRÁŽKA\", \"\" = bez cedulky); speed = rychlost protijedoucího vůči vozidlu na trase (výchozí 0,7).",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -392,6 +392,7 @@ export const MAP_TOOLS = [
     "crash": {},
     "crashAt": {},
     "crashLabel": {},
+    "speed": {},
     "label": {},
     "color": {}
    },
