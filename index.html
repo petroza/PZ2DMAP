@@ -13870,12 +13870,17 @@ function pzDrawVehicle(ctx, map, toOut, k, vp){
   }
   return n;
 }
-let _pzVehCanvas = null;
+// Jedna kreslicí vrstva vozidel pro každou mapu (náhled i exportní mapa zvlášť).
+// Dřív sdílená proměnná: snímek pro export založil novou vrstvu a ta v náhledu
+// zůstala viset se starým obrázkem (dvojité vlaky na mapě).
 function pzVehicleCanvas(map){
-  if(_pzVehCanvas && _pzVehCanvas._map === map && _pzVehCanvas.isConnected) return _pzVehCanvas;
-  const cv = document.createElement('canvas'); cv.className = 'pz-vehicle-canvas'; cv._map = map;
-  map.getCanvasContainer().appendChild(cv);
-  _pzVehCanvas = cv; return cv;
+  const cont = map.getCanvasContainer();
+  let cv = map._pzVehCanvas;
+  if(cv && cv.isConnected) return cv;
+  cont.querySelectorAll(':scope > .pz-vehicle-canvas').forEach(x => x.remove());
+  cv = document.createElement('canvas'); cv.className = 'pz-vehicle-canvas'; cv._map = map;
+  cont.appendChild(cv);
+  map._pzVehCanvas = cv; return cv;
 }
 // Náhled: kreslí se po každém snímku mapy → vozidlo vždy sedí s mapou i samo se sebou.
 function pzRenderVehicleLive(){
