@@ -13610,6 +13610,8 @@ function pzDrawVehicleTag(ctx, map, toOut, k, vp, text, color){
 function pzDrawAllVehicles(ctx, map, toOut, k){
   const extras = pzExtraVehicles(), raw = state._pzVehRaw;
   const tags = [];
+  // srážka: spočítat jednou, dokud je stav nepřepnutý (stejně jako ořez hlavního vozidla)
+  let crashCI = null; try{ crashCI = pzCrashInfo(); }catch(e){}
   if(extras.length && raw != null && state.routeCoords?.length > 1){
     const keep = {icon: state.animSystemIcon, route: state.routeCoords, size: state._pzSizeOverride, ov: state._pzColorOverride};
     try{
@@ -13619,7 +13621,7 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
         state.routeCoords = v.reverse ? pzReversedRoute(keep.route) : keep.route;
         state._pzSizeOverride = parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK();
         state._pzColorOverride = v.color ? {body: v.color} : null;
-        const ci = v.crash && v.reverse ? pzCrashInfo() : null;
+        const ci = v.crash && v.reverse ? crashCI : null;
         const d = ci ? ci.d : Math.max(0, Math.min(0.9, +v.delay || 0)), e = Math.max(0, Math.min(1, (raw - d) / (1 - d)));
         if(raw < d) return;                                  // ještě nevyjelo
         const vp = pzVehicleProgress(e);
@@ -13631,7 +13633,7 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
   if(state._pzVehVp != null && pzIsRail(state.animSystemIcon)) pzDrawVehicle(ctx, map, toOut, k, state._pzVehVp);
   // Srážka: v místě střetu pulzující červený záblesk (od chvíle, kdy se vozidla potkají)
   try{
-    const ci = pzCrashInfo();
+    const ci = crashCI;
     if(ci && raw != null && raw >= ci.rStar - 0.002){
       const pt = pointAtProgress(state.routeCoords, ci.f);
       if(pt){
@@ -13729,10 +13731,12 @@ function pzCrashInfo(){
   if(!v || !(state.routeCoords?.length > 1)) return null;
   const f = Math.max(0.5, Math.min(0.999, v.crashFrac != null ? +v.crashFrac : 1 / (2 - Math.max(0, Math.min(0.9, +v.delay || 0)))));
   const kM = Math.max(1, pzVehicleProgress(1));
-  const keep = {icon: state.animSystemIcon, route: state.routeCoords};
+  const keep = {icon: state.animSystemIcon, route: state.routeCoords, size: state._pzSizeOverride};
   let kX = 1;
-  try{ if(PZ_SPRITES[v.type]) state.animSystemIcon = v.type; state.routeCoords = pzReversedRoute(keep.route); kX = Math.max(1, pzVehicleProgress(1)); }
-  finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; }
+  // protijedoucí vozidlo se kreslí s velikostí z „Velikosti ikonky" (jako v pzDrawAllVehicles)
+  try{ if(PZ_SPRITES[v.type]) state.animSystemIcon = v.type; state.routeCoords = pzReversedRoute(keep.route);
+       state._pzSizeOverride = parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK(); kX = Math.max(1, pzVehicleProgress(1)); }
+  finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; state._pzSizeOverride = keep.size; }
   const rStar = f / kM, ex = (1 - f) / kX;
   const d = Math.max(0, Math.min(0.95, (rStar - ex) / (1 - ex)));
   return {v, f, rStar, d};
