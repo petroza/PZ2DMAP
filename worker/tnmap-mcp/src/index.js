@@ -19,13 +19,14 @@ const PROTOCOLS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const INSTRUCTIONS = `Ovládáš TN mapu — webovou aplikaci TV Nova na mapovou grafiku do zpráv (trasy, uzavírky, vlajky, popisky, animace vozidel, export).
 Mapa běží v prohlížeči grafika. Když nástroj vrátí, že mapa není připojená, popros grafika, ať v TN mapě otevře asistenta → „Claude" a pošle ti kód; pak zavolej pripojit_mapu.
 Postup: splň celé zadání grafika — rozlož ho na kroky a volej nástroje postupně. Místa piš v 1. pádu česky. Po větších změnách zavolej snimek_mapy a zkontroluj výsledek očima; když něco nesedí, oprav to.
-Kraje ČR barvit nejde, video ani projekty neuložíš (export videa je tlačítko v záložce Export).`;
+Kraje ČR barvit nejde a projekty neuložíš. Video vyexportuješ nástrojem export_videa (uloží se grafikovi do stažených souborů).`;
 
 const EXTRA_TOOLS = [
   {name: 'pripojit_mapu', description: 'Připojí tento rozhovor k otevřené TN mapě grafika. Kód (10 znaků) najde grafik v TN mapě: asistent → tlačítko Claude.', inputSchema: {type: 'object', properties: {kod: {type: 'string', description: 'Kód z TN mapy, např. K7F3-X9Q2-AB'}}, required: ['kod']}},
   {name: 'stav_mapy', description: 'Aktuální stav mapy: podklad, výřez, režim trasy a co je ve scéně (trasa, popisky, obarvené státy, vlajky…).', inputSchema: {type: 'object', properties: {}}},
   {name: 'nahled_mapy', description: 'Snímek ŽIVÉHO náhledu v prohlížeči grafika (mapa a vozidla, bez HTML popisků) a počet vrstev vozidel — pro kontrolu, co grafik vidí.', inputSchema: {type: 'object', properties: {sirka: {type: 'number'}}}},
   {name: 'obnovit_stranku', description: 'Obnoví stránku TN mapy u grafika (načte nejnovější verzi). Scéna se uloží a po načtení sama vrátí; mapa se k Claudovi znovu připojí za pár sekund.', inputSchema: {type: 'object', properties: {}}},
+  {name: 'export_videa', description: 'Spustí export videa v prohlížeči grafika (MP4 podle nastavení v záložce Export). Volitelně resolution ("1920x1080") a fps (25). Soubor se uloží do stažených souborů grafika.', inputSchema: {type: 'object', properties: {resolution: {type: 'string'}, fps: {type: 'string'}}}},
   {name: 'snimek_mapy', description: 'Snímek mapy tak, jak vyjde v exportu (obrázek). Použij ke kontrole výsledku.', inputSchema: {type: 'object', properties: {sirka: {type: 'number', description: 'šířka v px, výchozí 1024'}}}},
 ];
 const ALL_TOOLS = [...EXTRA_TOOLS, ...MAP_TOOLS];
@@ -131,6 +132,7 @@ async function callTool(env, code, sid, name, args){
     if(!r.ok || !r.data) return textResult(r, true);
     return {content: [{type: 'image', data: r.data, mimeType: r.mimeType || 'image/jpeg'}, {type: 'text', text: 'Náhled ' + r.width + '×' + r.height + ' px, vrstev vozidel: ' + r.vehicleLayers + '. ' + (r.note || '')}]};
   }
+  if(name === 'export_videa'){ const r = await roomCall(env, code, 'exportVideo', args || {}); return textResult(r, r.ok === false); }
   if(name === 'obnovit_stranku'){ const r = await roomCall(env, code, '__reload', {}); return textResult(r, r.ok === false); }
   if(!TOOL_NAMES.has(name)) return textResult('Neznámý nástroj ' + name, true);
   const r = await roomCall(env, code, name, args || {});

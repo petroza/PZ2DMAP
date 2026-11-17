@@ -21333,6 +21333,17 @@ function pzColorFromName(v){
       return {ok:true, action:a, playing: !!state.animPlaying};
     },
     // Snímek PNG (stejné jako tlačítko Screenshot PNG). Video z chatu spustit nejde záměrně.
+    // Export videa v prohlížeči grafika (jen přes konektor pro Claude; asistentovi se nenabízí).
+    exportVideo({resolution, fps} = {}){
+      const btn = $('exportVideoBtn');
+      if(!btn) return {ok:false, error:'Export není dostupný.'};
+      if(btn.disabled) return {ok:false, error:'Právě běží jiný export — počkej, až doběhne.'};
+      const set = (id, v) => { const el = $(id); if(el && v != null && [...el.options].some(o => o.value === String(v))){ el.value = String(v); el.dispatchEvent(new Event('change', {bubbles:true})); } };
+      set('exportResolution', resolution); set('exportFps', fps);
+      btn.click();
+      return {ok:true, started:true, resolution: $('exportResolution')?.value, fps: $('exportFps')?.value, seconds: animationTotal(),
+        note:'Video se renderuje v prohlížeči a uloží do stažených souborů (nebo se Chrome zeptá kam).'};
+    },
     exportPng(){
       const btn = $('exportPngBtn');
       if(!btn) return {ok:false, error:'Export není dostupný.'};
