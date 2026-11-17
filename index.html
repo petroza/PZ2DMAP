@@ -13616,6 +13616,10 @@ function pzDrawVehicleTag(ctx, map, toOut, k, vp, text, color, below){
 }
 function pzDrawAllVehicles(ctx, map, toOut, k){
   const extras = pzExtraVehicles(), raw = state._pzVehRaw;
+  // k = px plátna na px mapy. Vozidla mají měřítko exportu už ve velikosti dílů
+  // (pzVehicleParts), cedulky, záblesk a SRÁŽKA ho potřebují dostat tady — jinak
+  // vyšly ve videu menší než v náhledu.
+  const kt = k * ((state._exporting && state._exportMarkerScale) || 1);
   const tags = [];
   // srážka: spočítat jednou, dokud je stav nepřepnutý (stejně jako ořez hlavního vozidla)
   let crashCI = null; try{ crashCI = pzCrashInfo(); }catch(e){}
@@ -13651,11 +13655,11 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
       const pt = pointAtProgress(state.routeCoords, ci.f);
       if(pt){
         const c = map.project(pt), [ox, oy] = toOut([c.x, c.y]);
-        const tt = Math.max(0, (state.animElapsed || 0)), R = 52 * k;
+        const tt = Math.max(0, (state.animElapsed || 0)), R = 52 * kt;
         ctx.save();
         for(let i = 0; i < 2; i++){
           const ph = ((tt * 0.9) + i * 0.5) % 1;
-          ctx.globalAlpha = 0.75 * (1 - ph); ctx.lineWidth = 4 * k; ctx.strokeStyle = '#ff2a2a';
+          ctx.globalAlpha = 0.75 * (1 - ph); ctx.lineWidth = 4 * kt; ctx.strokeStyle = '#ff2a2a';
           ctx.beginPath(); ctx.arc(ox, oy, R * (0.35 + ph), 0, Math.PI * 2); ctx.stroke();
         }
         ctx.globalAlpha = 0.9; const g = ctx.createRadialGradient(ox, oy, 0, ox, oy, R * 0.55);
@@ -13665,11 +13669,11 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
         // cedulka střetu (objeví se až se srážkou): červený box vpravo dole od místa
         const txt = String(ci.v.crashLabel ?? 'SRÁŽKA').trim();
         if(txt){
-          const fs = Math.round(Math.max(14, parseInt($('animIconSize')?.value || '34', 10) * 0.62) * k);
+          const fs = Math.round(Math.max(14, parseInt($('animIconSize')?.value || '34', 10) * 0.62) * kt);
           ctx.font = `900 ${fs}px Inter, Arial, sans-serif`;
           const padX = fs * 0.55, padY = fs * 0.36, w = ctx.measureText(txt).width + padX * 2, h = fs + padY * 2;
           const bx = ox + R * 0.75, by = oy + R * 0.85;
-          ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10 * k; ctx.shadowOffsetY = 3 * k;
+          ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10 * kt; ctx.shadowOffsetY = 3 * kt;
           ctx.fillStyle = '#e8202a'; ctx.fillRect(bx, by, w, h);
           ctx.shadowColor = 'transparent';
           ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(txt, bx + padX, by + h / 2 + fs * 0.04);
@@ -13680,11 +13684,11 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
   }catch(e){}
   // cedulky až nakonec, ať je vozidla nepřekryjí
   const mainLabel = ($('pzMainVehLabel')?.value || '').trim();
-  if(mainLabel && state._pzVehVp != null) try{ pzDrawVehicleTag(ctx, map, toOut, k, state._pzVehVp, mainLabel, state.vehicleAuto === false ? $('pzVehicleBody')?.value : null); }catch(e){}
+  if(mainLabel && state._pzVehVp != null) try{ pzDrawVehicleTag(ctx, map, toOut, kt, state._pzVehVp, mainLabel, state.vehicleAuto === false ? $('pzVehicleBody')?.value : null); }catch(e){}
   if(tags.length){
     const keep = {icon: state.animSystemIcon, route: state.routeCoords};
     // protijedoucí vozidlo má cedulku pod soupravou — u srážky se cedulky nepotkají
-    try{ tags.forEach(([type, rev, vp, text, col]) => { state.animSystemIcon = type; state.routeCoords = rev ? pzReversedRoute(keep.route) : keep.route; pzDrawVehicleTag(ctx, map, toOut, k, vp, text, col, rev); }); }
+    try{ tags.forEach(([type, rev, vp, text, col]) => { state.animSystemIcon = type; state.routeCoords = rev ? pzReversedRoute(keep.route) : keep.route; pzDrawVehicleTag(ctx, map, toOut, kt, vp, text, col, rev); }); }
     finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; }
   }
 }
