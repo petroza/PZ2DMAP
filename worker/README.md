@@ -12,9 +12,9 @@ GET /client/v4/accounts/{account_id}/workers/services/tnmap-chat/environments/pr
 (endpoint `/workers/scripts/tnmap-chat/content` vrací API tokenu chybu 10405
 „Method not allowed for this authentication scheme")
 
-**Aktuálně nasazeno:** `aaedbf8d-7b5c-4fc9-9347-ab7620aca255` = tento soubor
-(nové podklady a presety, metro/tramvaj, linky MHD, vlajky, vozidla; historie jako JSON plány).
-Předchůdce (rollback) byla verze 18 = `483cfa46-b23f-417f-8b95-94ea029a99c2`. Model
+**Aktuálně nasazeno:** `52b3b839-fef6-4bfb-a60d-0bfa5c4d4d96` = tento soubor — model Gemma 4
+(`@cf/google/gemma-4-26b-a4b-it`, bez přemýšlení), zkrácený prompt; ~30 neuronů na dotaz (~300 dotazů/den).
+Srovnávací test `tools/ai_bench.mjs`: 39/42. Rollback na Llamu 3.3 70B: `aaedbf8d-7b5c-4fc9-9347-ab7620aca255`. Model
 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, `temperature 0.2`, `max_tokens 1200`.
 
 ### Nasazení a rollback přes API
