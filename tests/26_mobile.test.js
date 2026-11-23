@@ -110,6 +110,13 @@ function smallTargets(page){
     await page.screenshot({path: path.join(OUT, `mobile_${tag}_map.png`)});
     let bad = await smallTargets(page);
     check(!bad.length, `${dev}: plochy na mapě ≥ 44 px` + (bad.length ? ' — ' + bad.slice(0, 6).join(', ') : ''));
+    // čipy asistenta (příklady, nabídky doptání) jsou na dotyku taky ≥ 44 px
+    if(phone){
+      await page.evaluate(() => document.getElementById('tnchatFab').click()); await page.waitForTimeout(300);
+      const chips = await page.$$eval('.tnchat-chip', e => e.filter(x => x.offsetParent).map(x => Math.round(x.getBoundingClientRect().height)));
+      check(chips.length && chips.every(h => h >= 43.5), `${dev}: čipy asistenta ≥ 44 px (${chips.join(', ')})`);
+      await page.evaluate(() => document.getElementById('tnchatClose').click()); await page.waitForTimeout(200);
+    }
     await tapSel(page, '#pzTouchDoneBtn');
     check(await page.evaluate(() => !window.__pzFns.state.addingSceneIcon && getComputedStyle(document.getElementById('pzTouchBar')).display === 'none'), `${dev}: „Hotovo" ukončí vkládání`);
     await tapSel(page, '#projectPanelBtn');
