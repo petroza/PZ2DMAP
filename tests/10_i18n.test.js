@@ -56,6 +56,12 @@ const {check, done, open} = require('./lib');
   const chatSk = await page.evaluate(() => ({head: document.querySelector('.tnchat-head [data-i18n]').textContent, ph: document.getElementById('tnchatInput').placeholder, chips: [...document.querySelectorAll('#tnchatChips .tnchat-chip')].map(b => b.textContent)}));
   check(/Napíš/.test(chatSk.ph) && chatSk.chips.some(c => /autom/.test(c)), 'chat asistenta je slovensky (pole i příklady) — ' + chatSk.ph);
   await page.keyboard.press('Escape');
+  // ovládání mapy (+ / − / kompas) MapLibre má anglicky — tooltipy podle jazyka
+  const navSk = await page.$$eval('.maplibregl-ctrl-zoom-in,.maplibregl-ctrl-zoom-out,.maplibregl-ctrl-compass', b => b.map(e => e.title));
+  check(navSk.length === 3 && /Priblížiť/.test(navSk[0]) && /Oddialiť/.test(navSk[1]) && /sever/.test(navSk[2]), 'tooltipy zoomu a kompasu slovensky — ' + navSk.join(' | '));
+  // názvy vestavěných presetů a podkladů
+  const presetSk = await page.$$eval('#stylePresetSection .preset-card-name', e => e.map(x => x.textContent.trim()).join(' | '));
+  check(!/Světlá|přírodní|navigační/.test(presetSk), 'názvy presetů slovensky — ' + presetSk.slice(0, 120));
   skLeft = [...skLeft];
   check(skLeft.length === 0, 'slovenština bez českých zbytků' + (skLeft.length ? ' — ' + skLeft.slice(0, 8).join(' | ') : ''));
   // stavová hláška volaná bez t() se přeloží ve stavovém řádku

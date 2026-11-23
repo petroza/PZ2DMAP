@@ -168,7 +168,9 @@ function smallTargets(page){
       check(await isOpen(page) && await page.evaluate(() => !window.__pzFns.state.addingSceneIcon), `${dev}: „Hotovo" ukončí vkládání a vrátí panel`);
       // hláška je vidět i nad otevřeným panelem
       await page.evaluate(() => window.__pzFns.setStatus('Zkouška hlášky')); await page.waitForTimeout(200);
-      check(await page.evaluate(() => { const s = document.getElementById('statusBar'), r = s.getBoundingClientRect(); return document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === s; }), `${dev}: hláška je vidět i nad otevřeným panelem`);
+      // (hláška klepnutí propouští — pointer-events:none —, viditelnost se ověří s dočasně zapnutými)
+      check(await page.evaluate(() => { const s = document.getElementById('statusBar'), r = s.getBoundingClientRect(); const pass = getComputedStyle(s).pointerEvents === 'none';
+        s.style.pointerEvents = 'auto'; const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === s; s.style.pointerEvents = ''; return top && pass; }), `${dev}: hláška je vidět i nad otevřeným panelem a nechytá klepnutí`);
       // posuvník: panel zprůhlední, po puštění se vrátí
       await page.evaluate(() => document.getElementById('sceneIconSize').scrollIntoView({block:'center'})); await page.waitForTimeout(150);
       await touch(page, '#sceneIconSize', 'touchstart');
@@ -209,6 +211,7 @@ function smallTargets(page){
       await page.evaluate(() => document.querySelectorAll('.scene-icon-marker').forEach((m, i) => m.setAttribute('data-t', i)));
       for(const i of [0, 1]){ await touch(page, `.scene-icon-marker[data-t="${i}"]`, 'touchstart'); await page.waitForTimeout(750); await touch(page, `.scene-icon-marker[data-t="${i}"]`, 'touchend'); await page.waitForTimeout(150); }
       check(await page.evaluate(() => window.__pzFns.state.multiSel.size) === 2, `${dev}: dlouhé podržení přidá ikonky do výběru`);
+      check(/2/.test(await page.$eval('#pzTouchInfo', e => e.hidden ? '' : e.textContent)), `${dev}: pruh říká, co je vybrané („Vybráno: 2")`);
       ov = await overlaps(page);
       check(!ov.length, `${dev}: výběr (Smazat + Hotovo) bez překryvů` + (ov.length ? ' — ' + ov.join(', ') : ''));
       await tapSel(page, '#pzTouchDeleteBtn');
@@ -218,7 +221,9 @@ function smallTargets(page){
       // popisek
       await openPanel(page); await openSec(page, 'mapLabelSection');
       await tapSel(page, '#mapLabelText'); await page.keyboard.type('NEHODA');
-      await tapSel(page, '#addMapLabelBtn'); await tapMap(page, 0.5, 0.6);
+      await tapSel(page, '#addMapLabelBtn');
+      if(drawer) check(!(await isOpen(page)), `${dev}: „Klikni do mapy" schová panel i na tabletu (jinak leží přes rám)`);
+      await tapMap(page, 0.5, 0.6);
       check(await page.$$eval('.map-label-marker', e => e.length) === 1, `${dev}: popisek klepnutím do mapy`);
       await tapSel(page, '#pzTouchDoneBtn');
       // trasa A → B autem
