@@ -180,29 +180,36 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   for(const vw of views){ await page.evaluate(vw => window.__tnMap.jumpTo(vw), vw); await page.click('#cameraAddKeyframeBtn'); await page.waitForTimeout(120); }
   const rows = () => page.$$eval('#cameraKeyframeList .camera-kf-info', e => e.map(x => x.textContent));
   let rw = await rows();
-  check(rw.length === 3 && /^0\.0 s · zoom 9\.0$/.test(rw[0]) && /^4\.0 s · zoom 11\.0 · 50°$/.test(rw[1]) && /^8\.0 s/.test(rw[2]), 'tři záběry s časy: ' + rw.join(' | '));
+  // zoom v seznamu je zoom výřezu exportu (šířka 1280 px) — liší se od mapy o stálý posun
+  const zOff = parseFloat((rw[0] || '').split('zoom ')[1]) - 9;
+  const zs = z => (z + zOff).toFixed(1).replace('.', '\\.');
+  check(rw.length === 3 && new RegExp('^0\\.0 s · zoom ' + zs(9) + '$').test(rw[0]) && new RegExp('^4\\.0 s · zoom ' + zs(11) + ' · 50°$').test(rw[1]) && /^8\.0 s/.test(rw[2]), 'tři záběry s časy: ' + rw.join(' | '));
   await page.click('#cameraKeyframeList .camera-kf-row:nth-child(3) .kf-up'); await page.waitForTimeout(150);
   rw = await rows();
-  check(/zoom 8\.5/.test(rw[1]) && /zoom 11\.0/.test(rw[2]) && /^4\.0 s/.test(rw[1]), 'záběr jde přeřadit: ' + rw.join(' | '));
+  check(new RegExp('zoom ' + zs(8.5)).test(rw[1]) && new RegExp('zoom ' + zs(11)).test(rw[2]) && /^4\.0 s/.test(rw[1]), 'záběr jde přeřadit: ' + rw.join(' | '));
   await o.undo();
   rw = await rows();
-  check(/zoom 11\.0/.test(rw[1]) && /zoom 8\.5/.test(rw[2]), 'krok zpět vrátí pořadí záběrů');
+  check(new RegExp('zoom ' + zs(11)).test(rw[1]) && new RegExp('zoom ' + zs(8.5)).test(rw[2]), 'krok zpět vrátí pořadí záběrů');
   await page.click('#cameraKeyframeList .camera-kf-row:nth-child(3) .kf-del'); await page.waitForTimeout(150);
   rw = await rows();
-  check(rw.length === 2 && /^8\.0 s · zoom 11\.0/.test(rw[1]), 'záběr jde odebrat, časy se přepočítají');
+  check(rw.length === 2 && new RegExp('^8\\.0 s · zoom ' + zs(11)).test(rw[1]), 'záběr jde odebrat, časy se přepočítají');
   await page.evaluate(() => window.__tnMap.jumpTo({center:[15,49.6], zoom:7, pitch:0, bearing:0}));   // grafik si mapu posunul jinam
   c = await o.playUntil(3.5);
   check(c.elapsed < 7.5 && c.lng > 14.6 && c.lng < 16.6 && c.pitch > 3, `přelet hýbe kamerou mezi záběry (${c.elapsed.toFixed(1)} s: ${c.lng.toFixed(2)}°, náklon ${c.pitch.toFixed(0)}°)`);
   await page.click('#animStopBtn'); await page.waitForTimeout(300);
   c = await o.cam();
   check(sameCam(c, {lng:14.5, lat:50.05, zoom:9, pitch:0, bearing:0}), 'po stopu se kamera vrátí na první záběr');
-  // oddálení uprostřed přeletu jde vypnout
+  // výška zdvihu kamery: 0 % = bez oddálení, víc % = výš
   const mid = () => page.evaluate(() => window.__pzFns.getCameraStateAtProgress(0.5).zoom);
+  const setLift = v => page.evaluate(v => { const e = document.getElementById('cameraLift'); e.value = String(v); e.dispatchEvent(new Event('input', {bubbles:true})); e.dispatchEvent(new Event('change', {bubbles:true})); }, v);
   const zArc = await mid();
-  await page.click('#cameraMoreDetails > summary'); await page.click('#cameraArc'); await page.waitForTimeout(150);
+  await page.click('#cameraMoreDetails > summary');
+  await setLift(0); await page.waitForTimeout(150);
   const zFlat = await mid();
-  check(near(zFlat, 10, 0.01) && zArc < zFlat - 0.5, `„Oddálit při přeletu“: zoom v půli ${zArc.toFixed(2)} → ${zFlat.toFixed(2)}`);
-  await page.click('#cameraArc');
+  await setLift(200); await page.waitForTimeout(150);
+  const zHigh = await mid();
+  check(near(zFlat, 10 + zOff, 0.08) && zArc < zFlat - 0.5 && zHigh < zArc - 0.3, `Výška zdvihu: zoom v půli 0 % ${zFlat.toFixed(2)} · 100 % ${zArc.toFixed(2)} · 200 % ${zHigh.toFixed(2)}`);
+  await setLift(100);
   // přelet funguje i bez trasy
   const keep = await o.anim();
   await page.evaluate(() => window.TNMAP.clearRoute()); await page.waitForTimeout(300);
@@ -259,10 +266,10 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   await page.click('#cameraClearKeyframesBtn'); await page.waitForTimeout(100);
   check(await page.$$eval('#cameraKeyframeList .camera-kf-row', e => e.length) === 0 && await page.$eval('#cameraClearKeyframesBtn', e => e.disabled), '„Smazat vše“ odstraní záběry');
   for(const vw of views.slice(0, 2)){ await page.evaluate(vw => window.__tnMap.jumpTo(vw), vw); await page.click('#cameraAddKeyframeBtn'); await page.waitForTimeout(100); }
-  await page.click('#cameraArc');
+  await setLift(0);
   const flight = await page.evaluate(() => JSON.parse(JSON.stringify(window.__pzFns.serializeProjectSnapshot())));
   const pick = an => JSON.stringify([an.animStart, an.animDuration, an.animEasing, an.objSmooth, an.cameraPitch, an.camHeadingSmooth, an.animDot, an.showTrail, an.followCamera, an.followCameraRotate, an.camera]);
-  check(flight.animation.objSmooth === '30' && flight.animation.camera.keyframes.length === 2 && flight.animation.camera.arc === false && flight.animation.camera.enabled, 'projekt obsahuje plynulost pohybu i záběry kamery');
+  check(flight.animation.objSmooth === '30' && flight.animation.camera.keyframes.length === 2 && flight.animation.camera.arc === false && flight.animation.camera.lift === 0 && flight.animation.camera.enabled, 'projekt obsahuje plynulost pohybu i záběry kamery');
   // rozházet a načíst zpět
   await page.evaluate(() => { const blank = JSON.parse(JSON.stringify(window.__pzFns.serializeProjectSnapshot()));
     blank.animation = {...blank.animation, animStart:'0', animDuration:'8', animEasing:'linear', objSmooth:'0', cameraPitch:'45', camHeadingSmooth:'80', animDot:true, showTrail:true, followCamera:false, followCameraRotate:false, camera:{enabled:false, mode:'flyTo', start:null, end:null, keyframes:[]}};
@@ -274,8 +281,8 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   check(pick(a) === pick(flight.animation), 'načtení projektu vrátí všechna nastavení animace a přeletu');
   const ui = await page.evaluate(() => ({num: document.getElementById('animDurationNum').value, start: document.getElementById('animStartNum').value, smooth: document.getElementById('objSmoothNum').value,
     mode: document.querySelector('.camera-mode2-btn.active')?.dataset.cammode2, rows: document.querySelectorAll('#cameraKeyframeList .camera-kf-row').length,
-    arc: document.getElementById('cameraArc').checked, info: document.getElementById('animInfo').textContent, last: document.querySelector('#cameraKeyframeList .camera-kf-row:last-child .camera-kf-info')?.textContent}));
-  check(ui.num === '14' && ui.start === '2.5' && ui.smooth === '30' && ui.mode === 'keyframes' && ui.rows === 2 && ui.arc === false && / \/ 16\.5 s$/.test(ui.info) && /^16\.5 s/.test(ui.last),
+    arc: document.getElementById('cameraLift').value === '0', info: document.getElementById('animInfo').textContent, last: document.querySelector('#cameraKeyframeList .camera-kf-row:last-child .camera-kf-info')?.textContent}));
+  check(ui.num === '14' && ui.start === '2.5' && ui.smooth === '30' && ui.mode === 'keyframes' && ui.rows === 2 && ui.arc === true && / \/ 16\.5 s$/.test(ui.info) && /^16\.5 s/.test(ui.last),
     'ovládací prvky po načtení odpovídají projektu: ' + JSON.stringify(ui));
   await page.evaluate(snap => { snap.animation = {...snap.animation, ...snap.__follow}; window.__pzFns.applyProjectSnapshot(snap); }, {...flight, __follow: follow}); await page.waitForTimeout(900);
   a = await o.anim();

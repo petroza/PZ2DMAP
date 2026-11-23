@@ -418,12 +418,12 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setCameraFlight",
-  "description": "PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:\"lat,lng\" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; záběr = co bude ve videu (center = střed výřezu exportu, zoom pro výřez široký 1280 px); arc:false = bez oddálení mezi záběry; off:true = statická kamera.",
+  "description": "PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:\"lat,lng\" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; záběr = co bude ve videu (center = střed výřezu exportu, zoom pro výřez široký 1280 px); lift = výška zdvihu kamery mezi vzdálenými záběry (0 = bez oddálení, 1 = automaticky podle vzdálenosti – výchozí, 1.5–2 = výš, max 2.5); přelet ČR → město je plynulý nájezd, město → město se zvedne nad obě; off:true = statická kamera.",
   "inputSchema": {
    "type": "object",
    "properties": {
     "keyframes": {},
-    "arc": {},
+    "lift": {},
     "off": {}
    },
    "required": [

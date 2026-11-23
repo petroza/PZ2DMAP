@@ -1484,7 +1484,13 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div id="cameraKeyframeList" class="camera-kf-list"></div>
             <details class="compact-details" id="cameraMoreDetails">
               <summary data-i18n="Další možnosti">Další možnosti</summary>
-              <label class="check"><input id="cameraArc" type="checkbox" checked> <span data-i18n="Oddálit při přeletu">Oddálit při přeletu</span></label>
+              <div class="anim-field" title="Jak vysoko se kamera při přeletu mezi vzdálenými místy zvedne (oddálí). 100 % = automaticky podle vzdálenosti, 0 % = bez zdvihu.">
+                <div class="anim-field-head">
+                  <label for="cameraLift" data-i18n="Výška zdvihu kamery">Výška zdvihu kamery</label>
+                  <span class="anim-num"><input id="cameraLiftNum" class="num-mini" type="number" min="0" max="250" step="5" value="100" aria-label="Výška zdvihu kamery"><span class="anim-unit">%</span></span>
+                </div>
+                <input id="cameraLift" type="range" min="0" max="250" step="5" value="100">
+              </div>
               <button type="button" class="btn btn-sm btn-danger" id="cameraClearKeyframesBtn" data-i18n="Smazat vše">Smazat vše</button>
             </details>
           </div>
@@ -4735,10 +4741,10 @@ const state = {
   placeSearchToken: 0,
   // Přelet kamery = řada záběrů (keyframes). Dřívější režimy „Přelet" a „Zoom" (start + cíl)
   // se při načtení převedou na dva záběry; arc = oddálení uprostřed přeletu.
-  cameraAnim: { enabled:false, mode:'keyframes', start:null, end:null, keyframes:[], arc:true }
+  cameraAnim: { enabled:false, mode:'keyframes', start:null, end:null, keyframes:[], arc:true, lift:1 }
 };
 
-const SLIDER_NUM_PAIRS = [['cameraPitch','cameraPitchNum'],['camHeadingSmooth','camHeadingSmoothNum'],
+const SLIDER_NUM_PAIRS = [['cameraPitch','cameraPitchNum'],['cameraLift','cameraLiftNum'],['camHeadingSmooth','camHeadingSmoothNum'],
   ['animDuration','animDurationNum'],['animStart','animStartNum'],['animEndHold','animEndHoldNum'],['objSmooth','objSmoothNum']];
 function syncSliderNumbers(){
   SLIDER_NUM_PAIRS.forEach(([rid, nid]) => {
@@ -8139,6 +8145,7 @@ function serializeProjectSnapshot(){
         end: null,
         keyframes: state.cameraAnim?.keyframes || [],
         arc: state.cameraAnim?.arc !== false,
+        lift: pzCamLift(),
         ...(state.cameraAnim?.space === 'frame' ? {space: 'frame'} : {})
       }
     },
@@ -8242,7 +8249,7 @@ function applyBasicProjectSnapshot(snapshot){
   if($('cameraAnimEnabled')) $('cameraAnimEnabled').checked = state.cameraAnim.enabled;
   // Starší projekt mohl mít zapnuté sledování i přelet zároveň — platí přelet, jak ukazuje přepínač.
   if(state.cameraAnim.enabled && $('followCamera')) $('followCamera').checked = false;
-  if($('cameraArc')) $('cameraArc').checked = state.cameraAnim.arc;
+  pzSyncCamLiftUi();
   renderCameraKeyframeList();
   updateCameraAnimUI();
   // Zapamatovaný statický záběr platí jen, dokud se režim kamery nezměnil (krok zpět uvnitř
@@ -14755,7 +14762,9 @@ function normalizeCameraAnim(cam){
     arc = cam.mode !== 'zoom';
   }
   kfs.forEach((kf, i) => { kf.t = kfs.length <= 1 ? 0 : i / (kfs.length - 1); });
-  return {enabled: !!cam.enabled, mode:'keyframes', start:null, end:null, keyframes:kfs, arc, space: cam.space === 'frame' ? 'frame' : null};
+  let lift = isFinite(+cam.lift) && cam.lift !== null && cam.lift !== '' ? Math.max(0, Math.min(2.5, +cam.lift)) : 1;
+  if(!arc) lift = 0;
+  return {enabled: !!cam.enabled, mode:'keyframes', start:null, end:null, keyframes:kfs, arc: lift > 0, lift, space: cam.space === 'frame' ? 'frame' : null};
 }
 // Záběry kamery ve „výřezu exportu" (space:'frame'): střed = střed výřezu, zoom = zoom
 // pro výřez široký 1280 px. Na mapu v okně se převádí až při použití podle AKTUÁLNÍHO
@@ -14794,15 +14803,64 @@ function getCameraStateAtProgress(t){
   const i = Math.min(n - 2, Math.floor(pos));
   const f = pos - i;
   const s = kfs[i].view, e = kfs[i + 1].view;
-  const view = interpView(s, e, _easeInOutCubic(f));
-  if(state.cameraAnim.arc !== false){
-    // Cinematic "pull back then swoop in" — the dip grows with travel distance
-    // (stejné místo = čistý zoom bez oddálení).
-    let dx = e.center[0] - s.center[0]; if(dx > 180) dx -= 360; else if(dx < -180) dx += 360;
-    const dip = Math.min(3.2, Math.hypot(dx, e.center[1] - s.center[1]) * 0.55);
-    view.zoom -= dip * Math.sin(Math.PI * f);
+  return pzCamFlyView(s, e, _easeInOutCubic(f), pzCamLift());
+}
+// Výška zdvihu kamery (0 = bez oddálení, 1 = automaticky podle vzdálenosti, až 2,5).
+function pzCamLift(){
+  const c = state.cameraAnim || {};
+  if(c.arc === false) return 0;
+  const v = +c.lift;
+  return isFinite(v) ? Math.max(0, Math.min(2.5, v)) : 1;
+}
+function pzSyncCamLiftUi(){
+  const v = String(Math.round(pzCamLift() * 100));
+  if($('cameraLift')) $('cameraLift').value = v;
+  if($('cameraLiftNum')) $('cameraLiftNum').value = v;
+}
+// Přelet mezi dvěma záběry po „optimální" křivce (van Wijk & Nuij, stejně jako flyTo):
+// posun i zoom běží stejně rychle tak, jak je oko vnímá, takže nájezd z celé ČR na město
+// nesviští ve velkém přiblížení a přelet město → město se zvedne tak, aby byla vidět obě.
+// lift škáluje „rho" (výšku křivky); 0 = bez zdvihu (zoom rovnoměrně, posun stejně rychlý na obrazovce).
+function pzCamFlyView(s, e, f, lift){
+  const pitch = _lerp(s.pitch, e.pitch, f), bearing = _lerpBearing(s.bearing, e.bearing, f);
+  let a, b;
+  try{
+    a = maplibregl.MercatorCoordinate.fromLngLat({lng: s.center[0], lat: s.center[1]});
+    b = maplibregl.MercatorCoordinate.fromLngLat({lng: e.center[0], lat: e.center[1]});
+  }catch(err){ const v = interpView(s, e, f); return v; }
+  let bx = b.x; if(bx - a.x > 0.5) bx -= 1; else if(a.x - bx > 0.5) bx += 1;
+  const ddx = bx - a.x, ddy = b.y - a.y;
+  const u1 = Math.hypot(ddx, ddy) * 512;
+  // šířka záběru ve „světových" jednotkách (svět = 512 px při zoomu 0)
+  let V = 1280;
+  if(state.cameraAnim?.space !== 'frame'){ try{ const c = state.map.getCanvas(); V = Math.max(c.clientWidth || 0, c.clientHeight || 0) || 1280; }catch(err){} }
+  const w0 = V / Math.pow(2, s.zoom), w1 = V / Math.pow(2, e.zoom);
+  let w, uf;
+  const flat = () => {
+    w = w0 * Math.pow(w1 / w0, f);
+    uf = Math.abs(w1 - w0) < 1e-9 * w0 ? f : (w - w0) / (w1 - w0);
+  };
+  if(u1 < 1e-7) { w = w0 * Math.pow(w1 / w0, f); uf = 0; }
+  else if(!(lift > 0.01)) flat();
+  else {
+    const rho = 1.8 * lift, r2 = rho * rho;
+    const bi = i => (w1 * w1 - w0 * w0 + (i ? -1 : 1) * r2 * r2 * u1 * u1) / (2 * (i ? w1 : w0) * r2 * u1);
+    const r0 = -Math.asinh(bi(0)), r1 = -Math.asinh(bi(1)), S = (r1 - r0) / rho;
+    if(!isFinite(S) || !(S > 1e-9)) flat();
+    else if(f >= 1){ w = w1; uf = 1; }
+    else {
+      const x = rho * f * S + r0;
+      w = w0 * Math.cosh(r0) / Math.cosh(x);
+      uf = (w0 / r2 * (Math.cosh(r0) * Math.tanh(x) - Math.sinh(r0))) / u1;
+      if(!isFinite(w) || !isFinite(uf)) flat();
+    }
   }
-  return view;
+  let lng = e.center[0], lat = e.center[1];
+  if(f < 1){
+    const ll = new maplibregl.MercatorCoordinate(a.x + ddx * uf, a.y + ddy * uf).toLngLat();
+    lng = ((ll.lng + 540) % 360) - 180; lat = ll.lat;
+  }
+  return {center: [lng, lat], zoom: f >= 1 ? e.zoom : s.zoom + Math.log2(w0 / w), pitch, bearing};
 }
 function applyCameraAnimProgress(progress){
   if(!cameraAnimReady()) return false;
@@ -18066,7 +18124,10 @@ function bindUI(){
     state.camSmoothedBearing = null;
     updateCameraAnimUI();
   });
-  $('cameraArc')?.addEventListener('change', e => { state.cameraAnim.arc = !!e.target.checked; if(!state.animPlaying) refreshAnimatedMarkerPreview(); });
+  const pzOnLift = v => { pzAnimUndoSnap?.(); state.cameraAnim.lift = Math.max(0, Math.min(2.5, (+v || 0) / 100)); state.cameraAnim.arc = state.cameraAnim.lift > 0; if(!state.animPlaying) refreshAnimatedMarkerPreview(); };
+  $('cameraLift')?.addEventListener('change', e => pzOnLift(e.target.value));
+  $('cameraLiftNum')?.addEventListener('change', e => pzOnLift(e.target.value));
+  $('cameraLift')?.addEventListener('input', e => { state.cameraAnim.lift = Math.max(0, Math.min(2.5, (+e.target.value || 0) / 100)); state.cameraAnim.arc = state.cameraAnim.lift > 0; });
 
   // Krok zpět v záložce Animace: číselná pole, výběr křivky a posuvníky ovládané
   // klávesnicí (obecný snímek se dělá jen při stisku myši na posuvníku / zaškrtávátku).
@@ -18623,6 +18684,7 @@ Object.assign(I18N, {
   "Plynulost pohybu": {cs:"Plynulost pohybu",sk:"Plynulosť pohybu",bg:"Плавност на движението",hr:"Glatkoća kretanja",ro:"Fluiditatea mișcării",en:"Motion smoothing"},
   "Náklon kamery": {cs:"Náklon kamery",sk:"Sklon kamery",bg:"Наклон на камерата",hr:"Nagib kamere",ro:"Înclinarea camerei",en:"Camera tilt"},
   "Přidat záběr": {cs:"Přidat záběr",sk:"Pridať záber",bg:"Добави кадър",hr:"Dodaj kadar",ro:"Adaugă cadru",en:"Add shot"},
+  "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
   "Oddálit při přeletu": {cs:"Oddálit při přeletu",sk:"Oddialiť pri prelete",bg:"Отдалечаване при прелитане",hr:"Udalji tijekom preleta",ro:"Depărtare în timpul zborului",en:"Pull back during flyover"},
   "Posunout výš": {cs:"Posunout výš",sk:"Posunúť vyššie",bg:"Премести нагоре",hr:"Pomakni gore",ro:"Mută mai sus",en:"Move up"},
   "Posunout níž": {cs:"Posunout níž",sk:"Posunúť nižšie",bg:"Премести надолу",hr:"Pomakni dolje",ro:"Mută mai jos",en:"Move down"},
@@ -21241,7 +21303,7 @@ function pzColorFromName(v){
       return {ok:true, iso, flags: pzFlagList().length};
     },
     // Přelet kamery: záběry v pořadí (rovnoměrně v čase animace). keyframes: [{center:"lat,lng"|[lng,lat]|místo, zoom, pitch?, bearing?}]
-    async setCameraFlight({keyframes, arc, off} = {}){
+    async setCameraFlight({keyframes, arc, lift, off} = {}){
       if(off){ setCameraUiMode('static'); return {ok:true, camera:'static'}; }
       if(!Array.isArray(keyframes) || keyframes.length < 2) return {ok:false, error:'Přelet potřebuje aspoň 2 záběry (keyframes).'};
       const views = [];
@@ -21256,8 +21318,9 @@ function pzColorFromName(v){
       try{ window.__pzPushUndo?.(); }catch(e){}
       state.cameraAnim.keyframes = views.map(v => ({t:0, view:v}));
       state.cameraAnim.space = 'frame';
-      if(arc != null) state.cameraAnim.arc = !!arc;
-      if($('cameraArc')) $('cameraArc').checked = state.cameraAnim.arc !== false;
+      if(lift != null && isFinite(+lift)){ state.cameraAnim.lift = Math.max(0, Math.min(2.5, +lift)); state.cameraAnim.arc = state.cameraAnim.lift > 0; }
+      else if(arc != null){ state.cameraAnim.arc = !!arc; if(arc && !(state.cameraAnim.lift > 0)) state.cameraAnim.lift = 1; }
+      pzSyncCamLiftUi();
       redistributeKeyframeTimes();
       setCameraUiMode('keyframes');
       renderCameraKeyframeList();
