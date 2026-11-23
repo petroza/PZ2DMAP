@@ -103,6 +103,8 @@ input[type=color]:hover{border-color:var(--accent)}
 .preset-btn:hover{background:var(--bg4);border-color:var(--accent);color:var(--accent)}
 .preset-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .preset-grid-numbered{grid-template-columns:repeat(3,1fr)}
+.preset-grid-sep{grid-column:1/-1;margin:8px 0 0;padding-top:8px;border-top:1px solid var(--border);color:var(--tx2);font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.preset-card.preset-card--custom{border-style:dashed;border-color:var(--tx3)}
 .preset-card{min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 4px}
 .preset-card-icon{font-size:14px;line-height:1}
 .preset-card-number{font-size:11px;font-weight:800;letter-spacing:.6px}
@@ -692,6 +694,13 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 .layer-visibility-row .layer-color-input::-moz-color-swatch{border:0;border-radius:50%}
 .layer-visibility-row{flex-wrap:wrap}
 .layer-width-popover{display:none;flex:0 0 100%;padding:7px 0 2px 48px;color:var(--tx3);font-size:9px}
+.layer-visibility-row .layer-color-spacer{width:20px;min-width:20px}
+.layer-visibility-row .layer-halo-cap{margin-left:auto;color:var(--tx3);font-size:10px;cursor:pointer}
+.layer-visibility-row .layer-color-input--halo{width:16px;height:16px;min-width:16px;padding:1px;border-radius:4px}
+.layer-visibility-row .layer-color-input--halo::-webkit-color-swatch{border-radius:3px}
+.layer-width-btn{margin-left:auto;display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 6px;border:1px solid var(--border);border-radius:4px;background:var(--bg0);color:var(--tx2);font:600 10px/1 inherit;cursor:pointer}
+.layer-width-btn:hover,.layer-visibility-row.width-open .layer-width-btn{color:var(--tx1);border-color:var(--accent)}
+.layer-width-btn svg{width:12px;height:12px}
 .layer-visibility-row.width-open .layer-width-popover{display:block}
 .layer-width-popover input[type=range]{margin:5px 0 0;width:100%}
 .status-bar,.map-actions .map-action-btn,.map-source-watermark,
@@ -947,20 +956,21 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       <div class="section" id="styleLayersSection">
         <h3 data-i18n="Vrstvy">Vrstvy</h3>
         <label class="layer-visibility-row" style="margin-bottom:8px"><span style="width:18px"></span><input class="layer-color-input" type="color" data-sync-color="landColor" aria-label="Barva pozadí a pevniny"> Pevnina</label>
+        <label class="layer-visibility-row" style="margin-bottom:8px"><span style="width:18px"></span><input class="layer-color-input" type="color" data-sync-color="waterColor" aria-label="Barva vody"> Voda</label>
         <label class="check layer-visibility-row"><input id="showBuildings" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="buildingColor" aria-label="Barva budov"> Budovy</label>
         <label class="check layer-visibility-row"><input id="showParks" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="parkColor" aria-label="Barva parků"> Zeleň</label>
         <label class="check layer-visibility-row"><input id="showLandcover" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landcoverColor" aria-label="Barva půdy"> Půda</label>
         <label class="check layer-visibility-row"><input id="showLanduse" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="landuseColor" aria-label="Barva ploch"> Plochy</label>
         <label class="check layer-visibility-row"><input id="showAeroway" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="aerowayColor" aria-label="Barva letišť"> Letiště</label>
         <label class="check layer-visibility-row"><input id="showBoundaries" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="boundaryColor" aria-label="Barva hranic"> Hranice<div class="layer-width-popover">Tloušťka <span class="val" id="boundaryWidthVal">1.2×</span><input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2"></div></label>
-        <label class="check layer-visibility-row"><input id="showLabels" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="labelColor" aria-label="Barva názvů"> Názvy</label>
-        <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="haloColor" aria-label="Barva štítků silnic"> Čísla silnic</label>
+        <label class="check layer-visibility-row"><input id="showLabels" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="labelColor" aria-label="Barva názvů"> Názvy<span class="layer-halo-cap" data-i18n="obrys">obrys</span><input class="layer-color-input layer-color-input--halo" type="color" data-sync-color="haloColor" aria-label="Obrys textu" title="Obrys textu"></label>
+        <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><span class="layer-color-spacer" aria-hidden="true"></span> Čísla silnic</label>
         <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva vedlejších silnic"> Vedlejší silnice<div class="layer-width-popover">Tloušťka <span class="val" id="minorWidthVal">1.0×</span><input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0"></div></label>
         <label class="check layer-visibility-row"><input id="showMajorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMajorColor" aria-label="Barva hlavních silnic"> Hlavní silnice<div class="layer-width-popover">Tloušťka <span class="val" id="majorWidthVal">1.3×</span><input id="majorWidth" type="range" min="0.2" max="4" step="0.1" value="1.3"></div></label>
         <label class="check layer-visibility-row"><input id="showMotorways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="motorwayColor" aria-label="Barva dálnic"> Dálnice<div class="layer-width-popover">Tloušťka <span class="val" id="motorwayWidthVal">1.0×</span><input id="motorwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <label class="check layer-visibility-row"><input id="showPrimaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="primaryColor" aria-label="Barva silnic první třídy"> Silnice 1. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="primaryWidthVal">1.0×</span><input id="primaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <label class="check layer-visibility-row"><input id="showSecondaryRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="secondaryColor" aria-label="Barva silnic druhé třídy"> Silnice 2. třídy<div class="layer-width-popover">Tloušťka <span class="val" id="secondaryWidthVal">1.0×</span><input id="secondaryWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
-        <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="waterColor" aria-label="Barva vodních toků"> Vodní toky</label>
+        <label class="check layer-visibility-row"><input id="showWaterways" type="checkbox" checked><span class="layer-color-spacer" aria-hidden="true"></span> Vodní toky</label>
         <label class="check layer-visibility-row"><input id="showRailways" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="railwayColor" aria-label="Barva železnic"> Železnice<div class="layer-width-popover">Tloušťka <span class="val" id="railwayWidthVal">1.0×</span><input id="railwayWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <label class="check layer-visibility-row"><input id="showMetro" type="checkbox"><span class="layer-color-input pz-metro-badge" title="Metro — linky se kreslí ve svých barvách A/B/C"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="0" y="0" width="20" height="20" rx="4" fill="#1f3f95"/><path d="M4.2 15.2V4.8h2.3L10 10.1l3.5-5.3h2.3v10.4h-2.3V8.6L10 13.7 6.5 8.6v6.6Z" fill="#fff"/></svg></span> Metro<div class="layer-width-popover">Tloušťka <span class="val" id="metroWidthVal">1.0×</span><input id="metroWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
         <label class="check layer-visibility-row"><input id="showTransit" type="checkbox"><input class="layer-color-input" type="color" data-sync-color="transitColor" aria-label="Barva MHD"> Tramvaje<div class="layer-width-popover">Tloušťka <span class="val" id="transitWidthVal">1.0×</span><input id="transitWidth" type="range" min="0.2" max="4" step="0.1" value="1"></div></label>
@@ -968,6 +978,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <summary>Další možnosti</summary>
           <label data-i18n="Budovy (opacity)">Průhlednost budov <span class="val" id="buildingOpacityVal">72%</span></label>
           <input id="buildingOpacity" type="range" min="0" max="1" step="0.01" value="0.72">
+          <div class="small" id="buildingOpacityNote" hidden data-i18n="Na Liberty 3D jsou budovy vždy plné">Na Liberty 3D jsou budovy vždy plné</div>
           <label data-i18n="Hranice (opacity)">Průhlednost hranic <span class="val" id="boundaryOpacityVal">100%</span></label>
           <input id="boundaryOpacity" type="range" min="0" max="1" step="0.01" value="1">
         </details>
@@ -1382,7 +1393,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           </details>
         </div>
       </div>
-      <div class="section pz-adv-only" id="model3dSection">
+      <div class="section" id="model3dSection">
         <h3>3D model (GLB)</h3>
         <label class="btn btn-sm" style="display:inline-flex;align-items:center;cursor:pointer"><input id="model3dUpload" type="file" accept=".glb,model/gltf-binary" style="display:none"> Nahrát GLB soubor</label>
         <div class="row" style="margin-top:8px">
@@ -1894,6 +1905,19 @@ const I18N = {
   'CyclOSM (cyklo)':        {cs:'CyclOSM (cyklo)',sk:'CyclOSM (cyklo)',bg:'CyclOSM (вело)',hr:'CyclOSM (biciklo)',ro:'CyclOSM (ciclism)',en:'CyclOSM (cycling)'},
   'Esri Terrain':           {cs:'Esri Terrain',sk:'Esri Terrain',bg:'Esri Terrain',hr:'Esri Terrain',ro:'Esri Terrain',en:'Esri Terrain'},
   'Politická':              {cs:'Politická',sk:'Politická',bg:'Политическа',hr:'Politička',ro:'Politică',en:'Political'},
+  'Vektorové – barvy jdou měnit': {cs:'Vektorové – barvy jdou měnit',sk:'Vektorové – farby sa dajú meniť',bg:'Векторни – цветовете се променят',hr:'Vektorske – boje se mogu mijenjati',ro:'Vectoriale – culorile se pot schimba',en:'Vector – colours can be changed'},
+  'Rastrové – pevné barvy': {cs:'Rastrové – pevné barvy',sk:'Rastrové – pevné farby',bg:'Растерни – фиксирани цветове',hr:'Rasterske – fiksne boje',ro:'Raster – culori fixe',en:'Raster – fixed colours'},
+  'Satelit':                {cs:'Satelit',sk:'Satelit',bg:'Сателит',hr:'Satelit',ro:'Satelit',en:'Satellite'},
+  'Světlá – Positron':      {cs:'Světlá – Positron',sk:'Svetlá – Positron',bg:'Светла – Positron',hr:'Svijetla – Positron',ro:'Deschisă – Positron',en:'Light – Positron'},
+  '3D budovy a stíny – Liberty': {cs:'3D budovy a stíny – Liberty',sk:'3D budovy a tiene – Liberty',bg:'3D сгради и сенки – Liberty',hr:'3D zgrade i sjene – Liberty',ro:'Clădiri 3D și umbre – Liberty',en:'3D buildings and shadows – Liberty'},
+  'Pestrá – Bright':        {cs:'Pestrá – Bright',sk:'Pestrá – Bright',bg:'Пъстра – Bright',hr:'Šarena – Bright',ro:'Colorată – Bright',en:'Colourful – Bright'},
+  'Jednoduchá – Basic':     {cs:'Jednoduchá – Basic',sk:'Jednoduchá – Basic',bg:'Опростена – Basic',hr:'Jednostavna – Basic',ro:'Simplă – Basic',en:'Simple – Basic'},
+  'Reliéf s vrstevnicemi – Terrain': {cs:'Reliéf s vrstevnicemi – Terrain',sk:'Reliéf s vrstevnicami – Terrain',bg:'Релеф с хоризонтали – Terrain',hr:'Reljef sa slojnicama – Terrain',ro:'Relief cu curbe de nivel – Terrain',en:'Relief with contours – Terrain'},
+  'Jednoduché 3D budovy':   {cs:'Jednoduché 3D budovy',sk:'Jednoduché 3D budovy',bg:'Опростени 3D сгради',hr:'Jednostavne 3D zgrade',ro:'Clădiri 3D simple',en:'Simple 3D buildings'},
+  'Satelitní snímek':       {cs:'Satelitní snímek',sk:'Satelitná snímka',bg:'Сателитна снимка',hr:'Satelitska snimka',ro:'Imagine satelitară',en:'Satellite image'},
+  'Satelit s názvy – Hybrid': {cs:'Satelit s názvy – Hybrid',sk:'Satelit s názvami – Hybrid',bg:'Сателит с имена – Hybrid',hr:'Satelit s nazivima – Hybrid',ro:'Satelit cu denumiri – Hybrid',en:'Satellite with names – Hybrid'},
+  'OpenStreetMap (české názvy)': {cs:'OpenStreetMap (české názvy)',sk:'OpenStreetMap (české názvy)',bg:'OpenStreetMap (чешки имена)',hr:'OpenStreetMap (češki nazivi)',ro:'OpenStreetMap (denumiri cehe)',en:'OpenStreetMap (Czech names)'},
+  'Jen reliéf bez názvů – Esri': {cs:'Jen reliéf bez názvů – Esri',sk:'Len reliéf bez názvov – Esri',bg:'Само релеф без имена – Esri',hr:'Samo reljef bez naziva – Esri',ro:'Doar relief fără denumiri – Esri',en:'Relief only, no names – Esri'},
   // Instructional hint paragraphs — most of the app's <p class="hint"> help texts
   // had no data-i18n attribute at all, so they stayed Czech in every UI language
   // (reported repeatedly across Scene/Animation/Project/Export sections).
@@ -2910,15 +2934,36 @@ const STYLES = {
       {id:'satellite-base',type:'raster',source:'esri',paint:{'raster-resampling':'linear'}}
     ]
   },
+  // Popisky přes satelit: dřív rastrové CARTO light_only_labels — bez API klíče
+  // vracejí šikmý vodoznak „API KEY REQUIRED" (i v exportu). Teď vektorové názvy
+  // z OpenFreeMap (bez klíče): bílý text s tmavým obrysem, čitelný nad snímkem.
+  // Zdroj se schválně nejmenuje „openmaptiles" — jinak by se na hybrid přidaly
+  // tramvaje a další vrstvy vektorových podkladů.
   hybrid:{
     version:8,
+    glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
     sources:{
       esri:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:18,attribution:'Tiles © Esri'},
-      cartoLabels:{type:'raster',tiles:['https://basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png'],tileSize:256,attribution:'© OpenStreetMap contributors © CARTO'}
+      ofmLabels:{type:'vector',url:'https://tiles.openfreemap.org/planet',attribution:'© OpenMapTiles © OpenStreetMap contributors'}
     },
     layers:[
       {id:'satellite-base',type:'raster',source:'esri',paint:{'raster-resampling':'linear'}},
-      {id:'hybrid-labels',type:'raster',source:'cartoLabels',paint:{'raster-opacity':0.95,'raster-resampling':'linear'}}
+      ...[
+        // [id, source-layer, filtr, minzoom, velikost (zoom → px), font]
+        ['hybrid-label-street','transportation_name',['match',['get','class'],['motorway','trunk','primary','secondary','tertiary','minor'],true,false],13,[13,11,17,15],'Noto Sans Regular','line'],
+        ['hybrid-label-water','water_name',['has','name'],9,[9,11,15,14],'Noto Sans Italic','point'],
+        ['hybrid-label-suburb','place',['match',['get','class'],['suburb','quarter','neighbourhood'],true,false],12,[12,11,16,15],'Noto Sans Regular','point'],
+        ['hybrid-label-village','place',['match',['get','class'],['village','hamlet'],true,false],10,[10,11,15,15],'Noto Sans Regular','point'],
+        ['hybrid-label-town','place',['==',['get','class'],'town'],7,[7,11,14,17],'Noto Sans Bold','point'],
+        ['hybrid-label-city','place',['==',['get','class'],'city'],4,[4,11,12,22],'Noto Sans Bold','point'],
+        ['hybrid-label-country','place',['==',['get','class'],'country'],1,[2,11,6,16],'Noto Sans Bold','point']
+      ].map(([id, sl, filter, minzoom, [z1, s1, z2, s2], font, place]) => ({
+        id, type:'symbol', source:'ofmLabels', 'source-layer':sl, filter, minzoom,
+        layout:{'text-field':['coalesce',['get','name:cs'],['get','name']], 'text-font':[font],
+          'text-size':['interpolate',['linear'],['zoom'],z1,s1,z2,s2], 'text-max-width':8,
+          ...(place === 'line' ? {'symbol-placement':'line','text-rotation-alignment':'map'} : {})},
+        paint:{'text-color':'#ffffff','text-halo-color':'rgba(0,0,0,0.85)','text-halo-width':1.6,'text-halo-blur':0.4}
+      }))
     ]
   },
   osmStandard:{
@@ -2942,10 +2987,12 @@ const STYLES = {
     },
     layers:[{id:'cyc-base',type:'raster',source:'cyc',paint:{'raster-resampling':'linear'}}]
   },
+  // Jen pro staré projekty (v nabídce není): CARTO Voyager bez API klíče vrací
+  // vodoznak „API KEY REQUIRED" → podobná uliční mapa Esri, která klíč nechce.
   cartoVoyager:{
     version:8,
     sources:{
-      cv:{type:'raster',tiles:['https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png','https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png','https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png','https://d.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png'],tileSize:256,maxzoom:20,attribution:'© OpenStreetMap contributors © CARTO'}
+      cv:{type:'raster',tiles:['https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}'],tileSize:256,maxzoom:19,attribution:'Tiles © Esri — Source: Esri, HERE, Garmin, © OpenStreetMap contributors'}
     },
     layers:[{id:'cv-base',type:'raster',source:'cv',paint:{'raster-resampling':'linear'}}]
   },
@@ -3912,6 +3959,7 @@ function updatePresetTileActiveState(){
   const modified = pzPresetModified();
   if(!(state.selectedPresetTokens instanceof Set)) state.selectedPresetTokens = new Set();
   Array.from(grid.children).forEach(btn => {
+    if(!btn.classList.contains('preset-card')) return;   // nadpis „Vlastní presety"
     const isBuiltin = btn.dataset.builtin === 'true';
     const key = btn.dataset.key || '';
     const id = btn.dataset.id || '';
@@ -3962,9 +4010,16 @@ function renderPresetTiles(){
     btn.addEventListener('contextmenu', e => { e.preventDefault(); openPresetContextMenu(e.clientX, e.clientY, true, key); });
     grid.appendChild(btn);
   });
+  // Vlastní presety pod nadpisem a v rámečku — „13 svetla" vypadala jako vestavěná
+  if(db.length){
+    const sep = document.createElement('div');
+    sep.className = 'preset-grid-sep';
+    sep.textContent = t('Vlastní presety');
+    grid.appendChild(sep);
+  }
   db.forEach((entry, idx) => {
     const btn = document.createElement('button');
-    btn.className = 'preset-btn preset-card' + (active === ('custom:' + entry.id) ? ' active' : '') + (defaultToken === ('custom:' + entry.id) ? ' is-default' : '');
+    btn.className = 'preset-btn preset-card preset-card--custom' + (active === ('custom:' + entry.id) ? ' active' : '') + (defaultToken === ('custom:' + entry.id) ? ' is-default' : '');
     btn.type = 'button';
     btn.title = entry.name;
     btn.dataset.builtin = 'false';
@@ -3982,7 +4037,15 @@ function renderPresetTiles(){
 function dbSavePreset(){
   const db = loadPresetDB();
   const displayNo = String(getVisibleBuiltinPresetKeys().length + db.length + 1).padStart(2,'0');
-  const name = $('presetName')?.value?.trim() || ('Preset ' + displayNo);
+  let name = $('presetName')?.value?.trim() || ('Preset ' + displayNo);
+  // Název po vestavěném presetu („Světlá") by z vlastního udělal dvojníka vestavěné dlaždice
+  const loose = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const clash = BUILTIN_PRESET_ORDER.some(k => loose(getBuiltinPresetLabel(k)) === loose(name)) || db.some(e => loose(e.name) === loose(name));
+  if(clash){
+    const base = name + ' (' + t('vlastní') + ')';
+    let n = 1; name = base;
+    while(db.some(e => loose(e.name) === loose(name))) name = base.replace(/\)$/, ' ' + (++n) + ')');
+  }
   const snapshot = getCurrentStylePresetSnapshot();
   const entry = normalizePresetEntry({
     id: 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7),
@@ -3999,7 +4062,7 @@ function dbSavePreset(){
   if($('savedPresetSelect')) $('savedPresetSelect').value = entry.id;
   state.activePresetToken = 'custom:' + entry.id;
   renderPresetTiles();
-  setStatus(t('Preset přidán.', displayNo));
+  setStatus(clash ? t('Název už má jiný preset, uloženo jako „{0}“.', name) : t('Preset přidán.', displayNo));
 }
 function findCustomPresetById(id){
   const db = loadPresetDB();
@@ -4162,14 +4225,18 @@ const MAP_SOURCE_WATERMARKS = {
   liberty:'Zdroj mapy: OpenFreeMap / OpenStreetMap',
   bright:'Zdroj mapy: OpenFreeMap / OpenStreetMap',
   positron:'Zdroj mapy: OpenFreeMap / OpenStreetMap',
+  // dřív se vypisoval název z nabídky („Basic"); po přejmenování podkladů by to byl „Jednoduchá – Basic"
+  basic:'Zdroj mapy: OpenMapTiles / OpenFreeMap / OpenStreetMap',
+  terrain:'Zdroj mapy: OpenMapTiles / OpenFreeMap / OpenStreetMap',
+  omt3d:'Zdroj mapy: OpenMapTiles / OpenFreeMap / OpenStreetMap',
   libertyHillshade:'Zdroj mapy: OpenFreeMap / OpenStreetMap / Terrain Tiles',
   osmStandard:'Zdroj mapy: OpenStreetMap',
   osmHot:'Zdroj mapy: OpenStreetMap / HOT',
   satellite:'Zdroj mapy: Esri',
-  hybrid:'Zdroj mapy: Esri / CARTO / OpenStreetMap',
+  hybrid:'Zdroj mapy: Esri / OpenFreeMap / OpenStreetMap',
   openTopo:'Zdroj mapy: OpenTopoMap / OpenStreetMap / SRTM',
   cyclOsm:'Zdroj mapy: CyclOSM / OpenStreetMap',
-  cartoVoyager:'Zdroj mapy: CARTO / OpenStreetMap',
+  cartoVoyager:'Zdroj mapy: Esri / OpenStreetMap',
   esriTerrain:'Zdroj mapy: Esri / USGS / NASA / NGA / CGIAR',
   political:'Zdroj mapy: Eurostat / GISCO / Natural Earth'
 };
@@ -4310,14 +4377,21 @@ function refreshBaseStyleSelect(){
   const cur = sel.value;
   const custom = loadTileDB();
   sel.innerHTML = '';
-  const builtinGroup = document.createElement('optgroup');
-  builtinGroup.label = t('Základní styly');
-  [{k:'liberty',l:'Liberty 3D'},{k:'bright',l:'Bright'},{k:'positron',l:'Positron'},{k:'basic',l:'Basic'},{k:'terrain',l:'Terrain (reliéf)'},{k:'omt3d',l:'3D budovy'},{k:'satellite',l:'Satelitní'},{k:'hybrid',l:'Hybrid'},{k:'osmStandard',l:'OSM Standard (CZ names)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Esri Terrain'},{k:'political',l:'Politická'}].forEach(s => {
-    const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l);
-    if(PZ_ADV_STYLES.includes(s.k)){ o.dataset.adv = '1'; o.hidden = !pzAdvancedOn() && s.k !== cur; }
-    builtinGroup.appendChild(o);
+  // Popisné české názvy ve skupinách (dřív „Basic", „Bright", tři reliéfy a
+  // „Liberty 3D" vedle „3D budovy" v jednom seznamu). Klíče se nemění (TOOL_STYLE_KEYS).
+  [['Vektorové – barvy jdou měnit', [{k:'positron',l:'Světlá – Positron'},{k:'liberty',l:'3D budovy a stíny – Liberty'},{k:'bright',l:'Pestrá – Bright'},{k:'basic',l:'Jednoduchá – Basic'},{k:'terrain',l:'Reliéf s vrstevnicemi – Terrain'},{k:'omt3d',l:'Jednoduché 3D budovy'},{k:'political',l:'Politická'}]],
+   ['Satelit', [{k:'satellite',l:'Satelitní snímek'},{k:'hybrid',l:'Satelit s názvy – Hybrid'}]],
+   ['Rastrové – pevné barvy', [{k:'osmStandard',l:'OpenStreetMap (české názvy)'},{k:'openTopo',l:'OpenTopoMap (topo)'},{k:'cyclOsm',l:'CyclOSM (cyklo)'},{k:'esriTerrain',l:'Jen reliéf bez názvů – Esri'}]]
+  ].forEach(([label, items]) => {
+    const g = document.createElement('optgroup');
+    g.label = t(label);
+    items.forEach(s => {
+      const o = document.createElement('option'); o.value = s.k; o.textContent = t(s.l);
+      if(PZ_ADV_STYLES.includes(s.k)){ o.dataset.adv = '1'; o.hidden = !pzAdvancedOn() && s.k !== cur; }
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
   });
-  sel.appendChild(builtinGroup);
   if(custom.length){
     const customGroup = document.createElement('optgroup');
     customGroup.label = t('Vlastní zdroje');
@@ -4351,7 +4425,7 @@ function renderTileSourceList(){
   const custom = loadTileDB();
   list.innerHTML = '';
   BUILTIN_TILE_KEYS.forEach((key, idx) => {
-    const names = {liberty:'Liberty 3D',bright:'Bright',positron:'Positron',basic:'Basic',terrain:'Terrain (reliéf)',omt3d:'3D budovy',satellite:'Satelitní',hybrid:'Hybrid',osmStandard:'OSM Standard (CZ names)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Esri Terrain',osmHot:'OSM Humanitarian'};
+    const names = {liberty:'3D budovy a stíny – Liberty',bright:'Pestrá – Bright',positron:'Světlá – Positron',basic:'Jednoduchá – Basic',terrain:'Reliéf s vrstevnicemi – Terrain',omt3d:'Jednoduché 3D budovy',satellite:'Satelitní snímek',hybrid:'Satelit s názvy – Hybrid',osmStandard:'OpenStreetMap (české názvy)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Jen reliéf bez názvů – Esri',osmHot:'OSM Humanitarian'};
     const wrap = document.createElement('div'); wrap.className = 'wp-item';
     wrap.innerHTML = `<span class="wp-badge" style="background:var(--green);font-size:8px">B${idx+1}</span><div style="flex:1;"><span style="font-weight:600">${names[key]||key}</span> <span class="small">— vestavěný</span></div>`;
     list.appendChild(wrap);
@@ -7436,11 +7510,17 @@ function applyPreferredMapLabelLanguage(){
     return;
   }
   const expr = buildPreferredMapLabelExpr(currentLang || 'cs');
-  const placeLayers = matchLayers(/label|place|settlement|locality|city|town|village|hamlet|suburb|capital|country|state|admin|municipality|region/, 'symbol');
+  // Názvy ulic, vod, POI a letišť šly dřív mimo regex a styly OpenFreeMap je berou
+  // z name_en („Wenceslas Square" na české mapě). Přepisují se všechny symbolové
+  // vrstvy podkladu, které berou název; štítky silnic (ref), čísla domů, výšky
+  // vrcholů a vlastní vrstvy appky (pz…, route…) zůstávají.
+  const placeLayers = matchLayers(/./, 'symbol').filter(l => !PZ_APP_LAYER_RE.test(String(l.id).toLowerCase()));
   placeLayers.forEach(l => {
     try{
       const currentField = state.map.getLayoutProperty(l.id, 'text-field');
       if(currentField == null) return;
+      const js = JSON.stringify(currentField);
+      if(!/name/.test(js) || /\bref\b|housenumber|\{ele\}|"ele"/.test(js)) return;
       safeSetLayout(l.id, 'text-field', expr); // přeskočí zápis, když je výraz stejný
     }catch(e){}
   });
@@ -8187,6 +8267,7 @@ function serializeProjectSnapshot(){
     version:2,
     baseStyle: $('baseStyle')?.value || 'liberty',
     nativeColors: !!state.pzNativeColors,
+    presetToken: state.activePresetToken || null, presetSig: state._presetAppliedSig || null,   // krok zpět vrátí i zvýrazněnou dlaždici
     countryFlags: pzFlagList().map(f => ({iso: f.iso, lngLat: f.lngLat})),
     globeProjection: isGlobeProjectionOn(),
     view: state.map ? {
@@ -8291,6 +8372,11 @@ function applyBasicProjectSnapshot(snapshot){
   ['showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit'].forEach(id => {
     if($(id) && visibility[id] != null) $(id).checked = !!visibility[id];
   });
+  if('presetToken' in snapshot){
+    state.activePresetToken = snapshot.presetToken || null;
+    state._presetAppliedSig = snapshot.presetSig || null;
+    try{ updatePresetTileActiveState(); }catch(e){}
+  }
 
   const route = snapshot.route || {};
   state.pointA = route.pointA || null;
@@ -9165,6 +9251,19 @@ function applyRoadClassVisibility(){
   // Style providers use different layer names. Match the semantic class rather
   // than one MapTiler-specific id so toggles work after every basemap switch.
   setVisibilityByRegex(/motorway|trunk/, major && on('showMotorways'), ['line']);
+  // Positron (a mosty/tunely Basic) kreslí trunk — D1 u Chodova, 5. května — ve
+  // společné vrstvě highway_major_* s 1.–3. třídou; vypnuté Dálnice ho tam vyfiltrují.
+  const mot = major && on('showMotorways');
+  if(state._pzRoadFilt?.style !== state.map.style) state._pzRoadFilt = {style: state.map.style, f: {}};
+  const origF = state._pzRoadFilt.f;
+  eachStyleLayer((l, id) => {
+    if(l.type !== 'line' || /motorway|trunk|rail|transit/i.test(id) || PZ_APP_LAYER_RE.test(String(id).toLowerCase())) return;
+    if(!(id in origF)) origF[id] = state.map.getFilter(id) ?? null;
+    const orig = origF[id], js = JSON.stringify(orig || '');
+    if(!orig || !js.includes('"trunk"')) return;
+    const want = mot ? orig : ['all', orig, js.includes('["get"') ? ['!=', ['get','class'], 'trunk'] : ['!=', 'class', 'trunk']];
+    try{ if(JSON.stringify(state.map.getFilter(id)) !== JSON.stringify(want)) state.map.setFilter(id, want); }catch(e){}
+  });
   setVisibilityByRegex(/primary/, major && on('showPrimaryRoads'), ['line']);
   setVisibilityByRegex(/secondary|tertiary/, minor && on('showSecondaryRoads'), ['line']);
   setVisibilityByRegex(/waterway|river|stream|canal|ditch/, on('showWaterways'), ['line','symbol']);
@@ -9660,7 +9759,8 @@ function refreshAOOnIdle(){
 function pzZoomWidth(w){ return ['interpolate', ['linear'], ['zoom'], 0, w * 0.3, 2, w * 0.42, 3.5, w * 0.65, 5, w]; }
 function applyMapTweaks(){
   if(!state.map?.isStyleLoaded()) return;
-  if(state.pzNativeColors) return;   // podklad ve své původní barevnosti (Liberty klasická, Dark Matter, Toner…)
+  // podklad ve své původní barevnosti (Liberty klasická, Dark Matter, Toner…) — jen řádky Vrstev
+  if(state.pzNativeColors){ try{ pzUpdateLayerRows(); }catch(e){} return; }
   const land = $('landColor')?.value || PRESETS.reset.land;
   const water = $('waterColor')?.value || PRESETS.reset.water;
   const building = $('buildingColor')?.value || PRESETS.reset.building;
@@ -9721,10 +9821,16 @@ function applyMapTweaks(){
     safeSetPaint(l.id, 'line-width', widthExpr);
   });
 
-  matchLayers(/road|street|highway|motorway|trunk|primary/, 'line').forEach(l => {
+  // Tunely a mosty (Basic/Terrain/3D budovy: tunnel_major, bridge_major, „bridge_major case")
+  // dřív regexem propadly a zůstaly bílé uprostřed přebarvených silnic. Kolejové,
+  // pěší a lanovkové tunely/mosty sem nepatří; obrys mostu bere barvu vedlejších silnic.
+  const ROAD_RE = /road|street|highway|motorway|trunk|primary/;
+  matchLayers(/road|street|highway|motorway|trunk|primary|tunnel|bridge|brunnel/, 'line').forEach(l => {
     const id = (l.id||'').toLowerCase();
+    if(!ROAD_RE.test(id) && /rail|transit|ferry|cable|path|pedestrian|water/.test(id)) return;
     const isMajor = /motorway|trunk|primary|major/.test(id);
-    safeSetPaint(l.id, 'line-color', isMajor ? roadMajor : roadMinor);
+    const isCasing = !ROAD_RE.test(id) && /casing|case/.test(id);
+    safeSetPaint(l.id, 'line-color', isCasing ? roadMinor : (isMajor ? roadMajor : roadMinor));
     const baseWidth = state.originalRoadWidthPaints[l.id];
     const widthExpr = baseWidth == null ? (isMajor ? 1.4 * majorWidth : 1.0 * minorWidth) : scaleRoadWidthExpression(baseWidth, isMajor ? majorWidth : minorWidth);
     safeSetPaint(l.id, 'line-width', widthExpr);
@@ -9750,6 +9856,7 @@ function applyMapTweaks(){
 
   const labelLayers = matchLayers(/label|place|name|poi|airport|aerodrome/, 'symbol');
   labelLayers.forEach(l => {
+    if(/^hybrid-/.test(l.id)) return;   // bílé názvy přes satelit, barva presetu by je zhasla
     safeSetPaint(l.id, 'text-color', label);
     safeSetPaint(l.id, 'text-halo-color', halo);
     safeSetPaint(l.id, 'text-halo-width', 1.2);
@@ -9766,6 +9873,8 @@ function applyMapTweaks(){
   setVisibilityByRegex(/aeroway|aerodrome|airport|runway|taxiway/, $('showAeroway')?.checked !== false, ['fill','line','symbol']);
   applyControlledBoundaryVisibility($('showBoundaries')?.checked !== false);
   setVisibilityByRegex(/label|place|name|poi|airport|aerodrome/, $('showLabels')?.checked !== false, ['symbol']);
+  // drobné POI Liberty/Bright (obchody, kavárny: „Darky Gifts") do zpravodajské mapy nepatří
+  setVisibilityByRegex(/^poi_r(7|20)$/, false, ['symbol']);
   setRoadShieldVisibility($('showRoadShields')?.checked !== false && $('showLabels')?.checked !== false);
   enforceRoadShieldToggle();
   setVisibilityByRegex(/road|street|minor/, $('showMinorRoads')?.checked !== false, ['line']);
@@ -9953,18 +10062,37 @@ function updateAnimReadout(){
   }
 }
 
-function applyPreset(name){
-  const p = PRESETS[name]; if(!p || !isBuiltinPresetVisible(name)) return;
+// Podklad, který přepnul preset (Zelená přírodní, Turistická → Liberty). Další preset
+// bez vlastního podkladu ho vrátí na ten předchozí — jinak „01 Světlá" po „08"
+// zůstala na Liberty s 3D budovami a stejný preset vypadal pokaždé jinak.
+// Ruční změna podkladu záznam maže (grafik si podklad vybral sám).
+function pzPresetBaseStyle(override){
+  const sel = $('baseStyle'); if(!sel) return false;
+  const cur = sel.value, rec = state.pzPresetBase;
+  let next = null;
+  if(override.baseStyle){
+    if(cur !== override.baseStyle){ state.pzPresetBase = {from: (rec && rec.to === cur) ? rec.from : cur, to: override.baseStyle}; next = override.baseStyle; }
+  }else if(rec && rec.to === cur){
+    state.pzPresetBase = null;
+    next = rec.from || 'positron';
+  }
+  if(!next || next === cur) return false;
+  sel.value = next;
+  return true;
+}
+// force: preset skrytý ve Správě presetů jen na výslovné přání (asistent, konektor)
+function applyPreset(name, {force = false} = {}){
+  const p = PRESETS[name]; if(!p || (!force && !isBuiltinPresetVisible(name))) return false;
   const override = BUILTIN_PRESET_STYLE_OVERRIDES[name] || {};
   if(override.native){
     // podklad v původních barvách: přepnout a načíst čistý styl bez přebarvení
     state.pzNativeColors = true;
-    if(override.baseStyle && $('baseStyle')) $('baseStyle').value = override.baseStyle;
+    pzPresetBaseStyle(override);
     state.activePresetToken = 'builtin:' + name;
     reloadStyle();
     updatePresetTileActiveState();
     setStatus(t('Preset použit.', getBuiltinPresetNumber(name)));
-    return;
+    return true;
   }
   if(state.pzNativeColors){ state.pzNativeColors = false; }
   const ranges = Object.assign({}, DEFAULT_BUILTIN_PRESET_RANGES, override.ranges || {});
@@ -9972,12 +10100,13 @@ function applyPreset(name){
   applyStylePresetSnapshot({colors:p, ranges, visibility});
   state.activePresetToken = 'builtin:' + name;
   // preset s vlastním podkladem (Turistická, Zelená přírodní → Liberty: lesy, štítky silnic)
-  if(override.baseStyle && $('baseStyle') && $('baseStyle').value !== override.baseStyle){ $('baseStyle').value = override.baseStyle; reloadStyle(); }
+  if(pzPresetBaseStyle(override)) reloadStyle();
   try{ ensureLibertyHillshadeOverlay(); }catch(e){}   // turistická mapa má stínovaný reliéf
   if($('savedPresetSelect')) $('savedPresetSelect').value = '';
   if($('presetName')) $('presetName').value = getBuiltinPresetLabel(name);
   updatePresetTileActiveState();
   setStatus(t('Preset použit.', getBuiltinPresetNumber(name)));
+  return true;
 }
 
 
@@ -10009,8 +10138,12 @@ function pzBaseHasLayer(regex, types){
   });
   return hit;
 }
+const PZ_RASTER_BASES = ['satellite','hybrid','osmStandard','openTopo','cyclOsm','cartoVoyager','esriTerrain','osmHot'];
 const PZ_LAYER_ROW_TESTS = {
-  landColor: () => pzBaseHasLayer(/background/, ['background']) && !pzBaseHasLayer(/./, ['raster']),
+  // Liberty 3D má rastrový stínovaný reliéf, a řádek Pevnina tam chyběl, i když barva
+  // funguje. Schovat jen u celoplošných rastrových podkladů (satelit, OSM, topo…).
+  landColor: () => pzBaseHasLayer(/background/, ['background']) && !PZ_RASTER_BASES.includes($('baseStyle')?.value || ''),
+  waterColor: () => pzBaseHasLayer(/water/, ['fill','line']),
   showBuildings: () => pzBaseHasLayer(/building/, ['fill','fill-extrusion']),
   showParks: () => pzBaseHasLayer(/park|green|wood|forest|grass/, ['fill']),
   showLandcover: () => pzBaseHasLayer(/landcover/, ['fill']),
@@ -10028,6 +10161,17 @@ const PZ_LAYER_ROW_TESTS = {
   showRailways: () => pzBaseHasLayer(/railway|rail|train/, ['line','symbol'])
 };
 function pzUpdateLayerRows(){
+  // Na Liberty 3D jsou budovy vždy plné (kvůli AO) — posuvník by nic nedělal.
+  const bo = $('buildingOpacity');
+  if(bo){
+    const ao = styleUsesAO();
+    bo.disabled = ao;
+    bo.title = ao ? t('Na Liberty 3D jsou budovy vždy plné') : '';
+    const note = $('buildingOpacityNote'); if(note) note.hidden = !ao;
+  }
+  // Názvy přes satelit (Hybrid) jsou vždy bílé s tmavým obrysem — barvy by nic nedělaly
+  const hyb = ($('baseStyle')?.value || '') === 'hybrid';
+  $('showLabels')?.closest('.layer-visibility-row')?.querySelectorAll('.layer-color-input').forEach(i => { i.style.visibility = hyb ? 'hidden' : ''; });
   if(!state.map?.isStyleLoaded?.()) return;
   let count = 0;
   try{ count = state.map.getLayersOrder().length; }catch(e){}
@@ -10036,7 +10180,7 @@ function pzUpdateLayerRows(){
   state._layerRowsSig = sig;
   let shown = 0;
   Object.entries(PZ_LAYER_ROW_TESTS).forEach(([id, test]) => {
-    const row = (id === 'landColor' ? document.querySelector('.layer-color-input[data-sync-color="landColor"]') : $(id))?.closest('.layer-visibility-row');
+    const row = (/Color$/.test(id) ? document.querySelector('.layer-color-input[data-sync-color="' + id + '"]') : $(id))?.closest('.layer-visibility-row');
     if(!row) return;
     let ok = true;
     try{ ok = !!test(); }catch(e){}
@@ -10079,8 +10223,22 @@ function pzAutoBorderColor(){
   const want = dark ? PZ_BORDER_AUTO.dark : PZ_BORDER_AUTO.light;
   if(cur !== want) el.value = want;
 }
+// Krok zpět pro změnu podkladu: snímek se dělá už při pointerdown/keydown na
+// selectu, ale výběr klávesnicí bez focusu, Playwright ani nástroje asistenta
+// to nespustí. Tady se na okamžik vrátí předchozí hodnota, uloží se snímek
+// (duplikát pushUndo sám zahodí) a nová hodnota se vrátí.
+function pzBaseStyleUndoPoint(prev){
+  const sel = $('baseStyle'); if(!sel) return;
+  const next = sel.value;
+  prev = prev || state.pzBaseStylePrev || 'positron';   // start appky je na Positronu
+  if(!prev || prev === next || !sel.querySelector('option[value="' + prev + '"]')) return;
+  sel.value = prev;
+  try{ window.__pzPushUndo?.(); }catch(e){}
+  sel.value = next;
+}
 function reloadStyle(){
   const key = $('baseStyle').value || 'liberty';
+  state.pzBaseStylePrev = key;
   try{ pzAutoFillOpacity(key); }catch(e){}
   try{ pzAutoBorderColor(); }catch(e){}
   updateStylePanelVisibility();
@@ -18107,6 +18265,8 @@ function bindUI(){
     }
   })();
   $('baseStyle')?.addEventListener('change', () => {
+    pzBaseStyleUndoPoint();
+    state.pzPresetBase = null;   // podklad vybral grafik, další preset ho nemění zpět
     // nové podklady OpenMapTiles se ukážou ve svém vzhledu; ostatní jako dřív s presetem
     state.pzNativeColors = PZ_NATIVE_BASES.has($('baseStyle').value);
     reloadStyle();
@@ -18185,14 +18345,31 @@ function bindUI(){
       target.dispatchEvent(new Event('input', {bubbles:true}));
     });
   });
-  document.querySelectorAll('.layer-visibility-row .layer-color-input').forEach(swatch => {
-    swatch.addEventListener('click', e => {
-      e.stopPropagation();
-      const row = swatch.closest('.layer-visibility-row');
-      if(!row?.querySelector('.layer-width-popover')) return;
+  // „obrys" u Názvů otevře výběr barvy obrysu (jinak by klik na text přepnul Názvy)
+  document.querySelectorAll('.layer-halo-cap').forEach(cap => cap.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    cap.nextElementSibling?.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true}));
+    cap.nextElementSibling?.click();
+  }));
+  // Tloušťka vrstvy: dřív se posuvník ukázal jen po kliku na barevné kolečko,
+  // které zároveň otevřelo výběr barvy. Teď vlastní tlačítko s aktuální hodnotou.
+  document.querySelectorAll('.layer-visibility-row').forEach(row => {
+    const pop = row.querySelector('.layer-width-popover'); if(!pop) return;
+    const val = pop.querySelector('.val');
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'layer-width-btn';
+    btn.title = t('Tloušťka'); btn.setAttribute('aria-label', t('Tloušťka')); btn.setAttribute('aria-expanded', 'false');
+    btn.innerHTML = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M1 2.5h10" stroke="currentColor" stroke-width="1"/><path d="M1 6h10" stroke="currentColor" stroke-width="2"/><path d="M1 10h10" stroke="currentColor" stroke-width="3"/></svg><span></span>';
+    const sync = () => { btn.lastChild.textContent = val ? val.textContent : ''; btn.setAttribute('aria-expanded', String(row.classList.contains('width-open'))); };
+    sync();
+    if(val && window.MutationObserver) new MutationObserver(sync).observe(val, {childList:true, characterData:true, subtree:true});
+    if(window.MutationObserver) new MutationObserver(sync).observe(row, {attributes:true, attributeFilter:['class']});
+    btn.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
       document.querySelectorAll('.layer-visibility-row.width-open').forEach(other => { if(other !== row) other.classList.remove('width-open'); });
       row.classList.toggle('width-open');
     });
+    row.insertBefore(btn, pop);
   });
   document.addEventListener('click', e => {
     if(e.target.closest('.layer-visibility-row.width-open')) return;
@@ -19245,6 +19422,13 @@ Object.assign(I18N, {
   "Náklon kamery": {cs:"Náklon kamery",sk:"Sklon kamery",bg:"Наклон на камерата",hr:"Nagib kamere",ro:"Înclinarea camerei",en:"Camera tilt"},
   "Přidat záběr": {cs:"Přidat záběr",sk:"Pridať záber",bg:"Добави кадър",hr:"Dodaj kadar",ro:"Adaugă cadru",en:"Add shot"},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
+  "obrys": {cs:"obrys",sk:"obrys",bg:"контур",hr:"obrub",ro:"contur",en:"outline"},
+  "Vlastní presety": {cs:"Vlastní presety",sk:"Vlastné presety",bg:"Собствени пресети",hr:"Vlastiti preseti",ro:"Presetări proprii",en:"Custom presets"},
+  "vlastní": {cs:"vlastní",sk:"vlastný",bg:"собствен",hr:"vlastiti",ro:"propriu",en:"custom"},
+  "Obrys textu": {cs:"Obrys textu",sk:"Obrys textu",bg:"Контур на текста",hr:"Obrub teksta",ro:"Contur text",en:"Text outline"},
+  "Barva vody": {cs:"Barva vody",sk:"Farba vody",bg:"Цвят на водата",hr:"Boja vode",ro:"Culoarea apei",en:"Water colour"},
+  "Na Liberty 3D jsou budovy vždy plné": {cs:"Na Liberty 3D jsou budovy vždy plné",sk:"Na Liberty 3D sú budovy vždy plné",bg:"На Liberty 3D сградите са винаги плътни",hr:"Na Liberty 3D zgrade su uvijek pune",ro:"Pe Liberty 3D clădirile sunt mereu opace",en:"On Liberty 3D buildings are always solid"},
+  "Název už má jiný preset, uloženo jako „{0}“.": {cs:"Název už má jiný preset, uloženo jako „{0}“.",sk:"Názov už má iný preset, uložené ako „{0}“.",bg:"Името вече е заето, запазено като „{0}“.",hr:"Naziv već ima drugi preset, spremljeno kao „{0}“.",ro:"Numele este deja folosit, salvat ca „{0}”.",en:"That name is taken, saved as “{0}”."},
   "Oddálit při přeletu": {cs:"Oddálit při přeletu",sk:"Oddialiť pri prelete",bg:"Отдалечаване при прелитане",hr:"Udalji tijekom preleta",ro:"Depărtare în timpul zborului",en:"Pull back during flyover"},
   "Posunout výš": {cs:"Posunout výš",sk:"Posunúť vyššie",bg:"Премести нагоре",hr:"Pomakni gore",ro:"Mută mai sus",en:"Move up"},
   "Posunout níž": {cs:"Posunout níž",sk:"Posunúť nižšie",bg:"Премести надолу",hr:"Pomakni dolje",ro:"Mută mai jos",en:"Move down"},
@@ -21129,7 +21313,7 @@ function pzColorFromName(v){
     // ---- meta -------------------------------------------------------------
     version: 1,
     catalog: {styles: TOOL_STYLE_KEYS, tabs: TOOL_TABS, modes: TOOL_MODES,
-              presets: (typeof BUILTIN_PRESET_ORDER !== 'undefined' ? BUILTIN_PRESET_ORDER.slice() : [])},
+              get presets(){ try{ return getVisibleBuiltinPresetKeys(); }catch(e){ return []; } }},   // jen viditelné ve Stylu
     getState: toolMapState,
 
     // ---- navigation -------------------------------------------------------
@@ -21196,15 +21380,27 @@ function pzColorFromName(v){
     setBaseStyle({style} = {}){
       if(!TOOL_STYLE_KEYS.includes(style)) return {ok:false, error:'Neznámý styl. Dostupné: ' + TOOL_STYLE_KEYS.join(', ')};
       const sel = $('baseStyle'); if(!sel) return {ok:false, error:'Přepínač stylu není dostupný.'};
+      const prev = sel.value;
       sel.value = style;
+      pzBaseStyleUndoPoint(prev);   // změna podkladu = jeden krok zpět
+      state.pzPresetBase = null;
       try{ reloadStyle(); }catch(e){ return {ok:false, error:String(e)}; }
       return {ok:true, style};
     },
-    applyPreset({preset} = {}){
+    // Jen presety, které grafik vidí ve Stylu. Skrytý (dark, uber…) dřív vrátil ok:true
+    // a nic se nestalo — teď chyba se seznamem, ať se asistent zeptá; force:true ho
+    // použije i tak (na výslovné přání). Přijme i název dlaždice („Noc – TN Live").
+    applyPreset({preset, force} = {}){
       const keys = (typeof BUILTIN_PRESET_ORDER !== 'undefined') ? BUILTIN_PRESET_ORDER : [];
-      if(!keys.includes(preset)) return {ok:false, error:'Neznámý preset. Např.: ' + keys.slice(0,8).join(', ')};
-      try{ applyPreset(preset); }catch(e){ return {ok:false, error:String(e)}; }
-      return {ok:true, preset};
+      const visible = getVisibleBuiltinPresetKeys();
+      const list = visible.map(k => k + ' (' + getBuiltinPresetLabel(k) + ')').join(', ');
+      const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '');
+      const key = keys.includes(preset) ? preset : keys.find(k => norm(k) === norm(preset) || norm(getBuiltinPresetLabel(k)) === norm(preset));
+      if(!key) return {ok:false, error:'Neznámý preset „' + preset + '". Dostupné: ' + list, presets: visible};
+      const on = toolBool(force) === true;
+      if(!visible.includes(key) && !on) return {ok:false, error:'Preset „' + key + '" je ve Stylu skrytý. Dostupné: ' + list + '. Zeptej se grafika, který chce; skrytý použij jen na výslovné přání (force:true).', presets: visible};
+      try{ if(!applyPreset(key, {force: on})) return {ok:false, error:'Preset se nepodařilo použít.'}; }catch(e){ return {ok:false, error:String(e)}; }
+      return {ok:true, preset: key, name: getBuiltinPresetLabel(key), baseStyle: $('baseStyle')?.value || ''};
     },
     setGlobe({on} = {}){
       const cb = $('globeProjection'); if(!cb) return {ok:false, error:'Glóbus není dostupný.'};
