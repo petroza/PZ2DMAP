@@ -777,9 +777,9 @@ html[data-ui="light"] .sidebar{box-shadow:4px 0 18px rgba(20,30,50,.10)}
 html[data-ui="light"] .tab-btn.active{color:var(--tx1);background:var(--bg3)}
 html[data-ui="light"] .wp-item.active,html[data-ui="light"] .wp-item.active:hover{background:rgba(230,57,70,.10)}
 /* Užší desktop (981–1250 px): sedm tlačítek s popisky se nevešlo a „Projekt"
-   (jediná cesta k uložení) zajel pod boční panel — popisky pryč, zůstanou ikony. */
+   (jediná cesta k uložení) zajel pod boční panel — Zpět / vpřed / obnovit jen ikony
+   (jako nad 1250 px), Projekt, zóny a glóbus s popiskem a užším odsazením. */
 @media (min-width:981px) and (max-width:1250px){
-  .map-actions .map-action-btn span[data-i18n]{display:none}
   .map-actions .map-action-btn{padding:8px 10px}
 }
 /* iPhone SE (320 px): sedm ikon se o pár px nevešlo vedle tlačítka Menu */
@@ -1113,7 +1113,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <div class="anim-sys-icon-grid">
           <button type="button" class="sys-icon-btn" data-sys-icon="car" data-from-mode="driving" title="Auto"><span class="t-icon"></span><span class="t-label" data-i18n="Auto">Auto</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="truck" data-from-mode="truck" title="Kamion"><span class="t-icon"></span><span class="t-label" data-i18n="Kamion">Kamion</span></button>
-          <button type="button" class="sys-icon-btn" data-sys-icon="lorry" title="Nákladní auto"><span class="t-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3.5 3h9c.83 0 1.5.67 1.5 1.5V16H3.5C2.67 16 2 15.33 2 14.5v-10C2 3.67 2.67 3 3.5 3Zm11.5 4h3.2c.45 0 .87.2 1.15.55l2.3 2.85c.22.27.35.6.35.95v3.65c0 .55-.45 1-1 1H15V7Zm1.6 1.6v2.6h3.9l-2.1-2.6h-1.8ZM6.5 15.2a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Zm11 0a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z"/></svg></span><span class="t-label" data-i18n="Nákladní">Nákladní</span></button>
+          <button type="button" class="sys-icon-btn" data-sys-icon="lorry" title="Dodávka"><span class="t-icon"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3.5 3h9c.83 0 1.5.67 1.5 1.5V16H3.5C2.67 16 2 15.33 2 14.5v-10C2 3.67 2.67 3 3.5 3Zm11.5 4h3.2c.45 0 .87.2 1.15.55l2.3 2.85c.22.27.35.6.35.95v3.65c0 .55-.45 1-1 1H15V7Zm1.6 1.6v2.6h3.9l-2.1-2.6h-1.8ZM6.5 15.2a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Zm11 0a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8Z"/></svg></span><span class="t-label" data-i18n="Dodávka">Dodávka</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="train" data-from-mode="train" title="Vlak"><span class="t-icon"></span><span class="t-label" data-i18n="Vlak">Vlak</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="boat" data-from-mode="boat" title="Loď"><span class="t-icon"></span><span class="t-label" data-i18n="Loď">Loď</span></button>
           <button type="button" class="sys-icon-btn" data-sys-icon="plane" data-from-mode="planeDirect" title="Letadlo"><span class="t-icon"></span><span class="t-label" data-i18n="Letadlo">Letadlo</span></button>
@@ -1778,6 +1778,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
   </div>
   <div class="status-bar" id="statusBar" role="status" aria-live="polite"><span class="dot"></span>Připraveno — klikni do mapy pro bod A.</div>
   <div class="pz-touch-bar" id="pzTouchBar">
+    <span class="pz-touch-info" id="pzTouchInfo" hidden></span>
     <button type="button" class="btn btn-danger" id="pzTouchDeleteBtn" data-i18n="Smazat" hidden>Smazat</button>
     <button type="button" class="btn btn-primary" id="pzTouchDoneBtn" data-i18n="Hotovo">Hotovo</button>
   </div>
@@ -4438,7 +4439,7 @@ function renderTileSourceList(){
   BUILTIN_TILE_KEYS.forEach((key, idx) => {
     const names = {liberty:'3D budovy a stíny – Liberty',bright:'Pestrá – Bright',positron:'Světlá – Positron',basic:'Jednoduchá – Basic',terrain:'Reliéf s vrstevnicemi – Terrain',omt3d:'Jednoduché 3D budovy',satellite:'Satelitní snímek',hybrid:'Satelit s názvy – Hybrid',osmStandard:'OpenStreetMap (české názvy)',openTopo:'OpenTopoMap (topo)',cyclOsm:'CyclOSM (cyklo)',esriTerrain:'Jen reliéf bez názvů – Esri',osmHot:'OSM Humanitarian'};
     const wrap = document.createElement('div'); wrap.className = 'wp-item';
-    wrap.innerHTML = `<span class="wp-badge" style="background:var(--green);font-size:8px">B${idx+1}</span><div style="flex:1;"><span style="font-weight:600">${names[key]||key}</span> <span class="small">— vestavěný</span></div>`;
+    wrap.innerHTML = `<span class="wp-badge" style="background:var(--green);font-size:8px">B${idx+1}</span><div style="flex:1;"><span style="font-weight:600">${names[key]||key}</span> <span class="small">${t('— vestavěný')}</span></div>`;
     list.appendChild(wrap);
   });
   custom.forEach((src, idx) => {
@@ -5840,6 +5841,7 @@ function hideMapLoading(){
 function initMap(){
   state.map = new maplibregl.Map({
     container:'map',
+    locale: pzNavLocale(),
     style: getAllStyles()[$('baseStyle')?.value || 'liberty'] || STYLES.liberty,
     center:[15.5,49.8], zoom:7, pitch:0, bearing:0,
     maxPitch:85,
@@ -14097,7 +14099,7 @@ function pzVehBaseSizePx(){
 // Každé: {type, reverse (proti směru), delay (0–0,9 = vyjede později)}. Jedou po
 // stejné trase jako hlavní vozidlo, kreslí je stejná funkce (pzDrawVehicle) se
 // stejnou maskou u bodů A/B, v náhledu i v exportu.
-const PZ_EXTRA_LABELS = {car:'Auto', truck:'Kamion', lorry:'Nákladní', train:'Vlak', boat:'Loď', bus:'Autobus', fire:'Hasiči', police:'Policie', ambulance:'Sanitka', metro:'Metro', tram:'Tramvaj'};
+const PZ_EXTRA_LABELS = {car:'Auto', truck:'Kamion', lorry:'Dodávka', train:'Vlak', boat:'Loď', bus:'Autobus', fire:'Hasiči', police:'Policie', ambulance:'Sanitka', metro:'Metro', tram:'Tramvaj'};
 function pzExtraVehicles(){ return Array.isArray(state.pzExtraVehicles) ? state.pzExtraVehicles : (state.pzExtraVehicles = []); }
 let _pzRevRoute = {src:null, rev:null};
 function pzReversedRoute(route){
@@ -19837,6 +19839,40 @@ Object.assign(I18N, {
   "Na Liberty 3D jsou budovy vždy plné": {cs:"Na Liberty 3D jsou budovy vždy plné",sk:"Na Liberty 3D sú budovy vždy plné",bg:"На Liberty 3D сградите са винаги плътни",hr:"Na Liberty 3D zgrade su uvijek pune",ro:"Pe Liberty 3D clădirile sunt mereu opace",en:"On Liberty 3D buildings are always solid"},
   "Název už má jiný preset, uloženo jako „{0}“.": {cs:"Název už má jiný preset, uloženo jako „{0}“.",sk:"Názov už má iný preset, uložené ako „{0}“.",bg:"Името вече е заето, запазено като „{0}“.",hr:"Naziv već ima drugi preset, spremljeno kao „{0}“.",ro:"Numele este deja folosit, salvat ca „{0}”.",en:"That name is taken, saved as “{0}”."},
   "Oddálit při přeletu": {cs:"Oddálit při přeletu",sk:"Oddialiť pri prelete",bg:"Отдалечаване при прелитане",hr:"Udalji tijekom preleta",ro:"Depărtare în timpul zborului",en:"Pull back during flyover"},
+  "Bod": {cs:"Bod",sk:"Bod",bg:"Точка",hr:"Točka",ro:"Punct",en:"Point"},
+  "Vybráno: {0}": {cs:"Vybráno: {0}",sk:"Vybraté: {0}",bg:"Избрани: {0}",hr:"Odabrano: {0}",ro:"Selectate: {0}",en:"Selected: {0}"},
+  "— vestavěný": {cs:"— vestavěný",sk:"— vstavaný",bg:"— вграден",hr:"— ugrađeni",ro:"— integrat",en:"— built-in"},
+  "Můj zdroj": {cs:"Můj zdroj",sk:"Môj zdroj",bg:"Моят източник",hr:"Moj izvor",ro:"Sursa mea",en:"My source"},
+  "Zavřít menu": {cs:"Zavřít menu",sk:"Zavrieť menu",bg:"Затвори менюто",hr:"Zatvori izbornik",ro:"Închide meniul",en:"Close menu"},
+  "např. Humpolec": {cs:"např. Humpolec",sk:"napr. Humpolec",bg:"напр. Humpolec",hr:"npr. Humpolec",ro:"de ex. Humpolec",en:"e.g. Humpolec"},
+  "např. Jihlava": {cs:"např. Jihlava",sk:"napr. Jihlava",bg:"напр. Jihlava",hr:"npr. Jihlava",ro:"de ex. Jihlava",en:"e.g. Jihlava"},
+  "např. Pelhřimov": {cs:"např. Pelhřimov",sk:"napr. Pelhřimov",bg:"напр. Pelhřimov",hr:"npr. Pelhřimov",ro:"de ex. Pelhřimov",en:"e.g. Pelhřimov"},
+  "Jak vysoko se kamera při přeletu mezi vzdálenými místy zvedne (oddálí). 100 % = automaticky podle vzdálenosti, 0 % = bez zdvihu.": {cs:"Jak vysoko se kamera při přeletu mezi vzdálenými místy zvedne (oddálí). 100 % = automaticky podle vzdálenosti, 0 % = bez zdvihu.",sk:"Ako vysoko sa kamera pri prelete medzi vzdialenými miestami zdvihne (oddiali). 100 % = automaticky podľa vzdialenosti, 0 % = bez zdvihu.",bg:"Колко високо се издига камерата (отдалечава) при прелитане между отдалечени места. 100 % = автоматично според разстоянието, 0 % = без издигане.",hr:"Koliko se kamera podigne (udalji) pri preletu između udaljenih mjesta. 100 % = automatski prema udaljenosti, 0 % = bez podizanja.",ro:"Cât de sus se ridică (se depărtează) camera la zborul între locuri îndepărtate. 100 % = automat după distanță, 0 % = fără ridicare.",en:"How high the camera rises (pulls back) when flying between distant places. 100 % = automatic by distance, 0 % = no lift."},
+  "Natočit úhel": {cs:"Natočit úhel",sk:"Natočiť uhol",bg:"Завърти ъгъла",hr:"Zakreni kut",ro:"Rotește unghiul",en:"Set angle"},
+  "Táhni pro otočení mapy, klik = sever nahoru": {cs:"Táhni pro otočení mapy, klik = sever nahoru",sk:"Ťahaj pre otočenie mapy, klik = sever hore",bg:"Влачи за завъртане на картата, клик = север нагоре",hr:"Povuci za okretanje karte, klik = sjever gore",ro:"Trage pentru a roti harta, clic = nordul sus",en:"Drag to rotate the map, click = north up"},
+  "Dodávka": {cs:"Dodávka",sk:"Dodávka",bg:"Бус",hr:"Kombi",ro:"Dubă",en:"Van"},
+  "Světlá – kontrast": {cs:"Světlá – kontrast",sk:"Svetlá – kontrast",bg:"Светла – контраст",hr:"Svijetla – kontrast",ro:"Deschisă – contrast",en:"Light – contrast"},
+  "Světlá – výrazná": {cs:"Světlá – výrazná",sk:"Svetlá – výrazná",bg:"Светла – наситена",hr:"Svijetla – izražena",ro:"Deschisă – pronunțată",en:"Light – bold"},
+  "Modrá – TN": {cs:"Modrá – TN",sk:"Modrá – TN",bg:"Синя – TN",hr:"Plava – TN",ro:"Albastră – TN",en:"Blue – TN"},
+  "Noc – TN Live": {cs:"Noc – TN Live",sk:"Noc – TN Live",bg:"Нощ – TN Live",hr:"Noć – TN Live",ro:"Noapte – TN Live",en:"Night – TN Live"},
+  "Liberty klasická": {cs:"Liberty klasická",sk:"Liberty klasická",bg:"Liberty класическа",hr:"Liberty klasična",ro:"Liberty clasică",en:"Liberty classic"},
+  "Zelená přírodní": {cs:"Zelená přírodní",sk:"Zelená prírodná",bg:"Зелена природна",hr:"Zelena prirodna",ro:"Verde natural",en:"Natural green"},
+  "Modrá přírodní": {cs:"Modrá přírodní",sk:"Modrá prírodná",bg:"Синя природна",hr:"Plava prirodna",ro:"Albastru natural",en:"Natural blue"},
+  "Čistá navigační": {cs:"Čistá navigační",sk:"Čistá navigačná",bg:"Чиста навигационна",hr:"Čista navigacijska",ro:"Navigație curată",en:"Clean navigation"},
+  "Turistická": {cs:"Turistická",sk:"Turistická",bg:"Туристическа",hr:"Planinarska",ro:"Turistică",en:"Hiking"},
+  "Letecká olivová": {cs:"Letecká olivová",sk:"Letecká olivová",bg:"Авиационна маслинена",hr:"Zrakoplovna maslinasta",ro:"Aviație oliv",en:"Aviation olive"},
+  "Navigační světlá": {cs:"Navigační světlá",sk:"Navigačná svetlá",bg:"Навигационна светла",hr:"Navigacijska svijetla",ro:"Navigație deschisă",en:"Navigation light"},
+  "Městská tmavá": {cs:"Městská tmavá",sk:"Mestská tmavá",bg:"Градска тъмна",hr:"Gradska tamna",ro:"Urbană închisă",en:"City dark"},
+  "Zpravodajská modrá": {cs:"Zpravodajská modrá",sk:"Spravodajská modrá",bg:"Новинарска синя",hr:"Informativna plava",ro:"Știri albastră",en:"News blue"},
+  "TV Modrá": {cs:"TV Modrá",sk:"TV Modrá",bg:"TV Синя",hr:"TV Plava",ro:"TV Albastră",en:"TV Blue"},
+  "TV Reliéf": {cs:"TV Reliéf",sk:"TV Reliéf",bg:"TV Релеф",hr:"TV Reljef",ro:"TV Relief",en:"TV Relief"},
+  "Ostrá modrá": {cs:"Ostrá modrá",sk:"Ostrá modrá",bg:"Наситено синя",hr:"Oštra plava",ro:"Albastru intens",en:"Sharp blue"},
+  "Ostrá bílá": {cs:"Ostrá bílá",sk:"Ostrá biela",bg:"Наситено бяла",hr:"Oštra bijela",ro:"Alb intens",en:"Sharp white"},
+  "Modrá Jemná 1": {cs:"Modrá Jemná 1",sk:"Modrá jemná 1",bg:"Синя мека 1",hr:"Plava nježna 1",ro:"Albastru fin 1",en:"Soft blue 1"},
+  "Modrá Jemná 7": {cs:"Modrá Jemná 7",sk:"Modrá jemná 7",bg:"Синя мека 7",hr:"Plava nježna 7",ro:"Albastru fin 7",en:"Soft blue 7"},
+  "Modrá Jemná 11": {cs:"Modrá Jemná 11",sk:"Modrá jemná 11",bg:"Синя мека 11",hr:"Plava nježna 11",ro:"Albastru fin 11",en:"Soft blue 11"},
+  "Modrá Jemná 16": {cs:"Modrá Jemná 16",sk:"Modrá jemná 16",bg:"Синя мека 16",hr:"Plava nježna 16",ro:"Albastru fin 16",en:"Soft blue 16"},
+  "Modrá Jemná 20": {cs:"Modrá Jemná 20",sk:"Modrá jemná 20",bg:"Синя мека 20",hr:"Plava nježna 20",ro:"Albastru fin 20",en:"Soft blue 20"},
   "Bezp. zóny": {cs:"Bezp. zóny",sk:"Bezp. zóny",bg:"Безоп. зони",hr:"Sig. zone",ro:"Zone sigure",en:"Safe zones"},
   "Ruším…": {cs:"Ruším…",sk:"Ruším…",bg:"Отменям…",hr:"Otkazujem…",ro:"Anulez…",en:"Cancelling…"},
   "Posunout výš": {cs:"Posunout výš",sk:"Posunúť vyššie",bg:"Премести нагоре",hr:"Pomakni gore",ro:"Mută mai sus",en:"Move up"},
@@ -20250,6 +20286,17 @@ function t(key, ...args) {
   return text;
 }
 
+// Tooltipy ovládání mapy (+ / − / kompas) — MapLibre je má anglicky
+function pzNavLocale(){
+  const tr = k => { try{ return t(k); }catch(e){ return k; } };
+  return {'NavigationControl.ZoomIn': tr('Přiblížit'), 'NavigationControl.ZoomOut': tr('Oddálit'), 'NavigationControl.ResetBearing': tr('Táhni pro otočení mapy, klik = sever nahoru')};
+}
+function pzNavCtrlTitles(){
+  const loc = pzNavLocale();
+  [['.maplibregl-ctrl-zoom-in','NavigationControl.ZoomIn'],['.maplibregl-ctrl-zoom-out','NavigationControl.ZoomOut'],['.maplibregl-ctrl-compass','NavigationControl.ResetBearing']]
+    .forEach(([sel, k]) => document.querySelectorAll('#map ' + sel).forEach(b => { b.title = loc[k]; b.setAttribute('aria-label', loc[k]); }));
+}
+
 function applyLang(lang) {
   currentLang = lang;
   localStorage.setItem('mapLang', lang);
@@ -20270,6 +20317,7 @@ function applyLang(lang) {
   try{ renderMapLabelList(); }catch(e){}
   try{ renderWaypointList(); }catch(e){}
 
+  try{ pzNavCtrlTitles(); }catch(e){}
   try{ pzTranslateTextNodes(lang); }catch(e){}
   setTimeout(() => { try{ pzTranslateTextNodes(lang); }catch(e){} }, 0);   // po všech ostatních průchodech
   // Update lang buttons
@@ -20891,12 +20939,32 @@ document.addEventListener('keydown', e => {
   }
   function pzMobileIsAdding(){ try{ return Object.values(SCENE_ADD_FLAGS).some(f => state[f]); }catch(e){ return false; } }
   // Pruh „Hotovo" a „Smazat" (vybraný objekt nebo výběr) — na dotyku není Esc ani Delete.
+  // Při výběru pruh říká, co je vybrané („Popisek: Nehoda…"), samotné „Smazat" bylo bez kontextu.
+  function pzMobileSelName(o){
+    if(!o) return '';
+    if(o.type === 'routePoint') return t('Bod') + ' ' + String(o.pointType || '').toUpperCase();
+    const kind = {sceneIcon:'Ikonka', scenePerimeter:'Perimetr', sceneDistance:'Vzdálenost', sceneArrow:'Šipka', mapLabel:'Popisek'}[o.type] || '';
+    let txt = o.type === 'mapLabel' ? String(o.item?.text || '').replace(/\s+/g, ' ').trim() : '';
+    if(txt.length > 18) txt = txt.slice(0, 17).trim() + '…';
+    return t(kind) + (txt ? ': ' + txt : '');
+  }
   function pzMobileSyncTouchBar(){
-    const multi = (state.multiSel?.size || 0) > 0, adding = pzMobileIsAdding();
-    let sel = false; try{ sel = !!getSelectedMapObject(); }catch(e){}
+    const n = state.multiSel?.size || 0, multi = n > 0, adding = pzMobileIsAdding();
+    let obj = null; try{ obj = getSelectedMapObject(); }catch(e){}
+    const sel = !!obj;
     document.body.classList.toggle('pz-touch-on', adding || multi || sel);
     const del = $('pzTouchDeleteBtn'); if(del) del.hidden = !(multi || sel);
-    const ok = $('pzTouchDoneBtn'); if(ok) ok.hidden = !(adding || multi);
+    const ok = $('pzTouchDoneBtn'); if(ok) ok.hidden = !(adding || multi || sel);
+    const info = $('pzTouchInfo');
+    if(info){
+      const txt = adding ? '' : multi ? t('Vybráno: {0}', n) : pzMobileSelName(obj);
+      info.textContent = txt; info.hidden = !txt;
+    }
+  }
+  // „Hotovo" u jednoho vybraného objektu — Esc výběr nezruší
+  function pzMobileClearSelection(){
+    [clearRoutePointSelection, clearSceneIconSelection, clearScenePerimeterSelection, clearSceneDistanceSelection, clearSceneArrowSelection, clearMapLabelSelection]
+      .forEach(f => { try{ f(); }catch(e){} });
   }
   // Pole, do kterého se píše, posunout nad klávesnici (jen uvnitř jeho panelu —
   // scrollIntoView by posunul i stránku, která se posouvat nemá).
@@ -21011,12 +21079,15 @@ document.addEventListener('keydown', e => {
     document.addEventListener('pointerdown', () => { armedBefore = pzMobileArmedList(); }, true);
     document.addEventListener('click', e => {
       requestAnimationFrame(pzMobileSyncTouchBar);
-      if(!pzMobileIsModal() || !pzMobilePanelOpen()) return;
+      if(!pzMobilePanelOpen()) return;
       const el = e.target?.closest?.('.sidebar button, .sidebar input[type=checkbox], .sidebar label, .sidebar .place-search-item');
       if(!el) return;
       const now = pzMobileArmedList();
       // nově zapnutý režim, nebo jiná ikona z palety při zapnutém vkládání
       const armed = now.some(x => !armedBefore.includes(x)) || (now.length && !!el.closest('.pz-icon-pick'));
+      // tablet na výšku / telefon na šířku (700–980 px): panel leží přes půlku rámu —
+      // při „klikni do mapy" se schová taky, ostatní akce ho nechají otevřený
+      if(!pzMobileIsModal()){ if(armed){ autoHidden = true; setOpen(false); } return; }
       const onMap = !!el.closest('.place-search-item,#exportVideoBtn,#exportPngSeqBtn,#exportBatchBtn')
         || (!!el.closest('#findRouteBtn') && !!$('startInput')?.value.trim() && !!$('endInput')?.value.trim());
       if(armed || onMap){ autoHidden = armed; setOpen(false); }
@@ -21040,9 +21111,10 @@ document.addEventListener('keydown', e => {
       const wasAdding = pzMobileIsAdding();
       // Esc napřed zavírá otevřené panely (Projekt, zkratky) — proto případně víckrát
       for(let i = 0; i < 3 && (pzMobileIsAdding() || state.multiSel?.size); i++) sendKey('Escape');
+      if(!wasAdding) pzMobileClearSelection();
       pzMobileSyncTouchBar();
       // z panelu se odešlo jen kvůli klepnutí do mapy → vrátit se tam, kde se pokračuje
-      if(wasAdding && autoHidden && pzMobileIsModal()) setOpen(true);
+      if(wasAdding && autoHidden && pzMobileIsDrawer()) setOpen(true);
       autoHidden = false;
     });
     $('pzTouchDeleteBtn')?.addEventListener('click', () => { sendKey('Delete'); pzMobileSyncTouchBar(); });
@@ -23420,6 +23492,7 @@ html:not([data-ui="light"]) .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:
 }
 @media (min-width:981px) and (max-width:1250px){
   .map-actions .map-action-btn{width:32px;padding:0;justify-content:center}
+  .map-actions #projectPanelBtn,.map-actions #safeGuidesBtn,.map-actions #globeToggleBtn{width:auto;padding:0 8px;gap:5px}
 }
 /* . */
 /* [css:mobil] pravidla oblasti „mobil" vkládej pod tento řádek */
@@ -23429,7 +23502,13 @@ html:not([data-ui="light"]) .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:
 /* Pruh „Hotovo": na dotyku není Esc, kterým se vkládání a výběr ukončuje. */
 .pz-touch-bar{display:none;position:absolute;top:calc(66px + var(--pz-st));left:calc(50% + var(--panel-shift,0px));transform:translateX(-50%);z-index:58;gap:6px;padding:4px;background:var(--bg1);border:1px solid var(--border-hi);box-shadow:0 6px 20px rgba(0,0,0,.4)}
 .pz-touch-bar .btn{min-height:44px;min-width:92px;padding:0 16px;font-size:13px}
-.pz-touch-bar .btn[hidden]{display:none}
+.pz-touch-bar .btn[hidden],.pz-touch-info[hidden]{display:none}
+.pz-touch-info{align-self:center;flex:0 1 auto;min-width:0;max-width:220px;padding:0 4px 0 8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:600 13px var(--font);color:var(--tx1)}
+.pz-touch-info:not([hidden]) ~ .btn{min-width:72px;padding:0 12px}
+/* telefon: s popisem je pruh širší — od levého okraje, ať nevjede pod kompas vpravo */
+@media (max-width:699px){
+  .pz-touch-bar{left:calc(8px + var(--pz-sl));transform:none;max-width:calc(100vw - 72px - var(--pz-sl) - var(--pz-sr))}
+}
 
 /* ── Dotyk a úzké šířky: plochy pro prst, pole bez přiblížení stránky ─────── */
 @media (pointer:coarse),(max-width:980px){
@@ -23517,7 +23596,9 @@ html:not([data-ui="light"]) .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:
   .shortcuts-panel{top:calc(58px + var(--pz-st));right:calc(8px + var(--pz-sr));max-width:calc(100vw - 16px)}
   .settings-card{max-height:calc(100dvh - 24px - var(--pz-st) - var(--pz-sb))}
   /* hláška na chvíli nad otevřeným panelem (jinak ji panel zakrývá) */
-  body.mobile-panel-open.pz-status-toast .status-bar{z-index:320;box-shadow:0 6px 24px rgba(0,0,0,.55)}
+  /* …ale klepnutí propouští — nesmí blokovat tlačítko, na které zrovna radí klepnout */
+  body.mobile-panel-open.pz-status-toast .status-bar{z-index:320;box-shadow:0 6px 24px rgba(0,0,0,.55);pointer-events:none}
+  body.mobile-panel-open.pz-status-toast .status-bar button{pointer-events:auto}
   /* při tažení táhla panel zprůhlední — je vidět, co se v mapě mění */
   body.pz-peek .sidebar{background:transparent;border-color:transparent;box-shadow:none}
   body.pz-peek .sidebar *{visibility:hidden}
@@ -23606,6 +23687,30 @@ html:not([data-ui="light"]) .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:
 /* telefon na šířku s otevřeným panelem: vedle něj zbývá místo jen na stav */
 @media (max-height:500px) and (min-width:700px) and (max-width:980px){
   body.mobile-panel-open .floating-player{display:none}
+}
+/* tablet / telefon na šířku: „Projekt" (jediná cesta k uložení) i s popiskem — tooltip na dotyku nefunguje */
+@media (min-width:700px) and (max-width:980px){
+  .map-actions #projectPanelBtn span[data-i18n]{display:inline}
+  .map-actions #projectPanelBtn{width:auto;padding:0 12px;gap:6px}
+}
+/* nízký displej (telefon na šířku): kompaktní hlavička panelu — logo, vlajky a přepínač
+   vzhledu pryč (na výšku jsou zpět), hledání + Nastavení (ozubené kolo) + zavřít v jednom
+   řádku, pod ním záložky; na obsah zbude víc než dvojnásobek místa */
+@media (max-height:560px) and (max-width:980px){
+  .sidebar-brand{position:absolute;top:0;right:0;z-index:7;padding:calc(6px + var(--pz-st)) 6px 0 0;border:0;background:none;pointer-events:none}
+  .sidebar-brand .brand-meta,.sidebar-brand .lang-switcher,.sidebar-brand .ui-theme-btn{display:none}
+  .sidebar-brand-top .mobile-close-btn{pointer-events:auto;width:44px;height:44px}
+  .brand-search-bar{padding:calc(6px + var(--pz-st)) 104px 6px 10px}
+  .brand-search-row input{height:40px}
+  .sidebar-tabs{padding:2px 6px}
+  .sidebar-tabs .tab-btn{min-height:44px;height:44px;padding-block:0}
+  .settings-bar{position:absolute;top:calc(6px + var(--pz-st));bottom:auto;right:54px;z-index:7;padding:0;margin:0;background:none}
+  .brand-search-row #clearPlaceSearchBtn{font-size:0!important;width:44px;min-width:44px;padding:0}
+  .brand-search-row #clearPlaceSearchBtn::before{content:"×";font-size:22px;line-height:1}
+  .settings-bar .settings-gear{width:44px;min-height:44px;height:44px;padding:0;font-size:18px;gap:0}
+  .settings-bar .settings-gear span{display:none}
+  /* prázdné hledání nemá co mazat — dva křížky vedle sebe (smazat / zavřít) mátly */
+  .brand-search-row input:placeholder-shown ~ #clearPlaceSearchBtn{display:none}
 }
 /* ── Klávesnice na obrazovce: panely končí nad ní, pole zůstane vidět ─────── */
 body.pz-kb-open .sidebar{height:auto;bottom:var(--pz-kb)}
