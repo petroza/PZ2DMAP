@@ -93,9 +93,11 @@ STAV MAPY: ${JSON.stringify(mapState || {})}
 
 ODPOVĚĎ: vždy JEN jeden JSON objekt, bez markdownu:
 {"say":"krátká věta","calls":[{"tool":"…","args":{…},"label":"…"}],"done":true}
+DOPTÁNÍ (když zadání nerozumíš): {"say":"krátká otázka?","calls":[],"options":["odpověď 1","odpověď 2"],"done":true}
 
 PRAVIDLA:
-- Splň CELÉ zadání redaktora: rozlož ho na všechny potřebné kroky v logickém pořadí (podklad → trasa → vozidlo → popisky…). Neptej se, když to jde udělat.
+- Splň CELÉ zadání redaktora: rozlož ho na všechny potřebné kroky v logickém pořadí (podklad → trasa → vozidlo → popisky…). Když je zadání jasné, rovnou to udělej.
+- Když zadání NEROZUMÍŠ nebo chybí podstatná věc (které místo, odkud/kam, čím, co přesně nakreslit) nebo jde vyložit víc různými způsoby, NEHÁDEJ: polož jednu krátkou otázku v "say", calls prázdné a v "options" 2–4 nejpravděpodobnější odpovědi (krátké, celé povely, např. "Trasa autem z Prahy do Brna"). Drobnosti (barva, velikost, styl, o kolik přiblížit) neřeš otázkou, zvol rozumnou výchozí ("přibliž/zvětši to" = setCamera zoomBy 1). Na odpověď navaž podle historie.
 - Jen nástroje a hodnoty ze seznamu. Místa v 1. pádu (z Prahy → Praha). "Brno-Komín" je jedno místo. Opravuj překlepy.
 - Nevymýšlej místa z běžných slov ("hoď tam satelit" = jen setBaseStyle). Nejvýš jeden gotoPlace/show3D v plánu.
 - Víc států / vlajek / ikon = samostatné volání pro každý.
@@ -113,6 +115,8 @@ PŘÍKLADY:
 "nehoda v Humpolci" -> {"say":"Označuji nehodu v Humpolci.","calls":[{"tool":"placeIcon","args":{"place":"Humpolec","kind":"nehoda","zoom":12.5},"label":"Ikonka"},{"tool":"addLabel","args":{"place":"Humpolec","text":"NEHODA"},"label":"Popisek"}],"done":true}
 "politická mapa, Ukrajina žlutě, Rusko červeně, k tomu vlajky" -> {"say":"Politická mapa s Ukrajinou a Ruskem a jejich vlajkami.","calls":[{"tool":"setBaseStyle","args":{"style":"political"},"label":"Politická"},{"tool":"colorPolitical","args":{"country":"Ukrajina","color":"žlutá"},"label":"Ukrajina"},{"tool":"colorPolitical","args":{"country":"Rusko","color":"červená"},"label":"Rusko"},{"tool":"placeFlag","args":{"country":"Ukrajina"},"label":"Vlajka"},{"tool":"placeFlag","args":{"country":"Rusko"},"label":"Vlajka"}],"done":true}
 "tramvaj 22 z Bílé Hory na Náměstí Míru" -> {"say":"Kreslím trasu tramvaje 22.","calls":[{"tool":"routeLine","args":{"line":"22","from":"Bílá Hora","to":"Náměstí Míru"},"label":"Linka 22"}],"done":true}
+"udělej tam tu nehodu" (na mapě nic, místo nezmíněno) -> {"say":"Kde se nehoda stala?","calls":[],"options":["Nehoda na D1 u Humpolce","Nehoda v Praze","Nehoda v Brně"],"done":true}
+"trasa do Vídně" (odkud nezaznělo) -> {"say":"Odkud a čím má trasa do Vídně vést?","calls":[],"options":["Autem z Prahy do Vídně","Vlakem z Prahy do Vídně","Autem z Brna do Vídně"],"done":true}
 "obarvi Jihomoravský kraj" -> {"say":"Barvení krajů aplikace nemá. Můžu obarvit stát nebo nakreslit perimetr kolem Brna.","calls":[],"done":true}
 "kolik je to z Prahy do Vídně" -> {"say":"Měřím.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"Vídeň"},"label":"Vzdálenost"}],"done":false}`;
 }
@@ -191,7 +195,9 @@ function sanitizePlan(plan) {
   const calls = Array.isArray(plan.calls) ? plan.calls.slice(0, 8) : [];
   let say = plan.say;
   if (typeof say !== "string") say = say == null ? "" : Array.isArray(say) ? say.filter((x) => typeof x === "string").join(" ") : "";
+  const options = !calls.length && Array.isArray(plan.options) ? plan.options.filter((o) => typeof o === "string" && o.trim()).map((o) => o.trim().slice(0, 80)).slice(0, 4) : [];
   return {
+    ...(options.length ? { options } : {}),
     say: say.trim() ? say.trim().slice(0, 400) : calls.length ? "Provádím…" : "Hotovo.",
     calls: calls.filter((c) => c && typeof c.tool === "string").map((c) => ({
       tool: c.tool,
@@ -303,7 +309,8 @@ var worker_default = {
         const tools = (finalPlan.calls || []).map((c) => c.tool).join(",") || "NONE";
         console.log(JSON.stringify({
           tag: "tnchat",
-          miss: tools === "NONE",
+          miss: tools === "NONE" && !finalPlan.options,
+          asked: !!finalPlan.options,
           q: String(lastUser && lastUser.content || "").slice(0, 200),
           tools,
           say: String(finalPlan.say || "").slice(0, 120),
