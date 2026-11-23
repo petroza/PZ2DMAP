@@ -1,6 +1,6 @@
 // Politická mapa: vlajky klikem do státu (Delete smaže), barva státu paletou u
 // kurzoru, uložení vlajek do projektu.
-const {check, done, open, tab} = require('./lib');
+const {check, done, open, tab, openSection} = require('./lib');
 (async () => {
   const {page, errors, close} = await open();
   await tab(page, 'styly');
@@ -8,18 +8,21 @@ const {check, done, open, tab} = require('./lib');
   await page.waitForTimeout(6000);
   await page.evaluate(() => window.__tnMap.jumpTo({center: [17, 50], zoom: 4}));
   await page.waitForTimeout(2500);
-  check(await page.isVisible('#pzFlagsOn') && await page.isVisible('#pzClickPaintOn'), 'volby Vlajky a Barvit kliknutím jsou v Podkladu u politické mapy');
+  check(await page.isVisible('#pzClickPaintOn'), 'volba Barvit kliknutím je v Podkladu u politické mapy');
   const px = ll => page.evaluate(ll => { const q = window.__tnMap.project(ll), r = document.getElementById('map').getBoundingClientRect(); return {x: q.x + r.left, y: q.y + r.top}; }, ll);
   // barva paletou
   let p = await px([19.4, 52.1]); await page.mouse.click(p.x, p.y); await page.waitForTimeout(500);
   await page.click('.pz-country-pop button[data-c="#3a86ff"]'); await page.waitForTimeout(500);
   check(await page.evaluate(() => window.__pzFns.state.countryColorMap.PL === '#3a86ff'), 'klik na Polsko → paleta → modrá');
-  // vlajky
+  // vlajky: Scéna > Státy (na každém podkladu)
+  await tab(page, 'scena'); await openSection(page, 'countryBordersOverlaySection'); await page.waitForTimeout(400);
+  check(await page.isVisible('#pzFlagsOn') && await page.isVisible('#pzCountryLabelsOn'), 'Vlajky a Popisky států jsou ve Scéna > Státy');
   await page.check('#pzFlagsOn');
   p = await px([15.3, 49.8]); await page.mouse.click(p.x, p.y); await page.waitForTimeout(1500);
   p = await px([10.4, 51.0]); await page.mouse.click(p.x, p.y); await page.waitForTimeout(1500);
   let fl = await page.evaluate(() => window.__pzFns.pzFlagList().map(f => f.iso).join(','));
   check(fl === 'cz,de', 'klik do Česka a Německa přidá jejich vlajky (' + fl + ')');
+  check((await page.textContent('#pzFlagList')).includes('Německo'), 'vlajky jsou v seznamu ve Scéna > Státy');
   p = await px([15.3, 49.8]); await page.mouse.click(p.x, p.y); await page.waitForTimeout(500);
   await page.keyboard.press('Delete'); await page.waitForTimeout(500);
   fl = await page.evaluate(() => window.__pzFns.pzFlagList().map(f => f.iso).join(','));
@@ -63,6 +66,18 @@ const {check, done, open, tab} = require('./lib');
   p = await px(fp); await page.mouse.click(p.x, p.y); await page.waitForTimeout(600);
   const selIso = await page.evaluate(() => { const s = window.__pzFns.state; return (s.pzFlagSel && window.__pzFns.pzFlagList().find(f => f.id === s.pzFlagSel)?.iso) || null; });
   check(await page.isChecked('#pzFlagsOn') && selIso === 'de', 'klik na vlajku zapne Vlajky států a vybere ji (' + selIso + ')');
+  // vlajka do čitelného místa uvnitř státu (Rusko u Moskvy, ne na Sibiři)
+  await page.evaluate(() => window.TNMAP.placeFlag({country: 'Rusko'})); await page.waitForTimeout(500);
+  const ru = await page.evaluate(() => window.__pzFns.pzFlagList().find(f => f.iso === 'ru')?.lngLat);
+  check(ru && ru[0] < 45, 'vlajka Ruska u Moskvy (' + ru + ')');
+  // názvy států: Řecko ≠ Grenada, Británie ≠ Abyei, pády, chybějící Kosovo
+  const col = await page.evaluate(async () => { const o = {}; for(const c of ['Řecko', 'Velká Británie', 'Ukrajinu', 'USA', 'Kosovo']){ const r = await window.TNMAP.colorPolitical({country: c, fit: false}); o[c] = r.ok ? r.painted[0].id : 'ERR:' + r.error; } return o; });
+  check(col['Řecko'] === 'EL' && col['Velká Británie'] === 'UK' && col['Ukrajinu'] === 'UA' && col['USA'] === 'US' && /v datech hranic není/.test(col['Kosovo']), 'obarvení států podle českých názvů ' + JSON.stringify(col));
+  const sug = await page.evaluate(() => ['USA', 'Británie', 'Ukrajinu'].map(q => window.__pzFns.getCountrySearchItems(q)[0]?.id).join(','));
+  check(sug === 'US,UK,UA', 'našeptávač států: USA, Británie, Ukrajinu (' + sug + ')');
+  // metro: běžné zápisy a hovorové názvy
+  const mt = await page.evaluate(async () => [(await window.TNMAP.metroClosure({station: 'IP Pavlova', fit: false})).ok, (await window.TNMAP.metroClosure({station: 'Hlavák', fit: false})).ok, (await window.TNMAP.metroClosure({})).error]);
+  check(mt[0] && mt[1] && /Chybí station/.test(mt[2]), 'metro: IP Pavlova, Hlavák a srozumitelná chyba bez stanice ' + JSON.stringify(mt));
   check(!errors.length, 'bez chyb v konzoli ' + errors.join(' | '));
   await close(); done();
 })();
