@@ -1065,7 +1065,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M12 3v3"/><rect x="6" y="6" width="12" height="12" rx="2.5"/><path d="M6 12h12"/><circle cx="9" cy="15" r=".6" fill="currentColor"/><circle cx="15" cy="15" r=".6" fill="currentColor"/><path d="m8 18-2 3M16 18l2 3"/></svg></div>
             <span class="t-label" data-i18n="Tramvaj">Tramvaj</span>
           </button>
-          <button type="button" class="transport-btn" data-mode="boat" title="Loď — trasa po řekách a kanálech ČR">
+          <button type="button" class="transport-btn" data-mode="boat" title="Loď — trasa po řekách a kanálech ČR (na moři použij Vlastní)">
             <div class="t-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15h18l-2.5 4h-13Z"/><path d="M6 15V9h9l3 6"/><path d="M9 9V5h3v4"/><path d="M2 21c1.5 0 2.5-.8 3.5-.8s2 .8 3.5.8 2.5-.8 3.5-.8 2 .8 3.5.8 2.5-.8 3.5-.8"/></svg></div>
             <span class="t-label">Loď</span>
           </button>
@@ -1221,7 +1221,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <label for="routeWidth" data-i18n="Tloušťka">Tloušťka <span class="val" id="routeWidthVal">4 px</span></label>
         <input id="routeWidth" type="range" min="1" max="16" step="0.5" value="4">
         <label class="check" id="routePreDrawWrap" style="margin-top:8px"><input id="routePreDraw" type="checkbox" checked> <span data-i18n="Předkreslit celou trasu">Předkreslit celou trasu</span></label>
-        <label class="check" id="showDirectLineWrap"><input id="showDirectLine" type="checkbox" checked> <span data-i18n="Přímá spojnice místo oblouku">Přímá spojnice místo oblouku</span></label>
+        <label class="check" id="showDirectLineWrap"><input id="showDirectLine" type="checkbox"> <span data-i18n="Přímá spojnice místo oblouku">Přímá spojnice místo oblouku</span></label>
         <label class="check" id="hideGroundLineWrap" style="display:none"><input id="hideGroundLine" type="checkbox"> <span data-i18n="Skrýt stín na zemi">Skrýt stín na zemi</span></label>
         <button type="button" class="btn btn-sm" id="arcBestViewBtn" style="display:none;margin-top:8px;width:100%" data-i18n="3D pohled na oblouk">3D pohled na oblouk</button>
         <details class="compact-details" id="routeLookMore">
@@ -5428,6 +5428,29 @@ function makeDotMarker(letter, cls){
   el.textContent = letter;
   return el;
 }
+// Zapnutý vkládací režim (šipka, popisek, ikonka, měření…): body trasy pak nejsou
+// k tažení a klik/tah na nich patří režimu — jinak šipka od bodu A posunula A.
+function routeInsertModeArmed(){
+  return Object.values(SCENE_ADD_FLAGS).some(f => state[f]) || !!(state.measureMode && state.measureMode !== 'off');
+}
+// Bod trasy (A/B/zastávka): stisk při vkládacím režimu tažení vypne (rozhodne se
+// při každém stisku, než ho MapLibre převezme), klik vloží objekt na souřadnici bodu.
+function bindRouteMarkerPassthrough(el, getMarker){
+  el.addEventListener('mousedown', () => { try{ getMarker()?.setDraggable(!routeInsertModeArmed()); }catch(e){} });
+  el.addEventListener('touchstart', () => { try{ getMarker()?.setDraggable(!routeInsertModeArmed()); }catch(e){} }, {passive:true});
+  // pravé tlačítko na bodu ukončí rozkreslenou vlastní trasu (ne menu prohlížeče)
+  el.addEventListener('contextmenu', ev => {
+    ev.preventDefault(); ev.stopPropagation();
+    if(state.currentTransportMode === 'planeCustom' && state.pointA && !state.pointB) finishCustomRoute();
+  });
+}
+function routeMarkerClickToInsert(ev, marker){
+  if(!marker || !routeInsertModeArmed() || ev.ctrlKey || ev.metaKey) return false;
+  ev.preventDefault(); ev.stopPropagation();
+  const ll = marker.getLngLat();
+  try{ onMapClick({lngLat: ll, point: state.map.project(ll), originalEvent: ev, type:'click', target: state.map}); }catch(e){ console.error(e); }
+  return true;
+}
 
 // Apply the user-chosen shape (circle/square) and pixel size to an A/B endpoint
 // element. Waypoints (dot-wp) keep their own fixed styling and number.
@@ -5526,9 +5549,11 @@ function createRoutePointMarker(type, lngLat){
   const el = makeDotMarker('', pointType === 'A' ? 'dot-a' : 'dot-b');
   styleEndpointEl(el);
   el.title = t('Táhni pro přesun, Delete smaže');
-  el.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); selectRoutePoint(pointType); });
+  let marker = null;
+  el.addEventListener('click', ev => { if(routeMarkerClickToInsert(ev, marker)) return; ev.preventDefault(); ev.stopPropagation(); selectRoutePoint(pointType); });
+  bindRouteMarkerPassthrough(el, () => marker);
   // Body A/B jdou chytit a přetáhnout stejně jako zastávky; trasa se přepočítá.
-  const marker = new maplibregl.Marker({element: el, draggable: true}).setLngLat(lngLat).addTo(state.map);
+  marker = new maplibregl.Marker({element: el, draggable: !routeInsertModeArmed()}).setLngLat(lngLat).addTo(state.map);
   marker.on('dragstart', () => { state.draggingViaPoint = true; });
   marker.on('dragend', () => {
     const ll = marker.getLngLat();
@@ -6003,6 +6028,17 @@ function initMap(){
       finishCustomRoute();
     }
   });
+  // Enter mimo textová pole a tlačítka ukončí rozkreslenou vlastní trasu jako pravé tlačítko.
+  if(!window.__pzCustomEnter){
+    window.__pzCustomEnter = true;
+    document.addEventListener('keydown', e => {
+      if(e.key !== 'Enter' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || pzIsTextEntry(e.target)) return;
+      if(e.target?.closest?.('button,select,input,textarea,a,[role="button"],[role="slider"]')) return;
+      if(state.currentTransportMode !== 'planeCustom' || !isRouteTabActive() || !state.pointA || state.pointB) return;
+      e.preventDefault(); e.stopPropagation();
+      finishCustomRoute();
+    });
+  }
   // Double-click also finishes the live measurement (and is prevented from zooming).
   state.map.on('dblclick', e => {
     if(state.measureMode === 'line'){ try{ e.preventDefault?.(); }catch(_e){} finishMeasureLine(); }
@@ -8501,7 +8537,7 @@ function serializeProjectSnapshot(){
       routeWidth: $('routeWidth')?.value || '4',
       routeEndpointShape: state.routeEndpointShape || 'circle',
       routeEndpointSize: parseInt($('routeEndpointSize')?.value, 10) || state.routeEndpointSize || 28,
-      showDirectLine: $('showDirectLine')?.checked !== false,
+      showDirectLine: $('showDirectLine')?.checked === true,
       preDraw: isRoutePreDrawOn(),                    // nepovinné; starý projekt = zapnuto
       durationSec: state.routeDurationSec || null     // doba jízdy z routeru (nepovinné)
     },
@@ -11345,14 +11381,17 @@ function refreshManualViaMarkers(){
   state.manualViaMarkers = state.manualViaPoints.map((pt, idx)=> {
     const el = makeViaMarker(idx);
     el.title = t('Táhni pro přesun, Ctrl + klik smaže');
+    let marker = null;
     el.addEventListener('click', ev => {
+      if(routeMarkerClickToInsert(ev, marker)) return;
       ev.stopPropagation();
       if(ev.ctrlKey || ev.metaKey){
         ev.preventDefault();
         removeManualViaPoint(idx, 'ctrl-marker');
       }
     });
-    const marker = new maplibregl.Marker({element: el, draggable:true})
+    bindRouteMarkerPassthrough(el, () => marker);
+    marker = new maplibregl.Marker({element: el, draggable: !routeInsertModeArmed()})
       .setLngLat(pt.lngLat)
       .addTo(state.map);
     marker.on('dragstart', ()=>{ state.draggingViaPoint = true; });
@@ -11419,12 +11458,14 @@ function handleCustomRouteClick(lngLat, label, ctrl){
   // Hotová trasa: obyčejný klik ji nesmí smazat (dřív začal kreslit novou a
   // stará byla pryč). Nová trasa = Smazat; Ctrl + klik přidá bod do stávající.
   if(state.pointA && state.pointB){
-    if(ctrl) addManualViaPoint(lngLat, label);
+    // po přepnutí z hledané trasy (A i B zadané) vkládá bod i obyčejný klik
+    if(ctrl || state.customInsertBetween) addManualViaPoint(lngLat, label);
     else setStatus(t('Trasa je hotová. Ctrl + klik přidá bod, Smazat začne novou.'));
     return;
   }
   // First click = start (A).
   if(!state.pointA){
+    state.customInsertBetween = false;
     state.pointB = null; state.manualViaPoints = [];
     if($('endInput')) $('endInput').value = '';
     state.pointA = lngLat;
@@ -13014,6 +13055,20 @@ function pickNavSuggest(id, idx){
   // druhé pole už je vyplněné (jen nevybrané z našeptávače) → hledat hned
   const other = document.getElementById(pointType === 'A' ? 'endInput' : 'startInput');
   if(state.currentTransportMode !== 'planeCustom' && (other?.value || '').trim()){ findRoute(); return; }
+  // Grafik už má nastavený záběr (přiblížená mapa): samotný start/cíl záběr nemění,
+  // jen ho posune, když je bod mimo výřez — dřív se mapa oddálila a další klik do
+  // mapy dopadl jinam. Kamera se pohne až s nalezenou trasou.
+  try{
+    const m = state.map, z = m.getZoom();
+    if(z >= 7){
+      const p = m.project(lngLat), cv = m.getCanvas(), W = cv.clientWidth, H = cv.clientHeight;
+      const inView = p.x > W * 0.05 && p.x < W * 0.95 && p.y > H * 0.05 && p.y < H * 0.95;
+      if(!inView) m.easeTo({center: lngLat, duration: 500});
+      if(state.currentTransportMode === 'planeCustom'){ rebuildCustomPreview(); }
+      setStatus(t(pointType === 'A' ? 'Start nastaven. Zadej cíl nebo klikni do mapy.' : 'Cíl nastaven. Zadej start nebo klikni do mapy.'));
+      return;
+    }
+  }catch(e){}
   try {
     state.screenPan = {x:0, y:0};
     const bounds = (typeof getBoundsFromPlaceItem === 'function') ? getBoundsFromPlaceItem(item) : null;
@@ -13359,6 +13414,19 @@ function pzSetModeSilently(mode, icon){
   try{ updateTransportSections(); }catch(e){}
   try{ if(icon && !(state.animIconData && !state.animSystemIcon)) setAnimSystemIcon(icon, {silent:true, refresh:false}); else pzMatchIconToMode(); }catch(e){}
 }
+// Tmavé barvy linek (vínová 17, tmavě modrá…) splývaly s podkladem: při světlosti
+// pod 35 % se barva zesvětlí na 42 % (odstín i sytost zůstanou, linka je poznat).
+function pzReadableLineColor(hex){
+  const n = parseInt(String(hex).slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), L = (mx + mn) / 2;
+  if(!(L < 0.35)) return String(hex).toLowerCase();
+  const d = mx - mn, S = d ? d / (1 - Math.abs(2 * L - 1)) : 0;
+  let H = 0;
+  if(d){ H = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; H *= 60; }
+  const L2 = 0.42, C = (1 - Math.abs(2 * L2 - 1)) * S, X = C * (1 - Math.abs((H / 60) % 2 - 1)), m = L2 - C / 2;
+  const [r1, g1, b1] = H < 60 ? [C, X, 0] : H < 120 ? [X, C, 0] : H < 180 ? [0, C, X] : H < 240 ? [0, X, C] : H < 300 ? [X, 0, C] : [C, 0, X];
+  return '#' + [r1, g1, b1].map(v => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('');
+}
 async function pzApplyLine(){
   try{
     const lines = await pzLoadLines(), dirs = pzFindLine(lines, $('pzLineInput').value);
@@ -13378,9 +13446,9 @@ async function pzApplyLine(){
     // trasa v barvě linky (vrátí se jako u metra, když se pak trasa najde jinak)
     const rc = $('routeColor');
     if(rc && /^#[0-9a-f]{6}$/i.test(l.c)){
-      const cur = rc.value.toLowerCase();
+      const cur = rc.value.toLowerCase(), col = pzReadableLineColor(l.c);
       if(!(state._pzAutoRouteColor && cur === state._pzAutoRouteColor)) state._pzUserRouteColor = cur;
-      rc.value = l.c.toLowerCase(); rc.dispatchEvent(new Event('input', {bubbles:true})); state._pzAutoRouteColor = l.c.toLowerCase();
+      rc.value = col; rc.dispatchEvent(new Event('input', {bubbles:true})); state._pzAutoRouteColor = col;
     }
     setTimeout(() => { try{ refreshAnimatedMarkerPreview(); }catch(e){} }, 0);
     setStatus(t('Linka {0}: {1} → {2} · {3} zastávek · {4}', l.n, seg.stops[0].name, seg.stops[seg.stops.length - 1].name, seg.stops.length, routeSummaryText()));
@@ -13633,7 +13701,7 @@ async function routeFromPoints(a,b,mode){
 }
 
 function isArcDirectLineOn(){
-  return state.currentTransportMode === 'planeArc' && $('showDirectLine')?.checked !== false;
+  return state.currentTransportMode === 'planeArc' && $('showDirectLine')?.checked === true;   // jen na výslovné zapnutí
 }
 
 /* ===== 3D FLIGHT ARC (globe) =====
@@ -13818,7 +13886,10 @@ function arcBestView(){
   const dy = b[1] - a[1];
   const travel = Math.atan2(dx, dy) * 180 / Math.PI; // 0 = north
   // Look at the arch side-on (perpendicular to travel) — most dramatic profile.
-  const bearing = ((travel - 90) % 360 + 360) % 360;
+  // Z obou kolmic ta bližší severu, jinak vyšla mapa vzhůru nohama (jih nahoře).
+  const b1 = ((travel + 90) % 360 + 360) % 360, b2 = ((travel + 270) % 360 + 360) % 360;
+  const off = b => Math.abs(((b + 180) % 360) - 180);
+  const bearing = off(b1) <= off(b2) ? b1 : b2;
   const bounds = state.routeCoords.reduce((b2,c)=>b2.extend(c), new maplibregl.LngLatBounds(state.routeCoords[0], state.routeCoords[0]));
   state.screenPan = {x:0, y:0};
   try{
@@ -13899,7 +13970,8 @@ function fmtRouteDuration(sec){
 function routeSummaryText(){
   const km = routeKm();
   if(!(km > 0)) return '';
-  const num = km >= 20 ? String(Math.round(km)) : km.toFixed(1).replace('.', currentLang === 'en' ? '.' : ',');
+  // oddělovač tisíců jako u vzdáleností ve scéně („1 584 km“)
+  const num = km >= 20 ? Math.round(km).toLocaleString(currentLang === 'en' ? 'en-US' : 'cs-CZ') : km.toFixed(1).replace('.', currentLang === 'en' ? '.' : ',');
   const road = ['driving','truck','moto','foot','cycle'].includes(state.currentTransportMode);
   const dur = road && state.routeDurationSec > 0 ? ' · ' + fmtRouteDuration(state.routeDurationSec) : '';
   return num + ' km' + dur;
@@ -13939,7 +14011,7 @@ function routeErrorText(e){
   if(mode === 'train' || mode === 'boat'){
     if(/načíst/.test(msg)) return t('Síť tratí a řek se nenačetla. Zkus to znovu.');
     return t(mode === 'train' ? 'Vlakem to nejde — tratě máme jen v Česku. Posuň bod nebo zvol jinou dopravu.'
-                              : 'Lodí to nejde — mezi body není splavná řeka. Posuň bod nebo zvol jinou dopravu.');
+                              : 'Lodí to nejde — splavné řeky máme jen v Česku. Na moři zvol Vlastní a naklikej trasu, ikonka Loď zůstane.');
   }
   return t('Mezi startem a cílem nevede cesta. Posuň bod nebo zvol jinou dopravu.');
 }
@@ -14405,7 +14477,7 @@ function pzVehBaseSizePx(){
 // Každé: {type, reverse (proti směru), delay (0–0,9 = vyjede později)}. Jedou po
 // stejné trase jako hlavní vozidlo, kreslí je stejná funkce (pzDrawVehicle) se
 // stejnou maskou u bodů A/B, v náhledu i v exportu.
-const PZ_EXTRA_LABELS = {car:'Auto', truck:'Kamion', lorry:'Nákladní', train:'Vlak', boat:'Loď', bus:'Autobus', fire:'Hasiči', police:'Policie', ambulance:'Sanitka', metro:'Metro', tram:'Tramvaj'};
+const PZ_EXTRA_LABELS = {plane:'Letadlo', car:'Auto', truck:'Kamion', lorry:'Nákladní', train:'Vlak', boat:'Loď', bus:'Autobus', fire:'Hasiči', police:'Policie', ambulance:'Sanitka', metro:'Metro', tram:'Tramvaj'};
 function pzExtraVehicles(){ return Array.isArray(state.pzExtraVehicles) ? state.pzExtraVehicles : (state.pzExtraVehicles = []); }
 let _pzRevRoute = {src:null, rev:null};
 function pzReversedRoute(route){
@@ -14484,9 +14556,10 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
   let crashCI = null; try{ crashCI = pzCrashInfo(); }catch(e){}
   if(extras.length && raw != null && state.routeCoords?.length > 1){
     const keep = {icon: state.animSystemIcon, route: state.routeCoords, size: state._pzSizeOverride, ov: state._pzColorOverride};
+    state._pzExtraDraw = true;   // letadlo jako další vozidlo kreslí pzVehicleParts jedním dílem
     try{
       extras.forEach(v => {
-        if(!PZ_SPRITES[v.type] || !PZ_SPRITE_IMG[v.type]) return;
+        if(v.type !== 'plane' && (!PZ_SPRITES[v.type] || !PZ_SPRITE_IMG[v.type])) return;
         state.animSystemIcon = v.type;
         state.routeCoords = v.reverse ? pzReversedRoute(keep.route) : keep.route;
         state._pzSizeOverride = parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK();
@@ -14504,7 +14577,7 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
         pzDrawVehicle(ctx, map, toOut, k, vp);
         if(v.label) tags.push([v.type, v.reverse, vp, v.label, v.color]);
       });
-    }finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; state._pzSizeOverride = keep.size; state._pzColorOverride = keep.ov; }
+    }finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; state._pzSizeOverride = keep.size; state._pzColorOverride = keep.ov; state._pzExtraDraw = false; }
   }
   if(state._pzVehVp != null && pzIsRail(state.animSystemIcon)) pzDrawVehicle(ctx, map, toOut, k, state._pzVehVp);
   // Srážka: v místě střetu pulzující červený záblesk (od chvíle, kdy se vozidla potkají)
@@ -14539,8 +14612,9 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
   if(tags.length){
     const keep = {icon: state.animSystemIcon, route: state.routeCoords};
     // protijedoucí vozidlo má cedulku pod soupravou — u srážky se cedulky nepotkají
+    state._pzExtraDraw = true;
     try{ tags.forEach(([type, rev, vp, text, col]) => { state.animSystemIcon = type; state.routeCoords = rev ? pzReversedRoute(keep.route) : keep.route; pzDrawVehicleTag(ctx, map, toOut, kt, vp, text, col, rev, obst); }); }
-    finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; }
+    finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; state._pzExtraDraw = false; }
   }
   // cedulka střetu (objeví se až se srážkou): kolmo na trasu na tu stranu, kde nezakryje
   // pin B, cedulky vozidel ani vozidla na trase; prázdný text = bez cedulky
@@ -14602,10 +14676,11 @@ function pzInitExtraUi(){
   const box = $('pzExtraList'), add = $('pzExtraAdd'); if(!box || !add) return;
   add.addEventListener('click', () => {
     try{ window.__pzPushUndo?.(); }catch(e){}
-    const main = PZ_SPRITES[state.animSystemIcon] ? state.animSystemIcon : 'car';
-    const rev = pzExtraVehicles().length % 2 === 0;
+    // typ jako hlavní vozidlo (u letecké trasy letadlo), směr stejný jako hlavní
+    const ic = state.animSystemIcon || PZ_MODE_ICON[state.currentTransportMode];
+    const main = PZ_EXTRA_LABELS[ic] ? ic : (/^plane/.test(state.currentTransportMode || '') ? 'plane' : 'car');
     // stejným směrem vyjede o kus později (15 %, 30 %…), jinak by jelo přesně pod hlavním a nebylo vidět
-    pzExtraVehicles().push({type: main, reverse: rev, delay: rev ? 0 : pzSameDirDelay()});
+    pzExtraVehicles().push({type: main, reverse: false, delay: pzSameDirDelay()});
     pzRenderExtraList(); pzExtraChanged();
   });
   box.addEventListener('change', e => {
@@ -14826,6 +14901,14 @@ function pzImg(url){
 // Díly k vykreslení: [{c:[lng,lat], rot, side(px), url, clip, lead}] — pro náhled, export i testy.
 function pzVehicleParts(vp){
   if(vp == null) return [];
+  // další vozidlo „Letadlo“ (není sprite): jeden díl na trase, natočený po směru letu
+  if(state._pzExtraDraw && state.animSystemIcon === 'plane'){
+    const route = state.routeCoords; if(!route || route.length < 2) return [];
+    const p = Math.max(0, Math.min(1, vp)), c = pointAtProgress(route, p), q0 = pointAtProgress(route, Math.max(0, p - 0.002)), q1 = pointAtProgress(route, Math.min(1, p + 0.002));
+    if(!c || !q0 || !q1) return [];
+    const kx = 111.32 * Math.cos(c[1] * Math.PI / 180), dx = (q1[0] - q0[0]) * kx, dy = (q1[1] - q0[1]) * 110.57, dl = Math.hypot(dx, dy) || 1;
+    return [{c, rot: Math.atan2(dx, dy) * 180 / Math.PI, dir: [dx / dl, dy / dl], side: pzVehBaseSizePx() * ((state._exporting && state._exportMarkerScale) || 1), url: pzVehicleImage('plane'), clip: null, lead: true, hidden: false}];
+  }
   const pose = pzRailPose(vp); if(!pose) return [];
   const type = state.animSystemIcon, spec = pzConsistSpec() || {units:[]};
   const sizePx = pzVehBaseSizePx() * ((state._exporting && state._exportMarkerScale) || 1);
@@ -19852,22 +19935,27 @@ function bindUI(){
     renderAnimIconPreview();
     updateRouteStyle();
     // Vstup do vlastní trasy: dosavadní body se NEMAŽOU (dřív zmizela celá trasa
-    // bez varování) — A zůstane začátkem, zastávky i cíl se stanou nakreslenými
-    // body a grafik kreslí dál. Hledaná čára se zahodí, spojí se rovně.
+    // bez varování) — A zůstane začátkem, B cílem, zastávky mezi nimi; nové kliky
+    // se vkládají mezi body tam, kde trasu prodlouží nejméně (viaInsertIndex).
+    // Z lodi (moře) zůstane ikonka Loď. Hledaná čára se zahodí, spojí se rovně.
     if(state.currentTransportMode === 'planeCustom' && prevMode !== 'planeCustom'){
       cancelRouteSearch();
       state._pzSnap = null;
+      if(prevMode === 'boat' && !(state.animIconData && !state.animSystemIcon)){ try{ setAnimSystemIcon('boat', {silent:true, refresh:false}); }catch(e){} }
       if(state.pointA){
         clearRouteLineOnly();
         state.routeDurationSec = null; state.pzTrainStations = null; state.pzLineRoute = null;
+        state.customInsertBetween = !!state.pointB;
+        restorePointMarkers(); refreshManualViaMarkers(); renderWaypointList();
         if(state.pointB){
-          state.manualViaPoints.push({lngLat: state.pointB, name: $('endInput')?.value || ''});
-          state.pointB = null;
-          if($('endInput')) $('endInput').value = '';
+          state.clickPhase = 'done';
+          findRoute();
+          setStatus(t('Vlastní trasa: A i B zůstaly, kliknutím vložíš bod mezi ně. Smazat = začít znovu.'));
+        } else {
+          state.clickPhase = 'B';
+          rebuildCustomPreview();
+          setStatus(t('Vlastní trasa: body zůstaly, klikáním přidáš další, pravé tlačítko ji ukončí. Smazat = začít znovu.'));
         }
-        state.clickPhase = 'B';
-        restorePointMarkers(); refreshManualViaMarkers(); renderWaypointList(); rebuildCustomPreview();
-        setStatus(t('Vlastní trasa: body zůstaly, klikáním přidáš další, pravé tlačítko ji ukončí. Smazat = začít znovu.'));
         return;
       }
       clearRoute();
@@ -19876,6 +19964,7 @@ function bindUI(){
     }
     // Odchod z rozkreslené vlastní trasy: poslední nakreslený bod se stane cílem,
     // jinak by zůstaly body bez cíle a nová doprava by neměla co hledat.
+    if(state.currentTransportMode !== 'planeCustom') state.customInsertBetween = false;
     if(prevMode === 'planeCustom' && state.currentTransportMode !== 'planeCustom' && state.pointA && !state.pointB && state.manualViaPoints.length){
       const last = state.manualViaPoints.pop();
       state.pointB = last.lngLat;
@@ -20192,6 +20281,9 @@ Object.assign(I18N, {
   "Plynulost pohybu": {cs:"Plynulost pohybu",sk:"Plynulosť pohybu",bg:"Плавност на движението",hr:"Glatkoća kretanja",ro:"Fluiditatea mișcării",en:"Motion smoothing"},
   "Náklon kamery": {cs:"Náklon kamery",sk:"Sklon kamery",bg:"Наклон на камерата",hr:"Nagib kamere",ro:"Înclinarea camerei",en:"Camera tilt"},
   "Přidat záběr": {cs:"Přidat záběr",sk:"Pridať záber",bg:"Добави кадър",hr:"Dodaj kadar",ro:"Adaugă cadru",en:"Add shot"},
+  "Lodí to nejde — splavné řeky máme jen v Česku. Na moři zvol Vlastní a naklikej trasu, ikonka Loď zůstane.": {cs:"Lodí to nejde — splavné řeky máme jen v Česku. Na moři zvol Vlastní a naklikej trasu, ikonka Loď zůstane.",sk:"Loďou to nejde — splavné rieky máme len v Česku. Na mori zvoľ Vlastná a naklikaj trasu, ikonka Loď zostane.",bg:"С кораб не става — плавателни реки имаме само в Чехия. В морето избери Собствен и начертай маршрута с кликове, иконата Кораб остава.",hr:"Brodom ne ide — plovne rijeke imamo samo u Češkoj. Na moru odaberi Vlastita i klikni rutu, ikona Brod ostaje.",ro:"Cu vaporul nu se poate — râuri navigabile avem doar în Cehia. Pe mare alege Personalizat și trasează ruta prin clic, pictograma Navă rămâne.",en:"No boat route — navigable rivers are only in Czechia. At sea choose Custom and click the route; the Boat icon stays."},
+  "Vlastní trasa: A i B zůstaly, kliknutím vložíš bod mezi ně. Smazat = začít znovu.": {cs:"Vlastní trasa: A i B zůstaly, kliknutím vložíš bod mezi ně. Smazat = začít znovu.",sk:"Vlastná trasa: A aj B zostali, kliknutím vložíš bod medzi ne. Zmazať = začať znova.",bg:"Собствен маршрут: A и B остават, с клик вмъкваш точка между тях. Изтрий = започни отначало.",hr:"Vlastita ruta: A i B su ostali, klikom umećeš točku između njih. Obriši = počni ispočetka.",ro:"Traseu personalizat: A și B au rămas, cu un clic inserezi un punct între ele. Șterge = începe din nou.",en:"Custom route: A and B stay, click to insert a point between them. Clear = start over."},
+  "Loď — trasa po řekách a kanálech ČR (na moři použij Vlastní)": {cs:"Loď — trasa po řekách a kanálech ČR (na moři použij Vlastní)",sk:"Loď — trasa po riekach a kanáloch ČR (na mori použi Vlastná)",bg:"Кораб — маршрут по реките и каналите на Чехия (в морето използвай Собствен)",hr:"Brod — ruta po rijekama i kanalima Češke (na moru koristi Vlastita)",ro:"Navă — traseu pe râurile și canalele Cehiei (pe mare folosește Personalizat)",en:"Boat — route along Czech rivers and canals (at sea use Custom)"},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
   "obrys": {cs:"obrys",sk:"obrys",bg:"контур",hr:"obrub",ro:"contur",en:"outline"},
   "Vlastní presety": {cs:"Vlastní presety",sk:"Vlastné presety",bg:"Собствени пресети",hr:"Vlastiti preseti",ro:"Presetări proprii",en:"Custom presets"},
@@ -23345,11 +23437,10 @@ function pzColorFromName(v){
     async addVehicle({type, reverse, delay, crash, crashAt, crashLabel, speed, label, color} = {}){
       // typ česky i v jiném tvaru (vlaky, vlakem, sanitkou, lodí…)
       const k = String(type || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const alias = {auto:'car', osobak:'car', kamion:'truck', nakladni:'lorry', nakladak:'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', policie:'police', sanitka:'ambulance', metro:'metro', souprava:'train'};
+      const alias = {auto:'car', osobak:'car', kamion:'truck', nakladni:'lorry', nakladak:'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', policie:'police', sanitka:'ambulance', metro:'metro', souprava:'train', letadlo:'plane', letoun:'plane'};
       const stem = w => w.replace(/(ami|ech|em|ou|um|y|u|a|e|i|o)$/, '');
       let t = PZ_EXTRA_LABELS[k] ? k : alias[k];
       if(!t){ const st = stem(k); const hit = Object.keys(alias).find(a => st.length >= 3 && stem(a) === st); if(hit) t = alias[hit]; }
-      if(!t && /^(letadl|plane|letoun)/.test(k)) return {ok:false, error:'Letadlo jede jen jako hlavní vozidlo (setVehicle) — jako další vozidlo na trase ho přidat nejde.'};
       if(!t) return {ok:false, error:'Vozidlo „' + type + '" neznám. Mám: ' + Object.values(PZ_EXTRA_LABELS).map(x => x.toLowerCase()).join(', ') + '.'};
       if(!(state.routeCoords || []).length) return {ok:false, error:'Nejdřív je potřeba trasa — další vozidlo jede po ní.'};
       // srážka jde jen s protijedoucím vozidlem

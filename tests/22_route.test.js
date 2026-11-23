@@ -59,7 +59,8 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
   const ui = await page.evaluate(() => ({hints: document.querySelectorAll('#navigationABSection .hint, #routeLookSection .hint, #navigationABSection p').length,
     swap: !!document.getElementById('swapRouteBtn'), lookOpen: !document.getElementById('routeLookSection').classList.contains('collapsed'),
     pre: !!document.getElementById('routePreDraw')?.offsetParent, preOn: document.getElementById('routePreDraw')?.checked,
-    oldSections: document.querySelectorAll('.tab-pane[data-pane="trasa"] > .section').length}));
+    oldSections: document.querySelectorAll('.tab-pane[data-pane="trasa"] > .section').length, direct: document.getElementById('showDirectLine').checked}));
+  check(ui.direct === false, 'Oblouk: přímá spojnice ve výchozím stavu vypnutá');
   check(ui.hints === 0, 'Navigace a Vzhled trasy bez vysvětlujících odstavců');
   check(ui.swap && ui.lookOpen && ui.pre && ui.preOn, '„Prohodit" a „Předkreslit celou trasu" jsou vidět hned (zapnuto)');
   check(ui.oldSections === 3, 'záložka Trasa má 3 sekce (zastávky jsou součástí Navigace): ' + ui.oldSections);
@@ -176,7 +177,9 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
 
   // ---- vlastní kreslená trasa ----
   await page.click('.transport-btn[data-mode="planeCustom"]'); await page.waitForTimeout(300); s = await S();
-  check(!!s.A && !s.B && s.via === 1 && s.rc === 2 && /body zůstaly/.test(s.status), 'Vlastní z hotové trasy: A zůstane, cíl se stane nakresleným bodem (nic nezmizí): ' + s.status);
+  check(!!s.A && !!s.B && s.via === 0 && s.rc === 2 && /A i B zůstaly/.test(s.status), 'Vlastní z hotové trasy: A i B zůstanou (nic nezmizí): ' + s.status);
+  await clickMap(15.6, 49.9); await settled(); s = await S();
+  check(!!s.B && s.via === 1 && s.rc === 3, 'Vlastní z hotové trasy: klik vloží bod mezi A a B');
   await page.click('#clearRouteBtn'); await page.waitForTimeout(200); await home(); s = await S();
   check(!s.A && s.rc === 0 && s.via === 0 && await page.$eval('#addWaypointBtn', e => e.hidden), 'Vlastní: po Smazat čistý začátek');
   await clickMap(14.5, 50.0); await clickMap(15.2, 49.9); await clickMap(15.8, 49.6); await clickMap(16.4, 49.3); s = await S();
@@ -185,7 +188,8 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
   await page.mouse.click(1500, 900, {button: 'middle'}); await page.keyboard.press('Backspace'); await page.waitForTimeout(300); s = await S();
   check(s.via === 1 && s.rc === 2, 'Backspace uprostřed kreslení ubere další');
   await clickMap(15.8, 49.6); await idle();
-  const [rx, ry] = await px(16.0, 49.9); await page.mouse.click(rx, ry, {button: 'right'}); await page.waitForTimeout(400); await settled(); s = await S();
+  const [rx, ry] = await px(15.8, 49.6); await page.mouse.click(rx, ry, {button: 'right'}); await page.waitForTimeout(400);   // pravý klik přímo na poslední bod
+  await settled(); s = await S();
   check(!!s.B && s.via === 1 && s.rc === 3 && s.mk === 2 && /km/.test(s.sum), 'pravé tlačítko trasu ukončí (poslední bod = cíl): ' + s.sum);
   await home(); await clickMap(15.0, 49.3); s = await S();
   check(!!s.B && s.rc === 3 && /hotová/.test(s.status), 'obyčejný klik hotovou trasu nesmaže');
