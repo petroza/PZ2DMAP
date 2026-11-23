@@ -71,11 +71,12 @@ export const MAP_TOOLS = [
  },
  {
   "name": "applyPreset",
-  "description": "barevné schéma: tnSvetla, tnSvetlaKontrast, tnSvetlaVyrazna, tnModra (Modrá TN), tnStudio, tnLive (noční), libertyKlasicka, zelenaPrirodni (jako Google), modraPrirodni, mapycz, mapycomTuristicka (jako mapy.com), flightradar, waze, uber, ct24, tnNovaClean, novaBlue, novaTerrain, dark, slate, paper, news, sunset, ocean, mint, candy, neon, tn, reset.",
+  "description": "barevné schéma (jen tyto jsou v appce vidět): tnSvetla (Světlá), tnSvetlaKontrast (Světlá – kontrast), tnSvetlaVyrazna (Světlá – výrazná), tnModra (Modrá – TN), tnStudio (Studio – TN), tnLive (Noc – TN Live), libertyKlasicka (Liberty klasická), zelenaPrirodni (Zelená přírodní), modraPrirodni (Modrá přírodní), mapycomTuristicka (Turistická). Jiný preset (tmavý apod.) nehádej: když žádný nesedí, zeptej se grafika a nabídni tyto; force:true jen na výslovné přání.",
   "inputSchema": {
    "type": "object",
    "properties": {
-    "preset": {}
+    "preset": {},
+    "force": {}
    },
    "required": [
     "preset"

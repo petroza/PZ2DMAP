@@ -54,6 +54,24 @@ const ROAD = [[15.36,49.54],[15.42,49.50],[15.5,49.46],[15.59,49.40]];
   check(await page.evaluate(() => /^builtin:/.test(window.__pzFns.state.activePresetToken || '') && document.getElementById('baseStyle').value === 'positron'
     && !!document.querySelector('#presetTileGrid .preset-card.active:not(.is-modified)')), '„Výchozí vzhled" vrátí výchozí preset');
 
+  // krok zpět po presetu vrátí i zvýrazněnou dlaždici; stejný preset = stejný podklad
+  const homeKey = await page.$eval('#presetTileGrid .preset-card.active', e => e.dataset.key);
+  await page.click('#presetTileGrid .preset-card[data-key="tnLive"]'); await page.waitForTimeout(600);
+  await page.click('#undoActionBtn'); await page.waitForTimeout(1200);
+  check(await page.$eval('#presetTileGrid .preset-card.active', e => e.dataset.key).catch(() => '') === homeKey, 'krok zpět po presetu zvýrazní předchozí dlaždici (' + homeKey + ')');
+  await page.click('#presetTileGrid .preset-card[data-key="zelenaPrirodni"]'); await waitStyle();
+  await page.click('#presetTileGrid .preset-card[data-key="tnSvetla"]'); await waitStyle();
+  check(await page.$eval('#baseStyle', e => e.value) === 'positron', 'Světlá po Zelené přírodní (Liberty) je zase na Positronu');
+  const hidden = await page.evaluate(() => ({r: window.TNMAP.applyPreset({preset:'dark'}), land: document.getElementById('landColor').value, cat: window.TNMAP.catalog.presets}));
+  check(!hidden.r.ok && /Dostupné/.test(hidden.r.error) && !hidden.cat.includes('dark') && hidden.cat.includes('tnSvetla'), 'skrytý preset vrátí chybu se seznamem a katalog nabízí jen viditelné');
+  // Hybrid: popisky vektorově (dřív rastr CARTO s vodoznakem „API KEY REQUIRED")
+  await page.evaluate(() => window.TNMAP.setBaseStyle({style:'hybrid'})); await waitStyle();
+  check(await page.evaluate(() => { const m = window.__tnMap; return !!m.getSource('ofmLabels') && !m.getSource('cartoLabels') && !!m.getLayer('hybrid-label-city'); }), 'Hybrid má vektorové názvy, ne rastr CARTO');
+  check(!(await page.$eval('#undoActionBtn', e => e.disabled)), 'změna podkladu jde vrátit krokem zpět');
+  await page.click('#undoActionBtn'); await waitStyle();
+  check(await page.$eval('#baseStyle', e => e.value) === 'positron', 'krok zpět vrátí předchozí podklad');
+  await page.click('#resetStyleBtn'); await waitStyle(); await page.waitForTimeout(800);
+
   // --- scéna: popisek, trasa, uzavírky přes formulář, stát přes hledání
   const built = await page.evaluate(async () => { const T = window.TNMAP;
     return {route: (await T.routeBetween({from:'49.54, 15.36', to:'49.40, 15.59', mode:'driving'})).ok, label: (await T.addLabel({place:'49.50, 15.42', text:'NEHODA'})).ok}; });
