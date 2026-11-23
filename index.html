@@ -903,8 +903,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <select id="baseStyle" autocomplete="off"></select>
         <label class="check" style="margin-top:8px"><input id="globeProjection" type="checkbox"> Glóbus</label>
         <div id="pzPoliticalTools" hidden>
-          <label class="check" style="margin-top:8px"><input id="pzFlagsOn" type="checkbox"> <span data-i18n="Vlajky států">Vlajky států</span></label>
-          <label class="check" style="margin-top:8px"><input id="pzCountryLabelsOn" type="checkbox"> <span data-i18n="Popisky států">Popisky států</span></label>
           <label class="check" style="margin-top:8px"><input id="pzClickPaintOn" type="checkbox" checked> <span data-i18n="Barvit stát kliknutím">Barvit stát kliknutím</span></label>
         </div>
       </div>
@@ -1305,11 +1303,14 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div><label>Od</label><input id="pzClFrom" type="text" placeholder="např. Humpolec"></div>
             <div><label>Do</label><input id="pzClTo" type="text" placeholder="např. Jihlava"></div>
           </div>
+          <div class="row">
+            <div><label data-i18n="Objížďka přes">Objížďka přes</label><input id="pzClDetour" type="text" placeholder="např. Pelhřimov"></div>
+            <div><label data-i18n="Text">Text</label><input id="pzClLabel" type="text" value="UZAVŘENO" autocomplete="off"></div>
+          </div>
           <details class="compact-details">
             <summary>Další možnosti</summary>
             <div class="row">
               <div><label>Přes</label><input id="pzClVia" type="text" placeholder="např. Větrný Jeníkov"></div>
-              <div><label>Objížďka přes</label><input id="pzClDetour" type="text" placeholder="např. Pelhřimov"></div>
             </div>
           </details>
           <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClRoadBtn">Vyznačit</button></div>
@@ -1319,8 +1320,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div><label>Linka</label><select id="pzClMetroLine"><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
             <div><label>Stanice</label><select id="pzClMetroFrom"></select></div>
           </div>
-          <label>Až po</label>
-          <select id="pzClMetroTo"></select>
+          <div class="row">
+            <div><label>Až po</label><select id="pzClMetroTo"></select></div>
+            <div><label data-i18n="Text">Text</label><input id="pzClMetroLabel" type="text" autocomplete="off" placeholder="UZAVŘENO"></div>
+          </div>
           <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClMetroBtn">Vyznačit</button></div>
         </div>
         <div id="pzClosureList" class="wp-list"></div>
@@ -1380,6 +1383,9 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <label class="check" style="margin-top:8px"><input id="paintPoliticalCountryOnClick" type="checkbox"> Barvit kliknutím do mapy</label>
           <div id="pzCountryColorList" class="wp-list"></div>
           <div class="btns pz-list-foot" id="pzCountryColorFoot" hidden><button type="button" class="btn btn-sm btn-danger" id="clearPoliticalCountryColorsBtn" data-i18n="Smazat barvy">Smazat barvy</button></div>
+          <label class="check" style="margin-top:8px"><input id="pzFlagsOn" type="checkbox"> <span data-i18n="Vlajky států">Vlajky států</span></label>
+          <label class="check" style="margin-top:8px"><input id="pzCountryLabelsOn" type="checkbox"> <span data-i18n="Popisky států">Popisky států</span></label>
+          <div id="pzFlagList" class="wp-list" hidden></div>
           <label class="check" style="margin-top:10px"><input id="showCountryBordersOverlay" type="checkbox"> Hranice států</label>
           <details class="compact-details">
             <summary>Další možnosti</summary>
@@ -7719,7 +7725,81 @@ function pzRingCentroid(geom){
   }
   return best;
 }
-function pzFlagsRefresh(){ try{ pzEnsureFlagLayer(); pzInitFlagDrag(); }catch(e){ console.warn('flags', e); } }
+// Pól nepřístupnosti (polylabel): bod uvnitř polygonu nejdál od hranic. Těžiště
+// u Chorvatska (srpek) padlo na hranici s Bosnou. Délky se škálují cos(šířky).
+function pzPolylabel(poly){
+  const ring = poly?.[0]; if(!ring?.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  ring.forEach(([x, y]) => { if(x < x0) x0 = x; if(y < y0) y0 = y; if(x > x1) x1 = x; if(y > y1) y1 = y; });
+  const k = Math.cos((y0 + y1) / 2 * Math.PI / 180) || 1;
+  const dist = (x, y) => {
+    let inside = false, d2 = Infinity;
+    for(const r of poly) for(let i = 0, j = r.length - 1; i < r.length; j = i++){
+      const [ax, ay] = r[i], [bx, by] = r[j];
+      if((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside;
+      let px = ax, py = ay, dx = (bx - ax) * k, dy = by - ay;
+      if(dx || dy){ const t = Math.max(0, Math.min(1, (((x - ax) * k) * dx + (y - ay) * dy) / (dx * dx + dy * dy))); px = ax + (bx - ax) * t; py = ay + dy * t; }
+      const ex = (x - px) * k, ey = y - py, e = ex * ex + ey * ey; if(e < d2) d2 = e;
+    }
+    return (inside ? 1 : -1) * Math.sqrt(d2);
+  };
+  const cell = (x, y, h) => { const d = dist(x, y); return {x, y, h, d, max: d + h * Math.SQRT2}; };
+  const size = Math.min(x1 - x0, y1 - y0); if(!(size > 0)) return [x0, y0];
+  const prec = Math.max(x1 - x0, y1 - y0) / 200;
+  let q = [], h = size / 2;
+  for(let x = x0; x < x1; x += size) for(let y = y0; y < y1; y += size) q.push(cell(x + h, y + h, h));
+  let best = cell((x0 + x1) / 2, (y0 + y1) / 2, 0);
+  for(let n = 0; q.length && n < 4000; n++){
+    let bi = 0; for(let i = 1; i < q.length; i++) if(q[i].max > q[bi].max) bi = i;
+    const c = q.splice(bi, 1)[0];
+    if(c.d > best.d) best = c;
+    if(c.max - best.d <= prec) continue;
+    const g = c.h / 2;
+    q.push(cell(c.x - g, c.y - g, g), cell(c.x + g, c.y - g, g), cell(c.x - g, c.y + g, g), cell(c.x + g, c.y + g, g));
+  }
+  return [best.x, best.y];
+}
+// Místo pro vlajku státu: čitelně uvnitř území. Velké státy mají ruční bod
+// (Rusko u Moskvy, ne uprostřed Sibiře); jinak polylabel největšího ostrova —
+// přednost má ten, který je vidět ve výřezu.
+const PZ_FLAG_ANCHOR = {RU:[37.6, 55.7], US:[-98.5, 39.3], CA:[-100, 55], CN:[104, 34], AU:[134, -25], NO:[9.5, 61.3], CL:[-71, -34]};
+function pzFlagAnchor(f, bounds){
+  const g = f?.geometry; if(!g) return null;
+  const polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+  const area = r => { let a = 0; for(let i = 0, j = r.length - 1; i < r.length; j = i++) a += r[j][0] * r[i][1] - r[i][0] * r[j][1]; return Math.abs(a / 2); };
+  const inView = r => bounds && r.some(([x, y]) => bounds.contains([x, y]));
+  const fix = PZ_FLAG_ANCHOR[f.properties?.__appId];
+  if(fix && (!bounds || bounds.contains(fix))) return fix;
+  const ranked = polys.filter(p => p?.[0]?.length > 3).map(p => ({p, a: area(p[0]), v: inView(p[0]) ? 1 : 0})).sort((a, b) => b.v - a.v || b.a - a.a);
+  // ve výřezu jen „opravdové" kusy státu, ne ostrůvek u kraje
+  const top = ranked[0]; if(!top) return fix || pzRingCentroid(g);
+  return pzPolylabel(top.p) || fix || pzRingCentroid(g);
+}
+function pzFlagsRefresh(){ try{ pzEnsureFlagLayer(); pzInitFlagDrag(); }catch(e){ console.warn('flags', e); } try{ pzRenderFlagList(); }catch(e){} }
+// Seznam vlajek ve Scéna > Státy: i vlajku od asistenta jde najít, vybrat a smazat.
+function pzRenderFlagList(){
+  const box = $('pzFlagList'); if(!box) return;
+  const list = pzFlagList();
+  box.hidden = !list.length; box.innerHTML = '';
+  list.forEach(f => {
+    const iso = String(f.iso || ''), name = pzCountryLocalName(iso.toUpperCase(), iso.toUpperCase());
+    const row = document.createElement('div');
+    row.className = 'wp-item' + (state.pzFlagSel === f.id ? ' active' : '');
+    const img = document.createElement('img'); img.alt = ''; img.src = 'assets/flags/' + iso + '.svg';
+    const label = document.createElement('span'); label.className = 'pz-cc-name'; label.textContent = name;
+    const del = document.createElement('button');
+    del.className = 'btn-remove'; del.type = 'button'; del.textContent = '×'; del.title = t('Smazat');
+    del.setAttribute('aria-label', t('Smazat') + ': ' + name);
+    del.addEventListener('click', ev => { ev.stopPropagation(); state.pzFlagSel = f.id; pzDeleteSelectedFlag(); });
+    row.append(img, label, del);
+    row.addEventListener('click', () => {
+      state.pzFlagSel = f.id; pzFlagsRefresh();
+      try{ if(!state.map.getBounds().contains(f.lngLat)) state.map.easeTo({center: f.lngLat, duration: 600}); }catch(e){}
+      setStatus(t('Vlajka vybrána — Delete ji smaže.'));
+    });
+    box.appendChild(row);
+  });
+}
 // Přesun vlajky tažením (myš i dotyk): chytit vlajku, táhnout, pustit.
 function pzInitFlagDrag(){
   const m = state.map; if(!m || m._pzFlagDrag) return;
@@ -7873,6 +7953,57 @@ async function fetchGeoJsonWithFallback(urls){
 // Názvy států v jazyce aplikace (zdroj GISCO je má jen anglicky — grafik
 // hledal „Německo" a nenašel). Anglický název zůstává prohledávatelný.
 const PZ_ISO_FIX = {EL:'GR', UK:'GB', XK:'XK'};
+// Česká jména států → kód státu V DATECH HRANIC (GISCO: Řecko = EL, Británie = UK).
+// Dřív byly kódy ISO (GR, GB), které v datech nejsou — „Řecko" pak fuzzy hledání
+// dotáhlo na Grenadu a „Británie" na Abyei. Sdílí to Scéna > Státy, asistent i vlajky.
+const TOOL_CZ_COUNTRY = {
+  nemecko:'DE', rakousko:'AT', polsko:'PL', slovensko:'SK', cesko:'CZ',
+  'ceska republika':'CZ', ukrajina:'UA', rusko:'RU', 'ruska federace':'RU', francie:'FR', italie:'IT',
+  spanelsko:'ES', 'velka britanie':'UK', britanie:'UK', anglie:'UK', 'spojene kralovstvi':'UK', skotsko:'UK', wales:'UK',
+  usa:'US', 'spojene staty':'US', 'spojene staty americke':'US', amerika:'US', madarsko:'HU', svycarsko:'CH',
+  nizozemsko:'NL', holandsko:'NL', belgie:'BE', chorvatsko:'HR', srbsko:'RS',
+  rumunsko:'RO', bulharsko:'BG', recko:'EL', turecko:'TR', svedsko:'SE',
+  norsko:'NO', finsko:'FI', dansko:'DK', irsko:'IE', portugalsko:'PT',
+  cina:'CN', japonsko:'JP', izrael:'IL', egypt:'EG', belorusko:'BY', belarus:'BY',
+  litva:'LT', lotyssko:'LV', estonsko:'EE', slovinsko:'SI', kanada:'CA',
+  indie:'IN', brazilie:'BR', australie:'AU', moldavsko:'MD', gruzie:'GE',
+  armenie:'AM', azerbajdzan:'AZ', kazachstan:'KZ', syrie:'SY', irak:'IQ',
+  iran:'IR', afghanistan:'AF', 'severni korea':'KP', 'jizni korea':'KR',
+  bosna:'BA', 'bosna a hercegovina':'BA', albanie:'AL', makedonie:'MK', 'severni makedonie':'MK', kosovo:'XK', cernahora:'ME',
+  'cerna hora':'ME', kypr:'CY', island:'IS', lucembursko:'LU', malta:'MT', palestina:'PS', 'pasmo gazy':'PS',
+  libanon:'LB', jordansko:'JO', 'saudska arabie':'SA', 'spojene arabske emiraty':'AE', emiraty:'AE', jemen:'YE',
+  mexiko:'MX', argentina:'AR', venezuela:'VE', kuba:'CU', vietnam:'VN', thajsko:'TH', 'tchaj wan':'TW', tchajwan:'TW', taiwan:'TW',
+  vatikan:'VA', monako:'MC', lichtenstejnsko:'LI', andorra:'AD', 'san marino':'SM'
+};
+// ISO kód → kód v datech hranic (GISCO má vlastní EL a UK).
+const PZ_ISO_TO_DATA = {GR:'EL', GB:'UK'};
+// Tvary dotazu: „Ukrajinu", „Polska", „Německem" → zkusí i 1. pád.
+function pzCountryQueryVariants(q){
+  const n = normalizeLoose(q); if(!n) return [];
+  const out = [n], add = v => { if(v && !out.includes(v)) out.push(v); };
+  [['u','a'],['y','a'],['e','a'],['ou','a'],['i','e'],['a','o'],['u','o'],['em','o'],['ech','o'],['ku','ko'],['ce','ko']]
+    .forEach(([suf, rep]) => { if(n.length > suf.length + 3 && n.endsWith(suf)) add(n.slice(0, -suf.length) + rep); });
+  return out;
+}
+// Stát podle textu od grafika / asistenta → položka seznamu států, {missing:kód}
+// (stát v datech hranic není — Kosovo, Tchaj-wan) nebo null.
+function pzResolveCountry(q){
+  const items = pzCountryListItems(), raw = String(q || '').trim(); if(!raw) return null;
+  const byId = id => items.find(i => i.id === id);
+  for(const v of pzCountryQueryVariants(raw)){
+    const code = TOOL_CZ_COUNTRY[v];
+    if(code) return byId(code) || (items.length ? {missing: code} : null);
+    const x = items.find(i => normalizeLoose(i.name) === v || normalizeLoose(i.nameEn) === v);
+    if(x) return x;
+  }
+  // kód ISO2 / ISO3 („gr", „GBR", „USA")
+  if(/^[a-z]{2,3}$/i.test(raw)){
+    const u = raw.toUpperCase(), x = byId(PZ_ISO_TO_DATA[u] || u) || items.find(i => i.iso3 === u);
+    if(x) return x;
+  }
+  return null;
+}
+function pzCountryMissingError(q){ return t('Stát „{0}" v datech hranic není (mapa ho nevede jako samostatný stát) — obarvit ho nejde.', q); }
 const _pzRegionNames = {};
 function pzCountryLocalName(iso, fallback){
   const lang = (typeof currentLang !== 'undefined' && currentLang) || 'cs';
@@ -7889,7 +8020,7 @@ function pzCountryListItems(){
   return (state.countriesGeojson?.features || [])
     .map(f => {
       const en = f.properties.__appName, iso = f.properties.__appIso || '';
-      return {id:f.properties.__appId, name:pzCountryLocalName(iso, en), nameEn:en, iso};
+      return {id:f.properties.__appId, name:pzCountryLocalName(iso, en), nameEn:en, iso, iso3: f.properties.ISO3_CODE || ''};
     })
     .filter(item => item.id && item.name)
     .sort((a,b)=> String(a.name).localeCompare(String(b.name), (typeof currentLang !== 'undefined' && currentLang) || 'cs'));
@@ -7931,11 +8062,19 @@ const _countrySuggestState = { debounce: null, items: [], activeIdx: -1 };
 function getCountrySearchItems(query=''){
   const q = String(query || '').trim();
   if(!q) return [];
-  return pzCountryListItems()
-    .map(item => ({item, r:pzCountryRank(item, q)}))
-    .filter(x => x.r < 9)
+  const items = pzCountryListItems();
+  // Česká přezdívka / zkratka / jiný pád („USA", „Británie", „Ukrajinu") má přednost —
+  // dřív „USA" našlo jen Menší odlehlé ostrovy USA a „Ukrajinu" nic.
+  const first = [], nq = normalizeLoose(q), put = it => { if(it && it.id && !first.some(x => x.id === it.id)) first.push(it); };
+  put(pzResolveCountry(q));
+  if(nq.length >= 3) Object.keys(TOOL_CZ_COUNTRY).filter(k => k.startsWith(nq)).forEach(k => put(items.find(i => i.id === TOOL_CZ_COUNTRY[k])));
+  const qs = pzCountryQueryVariants(q);
+  const rest = items
+    .map(item => ({item, r: Math.min(...qs.map((v, k) => pzCountryRank(item, v) + (k ? 0.5 : 0)))}))
+    .filter(x => x.r < 9 && !first.some(f => f.id === x.item.id))
     .sort((a,b) => a.r - b.r || a.item.name.length - b.item.name.length || a.item.name.localeCompare(b.item.name, 'cs'))
-    .slice(0, 12).map(x => x.item);
+    .map(x => x.item);
+  return [...first, ...rest].slice(0, 12);
 }
 
 function closeCountrySuggest(){
@@ -7956,7 +8095,9 @@ function renderCountrySuggest(items){
   if(!items || !items.length){
     const empty = document.createElement('div');
     empty.className = 'nav-suggest-empty';
-    empty.textContent = 'Stát nenalezen.';
+    const q = $('politicalCountrySearch')?.value || '';
+    const miss = state.countriesGeojson && pzResolveCountry(q)?.missing;
+    empty.textContent = !state.countriesGeojson ? t('Načítám státy…') : miss ? pzCountryMissingError(q.trim()) : t('Stát nenalezen.');
     box.appendChild(empty);
   }else{
     items.forEach((item, idx) => {
@@ -7984,9 +8125,19 @@ function queueCountrySuggest(){
   if(!input) return;
   const q = String(input.value || '').trim();
   clearTimeout(_countrySuggestState.debounce);
+  if(!state.countriesGeojson) requestGeoData();   // stahovat už při kliku do pole
   if(q.length < 1){ closeCountrySuggest(); return; }
   _countrySuggestState.debounce = setTimeout(() => {
     renderCountrySuggest(getCountrySearchItems(q));
+    // Seznam států se stahuje až na vyžádání — dřív čerstvá appka hlásila u „Polsko"
+    // „Stát nenalezen". Teď ukáže „Načítám státy…" a po načtení se nabídka obnoví.
+    if(!state.countriesGeojson){
+      requestGeoData();
+      Promise.resolve(ensureGeoDataLoaded()).catch(() => {}).then(() => {
+        const inp = $('politicalCountrySearch');
+        if(inp && inp.value.trim() && document.activeElement === inp){ populateCountrySelects(); renderCountrySuggest(getCountrySearchItems(inp.value.trim())); }
+      });
+    }
   }, 80);
 }
 
@@ -8867,11 +9018,19 @@ function pzUnpaintCountry(id){
   return true;
 }
 // Tlačítko Obarvit: vezme napsaný název (první shodu), jinak stát vybraný v seznamu.
-function applyPoliticalCountryColor(){
+async function applyPoliticalCountryColor(){
   const q = ($('politicalCountrySearch')?.value || '').trim();
   let id = '';
   if(q){
-    if(!state.countriesGeojson){ requestGeoData(); setStatus(t('Seznam států se ještě načítá — zkus to za chvilku.')); return; }
+    // Data států se stahují až na vyžádání — první Obarvit na ně počká (dřív
+    // hlásilo „ještě se načítá" a grafik musel klikat znovu).
+    if(!state.countriesGeojson){
+      requestGeoData(); setStatus(t('Načítám státy…'));
+      try{ await ensureGeoDataLoaded(); populateCountrySelects(); }catch(e){}
+      if(!state.countriesGeojson){ setStatus(t('Seznam států se nepodařilo načíst — zkontroluj připojení.'), 'error'); return; }
+    }
+    const miss = pzResolveCountry(q)?.missing;
+    if(miss){ setStatus(pzCountryMissingError(q), 'error'); return; }
     id = getCountrySearchItems(q)[0]?.id || '';
     if(!id){ setStatus(t('Stát „{0}“ nenalezen — zkus jiný název.', q), 'error'); return; }
   }else{
@@ -10637,6 +10796,21 @@ async function model3dLoadFile(file){
 function model3dPlaceAt(lngLat){
   const m = model3dInit(); if(!m.gltf){ setStatus(t('Nejdřív nahraj GLB soubor.')); return; }
   m.lngLat = [lngLat.lng ?? lngLat[0], lngLat.lat ?? lngLat[1]];
+  // Velikost se při nahrání odvodí z tehdejšího záběru — nahráno nad celou ČR = 72 km,
+  // po přiblížení do ulice pak z modelu nebylo nic vidět (jen modrý bod). Při prvním
+  // umístění, nebo když je model vůči výřezu obří / mrňavý, přepočítat na ~7 % šířky.
+  try{
+    const b = state.map.getBounds(), latC = b.getCenter().lat;
+    const wM = haversineKm([b.getWest(), latC], [b.getEast(), latC]) * 1000;
+    const eff = (m.sizeMeters || 300) * Math.max(0.01, m.scale || 1);
+    if(wM > 0 && b.contains(m.lngLat) && (!m._placedOnce || eff > wM * 0.5 || eff < wM * 0.01)){
+      const old = m.sizeMeters || 300;
+      m.sizeMeters = Math.max(20, Math.min(400000, Math.round(wM * 0.07 / Math.max(0.01, m.scale || 1))));
+      if(m.sun && m.sun.lengthM > 0) m.sun.lengthM = Math.round(m.sun.lengthM * m.sizeMeters / old);
+      syncModel3dInputs();
+    }
+  }catch(e){}
+  m._placedOnce = true;
   model3dEnsureLayer(); model3dRefreshHandles(); model3dRedrawShadow(); state.map?.triggerRepaint?.();
   setStatus(t('3D model umístěn. Táhni za modrý bod = posun, za slunce = stín.'));
 }
@@ -18812,13 +18986,22 @@ function bindUI(){
   })); });
   pzFillSysIconButtons();
   try{ pzInitLineUi(); }catch(e){}
-  // vlajky a popisky států se navzájem vypínají (jeden klik = jedna věc)
+  // vlajky a popisky států se navzájem vypínají (jeden klik = jedna věc). Fungují
+  // na každém podkladu: klik potřebuje „chytit" stát, tak se zapne neviditelná
+  // výplň států (na běžném podkladu kreslí jen obarvené státy).
+  const pzCountryClickReady = () => {
+    if($('paintPoliticalCountryOnClick')) $('paintPoliticalCountryOnClick').checked = false;
+    if($('showPoliticalCountries') && !$('showPoliticalCountries').checked) $('showPoliticalCountries').checked = true;
+    requestGeoData(); try{ applyMapTweaks(); }catch(e){}
+  };
   $('pzCountryLabelsOn')?.addEventListener('change', () => {
     if($('pzCountryLabelsOn').checked && $('pzFlagsOn')) $('pzFlagsOn').checked = false;
+    if($('pzCountryLabelsOn').checked) pzCountryClickReady();
     setStatus($('pzCountryLabelsOn').checked ? t('Klikni do státu — přidá se jeho název jako popisek.') : t('Přidávání popisků států vypnuto.'));
   });
   $('pzFlagsOn')?.addEventListener('change', () => {
     if($('pzFlagsOn').checked && $('pzCountryLabelsOn')) $('pzCountryLabelsOn').checked = false;
+    if($('pzFlagsOn').checked) pzCountryClickReady();
     setStatus($('pzFlagsOn').checked ? t('Klikni do státu — přidá se jeho vlajka. Klik na vlajku ji vybere, Delete smaže.') : t('Přidávání vlajek vypnuto.'));
     if(!$('pzFlagsOn').checked && state.pzFlagSel){ state.pzFlagSel = null; pzFlagsRefresh(); }
   });
@@ -19459,6 +19642,7 @@ function bindUI(){
     // Enabling click-paint must make the country fill visible+queryable now, so
     // the very first click can hit-test it (works over ANY basemap, not just Politická).
     if($('paintPoliticalCountryOnClick').checked){
+      ['pzFlagsOn','pzCountryLabelsOn'].forEach(id => { if($(id)) $(id).checked = false; });
       if($('showPoliticalCountries')) $('showPoliticalCountries').checked = true;
       ensureOverlaySetup();
       applyMapTweaks();
@@ -20105,6 +20289,12 @@ Object.assign(I18N, {
   "Uzavírka smazána.": {cs:"Uzavírka smazána.",sk:"Uzávierka zmazaná.",bg:"Затварянето е изтрито.",hr:"Zatvaranje je obrisano.",ro:"Închiderea a fost ștearsă.",en:"Closure deleted."},
   "např. Větrný Jeníkov": {cs:"např. Větrný Jeníkov",sk:"napr. Větrný Jeníkov",bg:"напр. Větrný Jeníkov",hr:"npr. Větrný Jeníkov",ro:"de ex. Větrný Jeníkov",en:"e.g. Větrný Jeníkov"},
   "Hledám…": {cs:"Hledám…",sk:"Hľadám…",bg:"Търся…",hr:"Tražim…",ro:"Caut…",en:"Searching…"},
+  "Text": {cs:"Text",sk:"Text",bg:"Текст",hr:"Tekst",ro:"Text",en:"Text"},
+  "Text na mapě": {cs:"Text na mapě",sk:"Text na mape",bg:"Текст на картата",hr:"Tekst na karti",ro:"Text pe hartă",en:"Text on map"},
+  "Načítám státy…": {cs:"Načítám státy…",sk:"Načítavam štáty…",bg:"Зареждам държавите…",hr:"Učitavam države…",ro:"Se încarcă țările…",en:"Loading countries…"},
+  "Stát nenalezen.": {cs:"Stát nenalezen.",sk:"Štát sa nenašiel.",bg:"Държавата не е намерена.",hr:"Država nije pronađena.",ro:"Țara nu a fost găsită.",en:"Country not found."},
+  "Seznam států se nepodařilo načíst — zkontroluj připojení.": {cs:"Seznam států se nepodařilo načíst — zkontroluj připojení.",sk:"Zoznam štátov sa nepodarilo načítať — skontroluj pripojenie.",bg:"Списъкът с държави не се зареди — провери връзката.",hr:"Popis država nije učitan — provjeri vezu.",ro:"Lista țărilor nu s-a încărcat — verifică conexiunea.",en:"Could not load the country list — check your connection."},
+  "Stát „{0}\" v datech hranic není (mapa ho nevede jako samostatný stát) — obarvit ho nejde.": {cs:"Stát „{0}\" v datech hranic není (mapa ho nevede jako samostatný stát) — obarvit ho nejde.",sk:"Štát „{0}\" v dátach hraníc nie je (mapa ho nevedie ako samostatný štát) — vyfarbiť ho nejde.",bg:"Държавата „{0}\" липсва в данните за границите — не може да се оцвети.",hr:"Država „{0}\" nije u podacima o granicama — ne može se obojiti.",ro:"Țara „{0}\" nu există în datele de granițe — nu poate fi colorată.",en:"„{0}\" is not in the border data (not mapped as a separate country) — it can't be coloured."},
   // .
   // .
   // .
@@ -21149,22 +21339,6 @@ document.addEventListener('keydown', e => {
   // Every tool returns a plain object the chat can read back and narrate.
   // =========================================================================
   const TOOL_STYLE_KEYS = ['liberty','bright','positron','basic','terrain','omt3d','satellite','hybrid','osmStandard','openTopo','cyclOsm','esriTerrain','political'];
-  const TOOL_CZ_COUNTRY = {
-        nemecko:'DE', rakousko:'AT', polsko:'PL', slovensko:'SK', cesko:'CZ',
-        'ceska republika':'CZ', ukrajina:'UA', rusko:'RU', francie:'FR', italie:'IT',
-        spanelsko:'ES', 'velka britanie':'GB', britanie:'GB', anglie:'GB',
-        usa:'US', 'spojene staty':'US', amerika:'US', madarsko:'HU', svycarsko:'CH',
-        nizozemsko:'NL', holandsko:'NL', belgie:'BE', chorvatsko:'HR', srbsko:'RS',
-        rumunsko:'RO', bulharsko:'BG', recko:'GR', turecko:'TR', svedsko:'SE',
-        norsko:'NO', finsko:'FI', dansko:'DK', irsko:'IE', portugalsko:'PT',
-        cina:'CN', japonsko:'JP', izrael:'IL', egypt:'EG', belorusko:'BY',
-        litva:'LT', lotyssko:'LV', estonsko:'EE', slovinsko:'SI', kanada:'CA',
-        indie:'IN', brazilie:'BR', australie:'AU', moldavsko:'MD', gruzie:'GE',
-        armenie:'AM', azerbajdzan:'AZ', kazachstan:'KZ', syrie:'SY', irak:'IQ',
-        iran:'IR', afghanistan:'AF', 'severni korea':'KP', 'jizni korea':'KR',
-        bosna:'BA', albanie:'AL', makedonie:'MK', kosovo:'XK', cernahora:'ME',
-        'cerna hora':'ME', kypr:'CY', island:'IS', lucembursko:'LU', malta:'MT'
-      };
   const TOOL_TABS = ['scena','trasa','animace','export','styly','projekt','nastaveni'];
   const TOOL_MODES = ['driving','truck','moto','train','metro','tram','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
 
@@ -21433,7 +21607,16 @@ function pzRenderClosureList(){
   list.forEach(c => {
     const row = document.createElement('div');
     row.className = 'wp-item' + (c === state.pzSelectedClosure ? ' active' : '');
-    row.innerHTML = `<span class="small">${escapeHtml(c.title || 'Uzavírka')}</span>`;
+    row.innerHTML = `<span class="small" style="flex:1;min-width:0">${escapeHtml(c.title || 'Uzavírka')}</span>`;
+    // text cedulky jde přepsat rovnou v seznamu (dřív jen přes asistenta)
+    const lab = document.createElement('input');
+    lab.type = 'text'; lab.value = c.label || ''; lab.className = 'pz-cl-label'; lab.title = t('Text na mapě'); lab.setAttribute('aria-label', t('Text na mapě'));
+    lab.addEventListener('click', ev => ev.stopPropagation());
+    lab.addEventListener('focus', () => { try{ window.__pzPushUndo?.(); }catch(_e){} });
+    lab.addEventListener('input', () => { c.label = lab.value.toUpperCase(); try{ state.map?.getSource('pz-closures')?.setData(pzClosureFeatures()); }catch(_e){} });
+    lab.addEventListener('change', () => { lab.value = c.label = lab.value.trim().toUpperCase(); pzRedrawClosures(); });
+    lab.addEventListener('keydown', ev => { if(ev.key === 'Enter'){ ev.preventDefault(); lab.blur(); } });
+    row.appendChild(lab);
     const del = document.createElement('button');
     del.className = 'btn-remove'; del.type = 'button'; del.textContent = '×'; del.title = 'Smazat';
     del.addEventListener('click', ev => { ev.stopPropagation(); state.pzClosures = pzClosures().filter(x => x !== c); pzRedrawClosures(); setStatus(t('Uzavírka smazána.')); });
@@ -21461,16 +21644,18 @@ function pzBindClosureUI(){
   const road = () => {
     const from = $('pzClFrom').value.trim(), to = $('pzClTo').value.trim();
     if(!from || !to){ setStatus(t('Vyplň místa Od a Do.'), 'error'); (from ? $('pzClTo') : $('pzClFrom')).focus(); return; }
-    run('pzClRoadBtn', () => window.TNMAP.roadClosure({from, to, via: $('pzClVia').value.trim(), detourVia: $('pzClDetour').value.trim()}));
+    run('pzClRoadBtn', () => window.TNMAP.roadClosure({from, to, via: $('pzClVia').value.trim(), detourVia: $('pzClDetour').value.trim(), label: $('pzClLabel')?.value.trim() || undefined}));
   };
   $('pzClRoadBtn')?.addEventListener('click', road);
   // Enter v poli = totéž co tlačítko (snímek pro krok zpět dělá jinak klik na tlačítko)
-  ['pzClFrom','pzClTo','pzClVia','pzClDetour'].forEach(id => $(id)?.addEventListener('keydown', e => {
+  ['pzClFrom','pzClTo','pzClVia','pzClDetour','pzClLabel'].forEach(id => $(id)?.addEventListener('keydown', e => {
     if(e.key !== 'Enter') return;
     e.preventDefault(); try{ window.__pzPushUndo?.(); }catch(_e){} road();
   }));
   $('pzClMetroBtn')?.addEventListener('click', () => run('pzClMetroBtn', () => window.TNMAP.metroClosure({
-    line: $('pzClMetroLine').value, from: $('pzClMetroFrom').value, to: $('pzClMetroTo').value || undefined})));
+    line: $('pzClMetroLine').value, from: $('pzClMetroFrom').value, to: $('pzClMetroTo').value || undefined, label: $('pzClMetroLabel')?.value.trim() || undefined})));
+  // metro: nápověda v poli Text podle toho, jestli jde o stanici, nebo úsek
+  $('pzClMetroTo')?.addEventListener('change', () => { const l = $('pzClMetroLabel'); if(l) l.placeholder = $('pzClMetroTo').value ? 'MIMO PROVOZ' : 'UZAVŘENO'; });
   $('pzClClearBtn')?.addEventListener('click', () => { window.TNMAP.clearClosures(); setStatus(t('Uzavírky smazány.')); });
   $('pzClMetroLine')?.addEventListener('change', pzFillMetroStationSelects);
   document.querySelectorAll('#pzClosureSection [data-cl-tab]').forEach(b => b.addEventListener('click', () => pzSetClosureTab(b.dataset.clTab)));
@@ -21491,10 +21676,20 @@ function pzFillMetroStationSelects(){
 const PRAHA_METRO_STATIONS = {"A":[{"name":"Nemocnice Motol","coord":[14.34186,50.07548]},{"name":"Petřiny","coord":[14.34482,50.08718]},{"name":"Nádraží Veleslavín","coord":[14.3491,50.09612]},{"name":"Bořislavka","coord":[14.36359,50.09837]},{"name":"Dejvická","coord":[14.39382,50.10044]},{"name":"Hradčanská","coord":[14.40375,50.09721]},{"name":"Malostranská","coord":[14.4094,50.09106]},{"name":"Staroměstská","coord":[14.41814,50.08797]},{"name":"Můstek","coord":[14.42482,50.08321]},{"name":"Muzeum","coord":[14.43193,50.07912]},{"name":"Náměstí Míru","coord":[14.43987,50.07521]},{"name":"Jiřího z Poděbrad","coord":[14.45146,50.07779]},{"name":"Flora","coord":[14.46148,50.07789]},{"name":"Želivského","coord":[14.47633,50.07795]},{"name":"Strašnická","coord":[14.49087,50.07281]},{"name":"Skalka","coord":[14.50863,50.06841]},{"name":"Depo Hostivař","coord":[14.51503,50.07462]}],"B":[{"name":"Zličín","coord":[14.29082,50.0537]},{"name":"Stodůlky","coord":[14.30538,50.04668]},{"name":"Luka","coord":[14.3209,50.04597]},{"name":"Lužiny","coord":[14.32977,50.04448]},{"name":"Hůrka","coord":[14.34216,50.05002]},{"name":"Nové Butovice","coord":[14.35145,50.05084]},{"name":"Jinonice","coord":[14.36911,50.0541]},{"name":"Radlická","coord":[14.38715,50.0583]},{"name":"Smíchovské nádraží","coord":[14.40908,50.06073]},{"name":"Anděl","coord":[14.40364,50.06951]},{"name":"Karlovo náměstí","coord":[14.41629,50.07435]},{"name":"Národní třída","coord":[14.42013,50.07947]},{"name":"Můstek","coord":[14.42278,50.08323]},{"name":"Náměstí Republiky","coord":[14.42986,50.08866]},{"name":"Florenc","coord":[14.43692,50.09055]},{"name":"Křižíkova","coord":[14.45057,50.09244]},{"name":"Invalidovna","coord":[14.4627,50.09672]},{"name":"Palmovka","coord":[14.47381,50.1037]},{"name":"Českomoravská","coord":[14.49277,50.10649]},{"name":"Vysočanská","coord":[14.50055,50.10998]},{"name":"Kolbenova","coord":[14.5157,50.11046]},{"name":"Hloubětín","coord":[14.53592,50.10683]},{"name":"Rajská zahrada","coord":[14.55985,50.10678]},{"name":"Černý Most","coord":[14.57598,50.10885]}],"C":[{"name":"Letňany","coord":[14.5161,50.12421]},{"name":"Prosek","coord":[14.49874,50.1192]},{"name":"Střížkov","coord":[14.48914,50.12651]},{"name":"Ládví","coord":[14.46873,50.12663]},{"name":"Kobylisy","coord":[14.45336,50.12395]},{"name":"Nádraží Holešovice","coord":[14.44036,50.10856]},{"name":"Vltavská","coord":[14.43842,50.09975]},{"name":"Florenc","coord":[14.43888,50.08963]},{"name":"Hlavní nádraží","coord":[14.43386,50.08317]},{"name":"Muzeum","coord":[14.43063,50.07994]},{"name":"I. P. Pavlova","coord":[14.43028,50.07387]},{"name":"Vyšehrad","coord":[14.43051,50.06268]},{"name":"Pražského povstání","coord":[14.43376,50.05651]},{"name":"Pankrác","coord":[14.4399,50.0506]},{"name":"Budějovická","coord":[14.44925,50.04404]},{"name":"Kačerov","coord":[14.45994,50.04169]},{"name":"Roztyly","coord":[14.47763,50.03732]},{"name":"Chodov","coord":[14.49161,50.03129]},{"name":"Opatov","coord":[14.50979,50.02791]},{"name":"Háje","coord":[14.52797,50.03087]}]};
 
 function pzDia(v){ return String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+// Hovorové a zkrácené názvy stanic, jak je píše redakce („IP Pavlova", „Hlavák").
+const PZ_METRO_ALIAS = {hlavak:'Hlavní nádraží', hlavni:'Hlavní nádraží', ipp:'I. P. Pavlova', ipavlova:'I. P. Pavlova', pavlak:'I. P. Pavlova',
+  smichov:'Smíchovské nádraží', smichac:'Smíchovské nádraží', holesovice:'Nádraží Holešovice', holesovicky:'Nádraží Holešovice',
+  veleslavin:'Nádraží Veleslavín', motol:'Nemocnice Motol', jzp:'Jiřího z Poděbrad', namestimiru:'Náměstí Míru', mirak:'Náměstí Míru',
+  narodka:'Národní třída', karlak:'Karlovo náměstí', republika:'Náměstí Republiky', namestirepubliky:'Náměstí Republiky', vaclavak:'Můstek',
+  andel:'Anděl', budejarna:'Budějovická', cernak:'Černý Most', palmovka:'Palmovka'};
 function pzFindMetroStation(name, line){
-  const n = pzDia(name); if(!n) return null;
+  let n = pzDia(name); if(!n) return null;
+  // bez mezer a teček („IP Pavlova" = „I. P. Pavlova") + hovorové názvy
+  const tight = v => pzDia(v).replace(/ /g, ''), nt = n.replace(/ /g, '');
+  const al = PZ_METRO_ALIAS[nt] || PZ_METRO_ALIAS[nt.replace(/^(stanice|metro)/, '')];
+  if(al) n = pzDia(al);
   const lines = line ? [String(line).toUpperCase()] : ['A','B','C'];
-  for(const pass of [x => pzDia(x) === n, x => pzDia(x).startsWith(n), x => pzDia(x).includes(n)]){
+  for(const pass of [x => pzDia(x) === n, x => tight(x) === nt, x => pzDia(x).startsWith(n), x => tight(x).startsWith(nt), x => pzDia(x).includes(n)]){
     for(const L of lines){
       const i = (PRAHA_METRO_STATIONS[L] || []).findIndex(st => pass(st.name));
       if(i >= 0) return {line:L, index:i, ...PRAHA_METRO_STATIONS[L][i]};
@@ -21946,19 +22141,24 @@ function pzColorFromName(v){
       // Select má státy v DOMÁCÍCH názvech („Deutschland"), ale redakce píše česky
       // („Německo"). Bez tohohle překladu selhalo i tak základní zadání jako
       // „zvýrazni Německo". Mapujeme na ISO kód = hodnotu optionu.
-      const CZ_COUNTRY = TOOL_CZ_COUNTRY;
+      // Nejdřív sdílený převod (přezdívky, pády, ISO kódy — „Řecko" = EL, ne Grenada),
+      // pak teprve volné hledání v názvech. Dvoupísmenný kód na fuzzy nepouštíme
+      // („gr" → Grenada) a slovní záloha chce aspoň jedno slovo od 3 znaků
+      // (prázdná podmínka dřív pasovala na první stát v seznamu — Abyei).
       const pick = (selId, needle) => {
         const sel = $(selId); if(!sel) return null;
         const n = dia(needle).trim();
         if(!n) return null;
         const opts = [...sel.options].filter(o => o.value);
-        // 1) přesná shoda na ID/kód, 2) celý název, 3) název začíná, 4) obsahuje
-        return opts.find(o => dia(o.value) === n)
-            || opts.find(o => dia(o.textContent) === n)
-            || opts.find(o => dia(o.textContent).startsWith(n))
+        const r = pzResolveCountry(needle);
+        if(r && r.id) return opts.find(o => o.value === r.id) || null;
+        if(r && r.missing) return {missing: r.missing};
+        const exact = opts.find(o => dia(o.value) === n) || opts.find(o => dia(o.textContent) === n);
+        if(exact || n.length <= 2) return exact || null;
+        const words = n.split(' ').filter(w => w.length >= 3);
+        return opts.find(o => dia(o.textContent).startsWith(n))
             || opts.find(o => dia(o.textContent).includes(n))
-            // „Středočeský" bez slova „kraj" apod.
-            || opts.find(o => n.split(' ').every(w => w.length < 3 || dia(o.textContent).includes(w)))
+            || (words.length ? opts.find(o => words.every(w => dia(o.textContent).includes(w))) : null)
             || null;
       };
       if(clear && country){
@@ -21966,9 +22166,8 @@ function pzColorFromName(v){
         // veškeré barvení a asistent tak nemohl splnit opravný pokyn.
         const removed = [];
         {
-          const iso = CZ_COUNTRY[dia(country).replace(/\s+/g, ' ').trim()];
-          const opt = (iso ? pick('politicalCountrySelect', iso) : null) || pick('politicalCountrySelect', country);
-          if(opt && state.countryColorMap?.[opt.value]){ delete state.countryColorMap[opt.value]; removed.push(opt.textContent.trim()); }
+          const opt = pick('politicalCountrySelect', country);
+          if(opt && opt.value && state.countryColorMap?.[opt.value]){ delete state.countryColorMap[opt.value]; removed.push(opt.textContent.trim()); }
         }
         if(!removed.length) return {ok:false, error:'„' + country + '" není obarvené.'};
         try{ applyMapTweaks(); }catch(e){}
@@ -21986,11 +22185,9 @@ function pzColorFromName(v){
         return r.ok;
       };
       if(country){
-        // Nejdřív zkus český název -> ISO kód, pak teprve hledání v názvech optionů.
-        const iso = CZ_COUNTRY[dia(country).replace(/\s+/g, ' ').trim()];
-        let opt = iso ? pick('politicalCountrySelect', iso) : null;
-        if(!opt) opt = pick('politicalCountrySelect', country);
-        if(!opt) return {ok:false, error:'Stát „' + country + '" jsem v seznamu nenašel.'};
+        const opt = pick('politicalCountrySelect', country);
+        if(opt && opt.missing) return {ok:false, error: pzCountryMissingError(country)};
+        if(!opt) return {ok:false, error:'Stát „' + country + '" jsem v seznamu nenašel. Napiš ho česky v 1. pádu (např. Německo) nebo kódem (DE).'};
         if(!applyColor('politicalCountryColor', color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
         try{ pzPaintCountry(opt.value); }catch(e){ return {ok:false, error:String(e)}; }
         res.painted.push({country: opt.textContent.trim(), id: opt.value, color: $('politicalCountryColor')?.value});
@@ -22016,12 +22213,38 @@ function pzColorFromName(v){
     // volitelně s objížďkou přes jiná místa.
     async roadClosure({from, to, via, detourVia, label, fit} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to (odkud a kam je silnice uzavřená).'};
-      const geo = async q => { const g = await geocode(String(q)); return [+g.lon, +g.lat]; };
+      // Číslo silnice není místo: „D1" Nominatim našel jako ulici v Bratislavě.
+      const ROADNO = /^\s*(?:dalnice|dálnice|silnice|rychlostni|rychlostní)?\s*[DdRrIiEe]\s?-?\d{1,3}\s*$/;
+      for(const q of [from, to]) if(ROADNO.test(String(q)))
+        return {ok:false, error:'„' + q + '" je číslo silnice, ne místo. Zadej obec nebo exit u silnice (např. Od „Humpolec", Do „Jihlava").', candidates:[]};
+      // Kandidáti z hledání: přednost má místo blízko výřezu / druhého bodu, pak Česko a Slovensko.
+      const ref = placeSearchRefPoint();
+      const short = it => String(it?.namedetails?.name || it?.name || it?.display_name || '').split(',')[0].trim();
+      const place = async (q, near) => {
+        const pp = parseLatLng(String(q)); if(pp) return {ll: pp, name: String(q), cc: '', cands: []};
+        const items = (await searchPlaces(String(q), 5)) || [];
+        if(!items.length) throw new Error('Nenalezeno');
+        const pt = it => [+it.lon, +it.lat], R = near || ref;
+        const cc = it => String(it?.address?.country_code || '').toLowerCase();
+        const best = items.slice().sort((x, y) =>
+          (haversineKm(R, pt(x)) > 400) - (haversineKm(R, pt(y)) > 400) || (!['cz','sk'].includes(cc(x))) - (!['cz','sk'].includes(cc(y))))[0];
+        return {ll: pt(best), name: short(best) || String(q), country: best?.address?.country || '', cc: cc(best), cands: items.map(it => it.display_name).filter(Boolean).slice(0, 4)};
+      };
+      const geo = async q => (await place(q)).ll;
       const list = v => (Array.isArray(v) ? v : (v ? String(v).split(/\s*[;|]\s*/) : [])).filter(Boolean);
-      let a, b, vias, dvias;
+      let a, b, vias, dvias, pa, pb;
       const HOW = ' Zkus přesnější název (obec, okres) nebo souřadnice.';
-      try{ a = await geo(from); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.' + HOW}; }
-      try{ b = await geo(to); }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.' + HOW}; }
+      try{ pa = await place(from); a = pa.ll; }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.' + HOW}; }
+      try{ pb = await place(to, a); b = pb.ll; }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.' + HOW}; }
+      // Body daleko od sebe = jedno z míst je skoro jistě jinde, než grafik myslí
+      // („exit 90 D1" = Chennai v Indii). Zeptat se, ne kreslit 2000 km „uzavírku".
+      const gap = haversineKm(a, b);
+      if(gap > 400){
+        const far = haversineKm(ref, a) > haversineKm(ref, b) ? [from, pa] : [to, pb];
+        const other = far[0] === from ? to : from;
+        return {ok:false, error:'„' + far[0] + '" jsem našel jako „' + far[1].name + '"' + (far[1].country ? ' (' + far[1].country + ')' : '') +
+          ', ' + Math.round(gap) + ' km od „' + other + '". Myslel jsi jiné místo? Zadej obec u silnice.', candidates: far[1].cands};
+      }
       try{ vias = await Promise.all(list(via).map(geo)); }catch(e){ return {ok:false, error:'Místo v poli „Přes" jsem nenašel.' + HOW}; }
       try{ dvias = await Promise.all(list(detourVia).map(geo)); }catch(e){ return {ok:false, error:'Místo v poli „Objížďka přes" jsem nenašel.' + HOW}; }
       let coords, detour = null;
@@ -22032,18 +22255,23 @@ function pzColorFromName(v){
         catch(e){ return {ok:false, error:'Objížďku se nepodařilo najít — zkus jiné místo v poli „Objížďka přes".'}; }
       }
       const km = coords.reduce((s, p, i) => i ? s + haversineKm(coords[i-1], p) : 0, 0);
+      if(km < 0.2) return {ok:false, error:'Úsek vyšel jen ' + Math.round(km * 1000) + ' m — „' + from + '" a „' + to + '" jsem našel na stejném místě (' + pa.name + '). Zadej dvě různé obce nebo křižovatky.', candidates: pa.cands};
+      // v titulku i nalezená místa, ať je vidět, kde je hledání opravdu našlo
+      const nm = (q, p) => normalizeLoose(p.name).startsWith(normalizeLoose(q)) || !p.name ? String(q) : `${q} (${p.name})`;
       const c = {id:'cl_' + Date.now().toString(36), kind:'road', coords, detour,
                  label: label ? String(label).toUpperCase() : 'UZAVŘENO',
-                 title: `Silnice ${from} – ${to} (${km >= 10 ? Math.round(km) : km.toFixed(1)} km)` + (detour ? ' + objížďka' : '')};
+                 title: `Silnice ${nm(from, pa)} – ${nm(to, pb)} (${km >= 10 ? Math.round(km) : km.toFixed(1)} km)` + (detour ? ' + objížďka' : '')};
       pzClosures().push(c);
       pzRedrawClosures();
       if(fit !== false) pzFitClosures([c]);
-      return {ok:true, km:+km.toFixed(1), detour: !!detour};
+      return {ok:true, km:+km.toFixed(1), detour: !!detour, from: pa.name, to: pb.name};
     },
     // ---- uzavírka metra ------------------------------------------------------
     // Jedna stanice („Můstek uzavřen"), nebo úsek linky mezi dvěma stanicemi
     // („C mimo provoz mezi Florencí a Kačerovem"). Linku lze vynechat, dohledá se.
     async metroClosure({line, station, from, to, label, fit} = {}){
+      if(!String(station || '').trim() && !String(from || '').trim())
+        return {ok:false, error:'Chybí station (jedna stanice) nebo from/to (úsek mezi dvěma stanicemi).'};
       const a = pzFindMetroStation(from || station, line);
       if(!a) return {ok:false, error:'Stanici „' + (from || station || '') + '" jsem v metru nenašel.'};
       let b = null;
@@ -22612,12 +22840,15 @@ function pzColorFromName(v){
     async placeFlag({country, place} = {}){
       if(!country) return {ok:false, error:'Chybí country.'};
       const dia = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
-      let iso = TOOL_CZ_COUNTRY[dia(country)] || (/^[a-z]{2}$/i.test(String(country).trim()) ? String(country).trim().toUpperCase() : '');
+      state.geoDataRequested = true;
+      try{ await ensureGeoDataLoaded(); populateCountrySelects(); }catch(e){}
+      // stejný převod jako u barvení (pády, přezdívky, ISO); Kosovo / Tchaj-wan v datech
+      // hranic nejsou, ale vlajku mají → umístí se přes hledání místa
+      const r = pzResolveCountry(country);
+      let iso = r?.id || r?.missing || '';
       if(!iso){
-        state.geoDataRequested = true;
-        try{ await ensureGeoDataLoaded(); populateCountrySelects(); }catch(e){}
         const opts = [...($('politicalCountrySelect')?.options || [])].filter(o => o.value);
-        const n = dia(country), o = opts.find(o => dia(o.textContent) === n) || opts.find(o => dia(o.textContent).startsWith(n));
+        const n = dia(country), o = n.length > 2 && (opts.find(o => dia(o.textContent) === n) || opts.find(o => dia(o.textContent).startsWith(n)));
         if(o && /^[A-Z]{2}$/.test(o.value)) iso = o.value;
       }
       iso = (PZ_FLAG_ISO_FIX[iso] || iso || '').toLowerCase();
@@ -22631,7 +22862,8 @@ function pzColorFromName(v){
           state.geoDataRequested = true; await ensureGeoDataLoaded();
           const up = iso.toUpperCase(), alt = Object.keys(PZ_FLAG_ISO_FIX).find(k => PZ_FLAG_ISO_FIX[k] === iso);
           const f = (state.countriesGeojson?.features || []).find(f => { const p = f.properties || {}; return [p.__appId, p.CNTR_ID, p.ISO_A2, p.iso_a2].some(v => v === up || (alt && v === alt)); });
-          ll = f && pzRingCentroid(f.geometry);
+          let bnd = null; try{ bnd = state.map.getBounds(); }catch(e){}
+          ll = f && pzFlagAnchor(f, bnd);
         }catch(e){}
       }
       if(!ll){ let g; try{ g = await geocode(String(place || country)); }catch(e){ return {ok:false, error:'Místo „' + (place || country) + '" jsem nenašel.'}; } ll = [+g.lon, +g.lat]; }
@@ -23682,6 +23914,9 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
 .pz-country-row input[type=color]{flex:0 0 36px;width:36px;height:var(--pz-h,30px);padding:2px}
 .pz-country-row .btn{flex:0 0 auto;margin:0}
 #pzCountryColorList .wp-item{cursor:pointer;padding:5px 8px}
+#pzClosureList .pz-cl-label{flex:0 0 108px;width:108px;min-width:0;padding:3px 6px;font-size:11px;font-weight:700;text-transform:uppercase}
+#pzFlagList .wp-item img{flex:0 0 24px;width:24px;height:18px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+#pzFlagList .wp-item .pz-cc-name{flex:1;min-width:0}
 #pzCountryColorList .wp-item input[type=color]{flex:0 0 26px;width:26px;height:22px;padding:1px;cursor:pointer}
 #pzCountryColorList .pz-cc-name{flex:1 1 auto;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #pzCountryColorList .wp-item.active{border-color:var(--accent)}
