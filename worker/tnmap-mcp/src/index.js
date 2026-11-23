@@ -26,7 +26,7 @@ const EXTRA_TOOLS = [
   {name: 'stav_mapy', description: 'Aktuální stav mapy: podklad, výřez, režim trasy a co je ve scéně (trasa, popisky, obarvené státy, vlajky…).', inputSchema: {type: 'object', properties: {}}},
   {name: 'nahled_mapy', description: 'Snímek ŽIVÉHO náhledu v prohlížeči grafika (mapa a vozidla, bez HTML popisků) a počet vrstev vozidel — pro kontrolu, co grafik vidí.', inputSchema: {type: 'object', properties: {sirka: {type: 'number'}}}},
   {name: 'obnovit_stranku', description: 'Obnoví stránku TN mapy u grafika (načte nejnovější verzi). Scéna se uloží a po načtení sama vrátí; mapa se k Claudovi znovu připojí za pár sekund.', inputSchema: {type: 'object', properties: {}}},
-  {name: 'export_videa', description: 'Spustí export videa v prohlížeči grafika (MP4 podle nastavení v záložce Export). Volitelně resolution ("1920x1080") a fps (25). Soubor se uloží do stažených souborů grafika.', inputSchema: {type: 'object', properties: {resolution: {type: 'string'}, fps: {type: 'string'}}}},
+  {name: 'export_videa', description: 'Spustí export videa v prohlížeči grafika (MP4 podle nastavení v záložce Export). Volitelně resolution ("1920x1080", "1080x1920" nebo poměr "16:9", "9:16", "1:1", "4:5") a fps (25, 30, 50, 60). Bez trasy ani přeletu kamery vrátí chybu. Soubor se uloží do stažených souborů grafika.', inputSchema: {type: 'object', properties: {resolution: {type: 'string'}, fps: {type: 'string'}}}},
   {name: 'snimek_mapy', description: 'Snímek mapy tak, jak vyjde v exportu (obrázek). Použij ke kontrole výsledku.', inputSchema: {type: 'object', properties: {sirka: {type: 'number', description: 'šířka v px, výchozí 1024'}}}},
 ];
 const ALL_TOOLS = [...EXTRA_TOOLS, ...MAP_TOOLS];

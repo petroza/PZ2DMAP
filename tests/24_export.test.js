@@ -74,7 +74,8 @@ const probe = f => { try{ return execFileSync('ffprobe', ['-v','error','-count_f
   let px = await scan(pngFile, spots);
   check(px.w === 640 && px.h === 360, `PNG má rozměr výstupu ${px.w}×${px.h}`);
   check(px.icon.red > 0.15, 'v PNG je ikonka'); check(px.arrow.red > 0.3, 'v PNG je šipka'); check(px.route.blue > 0.05, 'v PNG je trasa');
-  check(px.label.white > 0.2 && px.label.dark > 0.02, 'v PNG je popisek'); check(px.perimTag.dark > 0.15, 'v PNG je popisek perimetru');
+  check(px.label.white > 0.2 && px.label.dark > 0.02, 'v PNG je popisek'); check(px.perimTag.dark > 0.15 || px.perimTag.white > 0.25, 'v PNG je popisek perimetru');
+  check(await page.$$eval('.scene-perimeter-label', e => e.length) === 1, 'po exportu zůstala cedulka perimetru i v živé mapě');
   check(px.corner.clear === 0, 'běžné PNG má podklad mapy');
 
   // --- průhledné pozadí + název podle projektu ---
@@ -84,7 +85,7 @@ const probe = f => { try{ return execFileSync('ffprobe', ['-v','error','-count_f
   check(await waitDl(d0 + 1) && downloads[d0].suggestedFilename() === 'pozar-svetla-alpha.png', 'průhledné PNG: ' + downloads[d0]?.suggestedFilename());
   px = await scan(await save(downloads[d0], '24_export_alpha.png'), spots);
   check(px.corner.clear === 1, 'průhledné PNG: podklad je průhledný');
-  check(px.arrow.red > 0.3 && px.icon.red > 0.15 && px.route.blue > 0.05 && px.perimTag.dark > 0.15, 'průhledné PNG: šipka, ikonka, trasa i popisek perimetru zůstaly');
+  check(px.arrow.red > 0.3 && px.icon.red > 0.15 && px.route.blue > 0.05 && (px.perimTag.dark > 0.15 || px.perimTag.white > 0.25), 'průhledné PNG: šipka, ikonka, trasa i popisek perimetru zůstaly');
   await page.evaluate(() => { const t = document.getElementById('exportTransparent'); t.checked = false; t.dispatchEvent(new Event('change', {bubbles:true})); });
 
   // --- video: průběh, dvojklik, délka; k tomu skript pro After Effects ---

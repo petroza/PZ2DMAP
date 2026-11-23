@@ -356,6 +356,14 @@ input[type=color]:hover{border-color:var(--accent)}
 .safe-guides .sg-third-v2{left:66.66%;top:5%;bottom:5%;width:1px}
 .safe-guides .sg-third-h1{top:33.33%;left:5%;right:5%;height:1px}
 .safe-guides .sg-third-h2{top:66.66%;left:5%;right:5%;height:1px}
+/* sítě na výšku (Reels/TikTok/Shorts): nahoře profil, dole popis a vpravo tlačítka */
+.safe-guides.sg-social .sg-action{top:6%;bottom:6%;left:4%;right:4%}
+.safe-guides.sg-social .sg-title{top:14%;bottom:22%;left:6%;right:14%}
+.safe-guides.sg-social .sg-third-v1,.safe-guides.sg-social .sg-third-v2{top:14%;bottom:22%}
+.safe-guides.sg-social .sg-third-h1,.safe-guides.sg-social .sg-third-h2{left:6%;right:14%}
+.export-frame-wm{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.export-frame-wm[hidden]{display:none}
+body.pz-frame-wm .map-source-watermark{display:none}
 .safe-guides .sg-center{position:absolute;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);background:linear-gradient(rgba(255,255,255,.65),rgba(255,255,255,.65)) center/1px 100% no-repeat,linear-gradient(rgba(255,255,255,.65),rgba(255,255,255,.65)) center/100% 1px no-repeat}
 .safe-guides.on-light .sg-rect{border-color:rgba(0,0,0,.72)}
 .safe-guides.on-light .sg-title{border-color:rgba(200,120,0,.95)}
@@ -1686,7 +1694,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     </button>
     <button id="safeGuidesBtn" class="map-action-btn" type="button" title="Bezpečné zóny (jen náhled, neexportuje se)" aria-label="Bezpečné zóny" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1"/><rect x="6" y="8" width="12" height="8" rx="1" stroke-dasharray="2 2"/></svg>
-      <span data-i18n="Zóny">Zóny</span>
+      <span data-i18n="Bezp. zóny">Bezp. zóny</span>
     </button>
     <button id="undoActionBtn" class="map-action-btn" type="button" title="Krok zpět (Ctrl+Z)" aria-label="Krok zpět" disabled>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h9a7 7 0 0 1 0 14h-3"/></svg>
@@ -4211,7 +4219,9 @@ function drawMapSourceWatermark(ctx, w, h){
   const scale = Math.max(0.75, Math.min(4, w / 1920));
   let fontSize = Math.max(10, Math.round(18 * scale));
   const minFont = Math.max(9, Math.round(12 * scale));
-  const margin = Math.max(10, Math.round(18 * scale));
+  // uvnitř action-safe (3,5 % od kraje), jinak ho TV ořízne
+  const margin = Math.max(10, Math.round(18 * scale), Math.ceil(0.035 * w));
+  const marginY = Math.max(10, Math.round(18 * scale), Math.ceil(0.035 * h));
   const padX = Math.max(7, Math.round(10 * scale));
   const padY = Math.max(4, Math.round(6 * scale));
   const maxTextW = Math.max(60, w - margin * 2 - padX * 2);
@@ -4225,7 +4235,7 @@ function drawMapSourceWatermark(ctx, w, h){
   const boxW = textW + padX * 2;
   const boxH = Math.round(fontSize + padY * 2 + 2 * scale);
   const x = Math.round(w - margin - boxW);
-  const y = Math.round(h - margin - boxH);
+  const y = Math.round(h - marginY - boxH);
   ctx.shadowColor = 'rgba(0,0,0,.35)';
   ctx.shadowBlur = 10 * scale;
   ctx.shadowOffsetY = 2 * scale;
@@ -15619,6 +15629,36 @@ function pzSetExportResolution(res){
   updateCustomExportResolutionVisibility();
   updateExportFrame();
 }
+// Rozlišení z nástrojů (asistent, konektor): „9:16", „1080×1920", „4K"… Neznámá hodnota
+// je chyba — dřív se tiše exportovalo 1920×1080 a nástroj hlásil úspěch.
+const PZ_RES_ALIASES = {'16:9':'1920x1080', 'tv':'1920x1080', 'hd':'1280x720', '4k':'3840x2160', '8k':'7680x4320',
+  '9:16':'1080x1920', 'site':'1080x1920', 'sítě':'1080x1920', 'reels':'1080x1920', '1:1':'1080x1080', 'ctverec':'1080x1080', 'čtverec':'1080x1080', '4:5':'1080x1350'};
+function pzApiSetExportResolution(resolution){
+  if(resolution == null || resolution === '') return {};
+  let v = String(resolution).trim().toLowerCase().replace(/\s+/g, '').replace(/[×*]/g, 'x');
+  v = PZ_RES_ALIASES[v] || v;
+  const m = /^(\d{2,4})x(\d{2,4})$/.exec(v);
+  const w = m && +m[1], h = m && +m[2];
+  if(!m || w < 64 || h < 64 || w > 8192 || h > 8192)
+    return {error:`Rozlišení „${resolution}" neznám — zadej např. 1920x1080, 1080x1920, 1080x1080 nebo poměr 16:9, 9:16, 1:1, 4:5.`};
+  pzSetExportResolution((w & ~1) + 'x' + (h & ~1));
+  return {w: w & ~1, h: h & ~1};
+}
+// Body scény (trasa, A/B, ikonky, popisky, perimetry, šipky) jako [lng,lat] — kvůli přerámování.
+function pzSceneLngLats(){
+  const out = [], add = v => { if(!v) return; const ll = normalizeLngLatInput(v); if(Number.isFinite(ll.lng) && Number.isFinite(ll.lat)) out.push([ll.lng, ll.lat]); };
+  (state.routeCoords || []).forEach(add); add(state.pointA); add(state.pointB);
+  (state.sceneIcons || []).forEach(it => add(it?.lngLat)); (state.mapLabels || []).forEach(it => add(it?.lngLat));
+  (state.scenePerimeters || []).forEach(it => { if(!it?.lngLat) return; const ll = normalizeLngLatInput(it.lngLat), r = Number(it.radiusMeters) || 0;
+    const dLat = r / 111320, dLng = dLat / Math.max(0.05, Math.cos(ll.lat * Math.PI / 180)); add([ll.lng - dLng, ll.lat - dLat]); add([ll.lng + dLng, ll.lat + dLat]); });
+  (state.sceneArrows || []).forEach(it => { add(it?.tail); add(it?.head); });
+  return out;
+}
+function pzLngLatsInFrame(pts){
+  const m = state.map, r = pzExportFrameRect(); if(!m || !r) return false;
+  const c = m.getCanvas().getBoundingClientRect();
+  return pts.every(p => { const q = m.project(p), x = q.x + c.left, y = q.y + c.top; return x >= r.left - 1 && x <= r.right + 1 && y >= r.top - 1 && y <= r.bottom + 1; });
+}
 function pzExportHasMotion(){ return !!((state.routeCoords && state.routeCoords.length) || cameraAnimReady()); }
 function pzFmtDuration(sec){
   sec = Math.max(0, Number(sec) || 0);
@@ -15647,15 +15687,11 @@ function updateExportSummary(){
   }
 }
 
-function updateExportFrame(){
-  const frame = $('exportFrame');
-  const mapEl = $('map');
-  if(!frame || !mapEl) return;
-  try{ updateExportSummary(); }catch(_e){}
-  const visible = $('showExportFrame')?.checked !== false;
-  if(!visible){ frame.classList.add('hidden'); return; }
-  const {w:outW,h:outH}=getExportSize();
-  frame.setAttribute('data-label', `${outW}×${outH}` + pzAspectLabel(outW, outH));
+// Geometrie výřezu (v px klienta) — platí i se skrytým rámečkem: export pak bere
+// stejnou oblast, jakou by rámeček ukázal (dřív se exportovala celá, mnohem větší mapa).
+function pzComputeFrameRect(outW, outH){
+  const mapEl = $('map'); if(!mapEl) return null;
+  if(!outW || !outH){ const s = getExportSize(); outW = s.w; outH = s.h; }
   const rect = mapEl.getBoundingClientRect();
   // Center the frame in the part of the map not covered by the floating panel.
   const freeLeft = getMapFreeAreaLeft();
@@ -15674,10 +15710,80 @@ function updateExportFrame(){
     const maxW = freeW * 0.72;
     if(frameW > maxW){ frameW = maxW; frameH = frameW / aspect; }
   }
-  frame.style.width = Math.max(60, frameW) + 'px';
-  frame.style.height = Math.max(60, frameH) + 'px';
-  frame.style.left = (freeLeft + freeW / 2) + 'px';
+  const cx = freeLeft + freeW / 2;
+  let cy = rect.height / 2;
+  // Horní lišta, přehrávač a stavový řádek (telefon na šířku) nesmí zakrýt okraj rámu:
+  // když se rám mezi ně nevejde, zmenšit ho a posunout do volného pásu.
+  try{
+    const x0 = rect.left + cx - frameW / 2, x1 = rect.left + cx + frameW / 2;
+    const vis = el => { if(!el || el.hidden) return null; const cs = getComputedStyle(el); if(cs.display === 'none' || cs.visibility === 'hidden') return null;
+      const r = el.getBoundingClientRect(); return (r.width > 0 && r.height > 0 && r.right > x0 && r.left < x1) ? r : null; };
+    let bandTop = 0, bandBot = rect.height;
+    document.querySelectorAll('.map-actions, .mobile-menu-btn').forEach(el => { const r = vis(el); if(r && r.bottom - rect.top < rect.height * 0.3) bandTop = Math.max(bandTop, r.bottom - rect.top + 26); });
+    document.querySelectorAll('.floating-player, #statusBar').forEach(el => { const r = vis(el); if(r && r.top - rect.top > rect.height * 0.6) bandBot = Math.min(bandBot, r.top - rect.top - 6); });
+    const bandH = bandBot - bandTop;
+    if(bandH > 80 && (cy - frameH / 2 < bandTop || cy + frameH / 2 > bandBot)){
+      if(frameH > bandH){ frameW *= bandH / frameH; frameH = bandH; }
+      cy = Math.max(bandTop + frameH / 2, Math.min(bandBot - frameH / 2, cy));
+    }
+  }catch(_e){}
+  frameW = Math.max(60, frameW); frameH = Math.max(60, frameH);
+  return {left: rect.left + cx - frameW / 2, top: rect.top + cy - frameH / 2, width: frameW, height: frameH,
+    right: rect.left + cx + frameW / 2, bottom: rect.top + cy + frameH / 2, cx, cy};
+}
+// Výřez, který export použije: viditelný rámeček, jinak jeho spočtená poloha.
+function pzExportFrameRect(){
+  const frame = $('exportFrame');
+  if($('showExportFrame')?.checked !== false && frame && !frame.classList.contains('hidden')) return frame.getBoundingClientRect();
+  return pzComputeFrameRect();
+}
+
+function updateExportFrame(){
+  const frame = $('exportFrame');
+  const mapEl = $('map');
+  if(!frame || !mapEl) return;
+  try{ updateExportSummary(); }catch(_e){}
+  const visible = $('showExportFrame')?.checked !== false;
+  if(!visible){ frame.classList.add('hidden'); document.body.classList.remove('pz-frame-wm'); return; }
+  const {w:outW,h:outH}=getExportSize();
+  frame.setAttribute('data-label', `${outW}×${outH}` + pzAspectLabel(outW, outH));
+  const r = pzComputeFrameRect(outW, outH); if(!r) return;
+  frame.style.width = r.width + 'px';
+  frame.style.height = r.height + 'px';
+  frame.style.left = r.cx + 'px';
+  frame.style.top = r.cy + 'px';
   frame.classList.remove('hidden');
+  // na výšku (sítě) jiné bezpečné zóny než u TV
+  $('exportSafeGuides')?.classList.toggle('sg-social', outW < outH);
+  try{ pzUpdateFrameWatermark(r.width, r.height, outW, outH); }catch(_e){}
+  try{ pzApplyGlobeMinZoom(); }catch(_e){}
+}
+// Glóbus: oddálení se zastaví, když je celá zeměkoule v rámečku (dřív šlo až na zoom −5 = tečka).
+// MapLibre drží minZoom na glóbu nezávisle na šířce — poloměr zeměkoule ≈ 75 px · 2^zoom.
+function pzApplyGlobeMinZoom(){
+  const m = state.map; if(!m?.setMinZoom) return;
+  if(state._pzMinZoom0 == null) state._pzMinZoom0 = m.getMinZoom();
+  if(!isGlobeProjectionOn()){ if(m.getMinZoom() !== state._pzMinZoom0) m.setMinZoom(state._pzMinZoom0); return; }
+  const r = pzComputeFrameRect(); if(!r) return;
+  const z = Math.log2(0.45 * Math.min(r.width, r.height) / 75);
+  if(Number.isFinite(z) && Math.abs(m.getMinZoom() - z) > 0.01) m.setMinZoom(Math.max(state._pzMinZoom0, Math.min(3, z)));
+}
+// Pilulka „Zdroj mapy" je už v rámečku na stejném místě a ve stejné velikosti jako ve výstupu.
+function pzUpdateFrameWatermark(fw, fh, outW, outH){
+  const frame = $('exportFrame'); if(!frame) return;
+  let c = $('exportFrameWatermark');
+  if(!c){ c = document.createElement('canvas'); c.id = 'exportFrameWatermark'; c.className = 'export-frame-wm'; c.setAttribute('aria-hidden', 'true'); frame.appendChild(c); }
+  if(fw == null){ const b = frame.getBoundingClientRect(); fw = b.width; fh = b.height; const s = getExportSize(); outW = s.w; outH = s.h; }
+  const on = !isTransparentExportOn() && fw > 0 && fh > 0 && !frame.classList.contains('hidden');
+  c.hidden = !on;
+  document.body.classList.toggle('pz-frame-wm', on);
+  if(!on) return;
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const W = Math.max(1, Math.round(fw * dpr)), Hh = Math.max(1, Math.round(fh * dpr));
+  if(c.width !== W || c.height !== Hh){ c.width = W; c.height = Hh; }
+  const ctx = c.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, Hh);
+  ctx.setTransform(W / outW, 0, 0, Hh / outH, 0, 0);
+  drawMapSourceWatermark(ctx, outW, outH);
 }
 
 function getExportSize(){
@@ -15686,7 +15792,7 @@ function getExportSize(){
   const val=batchValue || (custom
     ? `${$('exportCustomWidth')?.value || '1920'}x${$('exportCustomHeight')?.value || '1080'}`
     : ($('exportResolution')?.value || '1920x1080'));
-  let [w,h] = val.split('x').map(v => Math.max(1, parseInt(v || '0', 10)));
+  let [w,h] = val.split('x').map(v => Math.max(1, Math.round(Number(v) || 0)));
   w=Math.min(8192,Math.max(64,w || 1920));
   h=Math.min(8192,Math.max(64,h || 1080));
   // H.264 4:2:0 requires even dimensions — round down so the encoder config never
@@ -15734,8 +15840,8 @@ function getExportCrop(){
   if(!mapCanvas) return null;
   const mapRect = mapCanvas.getBoundingClientRect();
   let frameRect = mapRect;
-  const frame = $('exportFrame');
-  if($('showExportFrame')?.checked && frame && !frame.classList.contains('hidden')) frameRect = frame.getBoundingClientRect();
+  // živá mapa: výřez rámečku (i skrytého); exportní mapa má rozměr výstupu → celé plátno
+  if(state.map === window.__tnMap) frameRect = pzExportFrameRect() || mapRect;
   const sx = mapCanvas.width / Math.max(1, mapRect.width);
   const sy = mapCanvas.height / Math.max(1, mapRect.height);
   const {w:outW, h:outH} = getExportSize();
@@ -15851,7 +15957,12 @@ function prepareExportSceneLayers(){
   // renders in the video exactly like in the live preview (pose comes from the shared
   // plane3dLayer.cur updated by setAnimProgress each frame).
   try{ if(exportUses3dPlane()) ensurePlane3dLayer(); }catch(e){}
-  ['scene-perimeter-centers-circle','scene-perimeter-handles-circle','scene-distance-points-circle',
+  // Středový bod perimetru je v náhledu i ve výstupu (dřív v exportu chyběl); vybraný
+  // perimetr má v náhledu větší úchyt — výstup kreslí všechny jako nevybrané.
+  safeSetPaint('scene-perimeter-centers-circle', 'circle-radius', 4);
+  safeSetPaint('scene-perimeter-centers-circle', 'circle-stroke-color', '#1a1d24');
+  safeSetPaint('scene-perimeter-centers-circle', 'circle-stroke-width', 2);
+  ['scene-perimeter-handles-circle','scene-distance-points-circle',
    // rámečky vícenásobného výběru jsou jen pomůcka při úpravách
    'scene-arrows-multi-bg','scene-arrows-multi','scene-perimeters-multi-bg','scene-perimeters-multi','scene-distances-multi-bg','scene-distances-multi']
     .forEach(id => safeSetLayout(id, 'visibility', 'none'));
@@ -15897,7 +16008,7 @@ function applyCapturedRouteSources(ghostData, animData, arc3dData){
   }
 }
 
-function makeExportCameraFromFrame(outW, outH){
+function makeExportCameraFromFrame(outW, outH, opts){
   const baseMap = state.map;
   const mapCanvas = baseMap?.getCanvas?.();
   if(!baseMap || !mapCanvas) return null;
@@ -15905,17 +16016,9 @@ function makeExportCameraFromFrame(outW, outH){
   const cssW = Math.max(1, Math.round(outW));
   const cssH = Math.max(1, Math.round(outH));
   const mapRect0 = mapCanvas.getBoundingClientRect();
-  // "Match live view": export the current camera as-is (whole scene), so the globe
-  // stays visible and the result matches the on-screen preview, instead of zooming
-  // into the export frame (which flattens the globe and drops it out of view).
-  //
-  // ON THE GLOBE this is FORCED regardless of the checkbox: the frame-crop path below
-  // derives the export zoom as zoomDelta = log2(outW/frameWidth), which is only valid
-  // for the linear mercator plane. Applied to the globe it over-zooms and flattens the
-  // curvature, so the exported video no longer matched the tilted globe preview
-  // ("neodpovídá úhel kamery / není přepnuté na globus"). Rendering the current camera
-  // as-is reproduces the preview exactly.
-  if($('exportLiveView')?.checked || isGlobeProjectionOn()){
+  // Skrytá volba „Export podle živého náhledu": celá živá mapa bez ořezu rámečkem.
+  // (Glóbus už ji nepotřebuje — větev match níže renderuje přesně výřez rámečku.)
+  if($('exportLiveView')?.checked){
     const c = baseMap.getCenter();
     // The export renders in OUTPUT-resolution CSS space (cssW=outW), so fixed-pixel DOM
     // markers (the animated car/plane) would shrink vs the preview. Remember the ratio
@@ -15924,19 +16027,48 @@ function makeExportCameraFromFrame(outW, outH){
     return { center:[c.lng, c.lat], zoom:baseMap.getZoom(), bearing:baseMap.getBearing(), pitch:baseMap.getPitch(), cssW, cssH, pixelRatio };
   }
   const mapRect = mapRect0;
-  let frameRect = mapRect;
-  const frame = $('exportFrame');
-  if($('showExportFrame')?.checked && frame && !frame.classList.contains('hidden')) frameRect = frame.getBoundingClientRect();
-  state._exportMarkerScale = outW / Math.max(1, frameRect.width);
-
-  // High-detail export: render the hidden map at the real output CSS size and force pixelRatio 1.
-  // The previous version divided by devicePixelRatio. On phones/hi-DPI displays that produced
-  // 7680×4320 pixels, but map detail was only around 1920×1080 and looked blurred.
+  const frameRect = pzExportFrameRect() || mapRect;
   const centerPx = [
     (frameRect.left - mapRect.left) + frameRect.width / 2,
     (frameRect.top - mapRect.top) + frameRect.height / 2
   ];
   const center = baseMap.unproject(centerPx);
+  // „Velikost jako v náhledu" (a vždy na glóbu): exportní mapa má CSS velikost rámečku
+  // a zoom živé mapy, detail dodá pixelRatio. Výstup je pak zvětšený náhled — stejná
+  // hustota popisků podkladu, stejný výřez i na glóbu (dřív 9:16 ukázal desítky vesnic
+  // drobným písmem a glóbus jiný kus zeměkoule). Dlaždicový 8K export (opts.native)
+  // skládá výstup po kusech v px výstupu, proto zůstává u přepočtu zoomu.
+  const match = !(opts && opts.native) && (isGlobeProjectionOn() || $('exportMatchPreview')?.checked !== false);
+  if(match){
+    const fw = Math.max(16, Math.round(frameRect.width));
+    const pr = outW / fw, fh = Math.max(16, Math.round(outH / pr));
+    state._exportMarkerScale = 1;
+    // Střed kamery živé mapy zůstane, kde je vůči rámečku (padding posune i úběžník
+    // perspektivy) — na glóbu a v náklonu jinak výřez neodpovídá: přecentrování na střed
+    // rámečku otočí zeměkouli a změní její velikost (zoom glóbu závisí na šířce).
+    const lc = baseMap.getCenter(), lp = baseMap.project(lc);
+    const dx = (lp.x - (frameRect.left - mapRect.left)) - fw / 2, dy = (lp.y - (frameRect.top - mapRect.top)) - fh / 2;
+    if(Math.abs(dx) * 2 < fw - 8 && Math.abs(dy) * 2 < fh - 8){
+      // Vzdálenost kamery MapLibre odvozuje z výšky okna — nižší exportní okno by se
+      // „přiblížilo" a horizont glóbu / náklonu by vyšel jinak. Zúžit zorné pole úměrně.
+      let fov;
+      try{ const f0 = baseMap.getVerticalFieldOfView?.(); if(f0 > 0) fov = 2 * Math.atan(Math.tan(f0 * Math.PI / 360) * fh / Math.max(1, mapRect.height)) * 180 / Math.PI; }catch(e){}
+      return {
+        center:[lc.lng, lc.lat], zoom:baseMap.getZoom(), bearing:baseMap.getBearing(), pitch:baseMap.getPitch(),
+        padding:{left: Math.max(0, 2 * dx), right: Math.max(0, -2 * dx), top: Math.max(0, 2 * dy), bottom: Math.max(0, -2 * dy)},
+        fov, cssW: fw, cssH: fh, pixelRatio: pr
+      };
+    }
+    return {
+      center:[center.lng, center.lat], zoom:baseMap.getZoom(), bearing:baseMap.getBearing(), pitch:baseMap.getPitch(),
+      cssW: fw, cssH: fh, pixelRatio: pr
+    };
+  }
+  state._exportMarkerScale = outW / Math.max(1, frameRect.width);
+
+  // High-detail export: render the hidden map at the real output CSS size and force pixelRatio 1.
+  // The previous version divided by devicePixelRatio. On phones/hi-DPI displays that produced
+  // 7680×4320 pixels, but map detail was only around 1920×1080 and looked blurred.
   const zoomDelta = Math.log2(outW / Math.max(1, frameRect.width));
   return {
     center:[center.lng, center.lat],
@@ -16228,7 +16360,8 @@ async function drawNativeMapFrameChunked(targetCanvas, camera, capturedGhost, ca
     if(tempMarkers.consist){   // vagony/návěs: počkat na asynchronní GeoJSON
       const t0 = performance.now();
       while(performance.now() - t0 < 600){
-        try{ if(exportMap.isSourceLoaded('pz-souprava')) break; }catch(e){ break; }
+        // bez zdroje (souprava jen v náhledu / ještě nevznikla) nečekat — isSourceLoaded jinak hlásí chybu každých 16 ms
+        try{ if(!exportMap.getSource('pz-souprava') || exportMap.isSourceLoaded('pz-souprava')) break; }catch(e){ break; }
         await new Promise(r => setTimeout(r, 16));
       }
     }
@@ -16302,6 +16435,8 @@ async function drawNativeMapFrameChunked(targetCanvas, camera, capturedGhost, ca
   }finally{
     if(frame && !frameWasHidden) frame.classList.remove('hidden');
     state.map = saved.map;
+    // cedulky perimetrů a vzdáleností se při exportu přestavěly na exportní mapě (a zmizí s ní) — vrátit je na živou
+    try{ setScenePerimeterLabels(); setSceneDistanceLabels(); }catch(e){}
     state.markerA = saved.markerA;
     state.markerB = saved.markerB;
     state.manualViaMarkers = saved.manualViaMarkers;
@@ -16374,7 +16509,8 @@ async function drawNativeMapFrame(targetCanvas){
 async function pzDrawNativeMapFrameInner(targetCanvas){
   if(!state.map || typeof maplibregl === 'undefined') return false;
   const {w:outW, h:outH} = getExportSize();
-  const camera = makeExportCameraFromFrame(outW, outH);
+  const chunked = shouldUseChunkedNativeExport(outW, outH);
+  const camera = makeExportCameraFromFrame(outW, outH, {native: chunked});
   if(!camera) return false;
 
   const baseMap = state.map;
@@ -16382,7 +16518,7 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
   const capturedAnim = getLiveSourceDataFromMap(baseMap, 'route-anim');
   const capturedArc3d = getLiveSourceDataFromMap(baseMap, 'route-arc3d');
   const capturedHiddenLayers = getHiddenStyleLayerIds(baseMap);
-  if(shouldUseChunkedNativeExport(outW, outH)){
+  if(chunked){
     return await drawNativeMapFrameChunked(targetCanvas, camera, capturedGhost, capturedAnim, capturedHiddenLayers);
   }
 
@@ -16393,7 +16529,7 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
   // current projection.
   const wantGlobe = isGlobeProjectionOn();
   const sessProjOk = sess && (sess.globe === wantGlobe);
-  const reuse = !!(state._exportKeepSession && sess?.map && sess.cssW === camera.cssW && sess.cssH === camera.cssH && sessProjOk);
+  const reuse = !!(state._exportKeepSession && sess?.map && sess.cssW === camera.cssW && sess.cssH === camera.cssH && sess.pr === camera.pixelRatio && sessProjOk);
   if(sess && !reuse) endExportMapSession(); // settings changed mid-session
 
   let container = null;
@@ -16466,7 +16602,8 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
       applyHiddenStyleLayerIds(capturedHiddenLayers);
     }
     applyCapturedRouteSources(capturedGhost, capturedAnim, capturedArc3d);
-    try{ exportMap.jumpTo({center:camera.center, zoom:camera.zoom, pitch:camera.pitch, bearing:camera.bearing}); }catch(e){}
+    try{ if(camera.fov > 0 && Math.abs((exportMap.getVerticalFieldOfView?.() || 0) - camera.fov) > 1e-3) exportMap.setVerticalFieldOfView(camera.fov); }catch(e){}
+    try{ exportMap.jumpTo({center:camera.center, zoom:camera.zoom, pitch:camera.pitch, bearing:camera.bearing, padding: camera.padding || {top:0, right:0, bottom:0, left:0}}); }catch(e){}
     try{ exportMap.resize(); exportMap.triggerRepaint(); }catch(e){}
     // Arrows are screen-space → rebuild for this frame's exact projection.
     try{ setSceneArrowData(); }catch(e){}
@@ -16492,7 +16629,8 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
     if(tempMarkers.consist){
       const t0 = performance.now();
       while(performance.now() - t0 < 600){
-        try{ if(exportMap.isSourceLoaded('pz-souprava')) break; }catch(e){ break; }
+        // bez zdroje (souprava jen v náhledu / ještě nevznikla) nečekat — isSourceLoaded jinak hlásí chybu každých 16 ms
+        try{ if(!exportMap.getSource('pz-souprava') || exportMap.isSourceLoaded('pz-souprava')) break; }catch(e){ break; }
         await new Promise(r => setTimeout(r, 16));
       }
       try{ exportMap.triggerRepaint(); }catch(e){}
@@ -16500,7 +16638,7 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const ok = await drawBrowserMapFrame(targetCanvas);
     if(ok && state._exportKeepSession && !state._exportMapSession){
-      state._exportMapSession = { map: exportMap, container, cssW: camera.cssW, cssH: camera.cssH, globe: wantGlobe };
+      state._exportMapSession = { map: exportMap, container, cssW: camera.cssW, cssH: camera.cssH, pr: camera.pixelRatio, globe: wantGlobe };
     }
     return !!ok;
   }catch(err){
@@ -16510,6 +16648,8 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
   }finally{
     if(frame && !frameWasHidden) frame.classList.remove('hidden');
     state.map = saved.map;
+    // cedulky perimetrů a vzdáleností se při exportu přestavěly na exportní mapě (a zmizí s ní) — vrátit je na živou
+    try{ setScenePerimeterLabels(); setSceneDistanceLabels(); }catch(e){}
     state.markerA = saved.markerA;
     state.markerB = saved.markerB;
     state.manualViaMarkers = saved.manualViaMarkers;
@@ -16613,6 +16753,10 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
   if(opts.transparent){
     drawRouteLinesToExportCtx(ctx, crop);
   } else {
+    // glóbus: okolí zeměkoule má barvu „vesmíru" jako v náhledu, ne průhlednost
+    if(isGlobeProjectionOn() && !isTransparentExportOn()){
+      try{ ctx.fillStyle = getComputedStyle($('map')?.parentElement || document.body).backgroundColor || '#0b0e14'; ctx.fillRect(0, 0, crop.outW, crop.outH); }catch(e){}
+    }
     ctx.drawImage(crop.source, crop.x, crop.y, crop.w, crop.h, 0, 0, crop.outW, crop.outH);
   }
 
@@ -16670,15 +16814,16 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
       const half = Math.max(2, Math.min(dw, dh) / 2);
       const colorHex = isA ? '#e63946' : isB ? '#4da6ff' : '#e6b422';
       const uiK = parseFloat(el.dataset.pzExportK) || 1;   // „Velikost jako v náhledu"
-      const fontSize = (isWp ? 10 : 12) * outScaleX * uiK;
-      const borderW = (isWp ? 1.5 : 2) * outScaleX * uiK;
+      const pxK = scaleX * outScaleX;   // px výstupu na CSS px (exportní mapa může mít pixelRatio ≠ 1)
+      const fontSize = (isWp ? 10 : 12) * pxK * uiK;
+      const borderW = (isWp ? 1.5 : 2) * pxK * uiK;
 
       ctx.translate(dx + dw/2, dy + dh/2);
 
       // Stín
       ctx.shadowColor = 'rgba(0,0,0,0.4)';
-      ctx.shadowBlur = 8 * outScaleX;
-      ctx.shadowOffsetY = 2 * outScaleX;
+      ctx.shadowBlur = 8 * pxK;
+      ctx.shadowOffsetY = 2 * pxK;
 
       // Tělo bodu: kruh nebo zaoblený čtverec
       ctx.beginPath();
@@ -16709,7 +16854,7 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
         ctx.font = `700 ${fontSize}px sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, 0, 1 * outScaleX);
+        ctx.fillText(text, 0, 1 * pxK);
       }
       ctx.restore();
       return;
@@ -16823,7 +16968,7 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
       ctx.save();
       if(isAnimMarker && el.classList?.contains('pz-sprite-vehicle')){
         // stejný měkký stín jako v náhledu (CSS drop-shadow se do exportu nepřenese)
-        ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5 * outScaleX; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+        ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 5 * scaleX * outScaleX; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
       }
       if(rotation){
         ctx.translate(dx + dw/2, dy + dh/2);
@@ -16891,7 +17036,7 @@ async function _exportPngImpl(){
   if(isExportCancelled()){ setStatus(t('Export zrušen.')); return null; }
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   if(!blob){ setStatus(t('Obrázek {0} je pro prohlížeč příliš velký. Zvol menší rozlišení.', w + '×' + h), 'error'); return null; }
-  const fname = getExportBaseName() + (isTransparentExportOn() ? '-alpha' : '') + '.png';
+  const fname = pzExportNameWithTag() + (isTransparentExportOn() ? '-alpha' : '') + '.png';
   downloadBlob(fname, blob);
   setStatus(t('Staženo: {0}', fname));
   return fname;
@@ -16920,7 +17065,7 @@ function setExportPreviewFrame(srcCanvas){
 // opts.keepCancel: průběh navazuje na už běžící export, žádost o zrušení se nesmí ztratit.
 function beginExportProgress(label, totalFrames, opts){
   opts = opts || {};
-  if(!opts.keepCancel) state.exportCancelRequested = false;
+  if(!opts.keepCancel){ state.exportCancelRequested = false; if($('exportCancelBtn')) $('exportCancelBtn').disabled = false; }
   state._exportProgressTotal = Math.max(1, Math.round(totalFrames) || 1);
   state._exportProgressT0 = performance.now();
   state._exportProgressLabel = label;
@@ -16956,6 +17101,7 @@ function endExportProgress(){
   const box = $('exportProgress'); if(box) box.hidden = true;
   const pv = $('exportPreview'); if(pv) pv.hidden = true;
   state.exportCancelRequested = false;
+  if($('exportCancelBtn')) $('exportCancelBtn').disabled = false;
   const cover = $('exportCover'); if(cover) cover.classList.remove('show');
   if(state._exportTitle0 != null){ document.title = state._exportTitle0; state._exportTitle0 = null; }
 }
@@ -16989,6 +17135,9 @@ function setExportButtonsDisabled(disabled){
   const off = !!(disabled || state._batchRunning);
   ['exportVideoBtn','exportPngBtn','exportPngSeqBtn','exportBatchBtn'].forEach(id => { const b = $(id); if(b) b.disabled = off; });
   $$('#exportChips .exp-chip').forEach(b => { b.disabled = off; });
+  // Během renderu zamknout panel i lištu nad mapou — změna barvy trasy v půlce videa
+  // dřív dala video napůl modré a napůl zelené. Zrušit (v překryvu průběhu) zůstává aktivní.
+  ['sidebarPanel'].map($).concat([...document.querySelectorAll('.map-actions, #pzMultiBar')]).forEach(el => { if(el) el.inert = off; });
 }
 // Re-entrancy guard: a second export started mid-render would share (and corrupt)
 // the single export map session and the animation timeline. Serialize them.
@@ -17122,7 +17271,16 @@ function getExportBaseName(){
   if(state._exportNameSuffix) base += '-' + state._exportNameSuffix;
   return base;
 }
-function videoExportName(ext){ return getExportBaseName() + ext; }
+// Přípona formátu v názvu souboru (jako u dávky): 9:16 a 1:1 hned za sebou dřív daly
+// dva stejné názvy. Výchozí TV 16:9 se nepíše; dávka má vlastní příponu.
+function pzAspectTag(w, h){
+  if(!w || !h || state._exportNameSuffix) return '';
+  const g = (a, b) => b ? g(b, a % b) : a, d = g(w, h) || 1, a = w / d, b = h / d;
+  if(a === 16 && b === 9) return '';
+  return (a <= 21 && b <= 21) ? `${a}x${b}` : `${w}x${h}`;
+}
+function pzExportNameWithTag(){ const {w, h} = getExportSize(), tg = pzAspectTag(w, h); return getExportBaseName() + (tg ? '-' + tg : ''); }
+function videoExportName(ext){ return pzExportNameWithTag() + ext; }
 
 async function exportWebM(){
   // MediaRecorder zaznamenává reálný čas vykreslování: 2 s animace, jejíž
@@ -18052,6 +18210,7 @@ function bindUI(){
     const turningOn = isGlobeProjectionOn();
     if(turningOn && state.map) state._pzPreGlobeZoom = state.map.getZoom();
     applyGlobeProjection();
+    try{ pzApplyGlobeMinZoom(); }catch(_e){}
     setStatus(t(isGlobeProjectionOn() ? 'Glóbus zapnut.' : 'Glóbus vypnut.'));
     // The arc shape depends on the projection (great circle on the globe, decorative
     // bulge on the flat map) — recompute an existing arc route FIRST, because its
@@ -18217,6 +18376,9 @@ function bindUI(){
   $('exportResolution')?.addEventListener('change', updateExportFrame);
   $('showExportFrame')?.addEventListener('change', updateExportFrame);
   $('safeGuidesBtn')?.addEventListener('click', () => setSafeGuides(!safeGuidesVisible()));
+  // pilulka „Zdroj mapy" v rámečku: jiný podklad = jiný text, průhledný export ji nemá
+  $('exportTransparent')?.addEventListener('change', () => { try{ pzUpdateFrameWatermark(); }catch(_e){} });
+  try{ const wm = $('mapSourceWatermark'); if(wm) new MutationObserver(() => { try{ pzUpdateFrameWatermark(); }catch(_e){} }).observe(wm, {childList:true, characterData:true, subtree:true}); }catch(_e){}
   // Settings panel (gear) — move custom sources in, wire language toggles / light mode / stats / selfcheck.
   try{ const cs=$('tileSourcesSection'), dest=$('settingsCustomSources'); if(cs && dest && cs.parentElement!==dest) dest.appendChild(cs); }catch(_e){}
   try{ buildLangToggles(); applyLangVisibility(); }catch(_e){}
@@ -18255,11 +18417,28 @@ function bindUI(){
     updateCustomExportResolutionVisibility();
     updateExportFrame();
   }));
+  // po opuštění pole ukázat hodnotu, která se opravdu použije (64–8192, sudá)
+  ['exportCustomWidth','exportCustomHeight'].forEach(id => ['change','blur'].forEach(ev => $(id)?.addEventListener(ev, () => {
+    setTimeout(() => { try{ getExportSize(); updateExportFrame(); }catch(_e){} }, 0);
+  })));
   updateCustomExportResolutionVisibility();
   // Předvolby formátu (TV / Sítě / Čtverec / 4K): jedno kliknutí nastaví rozměr.
   $('exportChips')?.addEventListener('click', e => {
     const b = e.target.closest('.exp-chip'); if(!b || b.disabled) return;
+    // Scéna, která byla celá ve výřezu, se vejde i do nového poměru (jako u dávky) —
+    // dřív po kliku na 9:16 vypadla Praha i Brno z rámečku.
+    const before = getExportSize(), pts = pzSceneLngLats();
+    const wasInside = pts.length > 1 && pzLngLatsInFrame(pts);
     pzSetExportResolution(b.dataset.res);
+    const after = getExportSize();
+    if(wasInside && Math.abs(after.w / after.h - before.w / before.h) > 0.02 && !pzLngLatsInFrame(pts)
+       && !cameraAnimReady() && !$('followCamera')?.checked){
+      try{
+        const bounds = pts.reduce((bb, c) => bb.extend(c), new maplibregl.LngLatBounds(pts[0], pts[0]));
+        state.screenPan = {x:0, y:0};
+        state.map.fitBounds(bounds, {padding:getFitPadding(), duration:500, bearing:state.map.getBearing(), pitch:state.map.getPitch()});
+      }catch(_e){}
+    }
   });
   ['exportFps','exportVideoFormat','exportTransparent','animDuration','animStart','animEndHold'].forEach(id => {
     ['input','change'].forEach(ev => $(id)?.addEventListener(ev, () => { try{ updateExportSummary(); }catch(_e){} }));
@@ -18507,7 +18686,11 @@ function bindUI(){
   $('exportPngSeqBtn')?.addEventListener('click', exportPngSequence);
   $('exportBatchBtn')?.addEventListener('click', exportBatchFormats);
   $('exportCancelBtn')?.addEventListener('click', ()=>{
+    if(state.exportCancelRequested) return;
     state.exportCancelRequested = true;
+    // okamžitá odezva — rozpracovaný snímek se ještě dokreslí (i několik sekund)
+    if($('exportProgressLabel')){ state._exportProgressLabel = t('Ruším…'); $('exportProgressLabel').textContent = t('Ruším…'); }
+    $('exportCancelBtn').disabled = true;
     setStatus(t('Ruším export…'));
   });
   updateScenePerimeterOpacityReadout();
@@ -19141,6 +19324,8 @@ Object.assign(I18N, {
   "Přidat záběr": {cs:"Přidat záběr",sk:"Pridať záber",bg:"Добави кадър",hr:"Dodaj kadar",ro:"Adaugă cadru",en:"Add shot"},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
   "Oddálit při přeletu": {cs:"Oddálit při přeletu",sk:"Oddialiť pri prelete",bg:"Отдалечаване при прелитане",hr:"Udalji tijekom preleta",ro:"Depărtare în timpul zborului",en:"Pull back during flyover"},
+  "Bezp. zóny": {cs:"Bezp. zóny",sk:"Bezp. zóny",bg:"Безоп. зони",hr:"Sig. zone",ro:"Zone sigure",en:"Safe zones"},
+  "Ruším…": {cs:"Ruším…",sk:"Ruším…",bg:"Отменям…",hr:"Otkazujem…",ro:"Anulez…",en:"Cancelling…"},
   "Posunout výš": {cs:"Posunout výš",sk:"Posunúť vyššie",bg:"Премести нагоре",hr:"Pomakni gore",ro:"Mută mai sus",en:"Move up"},
   "Posunout níž": {cs:"Posunout níž",sk:"Posunúť nižšie",bg:"Премести надолу",hr:"Pomakni dolje",ro:"Mută mai jos",en:"Move down"},
   "Náhled": {cs:"Náhled",sk:"Náhľad",bg:"Преглед",hr:"Pregled",ro:"Previzualizare",en:"Preview"},
@@ -22100,19 +22285,27 @@ function pzColorFromName(v){
     exportVideo({resolution, fps} = {}){
       const btn = $('exportVideoBtn');
       if(!btn) return {ok:false, error:'Export není dostupný.'};
-      if(btn.disabled) return {ok:false, error:'Právě běží jiný export — počkej, až doběhne.'};
-      const set = (id, v) => { const el = $(id); if(el && v != null && [...el.options].some(o => o.value === String(v))){ el.value = String(v); el.dispatchEvent(new Event('change', {bubbles:true})); } };
-      set('exportResolution', resolution); set('exportFps', fps);
+      if(btn.disabled || state._exporting) return {ok:false, error:'Právě běží jiný export — počkej, až doběhne.'};
+      if(!pzExportHasMotion()) return {ok:false, error:'Video potřebuje pohyb — nejdřív nastav trasu (routeBetween) nebo přelet kamery (setCameraFlight). Statickou mapu ulož přes exportPng.'};
+      const r = pzApiSetExportResolution(resolution); if(r.error) return {ok:false, error:r.error};
+      if(fps != null){
+        const el = $('exportFps'), v = String(Math.round(Number(fps)));
+        if(!el || ![...el.options].some(o => o.value === v)) return {ok:false, error:`fps ${fps} nejde — použij 25, 30, 50 nebo 60.`};
+        el.value = v; el.dispatchEvent(new Event('change', {bubbles:true}));
+      }
       btn.click();
-      return {ok:true, started:true, resolution: $('exportResolution')?.value, fps: $('exportFps')?.value, seconds: animationTotal(),
+      const {w, h} = getExportSize();
+      return {ok:true, started:true, resolution: w + 'x' + h, fps: $('exportFps')?.value, seconds: animationTotal(),
         note:'Video se renderuje v prohlížeči a uloží do stažených souborů (nebo se Chrome zeptá kam).'};
     },
-    exportPng(){
+    exportPng({resolution} = {}){
       const btn = $('exportPngBtn');
       if(!btn) return {ok:false, error:'Export není dostupný.'};
-      if(btn.disabled) return {ok:false, error:'Právě běží jiný export — počkej, až doběhne.'};
+      if(btn.disabled || state._exporting) return {ok:false, error:'Právě běží jiný export — počkej, až doběhne.'};
+      const r = pzApiSetExportResolution(resolution); if(r.error) return {ok:false, error:r.error};
       btn.click();
-      return {ok:true, started:true, note:'PNG se ukládá do stažených souborů.'};
+      const {w, h} = getExportSize();
+      return {ok:true, started:true, resolution: w + 'x' + h, note:'PNG se ukládá do stažených souborů.'};
     },
     // Vícenásobný výběr ikonek a popisků: all | none | delete.
     selectObjects({action = 'all'} = {}){
