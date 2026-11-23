@@ -15292,33 +15292,63 @@ function pzCamTimeline(){
   _pzCamTl = {key, tl: {segs, total, lift}};
   return _pzCamTl.tl;
 }
+// Úseky se slučují do „skupin": pohyb (navazující úseky s nenulovou délkou, uvnitř jedna
+// plynulá křivka s rozjezdem a dojezdem a stálou rychlostí přes prostřední záběry) a pauza
+// (dva stejné záběry za sebou = kamera stojí). Pauza trvá jako průměrný pohybový úsek,
+// takže „3× stejný záběr a pak nájezd" drží kameru stát jako dřív.
+function pzCamGroups(){
+  const tl = pzCamTimeline();
+  if(tl._groups) return tl._groups;
+  const moving = tl.segs.filter(g => g.L > 1e-4);
+  const avg = moving.length ? moving.reduce((a, g) => a + g.L, 0) / moving.length : 1;
+  const groups = [];
+  tl.segs.forEach((g, i) => {
+    const mv = g.L > 1e-4, last = groups[groups.length - 1];
+    if(mv && last && last.move) { last.segs.push(i); last.L += g.L; }
+    else groups.push({move: mv, segs: [i], L: mv ? g.L : 0});
+  });
+  // váha v čase: pohyb podle délky, pauza jako průměrný úsek
+  groups.forEach(G => { G.W = G.move ? G.L : avg * G.segs.length; });
+  const W = groups.reduce((a, G) => a + G.W, 0) || 1;
+  let acc = 0; groups.forEach(G => { G.t0 = acc / W; acc += G.W; G.t1 = acc / W; });
+  return (tl._groups = groups);
+}
+function pzCamSegAt(g, Lg){
+  const c = g.cum; let j = 1; while(j < c.length - 1 && c[j] < Lg) j++;
+  return c[j] > c[j - 1] ? (j - 1 + (Lg - c[j - 1]) / (c[j] - c[j - 1])) / PZ_CAM_SAMPLES : (j - 1) / PZ_CAM_SAMPLES;
+}
 function getCameraStateAtProgress(t){
   const kfs = state.cameraAnim?.keyframes || [];   // pořadí v seznamu = pořadí přeletu
   const n = kfs.length;
   if(!n) return null;
   if(n === 1) return interpView(kfs[0].view, kfs[0].view, 0);
-  const tl = pzCamTimeline();
-  let D = pzCamEase(t) * tl.total, i = 0;
-  while(i < tl.segs.length - 1 && D > tl.segs[i].L){ D -= tl.segs[i].L; i++; }
-  const g = tl.segs[i], c = g.cum, Lg = Math.max(0, Math.min(g.L, D));
-  // stálá rychlost uvnitř úseku: ujetá délka → parametr křivky
-  let j = 1; while(j < c.length - 1 && c[j] < Lg) j++;
-  const f = c[j] > c[j - 1] ? (j - 1 + (Lg - c[j - 1]) / (c[j] - c[j - 1])) / PZ_CAM_SAMPLES : (j - 1) / PZ_CAM_SAMPLES;
-  return pzCamFlyView(g.s, g.e, Math.max(0, Math.min(1, f)), tl.lift);
+  const tl = pzCamTimeline(), groups = pzCamGroups();
+  t = Math.max(0, Math.min(1, t));
+  const G = groups.find(x => t <= x.t1 + 1e-9) || groups[groups.length - 1];
+  if(!G.move){ const g = tl.segs[G.segs[0]]; return pzCamFlyView(g.s, g.e, 0, tl.lift); }
+  const u = G.t1 > G.t0 ? (t - G.t0) / (G.t1 - G.t0) : 1;
+  let D = pzCamEase(u) * G.L, k = 0;
+  while(k < G.segs.length - 1 && D > tl.segs[G.segs[k]].L){ D -= tl.segs[G.segs[k]].L; k++; }
+  const g = tl.segs[G.segs[k]];
+  return pzCamFlyView(g.s, g.e, Math.max(0, Math.min(1, pzCamSegAt(g, Math.max(0, Math.min(g.L, D))))), tl.lift);
 }
-// Kdy kamera záběrem projde (podíl délky animace) — podle délky úseků a průběhu rychlosti.
+// Kdy kamera záběrem projde (podíl délky animace).
 function pzCamKeyframeTimes(){
   const kfs = state.cameraAnim?.keyframes || [], n = kfs.length;
   if(n < 2) return kfs.map(() => 0);
-  const tl = pzCamTimeline(), out = [0];
-  let acc = 0;
-  for(let i = 0; i < tl.segs.length; i++){
-    acc += tl.segs[i].L;
-    const target = Math.min(1, acc / tl.total);
-    let lo = 0, hi = 1;
-    for(let k = 0; k < 30; k++){ const mid = (lo + hi) / 2; if(pzCamEase(mid) < target) lo = mid; else hi = mid; }
-    out.push(i === tl.segs.length - 1 ? 1 : (lo + hi) / 2);
-  }
+  const tl = pzCamTimeline(), groups = pzCamGroups(), out = [0];
+  groups.forEach(G => {
+    let acc = 0;
+    G.segs.forEach((si, k) => {
+      if(!G.move){ out.push(G.t0 + (G.t1 - G.t0) * (k + 1) / G.segs.length); return; }
+      acc += tl.segs[si].L;
+      const target = Math.min(1, acc / (G.L || 1));
+      let lo = 0, hi = 1;
+      for(let it = 0; it < 30; it++){ const mid = (lo + hi) / 2; if(pzCamEase(mid) < target) lo = mid; else hi = mid; }
+      out.push(G.t0 + (G.t1 - G.t0) * (k === G.segs.length - 1 ? 1 : (lo + hi) / 2));
+    });
+  });
+  out[out.length - 1] = 1;
   return out;
 }
 // Při 0 % zdvihu kamera mezi vzdálenými místy jen sviští — poradit, ať zdvih přidá.
