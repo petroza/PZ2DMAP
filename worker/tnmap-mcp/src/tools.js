@@ -43,7 +43,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setCamera",
-  "description": "kamera; zoomBy +1 přiblížit / -1 oddálit; pitch 0-85; bearing 0=sever.",
+  "description": "kamera, hodnoty jen čísla; zoom 0-22; zoomBy +1 přiblížit / -1 oddálit; pitch 0-85; bearing 0=sever.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -85,7 +85,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "placeIcon",
-  "description": "ikona na místo; kind: pin, vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani.",
+  "description": "ikona na místo (size 16-96 px, bez size výchozí); kind: pin, vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -171,7 +171,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "drawPerimeter",
-  "description": "kružnice/okruh kolem místa.",
+  "description": "kružnice/okruh kolem místa, rádius nejvýš 5000 km; bez place střed výřezu. Když redaktor místo nezmínil a ve scéně není jasný střed, zeptej se přes options.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -274,7 +274,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setValues",
-  "description": "čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, animStart 0-10 (prodleva startu), animEndHold 0-10 (pauza na konci — záběr po doběhnutí stojí), cameraPitch 0-85, routeEndpointSize 12-48.",
+  "description": "čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, animStart 0-10 (prodleva startu), animEndHold 0-10 (pauza na konci — záběr po doběhnutí stojí), cameraPitch 0-85, routeEndpointSize 12-48. sun*, shadow* a aoStrength jen na podkladu liberty.",
   "inputSchema": {
    "type": "object",
    "properties": {},
@@ -292,7 +292,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setGlobe",
-  "description": "glóbus.",
+  "description": "glóbus: on true = zapnout, false = vypnout (plochá mapa).",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -476,7 +476,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "selectObjects",
-  "description": "all, none, delete (ikonky a popisky).",
+  "description": "all, none, delete (objekty scény: popisky, ikonky, šipky, perimetry, vzdálenosti).",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -490,7 +490,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "clearScene",
-  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, all.",
+  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles (další vozidla), all; víc druhů = pole [\"labels\",\"icons\"].",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -550,7 +550,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setUiTheme",
-  "description": "vzhled aplikace light|dark.",
+  "description": "vzhled aplikace light|dark|toggle.",
   "inputSchema": {
    "type": "object",
    "properties": {

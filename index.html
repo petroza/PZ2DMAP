@@ -8113,7 +8113,7 @@ function serializeProjectSnapshot(){
     // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
     // as the same .glb is loaded again; within a session it survives undo/redo + project switch).
     model3d: (state.model3d && state.model3d.lngLat) ? (m=>({lngLat:m.lngLat, altitude:m.altitude, scale:m.scale, sizeMeters:m.sizeMeters, rotationDeg:m.rotationDeg, rotX:m.rotX, rotZ:m.rotZ, upAxis:m.upAxis, snapSurface:m.snapSurface, followRoute:m.followRoute, shadowOn:m.shadowOn, shadowBlur:m.shadowBlur, sun:m.sun}))(state.model3d) : null,
-    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
+    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, ...(item.offset ? {offset:item.offset} : {}), lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     animation: {
       currentRotMode: state.currentRotMode,
       animIconSize: $('animIconSize')?.value || '34',
@@ -8283,7 +8283,7 @@ function applyBasicProjectSnapshot(snapshot){
       model3dClear();
     }
   }catch(_e){}
-  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null}));
+  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null, offset: item.offset}));
   if(state.mapLabels.length){
     const lastSize = state.mapLabels[state.mapLabels.length - 1].size || state.mapLabelGlobalSize || 28;
     applyMapLabelSizeToAll(lastSize);
@@ -11532,7 +11532,7 @@ function createSceneIconAt(lngLatObj, options={}){
     if(!options.silent) setStatus(t('Nejdřív nahraj ikonku.'));
     return null;
   }
-  const size = Math.max(16, parseInt(options.size ?? $('sceneIconSize')?.value ?? '30',10) || 30);
+  const size = Math.max(16, Math.min(96, parseInt(options.size ?? $('sceneIconSize')?.value ?? '30',10) || 30));
   const ll = normalizeLngLatInput(lngLatObj);
   const id = 'scene_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
   const el = createSceneIconElement(data, size);
@@ -11556,7 +11556,8 @@ function createSceneIconAt(lngLatObj, options={}){
   });
   const item = {id, data, size, lngLat:[ll.lng, ll.lat], marker};
   state.sceneIcons.push(item);
-  selectSceneIcon(id);
+  // Velikost jedné ikonky (asistent: size) nepřepisuje posuvník = výchozí velikost dalších.
+  selectSceneIcon(id, options.size == null);
   renderSceneIconList();
   flashMarkerHint(el);
   return item;
@@ -11691,7 +11692,9 @@ function addMapLabelAt(lngLatObj, options={}){
     if(state.suppressMapLabelEdit) return;
     startMapLabelInlineEdit(id);
   });
-  const marker = new maplibregl.Marker({element: el, draggable: true, anchor:'center'})
+  // offset = pixelový posun od kotvy (popisek nad ikonkou drží nad ní při každém zoomu)
+  const offset = Array.isArray(options.offset) && options.offset.length === 2 && options.offset.every(Number.isFinite) ? options.offset.slice() : null;
+  const marker = new maplibregl.Marker({element: el, draggable: true, anchor:'center', ...(offset ? {offset} : {})})
     .setLngLat(lngLat)
     .addTo(state.map);
   marker.on('dragstart', ()=>{
@@ -11714,7 +11717,7 @@ function addMapLabelAt(lngLatObj, options={}){
   // přiblížení, při kterém popisek vznikl: při oddálení se zmenšuje (nejméně na
   // čitelných 14 px), při přiblížení zůstává. Starší popisky (bez údaje) beze změny.
   const baseZoom = options.baseZoom !== undefined ? options.baseZoom : (state.map?.getZoom?.() ?? null);
-  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker, baseZoom};
+  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker, baseZoom, ...(offset ? {offset} : {})};
   state.mapLabels.push(item);
   pzApplyLabelZoom(item, state.map?.getZoom?.());
   selectMapLabel(id);
@@ -15723,7 +15726,8 @@ function createNativeExportMarkers(exportMap){
     if(!item?.lngLat) return;
     const el = createMapLabelElement(item.text || 'Popisek', item.size || state.mapLabelGlobalSize || 28, item.side || 'right', item.style || 'classic');
     try{ pzApplyLabelZoom(item, exportMap.getZoom() - Math.log2(state._exportMarkerScale || 1), el); }catch(e){}
-    const marker = new maplibregl.Marker({element:el, anchor:'center'}).setLngLat(item.lngLat).addTo(exportMap);
+    const off = Array.isArray(item.offset) ? item.offset.map(v => v * pzExportUiScale()) : null;   // popisek nad ikonkou
+    const marker = new maplibregl.Marker({element:el, anchor:'center', ...(off ? {offset:off} : {})}).setLngLat(item.lngLat).addTo(exportMap);
     temp.mapLabels.push({...item, marker});
   });
   try{ exportMap.on('zoom', () => { const z = exportMap.getZoom() - Math.log2(state._exportMarkerScale || 1); (temp.mapLabels || []).forEach(it => pzApplyLabelZoom(it, z)); }); }catch(e){}
@@ -20016,8 +20020,10 @@ document.addEventListener('keydown', e => {
   const TOOL_MODES = ['driving','truck','moto','train','metro','tram','boat','foot','cycle','planeDirect','planeArc','planeCustom'];
 
   function toolOpenSection(sectionId, open = true){
+    if(!sectionId || typeof sectionId !== 'string') return {ok:false, error:'Chybí section (id sekce, např. mapLabelSection).'};
     let sec = $(sectionId);
     if(!sec) return {ok:false, error:'Sekce ' + sectionId + ' neexistuje.'};
+    open = toolBool(open) ?? true;
     if(sec.tagName === 'DETAILS') sec.open = !!open;
     // Krok uvnitř sekce (např. worldPoliticalSection) → otevřít celou sekci.
     if(!sec.classList.contains('section')) sec = sec.closest('.section') || sec;
@@ -20029,7 +20035,7 @@ document.addEventListener('keydown', e => {
     }
     // Slunce a stíny potřebují 3D budovy — na jiném podkladu je sekce schovaná.
     if(open && sec.id === 'sunShadowSection' && sec.style.display === 'none')
-      return {ok:false, error:'Slunce a stíny jdou jen na podkladu Liberty 3D — nejdřív ho přepni (setBasemap).'};
+      return {ok:false, error:'Slunce a stíny jdou jen na podkladu Liberty 3D — nejdřív ho přepni (setBaseStyle liberty).'};
     // Sekce na jiné záložce: nejdřív na ni přepnout, jinak se otevře „naslepo".
     const pane = sec.closest('.tab-pane')?.dataset?.pane;
     if(open && pane && pane !== state.currentTab){ try{ setTab(pane); }catch(e){} }
@@ -20043,6 +20049,17 @@ document.addEventListener('keydown', e => {
     const m = state.map;
     if(!m) return {ok:false, error:'Mapa není načtená.'};
     const c = m.getCenter();
+    // Rozbitou kameru (NaN) přiznat — jinak model dostal zoom:null a hádal.
+    if(!isFinite(m.getZoom()) || !isFinite(c.lng) || !isFinite(c.lat)) return {ok:false, error:'Kamera mapy je v neplatném stavu — obnov stránku nebo zavolej showRegion.'};
+    // Hlavní vozidlo, kamera a časování animace: aby se model mohl smysluplně doptat.
+    const veh = (() => { try{
+      const v = {type: state.animSystemIcon || null};
+      const lb = $('pzMainVehLabel')?.value?.trim(); if(lb) v.label = lb;
+      if($('pzVehicleBody')) v.color = $('pzVehicleBody').value;
+      if($('pzVehiclePreset')) v.colorPreset = $('pzVehiclePreset').value;
+      return v; }catch(e){ return null; } })();
+    const cam = (() => { try{ const mode = getCameraUiMode(); return mode === 'keyframes' ? {mode, keyframes: (state.cameraAnim?.keyframes || []).length} : {mode}; }catch(e){ return null; } })();
+    const anim = (() => { try{ const tm = animTiming(); return {duration: +tm.dur.toFixed(2), startDelay: +tm.delay.toFixed(2), endHold: +(tm.total - tm.delay - tm.dur).toFixed(2), total: +tm.total.toFixed(2)}; }catch(e){ return null; } })();
     return {ok:true,
       center:{lng:+c.lng.toFixed(5), lat:+c.lat.toFixed(5)},
       zoom:+m.getZoom().toFixed(2), pitch:+m.getPitch().toFixed(1), bearing:+m.getBearing().toFixed(1),
@@ -20061,6 +20078,7 @@ document.addEventListener('keydown', e => {
       uiTheme: document.documentElement.dataset.ui === 'light' ? 'light' : 'dark',
       lang: currentLang,
       playing: !!state.animPlaying,
+      vehicle: veh, camera: cam, anim,
       // Co na mapě je — na to se odkazují pokyny „ho", „ten popisek", „Rusko ne".
       scene: toolSceneSummary()
     };
@@ -20084,8 +20102,9 @@ document.addEventListener('keydown', e => {
     if(state.sceneArrows?.length) sc.arrows = state.sceneArrows.length;
     if((state.pzFlags || []).length) sc.flags = state.pzFlags.map(f => f.iso.toUpperCase());
     if(state.pzLineRoute) sc.line = state.pzLineRoute.n;
-    if((state.pzExtraVehicles || []).length) sc.extraVehicles = state.pzExtraVehicles.length;
-    if(state.scenePerimeters?.length) sc.perimeters = state.scenePerimeters.map(x => Math.round(x.radiusMeters || 0) + ' m');
+    if((state.pzExtraVehicles || []).length) sc.extraVehicles = state.pzExtraVehicles.map(v => ({type: v.type, reverse: !!v.reverse,
+      ...(v.crash ? {crash:true} : {}), ...(v.crashFrac != null ? {crashFrac: +(+v.crashFrac).toFixed(3)} : {}), ...(v.label ? {label: v.label} : {}), ...(v.color ? {color: v.color} : {})}));
+    if(state.scenePerimeters?.length) sc.perimeters = state.scenePerimeters.map(x => (x.radiusMeters >= 1000 ? +(x.radiusMeters / 1000).toFixed(1) + ' km' : Math.round(x.radiusMeters || 0) + ' m'));
     if(state.sceneDistances?.length) sc.distances = state.sceneDistances.length;
     if((state.pzClosures || []).length) sc.closures = state.pzClosures.map(c => c.title || c.label).slice(0, 6);
     return sc;
@@ -20558,33 +20577,61 @@ function pzColorFromName(v){
     // ---- navigation -------------------------------------------------------
     // Fly to a named place (city, street, country) or "lat,lng".
     async gotoPlace({query} = {}){
-      if(!query) return {ok:false, error:'Chybí query.'};
-      try{
-        const item = await geocode(String(query));
-        focusPlaceResult(item);
-        return {ok:true, found: item.display_name || String(query),
-                center:{lat:+item.lat, lng:+item.lon}};
-      }catch(e){ return {ok:false, error:'Místo „' + query + '" jsem nenašel.'}; }
+      if(query == null || String(query).trim() === '') return {ok:false, error:'Chybí query.'};
+      // Samotné číslo (50.08) geokodér „najde" jako ulici kdesi v Turecku.
+      if(toolBareNumber(query)) return {ok:false, error:'Zadej místo nebo "lat,lng".'};
+      let item;
+      try{ item = await geocode(String(query)); }
+      catch(e){ return {ok:false, error:'Místo „' + query + '" jsem nenašel.'}; }
+      // Chyba posunu mapy není „nenašel" — model by pak zkoušel jiná jména.
+      try{ focusPlaceResult(item); }
+      catch(e){ return {ok:false, error:'Místo jsem našel, ale mapu se nepodařilo posunout: ' + String(e && e.message || e)}; }
+      return {ok:true, found: item.display_name || String(query),
+              center:{lat:+item.lat, lng:+item.lon}};
     },
     // Direct camera control: any of zoom/pitch/bearing.
+    // Nečíselná hodnota (zoom:'deset') dřív prošla jako NaN a natrvalo rozbila kameru.
     setCamera({zoom, zoomBy, pitch, bearing, duration = 900} = {}){
       const m = state.map; if(!m) return {ok:false, error:'Mapa není načtená.'};
-      const opts = {duration: Math.max(0, Math.min(6000, Number(duration) || 0))};
-      if(zoom   != null) opts.zoom    = Math.max(0,  Math.min(22, Number(zoom)));
-      else if(zoomBy != null && isFinite(Number(zoomBy))) opts.zoom = Math.max(0, Math.min(22, m.getZoom() + Number(zoomBy)));
-      if(pitch  != null) opts.pitch   = Math.max(0,  Math.min(85, Number(pitch)));
-      if(bearing!= null) opts.bearing = Number(bearing);
+      const RULES = {zoom:'zoom musí být číslo 0–22', zoomBy:'zoomBy musí být číslo (např. 1 nebo -1)', pitch:'pitch musí být číslo 0–85',
+                     bearing:'bearing musí být číslo (0 = sever)', duration:'duration musí být číslo (ms)'};
+      const v = {zoom, zoomBy, pitch, bearing, duration};
+      for(const k of Object.keys(RULES)) if(v[k] != null && toolNum(v[k]) == null) return {ok:false, error:RULES[k] + '.'};
+      if(zoom == null && zoomBy == null && pitch == null && bearing == null) return {ok:false, error:'Zadej zoom, zoomBy, pitch nebo bearing.'};
+      const cz = m.getZoom();
+      const opts = {duration: Math.max(0, Math.min(6000, toolNum(duration) ?? 0))};
+      if(zoom   != null) opts.zoom    = Math.max(0,  Math.min(22, toolNum(zoom)));
+      else if(zoomBy != null) opts.zoom = Math.max(0, Math.min(22, (isFinite(cz) ? cz : 6) + toolNum(zoomBy)));
+      if(pitch  != null) opts.pitch   = Math.max(0,  Math.min(85, toolNum(pitch)));
+      if(bearing!= null) opts.bearing = toolNum(bearing);
       try{ m.easeTo(opts); }catch(e){ return {ok:false, error:String(e)}; }
       return {ok:true, applied:opts};
     },
     // One call for the common "show me 3D of X" request.
+    // Přepnutí podkladu vrací kameru na místo před přepnutím (style.load v reloadStyle),
+    // takže přelet na hledané místo se spouští až po načtení stylu a předává center.
     async show3D({query, pitch = 60, zoom = 16} = {}){
+      const m = state.map; if(!m) return {ok:false, error:'Mapa není načtená.'};
+      const p = Math.max(0, Math.min(85, toolNum(pitch) ?? 60)), z = Math.max(2, Math.min(20, toolNum(zoom) ?? 16));
       const out = {};
-      if(query){ const g = await window.TNMAP.gotoPlace({query}); if(!g.ok) return g; out.place = g.found; }
+      let center = null;
+      if(query != null && String(query).trim() !== ''){
+        if(toolBareNumber(query)) return {ok:false, error:'Zadej místo nebo "lat,lng".'};
+        let g; try{ g = await geocode(String(query)); }catch(e){ return {ok:false, error:'Místo „' + query + '" jsem nenašel.'}; }
+        center = [+g.lon, +g.lat]; out.place = g.display_name || String(query);
+      }
       const sel = $('baseStyle');
-      if(sel && sel.value !== 'liberty'){ sel.value = 'liberty'; try{ reloadStyle(); }catch(e){} out.styleSwitchedTo = 'liberty'; }
-      setTimeout(() => { try{ state.map.easeTo({pitch:Math.min(85, Number(pitch)||60), zoom:Number(zoom)||16, duration:1200}); }catch(e){} }, 700);
-      return {ok:true, ...out, pitch, zoom, note:'3D budovy + AO jsou aktivní ve stylu Liberty 3D.'};
+      if(sel && sel.value !== 'liberty'){
+        const loaded = new Promise(res => { let d = false; const fin = () => { if(!d){ d = true; res(); } }; m.once('style.load', fin); setTimeout(fin, 5000); });
+        sel.value = 'liberty'; try{ reloadStyle(); }catch(e){} out.styleSwitchedTo = 'liberty';
+        await loaded;
+      }
+      // střed exportního rámečku, ne plátna (rámeček je posunutý vedle panelu)
+      try{ const fp = getFitPadding(); state.screenPan = {x:0, y:0};
+        m.easeTo({...(center ? {center, offset:[Math.round((fp.left - fp.right) / 2), Math.round((fp.top - fp.bottom) / 2)]} : {}), pitch:p, zoom:z, duration:1200}); }
+      catch(e){ return {ok:false, error:'Kameru se nepodařilo posunout: ' + String(e && e.message || e)}; }
+      if(center) out.center = {lat:center[1], lng:center[0]};
+      return {ok:true, ...out, pitch:p, zoom:z, note:'3D budovy + AO jsou aktivní ve stylu Liberty 3D.'};
     },
 
     // ---- look & feel ------------------------------------------------------
@@ -20601,17 +20648,24 @@ function pzColorFromName(v){
       try{ applyPreset(preset); }catch(e){ return {ok:false, error:String(e)}; }
       return {ok:true, preset};
     },
-    setGlobe({on = true} = {}){
+    setGlobe({on} = {}){
       const cb = $('globeProjection'); if(!cb) return {ok:false, error:'Glóbus není dostupný.'};
-      if(!!cb.checked !== !!on){ cb.checked = !!on; cb.dispatchEvent(new Event('change', {bubbles:true})); }
-      return {ok:true, globe: !!on};
+      if(on == null) return {ok:false, error:'Chybí on (true = glóbus zapnout, false = vypnout).'};
+      const want = toolBool(on);
+      if(want == null) return {ok:false, error:'on musí být true/false (ano/ne), ne „' + on + '".'};
+      if(!!cb.checked !== want){ cb.checked = want; cb.dispatchEvent(new Event('change', {bubbles:true})); }
+      return {ok:true, globe: want};
     },
     // Building shadows + ambient occlusion (Liberty only, zoom ~14+).
     setShadows({on, ao, strength} = {}){
       const res = {ok:true};
-      if(on != null){ const cb = $('sunShadowsOn'); if(cb && !!cb.checked !== !!on){ cb.checked = !!on; cb.dispatchEvent(new Event('change', {bubbles:true})); } res.shadows = !!on; }
-      if(ao != null){ const cb = $('aoOn'); if(cb && !cb.disabled && !!cb.checked !== !!ao){ cb.checked = !!ao; cb.dispatchEvent(new Event('change', {bubbles:true})); } res.ao = !!ao; }
-      if(strength != null){ const s = $('aoStrength'); if(s && !s.disabled){ s.value = String(Math.max(0, Math.min(100, Number(strength)||0))); s.dispatchEvent(new Event('input', {bubbles:true})); res.aoStrength = s.value; } }
+      const bOn = on != null ? toolBool(on) : null, bAo = ao != null ? toolBool(ao) : null;
+      if(on != null && bOn == null) return {ok:false, error:'on musí být true/false (ano/ne), ne „' + on + '".'};
+      if(ao != null && bAo == null) return {ok:false, error:'ao musí být true/false (ano/ne), ne „' + ao + '".'};
+      if(strength != null && toolNum(strength) == null) return {ok:false, error:'strength musí být číslo 0–100.'};
+      if(on != null){ const cb = $('sunShadowsOn'); if(cb && !!cb.checked !== bOn){ cb.checked = bOn; cb.dispatchEvent(new Event('change', {bubbles:true})); } res.shadows = bOn; }
+      if(ao != null){ const cb = $('aoOn'); if(cb && !cb.disabled && !!cb.checked !== bAo){ cb.checked = bAo; cb.dispatchEvent(new Event('change', {bubbles:true})); } res.ao = bAo; }
+      if(strength != null){ const s = $('aoStrength'); if(s && !s.disabled){ s.value = String(Math.max(0, Math.min(100, toolNum(strength)))); s.dispatchEvent(new Event('input', {bubbles:true})); res.aoStrength = s.value; } }
       if($('aoOn')?.disabled) res.note = 'AO/stíny fungují jen ve stylu Liberty 3D.';
       return res;
     },
@@ -20643,12 +20697,18 @@ function pzColorFromName(v){
       let g; try{ g = await geocode(String(place)); }
       catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
       const ll = {lng:+g.lon, lat:+g.lat};
-      if(fit !== false) await toolShowPoint(ll, zoom);
-      const item = createSceneIconAt(ll, {size: size, data});
+      // Velikost 16–96 px jako posuvník; size:500 dřív zakryl celý export.
+      const want = size != null ? toolNum(size) : null;
+      if(size != null && want == null) return {ok:false, error:'size musí být číslo 16–96 (px).'};
+      const sz = want != null ? Math.max(16, Math.min(96, Math.round(want))) : null;
+      if(fit !== false) await toolShowPoint(ll, zoom, g);
+      const item = createSceneIconAt(ll, {size: sz ?? undefined, data});
       if(!item) return {ok:false, error:'Ikonku se nepodařilo umístit.'};
       try{ clearPlaceSearchMarker(); }catch(e){}   // špendlík z hledání by trčel zpod ikonky
-      return {ok:true, place: g.display_name, size: item.size,
+      const res = {ok:true, place: g.display_name, size: item.size,
               center:{lat:+g.lat, lng:+g.lon}};
+      if(want != null && sz !== want) res.clamped = 'size ' + want + ' → ' + sz + ' (rozsah 16–96 px)';
+      return res;
     },
 
     // ---- popisek v mapě -----------------------------------------------------
@@ -20663,36 +20723,44 @@ function pzColorFromName(v){
       const label = (text != null && String(text).trim()) ? String(text).trim()
                   : String(g.display_name || place).split(',')[0].trim();
       const ll = {lng:+g.lon, lat:+g.lat};
-      if(fit !== false) await toolShowPoint(ll);
+      if(fit !== false) await toolShowPoint(ll, undefined, g);
       // Na stejném místě už je ikonka (typicky „nehoda v X" = ikonka + popisek):
-      // popisek patří nad ni, ne přes ni.
-      let pos = ll, ic = null;
+      // popisek patří nad ni, ne přes ni. Dřív se posouval geograficky (o metry),
+      // takže po přiblížení uletěl z obrazu a po oddálení zajel do ikonky. Teď je
+      // ukotvený přesně v ikonce a posun nad ni je pixelový (offset markeru) —
+      // drží při každém zoomu, v přeletu kamery i ve videu.
+      let ic = null;
       try{
         const m = state.map, b = m.project([ll.lng, ll.lat]);
         ic = (state.sceneIcons || []).find(x => { const a = m.project(x.marker.getLngLat()); return Math.hypot(a.x - b.x, a.y - b.y) < 12; });
-        if(ic){
-          const lsz = parseInt(size || state.mapLabelGlobalSize || $('mapLabelSize')?.value || '28', 10) || 28;
-          pos = offsetLngLat(ll, 0, -Math.round((ic.size || 44) * 0.5 + lsz * 1.05 + 12));
-        }
       }catch(e){}
+      const pos = ic ? (a => ({lng:a.lng, lat:a.lat}))(ic.marker.getLngLat()) : ll;
       const opts = {text: label, size: size, side: side === 'left' ? 'left' : (side === 'none' ? 'none' : undefined)};
       if(st) opts.style = st;
+      // Popisek nad ikonkou se při oddálení nezmenšuje — ikonka taky ne, a pár drží tvar.
+      if(ic) opts.baseZoom = null;
       const item = addMapLabelAt(pos, opts);
       if(!item && item !== undefined) return {ok:false, error:'Popisek se nepodařilo přidat.'};
-      // Kotva popisku je jeho čtvereček, ne střed — nad ikonkou by visel nakřivo.
-      try{
-        if(ic && item?.marker){
-          const el = item.marker.getElement(), rs = ['.map-label-bubble', '.map-label-square'].map(s => el.querySelector(s)?.getBoundingClientRect()).filter(r => r && r.width);
-          const ir = ic.marker.getElement().getBoundingClientRect();
+      if(ic && item?.marker){
+        // Kotva popisku je střed celého prvku (čtvereček + bublina) — posun spočítat
+        // z vykreslených rozměrů, ať je bublina vystředěná nad ikonkou.
+        let off = null;
+        try{
+          const el = item.marker.getElement(), er = el.getBoundingClientRect();
+          const rs = ['.map-label-bubble', '.map-label-square'].map(s => el.querySelector(s)?.getBoundingClientRect()).filter(r => r && r.width);
+          // Prvek markeru má nulový rozměr — jeho levý horní roh je přesně kotevní bod.
           if(rs.length){
-            const dx = (ir.left + ir.width / 2) - (Math.min(...rs.map(r => r.left)) + Math.max(...rs.map(r => r.right))) / 2;
-            const at = offsetLngLat(item.marker.getLngLat(), dx, 0);
-            item.marker.setLngLat(at); item.lngLat = at;
+            const cx = er.left + er.width / 2, cy = er.top + er.height / 2;
+            const vl = Math.min(...rs.map(r => r.left)), vr = Math.max(...rs.map(r => r.right)), vb = Math.max(...rs.map(r => r.bottom));
+            off = [Math.round(cx - (vl + vr) / 2), Math.round((cy - (ic.size || 44) / 2 - 6) - vb)];
           }
-        }
-      }catch(e){}
+        }catch(e){}
+        if(!off){ const lsz = item.size || 28; off = [0, -Math.round((ic.size || 44) * 0.5 + lsz * 1.05 + 12)]; }
+        item.offset = off;
+        try{ item.marker.setOffset(off); }catch(e){}
+      }
       return {ok:true, place: g.display_name, text: label,
-              center:{lat:+g.lat, lng:+g.lon}};
+              center:{lat:+g.lat, lng:+g.lon}, ...(ic ? {aboveIcon:true} : {})};
     },
 
     // ---- počasí: vrstvy byly z appky odstraněny ------------------------------
@@ -20855,10 +20923,12 @@ function pzColorFromName(v){
     // model „šipku z A do B" nahrazoval trasou, což je něco úplně jiného.
     async drawArrow({from, to, color, width, fit} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to (odkud a kam šipka míří).'};
+      if(color != null && !pzColorFromName(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
       let a, b;
       try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.'}; }
       try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.'}; }
       const tail = {lng:+a.lon, lat:+a.lat}, head = {lng:+b.lon, lat:+b.lat};
+      if(haversineKm([tail.lng, tail.lat], [head.lng, head.lat]) < 0.05) return {ok:false, error:'Šipka potřebuje dvě různá místa.'};
       const item = createSceneArrow(tail, head, {color: pzColorFromName(color) || undefined, width: width});
       if(!item) return {ok:false, error:'Šipku se nepodařilo vytvořit.'};
       // Rámujeme všechny šipky ve scéně, ne jen poslední — při „postup na
@@ -20876,10 +20946,12 @@ function pzColorFromName(v){
     // Vzdušná linka s labelem přímo v mapě — na to se redakce ptá pořád.
     async measureDistance({from, to, color, unit, fit} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to.'};
+      if(color != null && !pzColorFromName(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
       let a, b;
       try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.'}; }
       try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.'}; }
       const p = {lng:+a.lon, lat:+a.lat}, q = {lng:+b.lon, lat:+b.lat};
+      if(haversineKm([p.lng, p.lat], [q.lng, q.lat]) < 0.05) return {ok:false, error:'Měření potřebuje dvě různá místa.'};
       const item = createSceneDistance(p, q, {color: pzColorFromName(color) || undefined,
                      unit: (unit === 'm' ? 'm' : undefined)});
       if(!item) return {ok:false, error:'Měření se nepodařilo vytvořit.'};
@@ -20966,36 +21038,45 @@ function pzColorFromName(v){
     // Klasická zpravodajská grafika („dosah rakety 2000 km od Moskvy"). Dřív na to
     // nebyl nástroj, takže si model vymýšlel neexistující parametry.
     async drawPerimeter({place, meters, km, color, fit} = {}){
-      let radius = Number(meters);
-      if(!isFinite(radius) || radius <= 0){
-        const k = Number(km);
-        if(isFinite(k) && k > 0) radius = k * 1000;
-      }
-      if(!isFinite(radius) || radius <= 0) return {ok:false, error:'Chybí rádius (meters nebo km).'};
+      // „30 km", „2,5" → číslo (dřív „30 km" = „Chybí rádius").
+      let radius = toolNum(meters);
+      if(!(radius > 0)){ const k = toolNum(km); if(k > 0) radius = k * 1000; }
+      if(!(radius > 0)) return {ok:false, error:'Chybí rádius (meters nebo km, kladné číslo).'};
+      if(radius > 5e6) return {ok:false, error:'Rádius ' + Math.round(radius / 1000) + ' km je moc velký — nejvýš 5 000 km.'};
+      if(color != null && !pzColorFromName(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
       let center;
       if(place){
         let g; try{ g = await geocode(String(place)); }
         catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
         center = [+g.lon, +g.lat];
       } else {
-        const c = state.map?.getCenter(); if(!c) return {ok:false, error:'Mapa není připravená.'};
-        center = [c.lng, c.lat];
+        // Bez místa střed exportního rámečku (to, co bude v obraze), ne střed plátna.
+        const m = state.map; if(!m) return {ok:false, error:'Mapa není připravená.'};
+        try{
+          const fr = $('exportFrame'), mr = $('map').getBoundingClientRect();
+          const r = (fr && !fr.classList.contains('hidden') && fr.getBoundingClientRect().width) ? fr.getBoundingClientRect() : mr;
+          const ll = m.unproject([r.left + r.width / 2 - mr.left, r.top + r.height / 2 - mr.top]);
+          center = [ll.lng, ll.lat];
+        }catch(e){ const c = m.getCenter(); center = [c.lng, c.lat]; }
+        if(!isFinite(center[0]) || !isFinite(center[1])) return {ok:false, error:'Mapa není připravená.'};
       }
-      // Nad ~1000 km má smysl psát km, jinak metry — ať label nekřičí „2000000 m".
-      const unit = radius >= 10000 ? 'km' : 'm';
+      // Od 1 km v km („R 5 km"), jinak metry.
+      const unit = radius >= 1000 ? 'km' : 'm';
       const item = createScenePerimeterAt({lng:center[0], lat:center[1]},
                     {radiusMeters:radius, unit, color: pzColorFromName(color) || undefined});
       if(!item) return {ok:false, error:'Perimetr se nepodařilo vytvořit.'};
+      const res = {ok:true, place: place || 'střed výřezu', radiusMeters: radius,
+              center:{lat:center[1], lng:center[0]}, unit};
       // Doramuj, ať je celá kružnice v záběru (jinak redaktor vidí jen kus oblouku).
       if(fit !== false){
         try{
           const dLat = radius / 111320, dLng = radius / (111320 * Math.max(0.1, Math.cos(center[1] * Math.PI / 180)));
-          state.map.fitBounds([[center[0] - dLng, center[1] - dLat], [center[0] + dLng, center[1] + dLat]],
+          state.screenPan = {x:0, y:0};
+          state.map.fitBounds([[center[0] - dLng, Math.max(-85, center[1] - dLat)], [center[0] + dLng, Math.min(85, center[1] + dLat)]],
                               {padding: getFitPadding(), duration: 900});
-        }catch(e){}
+        }catch(e){ res.note = 'Kružnici jsem nakreslil, ale celou ji do záběru nedostanu (' + String(e && e.message || e) + ').'; }
       }
-      return {ok:true, place: place || 'střed mapy', radiusMeters: radius,
-              center:{lat:center[1], lng:center[0]}, unit};
+      return res;
     },
 
     // ---- číselné ovladače (slidery) ----------------------------------------
@@ -21016,14 +21097,17 @@ function pzColorFromName(v){
         perimeterOpacity:'scenePerimeterOpacity', countryBorderWidth:'countryBorderWidth',
         countryFillOpacity:'politicalFillOpacity', motorwayWidth:'motorwayWidth', railwayWidth:'railwayWidth'
       };
-      const changed = {}, unknown = [], clamped = [];
+      const changed = {}, unknown = [], clamped = [], badValue = [], disabled = [];
+      // Slunce, stíny a AO jsou jen na podkladu Liberty 3D — jinde ovladač chybí/je vypnutý.
+      const LIBERTY_ONLY = ['sunAzimuth', 'sunElevation', 'shadowOpacity', 'shadowSoftness', 'aoStrength'];
       Object.keys(spec || {}).forEach(k => {
         const id = MAP[k];
         if(!id){ unknown.push(k); return; }
         const el = $(id);
-        if(!el || el.disabled) return;
-        let v = Number(spec[k]);
-        if(!isFinite(v)) { unknown.push(k); return; }
+        if(!el || el.disabled || (LIBERTY_ONLY.includes(k) && $('sunShadowSection')?.style.display === 'none')){ disabled.push(k); return; }
+        // „12 s", „2,5" → číslo; nečíselný text je chyba hodnoty, ne neznámý ovladač.
+        let v = toolNum(spec[k]);
+        if(v == null){ badValue.push(k + '=' + spec[k]); return; }
         const lo = parseFloat(el.min), hi = parseFloat(el.max);
         if(isFinite(lo) && isFinite(hi)){
           const c = Math.max(lo, Math.min(hi, v));
@@ -21034,17 +21118,25 @@ function pzColorFromName(v){
         el.dispatchEvent(new Event('change', {bubbles:true}));
         changed[k] = v;
       });
+      const disNote = disabled.length ? (disabled.some(k => LIBERTY_ONLY.includes(k))
+        ? disabled.join(', ') + ' jde jen na podkladu Liberty 3D — přepni podklad (setBaseStyle liberty).'
+        : disabled.join(', ') + ' teď nejde nastavit (ovladač je vypnutý).') : '';
       if(!Object.keys(changed).length){
-        return {ok:false, error:'Neznámý ovladač' + (unknown.length ? ' (' + unknown.join(', ') + ')' : '') +
-                              '. Dostupné: ' + Object.keys(MAP).join(', ')};
+        const parts = [];
+        if(badValue.length) parts.push('Hodnota není číslo: ' + badValue.join(', ') + '.');
+        if(disNote) parts.push(disNote);
+        if(unknown.length || !parts.length) parts.push('Neznámý ovladač' + (unknown.length ? ' (' + unknown.join(', ') + ')' : '') + '. Dostupné: ' + Object.keys(MAP).join(', '));
+        return {ok:false, error: parts.join(' ')};
       }
       const res = {ok:true, changed};
       if(clamped.length) res.clamped = clamped;
       if(unknown.length) res.ignored = unknown;
+      if(badValue.length) res.badValue = badValue;
+      if(disabled.length){ res.disabled = disabled; res.note = disNote; }
       // Ve stylu Liberty 3D se krytí budov drží natvrdo na 100 %, takže posuvník
       // tam nic neudělá. Radši to přiznáme, než abychom hlásili úspěch naplano.
       if('buildingOpacity' in changed && typeof styleUsesAO === 'function' && styleUsesAO()){
-        res.note = 'Ve stylu Liberty 3D jsou budovy vždy plně kryté, průhlednost tam nemá vliv — ' +
+        res.note = (res.note ? res.note + ' ' : '') + 'Ve stylu Liberty 3D jsou budovy vždy plně kryté, průhlednost tam nemá vliv — ' +
                    'přepni podklad (např. bright), pokud ji chceš měnit.';
       }
       return res;
@@ -21063,22 +21155,24 @@ function pzColorFromName(v){
         primaryRoads:'showPrimaryRoads', secondaryRoads:'showSecondaryRoads',
         countryBorders:'showCountryBordersOverlay', countryColors:'showPoliticalCountries', routeTrail:'showTrail'
       };
-      const changed = {}, unknown = [];
+      const changed = {}, unknown = [], badValue = [];
       Object.keys(spec || {}).forEach(k => {
         const id = MAP[k];
         if(!id){ unknown.push(k); return; }
         const cb = $(id);
         if(!cb) return;
-        const want = !!spec[k];
+        const want = toolBool(spec[k]);
+        if(want == null){ badValue.push(k + '=' + spec[k]); return; }
         if(cb.checked !== want){ cb.checked = want; cb.dispatchEvent(new Event('change', {bubbles:true})); }
         changed[k] = want;
       });
       if(!Object.keys(changed).length){
-        return {ok:false, error:'Neznámá vrstva' + (unknown.length ? ' (' + unknown.join(', ') + ')' : '') +
-                              '. Dostupné: ' + Object.keys(MAP).join(', ')};
+        return {ok:false, error:(badValue.length ? 'Hodnota musí být true/false (ano/ne): ' + badValue.join(', ') + '.' : 'Neznámá vrstva' + (unknown.length ? ' (' + unknown.join(', ') + ')' : '') + '.') +
+                              ' Dostupné: ' + Object.keys(MAP).join(', ')};
       }
       const res = {ok:true, changed};
       if(unknown.length) res.ignored = unknown;
+      if(badValue.length) res.badValue = badValue;
       return res;
     },
 
@@ -21154,7 +21248,17 @@ function pzColorFromName(v){
     openSection({section, open = true} = {}){ return toolOpenSection(section, open); },
     // Smazat jeden druh prvků scény („smaž ten popisek", „pryč se šipkami").
     clearScene({what} = {}){
-      const W = String(what || '').toLowerCase();
+      // Víc druhů najednou: ['labels','icons'] nebo „popisky, ikony".
+      const list = Array.isArray(what) ? what : (typeof what === 'string' && /[,;]/.test(what) ? what.split(/[,;]/) : null);
+      if(list){
+        const done = [], bad = [];
+        for(const w of list.filter(x => toolKey(x))){ const r = window.TNMAP.clearScene({what: w}); if(r.ok) done.push(r.cleared); else bad.push(String(w)); }
+        const why = 'what musí být labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles nebo all.';
+        if(!done.length) return {ok:false, error: bad.length ? 'Neznám: ' + bad.join(', ') + '. ' + why : 'Chybí what (co smazat).'};
+        return bad.length ? {ok:true, cleared:done, ignored:bad, note:'Nesmazal jsem: ' + bad.join(', ') + ' — ' + why} : {ok:true, cleared:done};
+      }
+      // Diakritika a mezery pryč: „šipky" = sipky, „vše" = vse, „celou scénu" = all.
+      const W = toolKey(what);
       const map = {
         labels: () => clearMapLabels?.(), popisky: 'labels',
         icons: () => clearSceneIcons?.(), ikony: 'icons',
@@ -21164,16 +21268,20 @@ function pzColorFromName(v){
         closures: () => { state.pzClosures = []; pzRedrawClosures(); }, uzavirky: 'closures',
         colors: () => clearPoliticalPainting?.(), barvy: 'colors',
         flags: () => { state.pzFlags = []; state.pzFlagSel = null; pzFlagsRefresh(); }, vlajky: 'flags',
-        route: () => { clearRoute?.(); state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} if($('pzMainVehLabel')) $('pzMainVehLabel').value = ''; }, trasa: 'route',
+        // Linka MHD (stav_mapy ji jinak hlásil i po smazání trasy).
+        route: () => { clearRoute?.(); state.pzLineRoute = null; if($('pzLineInput')) $('pzLineInput').value = ''; state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} if($('pzMainVehLabel')) $('pzMainVehLabel').value = ''; }, trasa: 'route', trasu: 'route', linku: 'route',
         vehicles: () => { state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} }, vozidla: 'vehicles',
         // „smaž všechno": celá scéna i trasa; podklad a vzhled mapy zůstávají
         all: () => { ['labels','icons','arrows','perimeters','distances','closures','colors','flags','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
-        vse: 'all', vsechno: 'all'
+        vse: 'all', vsechno: 'all', scenu: 'all', scena: 'all', 'celou scenu': 'all',
+        popisek: 'labels', ikonky: 'icons', ikonku: 'icons', sipku: 'arrows', perimetr: 'perimeters', kruhy: 'perimeters',
+        vzdalenost: 'distances', mereni: 'distances', uzavirku: 'closures', staty: 'colors', vlajku: 'flags'
       };
-      let fn = map[W]; if(typeof fn === 'string') fn = map[fn];
-      if(typeof fn !== 'function') return {ok:false, error:'what musí být labels, icons, arrows, perimeters, distances, closures, colors, flags, route nebo all.'};
+      let fn = Object.prototype.hasOwnProperty.call(map, W) ? map[W] : null; if(typeof fn === 'string') fn = map[fn];
+      if(typeof fn !== 'function') return {ok:false, error:(W ? 'Neznám „' + what + '". ' : 'Chybí what (co smazat). ') + 'what musí být labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles nebo all (česky: popisky, ikony, šipky, perimetry, vzdálenosti, uzavírky, barvy, vlajky, trasa, vozidla, vše).'};
       try{ fn(); }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
-      return {ok:true, cleared:W};
+      const canon = Object.keys(map).find(k => typeof map[k] === 'function' && (k === W || map[W] === k)) || W;
+      return {ok:true, cleared:canon};
     },
     // Krok zpět / vpřed — „vrať to", „zpět", „zruš poslední změnu".
     undo(){ const ok = window.__pzUndo?.(); return ok ? {ok:true} : {ok:false, error:'Není žádný krok zpět.'}; },
@@ -21224,8 +21332,31 @@ function pzColorFromName(v){
     return null;
   }
   // Vložený prvek musí být v záběru — jinak asistent hlásí ✓ a grafik nic nevidí.
-  // Se zoomem na místo přeletí (a počká), bez něj jen když je bod mimo výřez.
-  async function toolShowPoint(ll, zoom){
+  // Se zoomem na místo přeletí (a počká). Bez něj se kamera hne jen tehdy, když bod
+  // leží mimo exportní rámeček, nebo když je obec/ulice na mapě celé ČR jen tečka
+  // vedle Prahy (place = výsledek geokodéru, podle typu minimální přiblížení).
+  // Při posunu se rámuje celá scéna + nový bod, ať dřívější šipky nevyjedou z obrazu.
+  function toolMinZoomFor(place){
+    const k = String(place?.addresstype || place?.type || '').toLowerCase();
+    if(/^(city)$/.test(k)) return 9;
+    if(/town|village|hamlet|suburb|municipality|neighbourhood|neighborhood|quarter/.test(k)) return 10;
+    if(/road|street|residential|house|building|square|pedestrian/.test(k)) return 13;
+    return null;
+  }
+  function toolScenePoints(){
+    const pts = [];
+    const add = c => { if(Array.isArray(c) && isFinite(c[0]) && isFinite(c[1])) pts.push([+c[0], +c[1]]); };
+    (state.sceneIcons || []).forEach(x => add(x.lngLat));
+    (state.mapLabels || []).forEach(x => add(x.lngLat));
+    (state.sceneArrows || []).forEach(x => { add(x.tail); add(x.head); });
+    (state.sceneDistances || []).forEach(x => { add(x.a); add(x.b); });
+    (state.pzFlags || []).forEach(x => add(x.lngLat));
+    (state.scenePerimeters || []).forEach(x => { const c = x.lngLat, r = +x.radiusMeters || 0; if(!Array.isArray(c)) return;
+      const dLat = r / 111320, dLng = r / (111320 * Math.max(0.1, Math.cos(c[1] * Math.PI / 180))); add([c[0] - dLng, c[1] - dLat]); add([c[0] + dLng, c[1] + dLat]); });
+    const rc = state.routeCoords || []; if(rc.length){ const bb = pzFeaturesBBox([{geometry:{coordinates: rc}}]); if(bb){ add(bb[0]); add(bb[1]); } }
+    return pts;
+  }
+  async function toolShowPoint(ll, zoom, place){
     const m = state.map; if(!m) return;
     const moved = () => new Promise(res => { let d = false; const fin = () => { if(!d){ d = true; res(); } }; m.once('moveend', fin); setTimeout(fin, 2500); });
     const fp = getFitPadding();
@@ -21237,11 +21368,25 @@ function pzColorFromName(v){
       return moved();
     };
     try{
-      if(zoom != null && isFinite(Number(zoom))) return await fly(Math.max(2, Math.min(18, Number(zoom))));
+      if(zoom != null && toolNum(zoom) != null) return await fly(Math.max(2, Math.min(18, toolNum(zoom))));
       if(m.isMoving()) await moved();
-      const p = m.project([ll.lng, ll.lat]), c = m.getContainer();
-      const inside = p.x > fp.left && p.x < c.clientWidth - fp.right && p.y > fp.top && p.y < c.clientHeight - fp.bottom;
-      if(!inside) await fly(Math.max(5, Math.min(14, m.getZoom())));
+      const cz = m.getZoom(), minZ = toolMinZoomFor(place);
+      const needZoom = minZ != null && cz < minZ;
+      // Je bod v exportním rámečku (s rezervou pár px)? Bez rámečku celé plátno bez panelů.
+      const p = m.project([ll.lng, ll.lat]), c = m.getContainer(), mr = c.getBoundingClientRect(), fr = $('exportFrame');
+      const frameOn = $('showExportFrame')?.checked && fr && !fr.classList.contains('hidden') && fr.getBoundingClientRect().width > 0;
+      const r = frameOn ? (b => ({l:b.left - mr.left, t:b.top - mr.top, r:b.right - mr.left, b:b.bottom - mr.top}))(fr.getBoundingClientRect())
+                        : {l:fp.left, t:fp.top, r:c.clientWidth - fp.right, b:c.clientHeight - fp.bottom};
+      const M = 8, inside = p.x > r.l + M && p.x < r.r - M && p.y > r.t + M && p.y < r.b - M;
+      if(inside && !needZoom) return;
+      const target = needZoom ? minZ : Math.max(5, Math.min(14, cz));
+      const pts = toolScenePoints(), bb = pts.length ? pzFeaturesBBox([{geometry:{coordinates: [...pts, [ll.lng, ll.lat]]}}]) : null;
+      // Scéna zatím prázdná (nebo jen v jednom bodě): přelet na bod.
+      if(!bb || (Math.abs(bb[1][0] - bb[0][0]) < 1e-4 && Math.abs(bb[1][1] - bb[0][1]) < 1e-4)) return await fly(target);
+      state.screenPan = {x:0, y:0};
+      // Celá scéna + nový bod; přiblížit nejvýš na úroveň místa (nebo současnou), ne do ulic.
+      m.fitBounds(bb, {padding: fp, maxZoom: Math.max(target, Math.min(14, cz)), duration: 900});
+      await moved();
     }catch(e){}
   }
   // Výřezy, které se hledají pořád dokola — bez geokódování, tedy hned a bez sítě.
@@ -21264,6 +21409,18 @@ function pzColorFromName(v){
     bg:'bg', bulharsky:'bg', bulharstina:'bg', bulharstinu:'bg', bulgarian:'bg', hr:'hr', chorvatsky:'hr', chorvatstina:'hr', chorvatstinu:'hr', croatian:'hr',
     ro:'ro', rumunsky:'ro', rumunstina:'ro', rumunstinu:'ro', romanian:'ro', en:'en', anglicky:'en', anglictina:'en', anglictinu:'en', english:'en'};
   const toolKey = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  // Ano/ne od modelu: d\u0159\u00edv !!'false' === true a \u201evypni gl\u00f3bus" ho zapnul. null = nerozpozn\u00e1no.
+  const toolBool = v => {
+    if(typeof v === 'boolean') return v;
+    if(typeof v === 'number') return v === 0 ? false : v === 1 ? true : null;
+    const k = toolKey(v);
+    if(/^(true|ano|zapnout|zapni|zapnuto|zap|on|yes|1)$/.test(k)) return true;
+    if(/^(false|ne|vypnout|vypni|vypnuto|vyp|off|no|0)$/.test(k)) return false;
+    return null;
+  };
+  // \u010c\u00edslo od modelu: \u201e12 s", \u201e30 km", \u201e2,5" \u2192 12 / 30 / 2.5; jin\u00fd text \u2192 null.
+  const toolNum = v => { if(typeof v === 'number') return isFinite(v) ? v : null; const n = parseFloat(String(v ?? '').replace(',', '.')); return isFinite(n) ? n : null; };
+  const toolBareNumber = v => typeof v === 'number' || /^\s*-?\d+(?:[.,]\d+)?\s*$/.test(String(v));
 
   Object.assign(window.TNMAP, {
     // Barvy vestavěného vozidla na trase. Jen nastaví ovládací prvky a ohlásí změnu —
@@ -21334,6 +21491,8 @@ function pzColorFromName(v){
       const alias = {auto:'car', kamion:'truck', nakladni:'lorry', 'nákladní':'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', 'loď':'boat', hasici:'fire', 'hasiči':'fire', policie:'police', sanitka:'ambulance', letadlo:'plane'};
       const t = ANIM_SYSTEM_ICONS[k] ? k : alias[k];
       if(!t || !ANIM_SYSTEM_ICONS[t]) return {ok:false, error:'Vozidlo „' + type + '" neznám. Mám: ' + Object.keys(ANIM_SYSTEM_ICONS).join(', ') + '.'};
+      // Barvu ověřit před jakoukoli změnou — chyba nesmí nechat přepnutý typ a cedulku.
+      if(color != null && !pzColorFromName(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
       setAnimSystemIcon(t, {silent:true});
       if(label != null && $('pzMainVehLabel')){ $('pzMainVehLabel').value = String(label).slice(0, 40); }
       if(color != null){ const r = window.TNMAP.setVehicleColors({body: color}); if(r.ok === false) return r; }
@@ -21377,6 +21536,9 @@ function pzColorFromName(v){
       if(!sel && !bodyEl && !accEl) return {ok:false, error:'Barvy vozidla nejsou dostupné.'};
       const fire = el => el.dispatchEvent(new Event('change', {bubbles:true}));
       const res = {ok:true};
+      // Nejdřív ověřit všechno, pak měnit — jinak chyba v barvě nechala půl změn provedených.
+      for(const v of [body, accent]) if(v != null && !pzColorFromName(v)) return {ok:false, error:'Barvu „' + v + '" neznám.'};
+      if(shadow != null && toolBool(shadow) == null) return {ok:false, error:'shadow musí být true/false (ano/ne), ne „' + shadow + '".'};
       if(preset != null && sel){
         const k = toolKey(preset);
         const opts = [...sel.options];
@@ -21391,7 +21553,7 @@ function pzColorFromName(v){
         if(!hex) return {ok:false, error:'Barvu „' + v + '" neznám.'};
         el.value = hex; fire(el); res[key] = hex;
       }
-      if(shadow != null && $('pzVehicleShadow')){ const cb = $('pzVehicleShadow'); if(!!cb.checked !== !!shadow){ cb.checked = !!shadow; fire(cb); } res.shadow = !!shadow; }
+      if(shadow != null && $('pzVehicleShadow')){ const cb = $('pzVehicleShadow'), want = toolBool(shadow); if(!!cb.checked !== want){ cb.checked = want; fire(cb); } res.shadow = want; }
       if(Object.keys(res).length === 1) return {ok:false, error:'Zadej preset (light, dark, blue), body (karoserie), accent nebo shadow.'};
       if($('pzVehiclePalette')?.hidden) res.note = 'Vyber nejdřív vozidlo v záložce Trasa, sekce Ikona objektu.';
       return res;
@@ -21415,7 +21577,9 @@ function pzColorFromName(v){
     setUiTheme({mode} = {}){
       const cur = document.documentElement.dataset.ui === 'light' ? 'light' : 'dark';
       const k = toolKey(mode);
-      const want = /svetl|light/.test(k) ? 'light' : /tmav|dark/.test(k) ? 'dark' : (cur === 'light' ? 'dark' : 'light');
+      // Přepnout jen na výslovné „toggle/přepni" — „modrý" dřív motiv tiše přepnul.
+      const want = /svetl|light/.test(k) ? 'light' : /tmav|dark/.test(k) ? 'dark' : /^(toggle|prepni|prepnout|zmen|opacny)$/.test(k) ? (cur === 'light' ? 'dark' : 'light') : null;
+      if(!want) return {ok:false, error:'Vzhled aplikace „' + (mode ?? '') + '" neznám. Mám: light (světlý), dark (tmavý), toggle (přepnout).'};
       try{ pzSetUiTheme(want); }catch(e){ return {ok:false, error:String(e)}; }
       return {ok:true, mode:want};
     },
@@ -21483,7 +21647,7 @@ function pzColorFromName(v){
     selectObjects({action = 'all'} = {}){
       const a = toolKey(action);
       if(a === 'all'){
-        if(!pzMultiSelectAll()) return {ok:false, error:'Na mapě není žádná ikonka ani popisek.'};
+        if(!pzMultiSelectAll()) return {ok:false, error:'Ve scéně není žádný objekt (popisek, ikonka, šipka, perimetr, vzdálenost).'};
         return {ok:true, selected: state.multiSel.size};
       }
       if(a === 'none'){ pzMultiClear(); try{ clearSceneIconSelection(); clearMapLabelSelection(); }catch(e){} return {ok:true, selected:0}; }
