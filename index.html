@@ -310,6 +310,11 @@ input[type=color]:hover{border-color:var(--accent)}
 .endpoint-shape.active .t-icon svg *[fill]:not([fill="none"]){fill:#fff}
 .endpoint-shape .t-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .route-dot.dot-wp{background:var(--yellow);width:22px;height:22px;font-size:10px;border-width:1.5px}
+/* náhled z hledání: dutý kroužek s nožkou nad místem, jiný než ikonky scény */
+.place-search-pin{width:20px;height:30px;cursor:pointer;position:relative}
+.place-search-pin::before{content:"";position:absolute;left:0;top:0;width:20px;height:20px;box-sizing:border-box;border-radius:50%;border:4px solid #e63946;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.35)}
+.place-search-pin::after{content:"";position:absolute;left:9px;top:20px;width:2px;height:10px;background:#e63946;box-shadow:0 0 0 1px #fff}
+.status-bar .place-search-add{margin-left:10px;padding:3px 10px;vertical-align:middle}
 
 .maplibregl-marker.animated-marker,.maplibregl-marker:has(> .animated-marker){z-index:4}
 /* bod A a B nad vozidlem: vozidlo pod bodem vyjíždí / zajíždí („do tunelu“) */
@@ -989,8 +994,8 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div class="nav-suggest" id="startInputSuggest" role="listbox"></div>
           </div>
           <div class="nav-mid">
-            <button type="button" class="nav-mini nav-swap" id="swapRouteBtn" title="Prohodit start a cíl" aria-label="Prohodit start a cíl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4v15M8 19l-3.5-3.5M8 19l3.5-3.5M16 20V5M16 5l-3.5 3.5M16 5l3.5 3.5"/></svg></button>
-            <button type="button" class="nav-mini" id="addWaypointBtn" title="Klikni do mapy na místo zastávky (nebo Ctrl + klik)" data-i18n="+ Zastávka">+ Zastávka</button>
+            <button type="button" class="nav-mini nav-swap" id="swapRouteBtn" tabindex="-1" title="Prohodit start a cíl" aria-label="Prohodit start a cíl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4v15M8 19l-3.5-3.5M8 19l3.5-3.5M16 20V5M16 5l-3.5 3.5M16 5l3.5 3.5"/></svg></button>
+            <button type="button" class="nav-mini" id="addWaypointBtn" tabindex="-1" title="Klikni do mapy na místo zastávky (nebo Ctrl + klik)" data-i18n="+ Zastávka">+ Zastávka</button>
             <button type="button" class="nav-mini nav-mini-danger" id="clearFlightWaypointsBtn" data-i18n="Smazat body" hidden>Smazat body</button>
           </div>
           <!-- zastávky i body vlastní trasy: jeden seznam přímo mezi A a B (dřív dvě sekce níž) -->
@@ -11943,16 +11948,34 @@ function normalizePlaceLabel(item){
   return String(item?.display_name || item?.name || '').replace(/\s*,\s*/g, ', ').trim();
 }
 
+// Krátký název do polí A/B a do odpovědi asistentovi: „Pardubice", ne celá adresa
+// z geokodéru; u bodu v obci (ulice, podnik) i obec.
+function shortPlaceLabel(item){
+  const full = normalizePlaceLabel(item);
+  if(parseLatLng(full)) return full;   // souřadnice nechat celé
+  const parts = full.split(', ').filter(Boolean);
+  const name = parts[0] || item?.name || '';
+  if(!name) return '';
+  const a = item?.address || {}, town = a.city || a.town || a.village || a.municipality || '';
+  const big = /^(city|town|village|hamlet|municipality|country|state|county|region|province|suburb|city_district|borough)$/.test(String(item?.addresstype || ''));
+  if(/^\d/.test(name) && parts[1]) return parts[1] + (town && town !== parts[1] ? ', ' + town : '');
+  return (!big && town && town !== name) ? name + ', ' + town : name;
+}
+
 function placePointFromItem(item){
   return [parseFloat(item.lon), parseFloat(item.lat)];
 }
 
+// Druh místa česky (OSM typy „city · place" grafikovi nic neřeknou); neznámé vynechat.
+const PLACE_TYPE_LABEL = {city:'město', town:'město', village:'obec', hamlet:'osada', municipality:'obec', suburb:'čtvrť', quarter:'čtvrť',
+  neighbourhood:'čtvrť', borough:'městská část', city_district:'městská část', county:'okres', state:'kraj', region:'kraj', province:'kraj',
+  country:'stát', road:'silnice', street:'ulice', railway:'nádraží', station:'nádraží', halt:'zastávka', tram_stop:'zastávka',
+  bus_stop:'zastávka', aerodrome:'letiště', airport:'letiště', administrative:'správní celek', river:'řeka', peak:'vrchol', island:'ostrov'};
 function getPlaceResultMeta(item){
   const parts = [];
-  const type = item?.addresstype || item?.type || '';
-  const cls = item?.class || '';
-  if(type) parts.push(type);
-  if(cls && cls !== type) parts.push(cls);
+  const key = [item?.addresstype, item?.type, item?.class].map(k => String(k || '').toLowerCase()).find(k => PLACE_TYPE_LABEL[k]);
+  if(key) parts.push(t(PLACE_TYPE_LABEL[key]));
+  if(item?.address?.country) parts.push(item.address.country);
   return parts.join(' · ');
 }
 
@@ -12015,18 +12038,37 @@ async function searchPlaces(query, limit=8){
     const res = await fetch(url.toString(), Object.assign({}, getNominatimFetchOptions(), {signal: fetchTimeoutSignal(10000)}));
     if(res.ok) data = await res.json();
   }catch(e){}
-  if(Array.isArray(data) && data.length) return data;
+  if(Array.isArray(data) && data.length){
+    // Překlep („brmo") Nominatim najde jako málo známé místo na druhém konci světa
+    // (Bermo, Indie). Daleko od výřezu a bez významu → zeptat se Photonu, který
+    // snese překlep a upřednostní okolí výřezu; blízké výsledky dát dopředu.
+    const ref = placeSearchRefPoint(), first = data[0];
+    if(ref && haversineKm(ref, placePointFromItem(first)) > 1500 && !(+first.importance >= 0.45)){
+      try{
+        const near = (await searchPlacesPhoton(q, limit, ref)).filter(it => haversineKm(ref, placePointFromItem(it)) <= 1500);
+        if(near.length) return near.concat(data).slice(0, Math.max(1, limit));
+      }catch(e){}
+    }
+    return data;
+  }
   try{
-    const alt = await searchPlacesPhoton(q, limit);
+    const alt = await searchPlacesPhoton(q, limit, placeSearchRefPoint());
     if(alt.length) return alt;
   }catch(e){}
   if(Array.isArray(data)) return data;
   throw new Error('Geocoding failed');
 }
-async function searchPlacesPhoton(q, limit=8){
+// Bod, kolem kterého hledání míst upřednostní výsledky: střed výřezu (na celé
+// zeměkouli střed Česka).
+function placeSearchRefPoint(){
+  try{ const m = state.map; if(m && m.getZoom() >= 3){ const c = m.getCenter(); return [c.lng, c.lat]; } }catch(e){}
+  return [15.5, 49.8];
+}
+async function searchPlacesPhoton(q, limit=8, near=null){
   const u = new URL('https://photon.komoot.io/api/');
   u.searchParams.set('q', q);
   u.searchParams.set('limit', String(Math.max(1, Math.min(10, limit))));
+  if(near){ u.searchParams.set('lat', near[1].toFixed(3)); u.searchParams.set('lon', near[0].toFixed(3)); }
   const res = await fetch(u.toString(), {signal: fetchTimeoutSignal(8000)});
   if(!res.ok) return [];
   const gj = await res.json();
@@ -12130,10 +12172,30 @@ function focusPlaceResult(item){
     state.map.flyTo({center:point, zoom:getPlaceZoom(item), duration:900});
   }
   clearPlaceSearchMarker();
-  state.placeSearchMarker = new maplibregl.Marker({color:'#e63946'}).setLngLat(point).addTo(state.map);
+  // Náhled hledání: dutý kroužek NAD místem (název obce pod ním zůstane čitelný),
+  // jinak vypadal jako ikonka „Místo" a grafik čekal, že bude v exportu.
+  const pin = document.createElement('div');
+  pin.className = 'place-search-pin';
+  pin.title = t('Jen náhled hledání — do exportu se nedostane. Klikni pro vložení ikonky.');
+  pin.addEventListener('click', ev => { ev.stopPropagation(); addIconAtPlaceSearch(point); });
+  state.placeSearchMarker = new maplibregl.Marker({element: pin, anchor: 'bottom'}).setLngLat(point).addTo(state.map);
   if($('placeSearchInput')) $('placeSearchInput').value = normalizePlaceLabel(item) || $('placeSearchInput').value;
   clearPlaceSearchResults();   // seznam jinak zůstal viset přes záložky
   setStatus(t('Místo nalezeno.'));
+  try{
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn btn-sm place-search-add'; b.textContent = t('Přidat ikonku sem');
+    b.addEventListener('click', () => addIconAtPlaceSearch(point));
+    statusEl.appendChild(b);
+  }catch(e){}
+}
+// Z náhledu hledání skutečná ikonka scény (ta jde do exportu).
+function addIconAtPlaceSearch(point){
+  try{ window.__pzPushUndo?.(); }catch(e){}
+  const item = createSceneIconAt(point, {data: state.sceneIconData || pzIconDataUrl('pin'), silent:true});
+  if(!item) return;
+  clearPlaceSearchMarker();
+  setStatus(t('Ikonka vložena na nalezené místo. Tahem ji posuneš.'));
 }
 
 async function performPlaceSearch({focusFirst=false, keepList=true} = {}){
@@ -12200,12 +12262,15 @@ function closeNavSuggest(id){
   box.dataset.open = '0';
   box.innerHTML = '';
   const st = _navSuggestState[id];
-  if(st){ st.items = []; st.activeIdx = -1; }
+  // i čekající dotaz zrušit — jinak doběhl po „Najít trasu" a seznam se otevřel přes dopravu
+  if(st){ st.items = []; st.activeIdx = -1; clearTimeout(st.debounce); st.token++; }
 }
 
 function renderNavSuggest(id, items){
   const box = _navSuggestBox(id);
   if(!box) return;
+  // seznam jen pod polem, ve kterém grafik právě píše (ne po odchodu z pole)
+  if(document.activeElement !== document.getElementById(id)){ closeNavSuggest(id); return; }
   const st = _navSuggestState[id];
   st.items = items || [];
   st.activeIdx = items && items.length ? 0 : -1;
@@ -12258,8 +12323,8 @@ async function queueNavSuggest(id){
   if(!input) return;
   const st = _navSuggestState[id];
   const query = (input.value || '').trim();
-  clearTimeout(st.debounce);
   if(query.length < 2){ closeNavSuggest(id); return; }
+  clearTimeout(st.debounce);
   const token = ++st.token;
   st.debounce = setTimeout(async () => {
     try {
@@ -12282,7 +12347,7 @@ function pickNavSuggest(id, idx){
   if(!isFinite(lon) || !isFinite(lat)) return;
   try{ window.__pzPushUndo?.(); }catch(e){}   // výběr místa (a hned nalezená trasa) = jeden krok zpět
   const lngLat = [lon, lat];
-  const label = (typeof normalizePlaceLabel === 'function' ? normalizePlaceLabel(item) : '') || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+  const label = shortPlaceLabel(item) || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
   const input = document.getElementById(id);
   if(input){ input.value = label; input.blur(); }   // pole vyřízené: Ctrl+Z pak vrací krok appky, ne psaní v poli
   const pointType = (id === 'startInput') ? 'A' : 'B';
@@ -12291,6 +12356,9 @@ function pickNavSuggest(id, idx){
   restorePointMarkers();
   closeNavSuggest(id);
   if(state.pointA && state.pointB){ findRoute(); return; }   // trasa se pak zarámuje sama
+  // druhé pole už je vyplněné (jen nevybrané z našeptávače) → hledat hned
+  const other = document.getElementById(pointType === 'A' ? 'endInput' : 'startInput');
+  if(state.currentTransportMode !== 'planeCustom' && (other?.value || '').trim()){ findRoute(); return; }
   try {
     state.screenPan = {x:0, y:0};
     const bounds = (typeof getBoundsFromPlaceItem === 'function') ? getBoundsFromPlaceItem(item) : null;
@@ -12542,6 +12610,48 @@ async function pzLoadLines(){
 }
 const pzLineKey = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/^(linka|tramvaj|tram|bus|autobus|metro|vlak|trolejbus)\s+/, '').replace(/\s+/g, '').trim();
 function pzFindLine(lines, v){ const k = pzLineKey(v); return lines.filter(l => pzLineKey(l.n) === k); }
+// Zastávka podle jména i ve skloňovaném tvaru („Národního divadla", „od Anděla"):
+// shoda po normalizaci, bez teček a mezer („IP Pavlova"), pak podle kmenů slov (~5 znaků).
+const pzStopNorm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.,]/g, ' ').replace(/\s+/g, ' ').trim();
+function pzMatchStopName(names, v){
+  const q = pzStopNorm(String(v || '').split(',')[0]); if(!q) return null;
+  const list = [...new Set(names)], N = list.map(pzStopNorm);
+  let i = N.indexOf(q); if(i >= 0) return list[i];
+  i = N.findIndex(n => n.replace(/ /g, '') === q.replace(/ /g, '')); if(i >= 0) return list[i];
+  const stem = w => w.slice(0, Math.max(3, Math.min(5, w.length - 1)));
+  const qs = q.replace(/^((z|ze|od|do|na|k|ke|u|v|ve)\s+)?((zastavk[ay]|stanic[ei]|metr[oa]|tramvaj[ei]?)\s+)?/, '').split(' ').filter(Boolean).map(stem);
+  if(!qs.length) return null;
+  let best = -1, bestScore = Infinity;
+  N.forEach((n, k) => {
+    const ws = n.split(' ');
+    if(!qs.every((s, j) => ws[j] && ws[j].startsWith(s))) return;
+    const score = (ws.length === qs.length ? 0 : 1000) + n.length;
+    if(score < bestScore){ bestScore = score; best = k; }
+  });
+  return best >= 0 ? list[best] : null;
+}
+// Podobné zastávky (stejný začátek slova) — nabídka, když jméno nesedí.
+function pzSimilarStops(names, v, n = 6){
+  const q = pzStopNorm(v).slice(0, 3);
+  return [...new Set(names)].filter(s => q && pzStopNorm(s).split(' ').some(w => w.startsWith(q))).slice(0, n);
+}
+// Tramvajová zastávka PID podle jména → {name, p:[lon, lat]} (jinak null).
+async function pzTramStopByName(v){
+  if(!v || parseLatLng(String(v))) return null;
+  let lines; try{ lines = await pzLoadLines(); }catch(e){ return null; }
+  const stops = lines.filter(l => l.t === 'tram').flatMap(l => l.stops);
+  const name = pzMatchStopName(stops.map(s => s.name), v);
+  return name ? stops.find(s => s.name === name) : null;
+}
+// Stanice metra podle jména („IP Pavlova", „Mustek", „z Hájů"); null = nenalezeno.
+function pzMetroStationByName(v){
+  if(!v || parseLatLng(String(v))) return null;
+  const g = pzMetroNet(), raw = String(v).replace(/^(stanice\s+)?metr[oa]\s+/i, '');
+  const name = pzMatchStopName(g.stations.map(s => s.name), raw);
+  if(name) return g.stations.find(s => s.name === name);
+  const st = pzPickMetroStation(g, [0, 0], raw);
+  return st && haversineKm([0, 0], [st.lon, st.lat]) > 100 ? st : null;
+}
 // poloha bodu na trase (km od začátku), hledá se jen od „minKm" dál
 function pzAlongKm(coords, p, minKm = 0){
   let best = {d: Infinity, km: 0}, acc = 0;
@@ -13066,8 +13176,13 @@ async function getPointFromInputOrState(inputId, currentPoint){
     // Metro: název stanice („Háje", „metro Anděl") bez hledání míst — to by „Háje"
     // našlo u Příbrami.
     if(state.currentTransportMode === 'metro'){
-      const st = pzPickMetroStation(pzMetroNet(), [0, 0], raw);
-      if(st && st.name && haversineKm([0, 0], [st.lon, st.lat]) > 100) return {point: [st.lon, st.lat], label: st.name};
+      const st = pzMetroStationByName(raw);
+      if(st && st.name) return {point: [st.lon, st.lat], label: st.name};
+    }
+    // Tramvaj: zastávka podle jména („Anděla" by hledání míst našlo v Indii)
+    if(state.currentTransportMode === 'tram'){
+      const st = await pzTramStopByName(raw);
+      if(st) return {point: st.p.slice(), label: st.name};
     }
     let item;
     try{ item = await geocode(raw); }
@@ -13075,7 +13190,7 @@ async function getPointFromInputOrState(inputId, currentPoint){
       // „nenašel jsem" a „služba neodpovídá" chtějí od grafika jiný další krok
       const err = routeErr(/Nenalezeno/.test(String(e?.message)) ? 'geo' : 'geoDown'); err.query = raw; throw err;
     }
-    return {point: placePointFromItem(item), label: normalizePlaceLabel(item) || raw, item};
+    return {point: placePointFromItem(item), label: shortPlaceLabel(item) || raw, item};
   }
   throw routeErr(inputId === 'startInput' ? 'noA' : 'noB');
 }
@@ -13146,6 +13261,7 @@ function routeErrorText(e){
   if(code === 'noB') return t('Zadej cíl — napiš místo nebo klikni do mapy.');
   if(code === 'geo') return t('Místo „{0}“ nenalezeno. Zkus jiný název nebo klikni do mapy.', e.query || '');
   if(code === 'geoDown') return t('Hledání míst neodpovídá. Zkus to znovu nebo klikni do mapy.');
+  if(code === 'same') return t('Start i cíl jsou na stejném místě. Zadej jiný cíl.');
   if(code === 'busy') return t('Směrovací služba je přetížená. Zkus to za chvíli znovu.');
   if(code === 'down' || code === 'http') return t('Směrovací služba neodpovídá. Zkus to za chvíli znovu.');
   if(mode === 'metro'){
@@ -13176,18 +13292,39 @@ async function findRoute(){
   state.addingFlightPoint = false;
   setRouteBusy(true);
   setStatus(t('Hledám trasu…'));
+  // Body přichycené minule ke kolejím/nádraží (vlak, metro, tramvaj, loď) patří
+  // jen té dopravě — silnice a let jedou z bodů, které zadal grafik.
+  {
+    const sn = state._pzSnap, same = (p, q) => p && q && Math.abs(p[0] - q[0]) < 1e-9 && Math.abs(p[1] - q[1]) < 1e-9;
+    if(sn && !['train', 'boat', 'metro', 'tram'].includes(state.currentTransportMode)){
+      if(same(state.pointA, sn.A)) state.pointA = sn.userA;
+      if(same(state.pointB, sn.B)) state.pointB = sn.userB;
+    }
+    state._pzSnap = null;
+  }
+  state._pzRouteWarn = null;
   try{
     const aInfo = await getPointFromInputOrState('startInput', state.pointA);
     if(stale()) return;
     const bInfo = await getPointFromInputOrState('endInput', state.pointB);
     if(stale()) return;
-    const a = aInfo.point;
-    const b = bInfo.point;
+    let a = aInfo.point;
+    let b = bInfo.point;
     const mode = state.currentTransportMode;
+    if(mode === 'tram'){
+      // bod z hledání míst („Anděla" → Indie) nahradit tramvajovou zastávkou téhož jména
+      for(const [info, isA] of [[aInfo, true], [bInfo, false]]){
+        const st = await pzTramStopByName(info.label);
+        if(stale()) return;
+        if(st && haversineKm(st.p, isA ? a : b) > 2){ if(isA) a = st.p.slice(); else b = st.p.slice(); info.label = st.name; }
+      }
+    }
     state.pointA = a; state.pointB = b; state.clickPhase = 'done';
     $('startInput').value = aInfo.label || `${a[1].toFixed(5)}, ${a[0].toFixed(5)}`;
     $('endInput').value = bInfo.label || `${b[1].toFixed(5)}, ${b[0].toFixed(5)}`;
     restorePointMarkers();
+    // stejné místo (A i B „Jihlava") — trasa by měla 0 km a hláška by tvrdila „nalezena"
+    if(haversineKm(a, b) < 0.05 && !(state.manualViaPoints || []).length) throw routeErr('same');
     let ra = a, rb = b, stA = null, stB = null;
     if(mode === 'train'){
       try{
@@ -13221,12 +13358,25 @@ async function findRoute(){
     }
     state.routeCoords = coords;
     state.routeDurationSec = _routeDurationSec;
-    if(stA || stB) state.pzTrainStations = [stA?.name || null, stB?.name || null]; else state.pzTrainStations = null;
+    // bez stanice (cíl v zahraničí) jméno z pole, ne „null"
+    const shortLbl = v => String(v || '').split(',')[0].trim() || null;
+    if(stA || stB) state.pzTrainStations = [stA?.name || shortLbl(aInfo.label), stB?.name || shortLbl(bInfo.label)]; else state.pzTrainStations = null;
     if(mode === 'metro' && stA && stB){ $('startInput').value = stA.name; $('endInput').value = stB.name; }
+    let railNote = '';
+    if(mode === 'train' && Math.max(haversineKm(ra, coords[0]), haversineKm(rb, coords[coords.length-1])) > 5)
+      railNote = t('(tratě máme jen v ČR, bod přichycen k nejbližší trati)');
     if(['train', 'boat', 'metro', 'tram'].includes(mode) && state.routeCoords.length > 1){
-      // Body A/B na koleje, ať čára nezačíná uprostřed náměstí.
+      // Body A/B na koleje, ať čára nezačíná uprostřed náměstí. Původní body si
+      // pamatovat — při přepnutí na auto/let se vrátí.
       state.pointA = state.routeCoords[0].slice(); state.pointB = state.routeCoords[state.routeCoords.length-1].slice();
+      state._pzSnap = {A: state.pointA, B: state.pointB, userA: a, userB: b};
       restorePointMarkers();
+    }
+    // Start a cíl přes půl světa po zemi = skoro jistě špatně nalezené místo („brmo" → Indie).
+    const crowKm = haversineKm(a, b);
+    if(!/^plane/.test(mode) && crowKm > 2000){
+      const far = [shortLbl(bInfo.label), bInfo.item?.address?.country].filter(Boolean).join(', ');
+      state._pzRouteWarn = t('Pozor: start a cíl jsou {0} km od sebe{1}. Je to správné místo? Zkus přesnější název.', Math.round(crowKm), far ? ' (' + far + ')' : '');
     }
     redrawRoute();
     fitRoute();
@@ -13259,7 +13409,9 @@ async function findRoute(){
         state._pzAutoRouteColor = lines.length === 1 ? want : null;
       }
     }
+    if(railNote) msg += ' ' + railNote;
     if(!isRoutePreDrawOn() && $('showTrail')?.checked) msg += ' · ' + t('Vykreslí se při přehrání.');
+    if(state._pzRouteWarn){ setStatus(state._pzRouteWarn + ' · ' + msg, 'error'); return; }
     setStatus(msg);
   } catch (e){
     if(stale()) return;
@@ -18035,7 +18187,8 @@ function bindUI(){
       state.addingMapLabel = false;
       state.addingSceneIcon = false;
       state.addingFlightPoint = false;
-      queueNavSuggest(id);
+      // pole s vybraným místem (po nalezení trasy) seznam znovu neotevírá — až po psaní
+      if(!(id === 'startInput' ? state.pointA : state.pointB)) queueNavSuggest(id);
     });
     $(id)?.addEventListener('blur', ()=> setTimeout(()=> closeNavSuggest(id), 180));
     $(id)?.addEventListener('keydown', e => {
@@ -18432,8 +18585,25 @@ function bindUI(){
     removeAnimMarker();
     renderAnimIconPreview();
     updateRouteStyle();
-    // Entering custom-draw mode: start with a clean slate and prompt the user.
+    // Vstup do vlastní trasy: dosavadní body se NEMAŽOU (dřív zmizela celá trasa
+    // bez varování) — A zůstane začátkem, zastávky i cíl se stanou nakreslenými
+    // body a grafik kreslí dál. Hledaná čára se zahodí, spojí se rovně.
     if(state.currentTransportMode === 'planeCustom' && prevMode !== 'planeCustom'){
+      cancelRouteSearch();
+      state._pzSnap = null;
+      if(state.pointA){
+        clearRouteLineOnly();
+        state.routeDurationSec = null; state.pzTrainStations = null; state.pzLineRoute = null;
+        if(state.pointB){
+          state.manualViaPoints.push({lngLat: state.pointB, name: $('endInput')?.value || ''});
+          state.pointB = null;
+          if($('endInput')) $('endInput').value = '';
+        }
+        state.clickPhase = 'B';
+        restorePointMarkers(); refreshManualViaMarkers(); renderWaypointList(); rebuildCustomPreview();
+        setStatus(t('Vlastní trasa: body zůstaly, klikáním přidáš další, pravé tlačítko ji ukončí. Smazat = začít znovu.'));
+        return;
+      }
       clearRoute();
       setStatus(t('Vlastní trasa: klikej body do mapy, pravé tlačítko ji ukončí.'));
       return;
@@ -18623,6 +18793,30 @@ Object.assign(I18N, {
   // .
   // .
   // [i18n:trasa] překlady oblasti „trasa" vkládej pod tento řádek
+  "Start i cíl jsou na stejném místě. Zadej jiný cíl.": {cs:"Start i cíl jsou na stejném místě. Zadej jiný cíl.",sk:"Štart aj cieľ sú na rovnakom mieste. Zadaj iný cieľ.",bg:"Началото и целта са на едно и също място. Въведи друга цел.",hr:"Početak i cilj su na istom mjestu. Unesi drugi cilj.",ro:"Startul și destinația sunt în același loc. Introdu altă destinație.",en:"Start and destination are the same place. Enter a different destination."},
+  "Pozor: start a cíl jsou {0} km od sebe{1}. Je to správné místo? Zkus přesnější název.": {cs:"Pozor: start a cíl jsou {0} km od sebe{1}. Je to správné místo? Zkus přesnější název.",sk:"Pozor: štart a cieľ sú {0} km od seba{1}. Je to správne miesto? Skús presnejší názov.",bg:"Внимание: началото и целта са на {0} км една от друга{1}. Правилното място ли е? Опитай по-точно име.",hr:"Pažnja: početak i cilj su {0} km udaljeni{1}. Je li to pravo mjesto? Pokušaj točniji naziv.",ro:"Atenție: startul și destinația sunt la {0} km distanță{1}. Este locul corect? Încearcă un nume mai precis.",en:"Warning: start and destination are {0} km apart{1}. Is that the right place? Try a more precise name."},
+  "(tratě máme jen v ČR, bod přichycen k nejbližší trati)": {cs:"(tratě máme jen v ČR, bod přichycen k nejbližší trati)",sk:"(trate máme len v ČR, bod prichytený k najbližšej trati)",bg:"(имаме жп линии само в Чехия, точката е прикрепена към най-близката линия)",hr:"(pruge imamo samo u Češkoj, točka je prikvačena na najbližu prugu)",ro:"(avem căi ferate doar în Cehia, punctul a fost atașat la cea mai apropiată linie)",en:"(we only have Czech railways; point snapped to the nearest line)"},
+  "Vlastní trasa: body zůstaly, klikáním přidáš další, pravé tlačítko ji ukončí. Smazat = začít znovu.": {cs:"Vlastní trasa: body zůstaly, klikáním přidáš další, pravé tlačítko ji ukončí. Smazat = začít znovu.",sk:"Vlastná trasa: body zostali, klikaním pridáš ďalšie, pravé tlačidlo ju ukončí. Zmazať = začať znova.",bg:"Собствен маршрут: точките остават, с клик добавяш нови, десният бутон го завършва. Изтрий = отначало.",hr:"Vlastita ruta: točke su ostale, klikom dodaješ nove, desna tipka je završava. Obriši = ispočetka.",ro:"Traseu propriu: punctele au rămas, cu click adaugi altele, clic dreapta îl încheie. Șterge = de la capăt.",en:"Custom route: points kept, click to add more, right-click finishes. Clear = start over."},
+  "Jen náhled hledání — do exportu se nedostane. Klikni pro vložení ikonky.": {cs:"Jen náhled hledání — do exportu se nedostane. Klikni pro vložení ikonky.",sk:"Len náhľad hľadania — do exportu sa nedostane. Klikni pre vloženie ikonky.",bg:"Само преглед на търсенето — не влиза в експорта. Кликни, за да добавиш икона.",hr:"Samo pregled pretrage — ne ulazi u izvoz. Klikni za umetanje ikone.",ro:"Doar previzualizarea căutării — nu apare în export. Click pentru a insera o pictogramă.",en:"Search preview only — not exported. Click to place an icon."},
+  "Přidat ikonku sem": {cs:"Přidat ikonku sem",sk:"Pridať ikonku sem",bg:"Добави икона тук",hr:"Dodaj ikonu ovdje",ro:"Adaugă pictogramă aici",en:"Add icon here"},
+  "Ikonka vložena na nalezené místo. Tahem ji posuneš.": {cs:"Ikonka vložena na nalezené místo. Tahem ji posuneš.",sk:"Ikonka vložená na nájdené miesto. Ťahom ju posunieš.",bg:"Иконата е поставена на намереното място. Премести я с плъзгане.",hr:"Ikona umetnuta na pronađeno mjesto. Povuci je za pomicanje.",ro:"Pictogramă inserată la locul găsit. Trage pentru a o muta.",en:"Icon placed at the found location. Drag to move it."},
+  "město": {cs:"město",sk:"mesto",bg:"град",hr:"grad",ro:"oraș",en:"city"},
+  "obec": {cs:"obec",sk:"obec",bg:"село",hr:"općina",ro:"comună",en:"village"},
+  "osada": {cs:"osada",sk:"osada",bg:"махала",hr:"zaselak",ro:"cătun",en:"hamlet"},
+  "čtvrť": {cs:"čtvrť",sk:"štvrť",bg:"квартал",hr:"četvrt",ro:"cartier",en:"neighbourhood"},
+  "městská část": {cs:"městská část",sk:"mestská časť",bg:"район",hr:"gradska četvrt",ro:"sector",en:"district"},
+  "okres": {cs:"okres",sk:"okres",bg:"околия",hr:"kotar",ro:"district",en:"county"},
+  "kraj": {cs:"kraj",sk:"kraj",bg:"област",hr:"županija",ro:"regiune",en:"region"},
+  "stát": {cs:"stát",sk:"štát",bg:"държава",hr:"država",ro:"țară",en:"country"},
+  "silnice": {cs:"silnice",sk:"cesta",bg:"път",hr:"cesta",ro:"drum",en:"road"},
+  "ulice": {cs:"ulice",sk:"ulica",bg:"улица",hr:"ulica",ro:"stradă",en:"street"},
+  "nádraží": {cs:"nádraží",sk:"stanica",bg:"гара",hr:"kolodvor",ro:"gară",en:"station"},
+  "zastávka": {cs:"zastávka",sk:"zastávka",bg:"спирка",hr:"stanica",ro:"stație",en:"stop"},
+  "letiště": {cs:"letiště",sk:"letisko",bg:"летище",hr:"zračna luka",ro:"aeroport",en:"airport"},
+  "správní celek": {cs:"správní celek",sk:"správny celok",bg:"административна единица",hr:"upravna jedinica",ro:"unitate administrativă",en:"administrative area"},
+  "řeka": {cs:"řeka",sk:"rieka",bg:"река",hr:"rijeka",ro:"râu",en:"river"},
+  "vrchol": {cs:"vrchol",sk:"vrchol",bg:"връх",hr:"vrh",ro:"vârf",en:"peak"},
+  "ostrov": {cs:"ostrov",sk:"ostrov",bg:"остров",hr:"otok",ro:"insulă",en:"island"},
   "+ Zastávka": {cs:"+ Zastávka",sk:"+ Zastávka",bg:"+ Спирка",hr:"+ Stanica",ro:"+ Oprire",en:"+ Stop"},
   "Prohodit start a cíl": {cs:"Prohodit start a cíl",sk:"Vymeniť štart a cieľ",bg:"Размени старт и цел",hr:"Zamijeni start i cilj",ro:"Inversează startul și destinația",en:"Swap start and destination"},
   "Klikni do mapy na místo zastávky (nebo Ctrl + klik)": {cs:"Klikni do mapy na místo zastávky (nebo Ctrl + klik)",sk:"Klikni do mapy na miesto zastávky (alebo Ctrl + klik)",bg:"Кликни в картата на мястото на спирката (или Ctrl + клик)",hr:"Klikni na kartu na mjesto stanice (ili Ctrl + klik)",ro:"Click pe hartă în locul opririi (sau Ctrl + click)",en:"Click the map where the stop should be (or Ctrl + click)"},
@@ -21092,31 +21286,49 @@ function pzColorFromName(v){
     },
     // Trasa podle linky MHD: {line:'22', from:'Bílá Hora', to:'Nádraží Hostivař'} (bez from/to celá linka)
     async routeLine({line, from, to} = {}){
-      const lines = await pzLoadLines(), dirs = pzFindLine(lines, line);
+      if(line == null || !String(line).trim()) return {ok:false, error:'Chybí line (číslo linky).'};
+      let lines; try{ lines = await pzLoadLines(); }catch(e){ return {ok:false, error:'Linky MHD se nepodařilo načíst.'}; }
+      const dirs = pzFindLine(lines, line);
       if(!dirs.length) return {ok:false, error:'Linku „' + line + '“ neznám.'};
+      // Zastávku hledat i ve skloňovaném tvaru; neznámou NEnahrazovat koncovou
+      // (dřív hlásilo ok a kreslilo celou linku) — asistent se má doptat.
+      const names = [...new Set(dirs.flatMap(d => d.stops.map(s => s.name)))];
+      const st = dirs[0].stops;
+      const fromN = from ? pzMatchStopName(names, from) : st[0].name, toN = to ? pzMatchStopName(names, to) : st[st.length - 1].name;
+      const miss = [[from, fromN], [to, toN]].filter(([v, n]) => v && !n).map(([v]) => String(v));
+      if(miss.length){
+        const similar = [...new Set(miss.flatMap(v => pzSimilarStops(names, v)))];
+        return {ok:false, error:'Linka ' + dirs[0].n + ' nemá zastávku „' + miss.join('“ ani „') + '“.' + (similar.length ? ' Podobné: ' + similar.join(', ') + '.' : '') + ' Zeptej se grafika, kterou zastávku myslí.',
+          similar, stops: names};
+      }
       if($('pzLineInput')) $('pzLineInput').value = dirs[0].n;
       pzFillLineStops(dirs);
-      const norm = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const pick = (sel, v, def) => { const o = [...sel.options].find(o => norm(o.value) === norm(v)) || [...sel.options].find(o => norm(o.value).includes(norm(v))); sel.value = v && o ? o.value : def; };
-      const st = dirs[0].stops;
-      pick($('pzLineFrom'), from, st[0].name); pick($('pzLineTo'), to, st[st.length - 1].name);
+      const setSel = (sel, v) => { if(!sel) return; if(![...sel.options].some(o => o.value === v)){ const o = document.createElement('option'); o.value = o.textContent = v; sel.appendChild(o); } sel.value = v; };
+      setSel($('pzLineFrom'), fromN); setSel($('pzLineTo'), toN);
       await pzApplyLine();
       return state.pzLineRoute ? {ok:true, line: state.pzLineRoute.n, type: state.pzLineRoute.t, stops: state.pzLineRoute.stops.length, from: state.pzLineRoute.stops[0], to: state.pzLineRoute.stops[state.pzLineRoute.stops.length - 1]}
-                               : {ok:false, error:($('statusBar')?.textContent || '').trim()};
+                               : {ok:false, error:($('statusBar')?.textContent || '').trim(), stops: names};
     },
     async routeBetween({from, to, mode} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to.'};
       if(mode){ const r = window.TNMAP.setTransportMode({mode}); if(!r.ok) return r; }
       let a, b;
-      // metro: jméno stanice bez hledání míst („Háje" by jinak našlo Háje u Příbrami)
-      const metroSt = v => { if(state.currentTransportMode !== 'metro') return null; const st = pzPickMetroStation(pzMetroNet(), [0, 0], String(v)); return st && haversineKm([0, 0], [st.lon, st.lat]) > 100 ? {lon: st.lon, lat: st.lat, display_name: st.name} : null; };
-      try{ a = metroSt(from) || await geocode(String(from)); }catch(e){ return {ok:false, error:'Start „' + from + '" jsem nenašel.'}; }
-      try{ b = metroSt(to) || await geocode(String(to));   }catch(e){ return {ok:false, error:'Cíl „' + to + '" jsem nenašel.'}; }
+      // metro/tramvaj: jméno stanice/zastávky bez hledání míst („Háje" by jinak našlo
+      // Háje u Příbrami, „Anděla" Indii); i „IP Pavlova", „Mustek", skloňované tvary
+      const stopOf = async v => {
+        const m = state.currentTransportMode;
+        if(m === 'metro'){ const st = pzMetroStationByName(String(v)); return st ? {lon: st.lon, lat: st.lat, display_name: st.name, _short: st.name} : null; }
+        if(m === 'tram'){ const st = await pzTramStopByName(String(v)); return st ? {lon: st.p[0], lat: st.p[1], display_name: st.name, _short: st.name} : null; }
+        return null;
+      };
+      try{ a = await stopOf(from) || await geocode(String(from)); }catch(e){ return {ok:false, error:'Start „' + from + '" jsem nenašel.'}; }
+      try{ b = await stopOf(to) || await geocode(String(to));   }catch(e){ return {ok:false, error:'Cíl „' + to + '" jsem nenašel.'}; }
       // findRoute() trusts state.pointA/B over the input text, so set both.
       state.pointA = [+a.lon, +a.lat];
       state.pointB = [+b.lon, +b.lat];
-      if($('startInput')) $('startInput').value = a.display_name || String(from);
-      if($('endInput'))   $('endInput').value   = b.display_name || String(to);
+      // do polí krátký název („Pardubice"), ne celou adresu z geokodéru
+      if($('startInput')) $('startInput').value = a._short || shortPlaceLabel(a) || String(from);
+      if($('endInput'))   $('endInput').value   = b._short || shortPlaceLabel(b) || String(to);
       try{ await findRoute(); }catch(e){ return {ok:false, error:String(e)}; }
       // findRoute chybu jen ukáže ve stavovém řádku — bez téhle kontroly by asistent
       // hlásil ✓ a na mapě by zůstala PŘEDCHOZÍ trasa.
@@ -21131,13 +21343,15 @@ function pzColorFromName(v){
         else { fitRoute(); }
       }catch(e){ framed = 'none'; }
       // Vzdálenost vracíme rovnou, ať asistent umí odpovědět i na „kolik je to
-      // vzdušnou linkou" — dřív trasu nakreslil, ale číslo neřekl.
+      // vzdušnou linkou" — stejné číslo jako v panelu (let = vzdušná čára, ne oblouk).
       let km = null;
-      try{ const L = lineLength(state.routeCoords); if(isFinite(L)) km = L >= 10 ? Math.round(L) : Math.round(L * 10) / 10; }catch(e){}   // lineLength je v km
-      const res = {ok:true, from:a.display_name, to:b.display_name, mode: state.currentTransportMode, points:n, framed};
+      try{ const L = routeKm(); if(isFinite(L) && L > 0) km = L >= 10 ? Math.round(L) : Math.round(L * 10) / 10; }catch(e){}
+      const res = {ok:true, from: $('startInput')?.value || String(from), to: $('endInput')?.value || String(to), mode: state.currentTransportMode, points:n, framed};
       if(km != null) res.distanceKm = km;
-      if(['train', 'metro'].includes(state.currentTransportMode) && state.pzTrainStations) res.stations = state.pzTrainStations;
+      if(['train', 'metro', 'tram'].includes(state.currentTransportMode) && state.pzTrainStations) res.stations = state.pzTrainStations;
       if(state.currentTransportMode === 'metro' && state.pzMetroLines?.length) res.lines = state.pzMetroLines;
+      // podezřele daleko (překlep → místo na jiném kontinentu): asistent se má zeptat
+      if(state._pzRouteWarn) res.warning = state._pzRouteWarn;
       return res;
     },
     clearRoute(){ try{ clearRoute(); }catch(e){ return {ok:false, error:String(e)}; } return {ok:true}; },

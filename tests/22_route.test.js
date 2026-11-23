@@ -150,6 +150,12 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
   await page.fill('#endInput', 'Brno'); await until(() => document.querySelectorAll('#endInputSuggest .nav-suggest-item').length > 0);
   await page.click('#endInputSuggest .nav-suggest-item'); await routed(); s = await S();
   check(!!s.B && s.rc > 1, 'klik na výsledek našeptávače najde trasu');
+  await page.waitForTimeout(800);
+  check(await page.evaluate(() => document.getElementById('startInputSuggest').dataset.open !== '1' && document.getElementById('endInputSuggest').dataset.open !== '1'), 'po nalezení trasy žádný našeptávač nezůstane otevřený');
+  const same = await page.evaluate(() => window.TNMAP.routeBetween({from:'Jihlava', to:'Jihlava'}));
+  check(!same.ok && /stejném místě/.test(same.error), 'start i cíl na stejném místě: ' + same.error);
+  const back = await page.evaluate(() => window.TNMAP.routeBetween({from:'Praha', to:'Brno'})); await routed();
+  check(back.ok && back.from === 'Praha' && back.to === 'Brno', 'asistent dostane krátké názvy míst: ' + back.from + ' → ' + back.to);
 
   // ---- všech 10 druhů dopravy: tlačítko, stav a mapa si odpovídají ----
   const modes = ['truck','moto','train','boat','foot','cycle','planeDirect','planeArc','driving'];
@@ -169,8 +175,10 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
   check(s.rc > 1 && /Praha/.test(s.a) && /Brno/.test(s.b), 'doprava s rozepsanými poli trasu rovnou najde');
 
   // ---- vlastní kreslená trasa ----
-  await page.click('.transport-btn[data-mode="planeCustom"]'); await page.waitForTimeout(300); await home(); s = await S();
-  check(!s.A && s.rc === 0 && /Vlastní trasa/.test(s.status) && await page.$eval('#addWaypointBtn', e => e.hidden), 'Vlastní: čistý začátek a nápověda ve stavu');
+  await page.click('.transport-btn[data-mode="planeCustom"]'); await page.waitForTimeout(300); s = await S();
+  check(!!s.A && !s.B && s.via === 1 && s.rc === 2 && /body zůstaly/.test(s.status), 'Vlastní z hotové trasy: A zůstane, cíl se stane nakresleným bodem (nic nezmizí): ' + s.status);
+  await page.click('#clearRouteBtn'); await page.waitForTimeout(200); await home(); s = await S();
+  check(!s.A && s.rc === 0 && s.via === 0 && await page.$eval('#addWaypointBtn', e => e.hidden), 'Vlastní: po Smazat čistý začátek');
   await clickMap(14.5, 50.0); await clickMap(15.2, 49.9); await clickMap(15.8, 49.6); await clickMap(16.4, 49.3); s = await S();
   check(!!s.A && !s.B && s.via === 3 && s.wp === 3 && s.rows.length === 3 && s.rc === 4 && s.anim === 4, 'kreslení: start + 3 body, čára roste, seznam odpovídá mapě');
   await undo(); s = await S(); check(s.via === 2 && s.rc === 3 && s.wp === 2, 'krok zpět uprostřed kreslení ubere poslední bod');
