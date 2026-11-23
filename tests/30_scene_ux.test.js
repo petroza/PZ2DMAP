@@ -39,6 +39,23 @@ const {check, done, open, tab} = require('./lib');
   await page.fill('#scenePerimeterRadius', '2,5');
   const per = await page.evaluate(() => { const c = __tnMap.getCenter(); const it = window.__pzFns.createScenePerimeterAt([c.lng, c.lat], {silent: true}); return {r: it.radiusMeters, tag: [...document.querySelectorAll('.scene-perimeter-label')].pop()?.textContent}; });
   check(per.r === 2500 && per.tag === '2,5 km', 'Rádius „2,5“ = 2,5 km, štítek „2,5 km“ ' + JSON.stringify(per));
+  // text štítku napsaný před vložením dostane nový kruh; Enter v Rádiusu bez výběru zahájí vkládání
+  await page.evaluate(() => { window.__pzFns.state.selectedScenePerimeterId = null; });
+  await page.fill('#scenePerimeterLabel', 'EVAKUACE');
+  await page.press('#scenePerimeterRadius', 'Enter');
+  const armedP = await page.evaluate(() => window.__pzFns.state.addingScenePerimeter);
+  await page.mouse.click(map.x + map.width * 0.35, map.y + map.height * 0.55); await page.waitForTimeout(300);
+  const perL = await page.evaluate(() => window.__pzFns.state.scenePerimeters.slice(-1)[0]?.labelText);
+  check(armedP && perL === 'EVAKUACE', `Enter v Rádiusu zahájí vkládání a kruh dostane štítek napsaný předem (${armedP}, ${perL})`);
+  await page.fill('#scenePerimeterLabel', ''); await page.keyboard.press('Escape');
+  // styl pro další popisek nepřebarví právě vložený (jen při úpravě, čip „Upravuješ“)
+  await page.evaluate(() => { const s = document.getElementById('mapLabelSection'); if(s?.classList.contains('collapsed')) s.querySelector('h3').click(); });
+  await page.selectOption('#mapLabelStyle', 'red');
+  await page.fill('#mapLabelText', 'NEHODA'); await page.press('#mapLabelText', 'Enter');
+  await page.mouse.click(map.x + map.width * 0.5, map.y + map.height * 0.7); await page.waitForTimeout(300);
+  await page.selectOption('#mapLabelStyle', 'navy');
+  const stl = await page.evaluate(() => window.__pzFns.state.mapLabels.slice(-1)[0]?.style);
+  check(stl === 'red', 'změna stylu pro další popisek nepřebarví právě vložený (' + stl + ')');
   // výchozí vzhled
   await tab(page, 'styly');
   await page.click('#resetStyleBtn'); await page.waitForTimeout(2500);
