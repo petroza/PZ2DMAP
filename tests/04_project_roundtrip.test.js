@@ -25,6 +25,7 @@ function diff(a, b, p = '', out = []){ if(JSON.stringify(a) === JSON.stringify(b
   await A.page.click('#saveProjectBtn'); await A.page.waitForTimeout(3000);
   const snapA = (store.projects || []).find(x => x.name === 'ZZ test roundtrip')?.snapshot;
   check(!!snapA, 'projekt se uložil');
+  check(Array.isArray(snapA?.view?.frameCenter) && Number.isFinite(snapA?.view?.frameZoom), 'projekt nese výřez exportního rámu (stejná kompozice na jiném monitoru)');
   await A.close();
   const B = await open({store, wait: 6000});
   await B.page.click('#projectPanelBtn'); await B.page.waitForTimeout(500);

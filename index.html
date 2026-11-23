@@ -1741,6 +1741,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sc-row"><kbd>Mezerník</kbd><span data-i18n="sc_play">Přehrát / pauza animace</span></div>
     <div class="sc-row"><kbd>Enter</kbd><span data-i18n="sc_route">Potvrdit Start / Cíl a najít trasu</span></div>
     <div class="sc-row"><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd><span data-i18n="sc_undo">Krok zpět / vpřed</span></div>
+    <div class="sc-row"><kbd>Ctrl+S</kbd><span data-i18n="sc_save">Uložit projekt</span></div>
     <div class="sc-row"><kbd>Backspace</kbd><span data-i18n="sc_last">Smazat poslední zastávku</span></div>
     <div class="sc-row"><kbd>R</kbd><span data-i18n="sc_refresh">Obnovit mapu</span></div>
     <div class="sc-row"><kbd>Esc</kbd><span data-i18n="sc_cancel">Zrušit vkládání a výběr</span></div>
@@ -5028,13 +5029,22 @@ function pzFrameHomeCountry(duration = 750){
 // a odpojí rozdělaný projekt (další Uložit založí nový). Vrátí se krokem zpět.
 function pzClearWholeScene(){
   try{ window.__pzPushUndo?.(); }catch(_e){}
-  window.__pzUndoHoldUntil = Date.now() + 3000;   // smazání + návrat podkladu a presetu = jeden Krok zpět
+  // Smazání + návrat podkladu a presetu = jeden Krok zpět. Příznak drží jen po dobu
+  // programových změn (do konce resetu, případně do načtení podkladu) — dřív 3 s,
+  // takže rychle přidaný popisek splynul s resetem a Ctrl+Z vrátil celou starou scénu.
+  window.__pzUndoHold = true;
+  setTimeout(() => {
+    const rel = () => { window.__pzUndoHold = false; };
+    try{ if(state.map && !state.map.isStyleLoaded()){ state.map.once('style.load', () => setTimeout(rel, 0)); setTimeout(rel, 4000); return; } }catch(_e){}
+    rel();
+  }, 0);
   try{ window.TNMAP?.clearScene({what:'all'}); }catch(_e){}
   try{ state.pzExtraVehicles = []; pzRenderExtraList(); }catch(_e){}
   try{ state.pzLineRoute = null; }catch(_e){}
   try{ if(model3dHasModel()) $('deleteModel3dBtn')?.click(); }catch(_e){}
   try{ state.multiSel?.clear?.(); }catch(_e){}
   try{ if($('projectName')) $('projectName').value = ''; const sel = $('savedProjectSelect'); if(sel){ sel.value = ''; sel.dispatchEvent(new Event('change', {bubbles:true})); } }catch(_e){}
+  state.loadedProjectId = null; state._pzSavedSig = null;
 }
 function pzLogoReset(){
   pzClearWholeScene();
@@ -8193,7 +8203,8 @@ function serializeProjectSnapshot(){
       center: state.map.getCenter().toArray(),
       zoom: state.map.getZoom(),
       pitch: state.map.getPitch(),
-      bearing: state.map.getBearing()
+      bearing: state.map.getBearing(),
+      ...(pzProjectViewFrame() || {})   // výřez rámu: stejná kompozice na každém monitoru
     } : null,
     colors: getCurrentColorSet(),
     ranges: getCurrentStyleRanges(),
@@ -8379,7 +8390,7 @@ function applyBasicProjectSnapshot(snapshot){
   // Obnovené objekty nemají zůstat vybrané (createSceneIconAt nově vloženou ikonku
   // vybírá): po kroku zpět jinak Backspace/Delete smazal neviditelně vybranou ikonku
   // místo posledního bodu trasy.
-  try{ clearSceneIconSelection(); clearScenePerimeterSelection(); clearSceneDistanceSelection(); clearSceneArrowSelection(); }catch(e){}
+  try{ clearSceneIconSelection(); clearScenePerimeterSelection(); clearSceneDistanceSelection(); clearSceneArrowSelection(); clearMapLabelSelection(); }catch(e){}
   state.pzClosures = Array.isArray(snapshot.closures) ? snapshot.closures : [];
   try{ pzRedrawClosures(); }catch(e){}
   // 3D model transform/shadow scalars (the GLB binary isn't stored; if it's still loaded
@@ -8397,24 +8408,62 @@ function applyBasicProjectSnapshot(snapshot){
     }
   }catch(_e){}
   (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null, offset: item.offset}));
+  // Každý popisek si drží vlastní velikost (dřív se všechny srovnaly na poslední).
+  // Posuvník jen ukáže velikost posledního, ať další nový popisek navazuje.
   if(state.mapLabels.length){
     const lastSize = state.mapLabels[state.mapLabels.length - 1].size || state.mapLabelGlobalSize || 28;
-    applyMapLabelSizeToAll(lastSize);
+    state.mapLabelGlobalSize = lastSize;
+    if($('mapLabelSize')) $('mapLabelSize').value = String(lastSize);
   }
+  // Ani popisek po kroku zpět / načtení nesmí zůstat neviditelně vybraný (Delete by ho smazal).
+  try{ clearMapLabelSelection(); }catch(e){}
 
   applyOverlaySnapshot(snapshot.overlays || {});
   updateReadouts();
   applyMapTweaks();
   updateRouteStyle();
 
-  if(snapshot.view && state.map){
-    state.map.jumpTo({
-      center: snapshot.view.center || [15.5,49.8],
-      zoom: Number(snapshot.view.zoom || 7),
-      pitch: Number(snapshot.view.pitch || 0),
-      bearing: Number(snapshot.view.bearing || 0)
-    });
+  if(snapshot.view && state.map) pzApplyProjectView(snapshot.view);
+}
+// Výřez exportního rámu nezávislý na velikosti obrazovky: střed rámu a zoom
+// přepočtený na rám široký 1920 px. Projekt uložený na velkém monitoru tak má
+// v exportu stejnou kompozici i na notebooku (dřív se ukládal jen střed a zoom
+// celé mapy, takže menší okno výřez přiblížilo a posunulo).
+const PZ_FRAME_REF_W = 1920;
+function pzExportFrameGeom(){
+  const fr = $('exportFrame'), mapEl = $('map');
+  if(!fr || !mapEl || fr.classList.contains('hidden')) return null;
+  const r = fr.getBoundingClientRect(), m = mapEl.getBoundingClientRect();
+  if(!(r.width > 20) || !(r.height > 20)) return null;
+  return {x: r.left - m.left + r.width / 2, y: r.top - m.top + r.height / 2, w: r.width};
+}
+function pzProjectViewFrame(){
+  const g = pzExportFrameGeom(), m = state.map;
+  if(!g || !m) return null;
+  try{
+    const c = m.unproject([g.x, g.y]);
+    return {frameCenter: [c.lng, c.lat], frameZoom: m.getZoom() + Math.log2(PZ_FRAME_REF_W / g.w)};
+  }catch(e){ return null; }
+}
+function pzApplyProjectView(view){
+  const m = state.map; if(!m || !view) return;
+  const pitch = Number(view.pitch || 0), bearing = Number(view.bearing || 0);
+  try{ updateExportFrame(); }catch(e){}
+  const g = pzExportFrameGeom();
+  const fc = view.frameCenter;
+  if(g && Array.isArray(fc) && fc.length === 2 && fc.every(Number.isFinite) && Number.isFinite(+view.frameZoom)){
+    const zoom = Math.max(0, Math.min(22, +view.frameZoom - Math.log2(PZ_FRAME_REF_W / g.w)));
+    m.jumpTo({center: fc, zoom, pitch, bearing});
+    // střed rámu nemusí být středem mapy (panel vlevo) — dorovnat posunem
+    for(let i = 0; i < 2; i++){
+      const p = m.project(fc), dx = p.x - g.x, dy = p.y - g.y;
+      if(Math.hypot(dx, dy) < 0.5) break;
+      m.panBy([dx, dy], {duration: 0});
+    }
+    return;
   }
+  // starší projekt: jen střed a zoom celé mapy
+  m.jumpTo({center: view.center || [15.5,49.8], zoom: Number(view.zoom || 7), pitch, bearing});
 }
 
 function applyProjectSnapshot(snapshot, statusMsg){
@@ -8428,6 +8477,7 @@ function applyProjectSnapshot(snapshot, statusMsg){
     window.setTimeout(() => {
       applyBasicProjectSnapshot(snapshot || {});
       try{ pzMarkAdvancedInUse(); }catch(e){}
+      if(state._pzMarkSavedOnApply){ state._pzMarkSavedOnApply = false; setTimeout(pzMarkSceneSaved, 400); }
       setStatus(statusMsg || 'Projekt načten.');
     }, 120);
   };
@@ -8456,13 +8506,21 @@ function snapshotHasContent(snap){
     || (snap.sceneArrows || []).length > 0
     || (snap.mapLabels || []).length > 0
     || Object.keys(snap.overlays?.countryColorMap || {}).length > 0
+    || (snap.closures || []).length > 0
+    || (snap.countryFlags || []).length > 0
+    || (snap.animation?.extraVehicles || []).length > 0
+    || (snap.animation?.camera?.keyframes || []).length > 0
+    || !!snap.model3d
     || !!snap.animation?.camera?.enabled;
 }
 function writeAutosave(){
   try{
     if(!state.map) return;
     const snap = serializeProjectSnapshot();
-    if(!snapshotHasContent(snap)) return;
+    // Prázdná scéna: zálohu smazat, jen když tu předtím obsah byl (grafik vše smazal) —
+    // reload hned po otevření nesmí zahodit ještě nenabídnutou obnovu.
+    if(!snapshotHasContent(snap)){ if(state._autosaveHadContent) clearAutosave(); return; }
+    state._autosaveHadContent = true;
     localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({at: Date.now(), snap}));
   }catch(e){}
 }
@@ -8477,7 +8535,7 @@ function initAutosave(){
   // Obnovení stránky na pokyn Clauda (konektor): scénu vrátit hned, bez dotazu.
   try{
     const r = sessionStorage.getItem('pzReloadSnap');
-    if(r){ sessionStorage.removeItem('pzReloadSnap'); const snap = JSON.parse(r); setTimeout(() => { try{ applyProjectSnapshot(snap); setStatus(t('Rozdělaná práce obnovena.')); }catch(e){} }, 400); return; }
+    if(r){ sessionStorage.removeItem('pzReloadSnap'); const snap = JSON.parse(r); setTimeout(() => { try{ window.__pzPushUndo?.(); applyProjectSnapshot(snap, t('Rozdělaná práce obnovena.')); }catch(e){} }, 400); return; }
   }catch(e){}
   // User opted out of the restore offer — keep recovery data off the screen.
   if(autosaveOfferDisabled()) return;
@@ -8495,8 +8553,8 @@ function initAutosave(){
   $('autosaveRestoreBtn')?.addEventListener('click', () => {
     clearTimeout(hideTimer);
     bar.hidden = true;
-    applyProjectSnapshot(saved.snap);
-    setStatus(t('Rozdělaná práce obnovena.'));
+    try{ window.__pzPushUndo?.(); }catch(e){}
+    applyProjectSnapshot(saved.snap, t('Rozdělaná práce obnovena.'));
   }, {once:true});
   $('autosaveDismissBtn')?.addEventListener('click', () => {
     clearTimeout(hideTimer);
@@ -8669,9 +8727,11 @@ async function loadSharedProjectFromUrl(){
     const res = await fetch(SHARE_API + '?token=' + encodeURIComponent(token));
     const data = await res.json().catch(()=>({}));
     if(!res.ok || !data.ok || !data.snapshot) throw new Error(data.error || ('HTTP ' + res.status));
-    applyProjectSnapshot(data.snapshot);
+    try{ window.__pzPushUndo?.(); }catch(_e){}
+    state.loadedProjectId = null;
+    // hlášku předat do applyProjectSnapshot — jinak ji po chvíli přepsalo „Projekt načten."
+    applyProjectSnapshot(data.snapshot, 'Načteno ze sdíleného odkazu' + (data.name ? ': ' + data.name : '') + '.');
     if(data.name && $('projectName')) $('projectName').value = data.name;
-    setStatus('Načteno ze sdíleného odkazu' + (data.name ? ': ' + data.name : '') + '.');
   }catch(e){
     setStatus('Sdílený odkaz se nepodařilo načíst: ' + (e.message || e), 'error');
   }finally{
@@ -8687,14 +8747,17 @@ function saveCurrentProject(){
   // „uložit jako" (nový projekt) — dřív se vybraný projekt tiše přejmenoval
   // a přepsal. Název, který už má jiný projekt (třeba kolegy), se přepíše jen
   // po potvrzení.
+  // Bez dotazu jde přepsat jen projekt načtený / uložený v této scéně (state.loadedProjectId).
   const selIdx = selectedId ? db.findIndex(item => item.id === selectedId) : -1;
   let existingIdx = (selIdx >= 0 && db[selIdx].name === name) ? selIdx : -1;
   if(existingIdx < 0){
     const sameName = db.findIndex(item => item.name === name);
     if(sameName >= 0){
-      if(!confirm(t('Projekt „{0}" už existuje. Přepsat ho?', name))){ setStatus(t('Uložení zrušeno — zvol jiný název projektu.')); return; }
+      if(db[sameName].id !== state.loadedProjectId && !confirm(t('Projekt „{0}" už existuje. Přepsat ho?', name))){ setStatus(t('Uložení zrušeno — zvol jiný název projektu.')); return; }
       existingIdx = sameName;
     }
+  } else if(db[existingIdx].id !== state.loadedProjectId){
+    if(!confirm(t('Přepsat projekt „{0}" aktuální scénou?', name))){ setStatus(t('Uložení zrušeno — zvol jiný název projektu.')); return; }
   }
   const base = existingIdx >= 0 ? db[existingIdx] : {id:'proj_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6), createdAt:Date.now()};
   const entry = {
@@ -8710,8 +8773,24 @@ function saveCurrentProject(){
   if(!ok){ setStatus(t('Projekt se NEPODAŘILO uložit — úložiště prohlížeče je plné. Smaž staré projekty/zálohy a zkus to znovu.'), 'error'); return; }
   refreshProjectSelect();
   if($('savedProjectSelect')) $('savedProjectSelect').value = entry.id;
+  if($('projectName')) $('projectName').value = name;
+  state.loadedProjectId = entry.id;
+  pzMarkSceneSaved();
   updateProjectThumbPreview(entry);
   setStatus('Projekt uložen.');
+}
+// Otisk scény bez pohledu kamery: poznat neuloženou práci (dotaz před načtením jiného projektu).
+function pzSceneSig(snap){
+  try{
+    const str = JSON.stringify({...(snap || serializeProjectSnapshot()), view: null, __meta: null});
+    let h = 2166136261;
+    for(let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(36) + ':' + str.length;
+  }catch(e){ return ''; }
+}
+function pzMarkSceneSaved(){ state._pzSavedSig = pzSceneSig(); }
+function pzHasUnsavedWork(){
+  try{ const snap = serializeProjectSnapshot(); return snapshotHasContent(snap) && pzSceneSig(snap) !== state._pzSavedSig; }catch(e){ return false; }
 }
 
 function loadSelectedProject(){
@@ -8719,7 +8798,12 @@ function loadSelectedProject(){
   if(!id){ setStatus('Vyber projekt.'); return; }
   const entry = loadProjectDB().map(normalizeProjectEntry).find(item => item.id === id);
   if(!entry){ setStatus('Projekt nenalezen.'); return; }
+  if(pzHasUnsavedWork() && !confirm(t('Zahodit neuloženou práci a načíst projekt „{0}"?', entry.name))){ setStatus(t('Načtení zrušeno.')); return; }
+  // Načtení = jeden krok zpět (a smaže historii Vpřed, ať Ctrl+Y nevloží objekty ze staré scény).
+  try{ window.__pzPushUndo?.(); window.__pzClearRedo?.(); }catch(e){}
   if($('projectName')) $('projectName').value = entry.name;
+  state.loadedProjectId = entry.id;
+  state._pzMarkSavedOnApply = true;
   updateProjectThumbPreview(entry);
   applyProjectSnapshot(entry.snapshot || {});
 }
@@ -18375,6 +18459,19 @@ function bindUI(){
   document.addEventListener('keydown', e => {
     const typing = pzIsTextEntry(e.target);
     const mod = e.ctrlKey || e.metaKey;
+    // Během exportu: Esc = Zrušit, ostatní zkratky scény nic (změnily by renderovanou scénu).
+    if(pzExportRunning()){
+      if(e.key === 'Escape'){ e.preventDefault(); e.stopImmediatePropagation(); $('exportCancelBtn')?.click(); }
+      else if(!typing && (e.key === 'Delete' || e.key === 'Backspace' || (mod && /^[zyvdsa]$/i.test(e.key)))){ e.preventDefault(); e.stopImmediatePropagation(); }
+      return;
+    }
+    // Ctrl+S = Uložit projekt (bez názvu otevře panel Projekt s kurzorem v názvu).
+    if(mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's'){
+      e.preventDefault();
+      if(($('projectName')?.value || '').trim()) saveCurrentProject();
+      else { pzToggleProjectPanel(true); setTimeout(() => $('projectName')?.focus(), 0); setStatus(t('Napiš název projektu a dej Uložit.')); }
+      return;
+    }
     if(e.key === 'Escape'){
       const sp = $('settingsPanel'); if(sp && !sp.hidden){ closeSettings(); return; }
       const sc = $('shortcutsPanel');
@@ -18388,6 +18485,9 @@ function bindUI(){
       if(state.addingMapLabel){ state.addingMapLabel = false; setStatus(t('Přidávání popisků ukončeno.')); }
       if(state.addingFlightPoint){ state.addingFlightPoint = false; setStatus(t('Přidávání bodů letu ukončeno.')); }
       if(state.selectedPresetTokens?.size){ clearPresetTileMultiSelection(); setStatus('Výběr presetů zrušen.'); }
+      // Esc zruší i výběr objektů scény — dřív výběr zůstal a další Delete objekt smazal.
+      try{ clearSceneIconSelection(); clearMapLabelSelection(); clearSceneArrowSelection(); clearScenePerimeterSelection(); clearSceneDistanceSelection(); }catch(err){}
+      if(state.pzFlagSel){ state.pzFlagSel = null; try{ pzFlagsRefresh(); }catch(err){} }
       pzMultiClear();
       return;
     }
@@ -18409,8 +18509,12 @@ function bindUI(){
       }
       // Smazání / vložení / duplikace z klávesnice: snímek pro Ctrl+Z (dřív se
       // smazaná ikonka klávesou Delete už nedala vrátit).
-      const snapKey = e.key === 'Delete' || (e.key === 'Backspace' && getSelectedMapObject())
-        || (mod && ['v','d'].includes(e.key.toLowerCase()));
+      // Jen když klávesa opravdu něco udělá — jinak by prázdný krok smazal historii Vpřed.
+      const hasSel = !!(getSelectedMapObject() || state.multiSel?.size || state.pzFlagSel);
+      const k = e.key.toLowerCase();
+      const snapKey = ((e.key === 'Delete' || e.key === 'Backspace') && hasSel)
+        || (mod && k === 'v' && state.mapObjectClipboard?.items?.length)
+        || (mod && k === 'd' && hasSel);
       if(snapKey) try{ window.__pzPushUndo?.(); }catch(err){}
       if(mod && e.key.toLowerCase() === 'a' && !e.shiftKey && !e.altKey){
         if(pzMultiSelectAll()) e.preventDefault();
@@ -18583,9 +18687,18 @@ function bindUI(){
     const isField = el => el?.matches?.('input[type=number], select');
     pane.addEventListener('focusin', e => { if(isField(e.target)) pzAnimUndoSnap(); });
     pane.addEventListener('pointerdown', e => { if(e.target?.matches?.('select')) pzAnimUndoSnap(); }, true);
+    // Série stisků šipek na jednom prvku = jeden krok zpět (snímek jen u prvního,
+    // další do 800 ms od posledního stisku nebo do opuštění prvku se ignorují).
+    let keyEl = null, keyT = 0;
+    pane.addEventListener('focusout', () => { keyEl = null; });
     pane.addEventListener('keydown', e => {
       if(e.repeat) return;
-      if((e.target?.matches?.('input[type=range]') && /^(Arrow|Page|Home|End)/.test(e.key)) || (e.target?.matches?.('select') && /^(Arrow|Enter| )/.test(e.key))) pzAnimUndoSnap();
+      if((e.target?.matches?.('input[type=range]') && /^(Arrow|Page|Home|End)/.test(e.key)) || (e.target?.matches?.('select') && /^(Arrow|Enter| )/.test(e.key))){
+        const now = e.timeStamp, cont = keyEl === e.target && now - keyT < 800;
+        keyEl = e.target;
+        if(!cont) pzAnimUndoSnap();
+        keyT = performance.now();   // až po snímku — pomalý snímek nesmí sérii rozdělit
+      }
     }, true);
   })();
 
@@ -18894,9 +19007,10 @@ function bindUI(){
   $('shareProjectBtn')?.addEventListener('click', shareCurrentProject);
   $('loadProjectBtn')?.addEventListener('click', loadSelectedProject);
   $('deleteProjectBtn')?.addEventListener('click', deleteSelectedProject);
+  // Výběr v seznamu jen ukáže náhled — název rozdělané scény nepřepisuje (dřív pak
+  // Uložit tiše přepsal vybraný, třeba kolegův projekt aktuální scénou).
   $('savedProjectSelect')?.addEventListener('change', ()=>{
     const entry = loadProjectDB().map(normalizeProjectEntry).find(item => item.id === getSelectedProjectId());
-    if(entry && $('projectName')) $('projectName').value = entry.name;
     updateProjectThumbPreview(entry);
   });
   $('backupExportBtn')?.addEventListener('click', exportBackupFile);
@@ -19245,6 +19359,11 @@ Object.assign(I18N, {
   "Náklon kamery": {cs:"Náklon kamery",sk:"Sklon kamery",bg:"Наклон на камерата",hr:"Nagib kamere",ro:"Înclinarea camerei",en:"Camera tilt"},
   "Přidat záběr": {cs:"Přidat záběr",sk:"Pridať záber",bg:"Добави кадър",hr:"Dodaj kadar",ro:"Adaugă cadru",en:"Add shot"},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
+  "sc_save": {cs:"Uložit projekt",sk:"Uložiť projekt",bg:"Запази проекта",hr:"Spremi projekt",ro:"Salvează proiectul",en:"Save project"},
+  'Přepsat projekt „{0}" aktuální scénou?': {cs:'Přepsat projekt „{0}" aktuální scénou?',sk:'Prepísať projekt „{0}" aktuálnou scénou?',bg:'Да се презапише ли проектът „{0}" с текущата сцена?',hr:'Prepisati projekt „{0}" trenutnom scenom?',ro:'Suprascrii proiectul „{0}" cu scena curentă?',en:'Overwrite project “{0}” with the current scene?'},
+  'Zahodit neuloženou práci a načíst projekt „{0}"?': {cs:'Zahodit neuloženou práci a načíst projekt „{0}"?',sk:'Zahodiť neuloženú prácu a načítať projekt „{0}"?',bg:'Да се изхвърли ли незапазената работа и да се зареди проектът „{0}"?',hr:'Odbaciti nespremljeni rad i učitati projekt „{0}"?',ro:'Renunți la munca nesalvată și încarci proiectul „{0}"?',en:'Discard unsaved work and load project “{0}”?'},
+  "Načtení zrušeno.": {cs:"Načtení zrušeno.",sk:"Načítanie zrušené.",bg:"Зареждането е отменено.",hr:"Učitavanje otkazano.",ro:"Încărcare anulată.",en:"Loading cancelled."},
+  "Napiš název projektu a dej Uložit.": {cs:"Napiš název projektu a dej Uložit.",sk:"Napíš názov projektu a daj Uložiť.",bg:"Напиши име на проекта и натисни Запази.",hr:"Upiši naziv projekta i klikni Spremi.",ro:"Scrie numele proiectului și apasă Salvează.",en:"Type a project name and click Save."},
   "Oddálit při přeletu": {cs:"Oddálit při přeletu",sk:"Oddialiť pri prelete",bg:"Отдалечаване при прелитане",hr:"Udalji tijekom preleta",ro:"Depărtare în timpul zborului",en:"Pull back during flyover"},
   "Posunout výš": {cs:"Posunout výš",sk:"Posunúť vyššie",bg:"Премести нагоре",hr:"Pomakni gore",ro:"Mută mai sus",en:"Move up"},
   "Posunout níž": {cs:"Posunout níž",sk:"Posunúť nižšie",bg:"Премести надолу",hr:"Pomakni dolje",ro:"Mută mai jos",en:"Move down"},
@@ -20086,15 +20205,38 @@ document.addEventListener('keydown', e => {
 });
 
 // ====== Map action buttons: Refresh + Undo ======
+// Běží export videa / PNG (ne jen krátké kreslení snímku, které _exporting nastavuje taky).
+function pzExportRunning(){ return !!(state._batchRunning || (state._exporting && $('exportVideoBtn')?.disabled)); }
 (function setupMapActions(){
   const UNDO_LIMIT = 40;
   const undoStack = [];
   const redoStack = [];
   let applyingUndo = false;
 
+  // Snímek nese i napojení na projekt (název, načtený projekt) — krok zpět po resetu
+  // logem vrátí i je, další Uložit pak nezaloží nový projekt.
   function snapshotNow(){
-    try { return JSON.parse(JSON.stringify(serializeProjectSnapshot())); }
+    try {
+      const s = JSON.parse(JSON.stringify(serializeProjectSnapshot()));
+      s.__meta = {projectName: $('projectName')?.value || '', loadedProjectId: state.loadedProjectId || null, savedSig: state._pzSavedSig || null};
+      return s;
+    }
     catch(e){ return null; }
+  }
+  // Porovnání bez pohledu kamery a metadat: posun/zoom mapy není krok zpět.
+  const sceneKey = s => s ? JSON.stringify({...s, view: null, __meta: null}) : '';
+  function restoreMeta(snap){
+    const m = snap?.__meta; if(!m) return;
+    try{
+      if($('projectName')) $('projectName').value = m.projectName || '';
+      state.loadedProjectId = m.loadedProjectId || null;
+      state._pzSavedSig = m.savedSig || null;
+      const sel = $('savedProjectSelect');
+      if(sel){
+        sel.value = (m.loadedProjectId && [...sel.options].some(o => o.value === m.loadedProjectId)) ? m.loadedProjectId : '';
+        updateProjectThumbPreview(loadProjectDB().map(normalizeProjectEntry).find(item => item.id === sel.value) || null);
+      }
+    }catch(e){}
   }
   function updateUndoBtn(){
     const btn = $('undoActionBtn');
@@ -20103,12 +20245,12 @@ document.addEventListener('keydown', e => {
     if(redoBtn) redoBtn.disabled = redoStack.length === 0;
   }
   function pushUndo(){
-    if(applyingUndo || Date.now() < (window.__pzUndoHoldUntil || 0)) return;   // hromadná akce (logo) = jeden krok
+    if(applyingUndo || window.__pzUndoHold) return;   // hromadná akce (logo) = jeden krok
     const snap = snapshotNow();
     if(!snap) return;
-    // Don't push duplicates of the last snapshot
+    // Don't push duplicates of the last snapshot (pohled kamery se nepočítá)
     const last = undoStack[undoStack.length - 1];
-    if(last && JSON.stringify(last) === JSON.stringify(snap)) return;
+    if(last && sceneKey(last) === sceneKey(snap)) return;
     undoStack.push(snap);
     if(undoStack.length > UNDO_LIMIT) undoStack.shift();
     redoStack.length = 0; // a new user action invalidates the redo branch
@@ -20118,10 +20260,11 @@ document.addEventListener('keydown', e => {
   // mapy, které nakonec nic nezměnilo (posun mapy na Trase). Dřív pak první
   // Ctrl+Z „nic neudělal".
   function dropSameAsCurrent(stack){
-    const cur = JSON.stringify(snapshotNow());
-    while(stack.length && JSON.stringify(stack[stack.length - 1]) === cur) stack.pop();
+    const cur = sceneKey(snapshotNow());
+    while(stack.length && sceneKey(stack[stack.length - 1]) === cur) stack.pop();
   }
   function doUndo(){
+    if(pzExportRunning()) return;   // během exportu by krok zpět změnil renderovanou scénu
     dropSameAsCurrent(undoStack);
     if(!undoStack.length){ updateUndoBtn(); return; }
     const snap = undoStack.pop();
@@ -20130,12 +20273,14 @@ document.addEventListener('keydown', e => {
     applyingUndo = true;
     try {
       applyProjectSnapshot(snap, t ? t('Krok zpět.') : 'Krok zpět.');
+      restoreMeta(snap);
     } finally {
       setTimeout(() => { applyingUndo = false; updateUndoBtn(); }, 200);
     }
     updateUndoBtn();
   }
   function doRedo(){
+    if(pzExportRunning()) return;
     dropSameAsCurrent(redoStack);
     if(!redoStack.length){ updateUndoBtn(); return; }
     const snap = redoStack.pop();
@@ -20144,6 +20289,7 @@ document.addEventListener('keydown', e => {
     applyingUndo = true;
     try {
       applyProjectSnapshot(snap, t ? t('Krok vpřed.') : 'Krok vpřed.');
+      restoreMeta(snap);
     } finally {
       setTimeout(() => { applyingUndo = false; updateUndoBtn(); }, 200);
     }
@@ -20170,12 +20316,42 @@ document.addEventListener('keydown', e => {
   // Volba druhu dopravy trasu hned přepočítá — snímek musí vzniknout PŘED tím.
   const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove, #waypointList button, #routeLookSection .endpoint-shape, #pzCountryColorList .btn-remove';
   window.__pzPushUndo = () => pushUndo();
+  window.__pzClearRedo = () => { redoStack.length = 0; updateUndoBtn(); };   // načtení projektu: Vpřed by vložil objekty ze staré scény
   window.__pzUndo = () => { const n = undoStack.length; doUndo(); return n > 0; };
   window.__pzRedo = () => { const n = redoStack.length; doRedo(); return n > 0; };   // asistent: snímek před každým nástrojem
   document.addEventListener('click', (e) => {
     const btn = e.target?.closest?.('button,[role="button"]');
     if(!btn) return;
     if((btn.id && MUTATING_BUTTON_IDS.has(btn.id)) || btn.matches?.(MUTATING_BUTTON_SELECTORS)) pushUndo();
+  }, true);
+
+  // Textová / číselná pole a výběry v panelu (Cedulka u vozidla, popisky…): snímek
+  // při vstupu do pole, do historie až při skutečné změně uložené ve scéně — psaní
+  // pak jde vrátit jedním Ctrl+Z a pouhé kliknutí do pole nesmaže historii Vpřed.
+  const FIELD_SKIP = new Set(['startInput','endInput','placeSearchInput','projectName','politicalCountrySearch','backupImportFile']);
+  let fieldSnap = null, fieldEl = null;
+  const isSceneField = el => (el instanceof HTMLInputElement && /^(text|number|search|)$/.test(el.type) || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement)
+    && !!el.closest('.sidebar') && !FIELD_SKIP.has(el.id) && !/search|suggest/i.test(el.id || '');
+  document.addEventListener('focusin', (e) => {
+    if(!isSceneField(e.target)){ fieldSnap = fieldEl = null; return; }
+    fieldEl = e.target; fieldSnap = applyingUndo ? null : snapshotNow();
+  }, true);
+  document.addEventListener('change', (e) => {
+    if(e.target !== fieldEl || !fieldSnap) return;
+    const snap = fieldSnap;
+    setTimeout(() => {   // počkat na vlastní obsluhu změny
+      if(applyingUndo || window.__pzUndoHold) return;
+      const now = snapshotNow();
+      if(!now || sceneKey(now) === sceneKey(snap)) return;
+      const last = undoStack[undoStack.length - 1];
+      if(!last || sceneKey(last) !== sceneKey(snap)){
+        undoStack.push(snap);
+        if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+        redoStack.length = 0;
+        updateUndoBtn();
+      }
+      fieldSnap = now;   // další změna ve stejném poli = další krok
+    }, 0);
   }, true);
 
   // Snapshot before slider/color-picker gestures so Ctrl+Z covers them too
@@ -21882,7 +22058,7 @@ function pzColorFromName(v){
     const WHERE = {sc_tilt:['Mapa', 1], sc_pan:['Mapa', 2], sc_refresh:['Mapa', 3],
       sc_delete:['Objekty', 1], sc_copy:['Objekty', 2],
       sc_route:['Trasa a animace', 1], sc_via:['Trasa a animace', 2], sc_last:['Trasa a animace', 3], sc_play:['Trasa a animace', 4],
-      sc_undo:['Obecné', 1], sc_cancel:['Obecné', 2], sc_help:['Obecné', 3]};
+      sc_undo:['Obecné', 1], sc_save:['Obecné', 2], sc_cancel:['Obecné', 3], sc_help:['Obecné', 4]};
     const groups = new Map(['Mapa', 'Objekty', 'Trasa a animace', 'Obecné'].map(g => [g, []]));
     const host = p.querySelector(':scope > .sc-list') || p;
     [...host.querySelectorAll(':scope > .sc-row')].forEach((row, i) => {
