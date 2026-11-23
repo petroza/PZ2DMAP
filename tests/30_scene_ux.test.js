@@ -28,6 +28,17 @@ const {check, done, open, tab} = require('./lib');
   await page.mouse.move(h.x, h.y); await page.mouse.down(); await page.mouse.move(h.x - 40, h.y - 25, {steps: 6}); await page.mouse.up(); await page.waitForTimeout(200);
   const big = await page.evaluate(id => window.__pzFns.state.mapLabels.find(l => l.id === id).size, lab.id);
   check(h.vis && big > lab.size + 4, `tažení za levý horní roh zvětší popisek (${lab.size} → ${big} px)`);
+  // Enter v poli Text popisku vytváří nový popisek (vybraný nepřepíše) a po vložení vkládání skončí
+  const before = await page.evaluate(() => window.__pzFns.state.mapLabels.map(l => l.text));
+  await page.fill('#mapLabelText', 'Brno'); await page.press('#mapLabelText', 'Enter');
+  await page.mouse.click(map.x + map.width * 0.4, map.y + map.height * 0.3); await page.waitForTimeout(300);
+  const lab2 = await page.evaluate(() => ({texts: window.__pzFns.state.mapLabels.map(l => l.text), adding: window.__pzFns.state.addingMapLabel}));
+  check(lab2.texts.length === before.length + 1 && lab2.texts.slice(0, before.length).join() === before.join() && !lab2.adding, 'Enter v poli Text přidá nový popisek, starý nepřepíše, vkládání pak skončí ' + JSON.stringify(lab2));
+  // perimetr: desetinná čárka v Rádiusu a čistý štítek bez „R “
+  await page.evaluate(() => { const s = document.getElementById('scenePerimeterSection'); if(s?.classList.contains('collapsed')) s.querySelector('h3').click(); });
+  await page.fill('#scenePerimeterRadius', '2,5');
+  const per = await page.evaluate(() => { const c = __tnMap.getCenter(); const it = window.__pzFns.createScenePerimeterAt([c.lng, c.lat], {silent: true}); return {r: it.radiusMeters, tag: [...document.querySelectorAll('.scene-perimeter-label')].pop()?.textContent}; });
+  check(per.r === 2500 && per.tag === '2,5 km', 'Rádius „2,5“ = 2,5 km, štítek „2,5 km“ ' + JSON.stringify(per));
   // výchozí vzhled
   await tab(page, 'styly');
   await page.click('#resetStyleBtn'); await page.waitForTimeout(2500);

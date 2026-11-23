@@ -411,11 +411,16 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
 .map-label-content{position:absolute;top:0;display:flex;align-items:center;gap:8px;transform:translateY(-50%);pointer-events:auto}
 .map-label-marker[data-side="right"] .map-label-content{right:calc(var(--label-dot-size,14px) / -2);flex-direction:row}
 .map-label-marker[data-side="left"] .map-label-content{left:calc(var(--label-dot-size,14px) / -2);flex-direction:row-reverse}
-.map-label-bubble{background:rgba(255,255,255,.98);color:#111;font-weight:800;line-height:1;padding:.38em .5em;border-radius:3px;border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 10px rgba(0,0,0,.18);white-space:nowrap;font-size:calc(var(--label-size,28px) * var(--label-zoom-k,1))}
+.map-label-bubble{background:rgba(255,255,255,.98);color:#111;font-weight:800;line-height:1;padding:.38em .5em;border-radius:3px;border:1px solid rgba(0,0,0,.08);box-shadow:0 2px 10px rgba(0,0,0,.18);white-space:pre;font-size:calc(var(--label-size,28px) * var(--label-zoom-k,1))}
 .map-label-edit-input{font:inherit;font-weight:800;line-height:1;color:#111;background:transparent;border:0;outline:0;padding:0;margin:0;min-width:2.5em;width:12ch;max-width:28ch}
 .map-label-square{width:calc(var(--label-dot-size,14px) * var(--label-zoom-k,1));height:calc(var(--label-dot-size,14px) * var(--label-zoom-k,1));background:#ff1434;flex:0 0 auto;box-shadow:0 1px 6px rgba(0,0,0,.2)}
 .map-label-marker.selected .map-label-bubble{outline:2px solid rgba(38,208,196,.95);outline-offset:2px}
 .map-label-bubble.editing{cursor:text;user-select:text;-webkit-user-select:text}
+/* „Upravuješ: Praha ×“ nad polem Text popisku — jasně říká, že Enter přepíše existující popisek */
+.map-label-edit-chip{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px 4px 9px;border:1px solid var(--accent);border-radius:var(--radius);background:var(--accent-glow);font-size:12px;color:var(--tx1)}
+.map-label-edit-chip[hidden]{display:none}
+.map-label-edit-chip b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-label-edit-chip button{border:0;background:transparent;color:inherit;font:700 16px/1 sans-serif;cursor:pointer;padding:0 4px}
 /* křížek u vybraného popisku — dřív šel popisek smazat jen nezřejmým Esc + Delete; do exportu se nekreslí */
 .map-label-del{display:none;position:absolute;top:-11px;right:-11px;width:22px;height:22px;padding:0;border:2px solid #fff;border-radius:50%;background:#e63946;color:#fff;font:700 14px/1 sans-serif;cursor:pointer;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.35);z-index:2}
 .map-label-marker.selected .map-label-del{display:grid}
@@ -611,10 +616,9 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
 .scene-perimeter-row.active{border-color:var(--accent);background:rgba(230,57,70,.06)}
 .scene-perimeter-row .small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .color-dot{width:12px;height:12px;border-radius:999px;border:1px solid var(--border);display:inline-block;flex:0 0 auto}
-.scene-perimeter-label{background:rgba(10,12,18,.88);font:700 11px var(--font);padding:3px 7px;border:1px solid #ffd400;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.4);pointer-events:none;transform:translateY(-50%)}
-.scene-perimeter-label.selected{background:#1a1d24;color:#ffd400;box-shadow:0 0 0 2px rgba(255,255,255,.28),0 1px 6px rgba(0,0,0,.55)}
-.scene-distance-label{background:rgba(10,12,18,.88);font:700 11px var(--font);padding:3px 7px;border:1px solid #ffd400;border-radius:4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.4);pointer-events:none;transform:translateY(-50%)}
-.scene-distance-label.selected{background:#1a1d24;color:#ffd400;box-shadow:0 0 0 2px rgba(255,255,255,.28),0 1px 6px rgba(0,0,0,.55)}
+/* štítky perimetru a vzdálenosti ve stylu popisků TN (bílá cedulka, tučné písmo, rámeček v barvě vrstvy) */
+.scene-perimeter-label,.scene-distance-label{background:#fff;color:#111;font:800 16px/1 var(--font);padding:.32em .5em;border:2px solid #ffd400;border-radius:3px;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.18);pointer-events:none;transform:translateY(-50%)}
+.scene-perimeter-label.selected,.scene-distance-label.selected{outline:2px solid rgba(38,208,196,.95);outline-offset:2px}
 
 .scene-edit-handle{width:20px;height:20px;border-radius:999px;background:#1a1d24;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;color:#fff;font:800 10px var(--font);cursor:grab;user-select:none}
 .scene-edit-handle:active{cursor:grabbing}
@@ -711,7 +715,7 @@ input[type=range]::-moz-range-thumb{border-radius:0;width:6px;height:16px;backgr
 
 /* data / readouts in mono for a control-surface feel */
 .val,#animInfo,.export-progress-count,.num-mini,
-.status-bar,.scene-perimeter-label,.scene-distance-label,.measure-label{
+.status-bar,.measure-label{
   font-family:var(--mono);font-variant-numeric:tabular-nums}
 
 /* --- 4. Quality floor: respect reduced motion --- */
@@ -1213,9 +1217,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="tab-pane active" data-pane="scena">
       <div class="section" id="mapLabelSection">
         <h3 data-i18n="Popisky">Popisky</h3>
+        <div class="map-label-edit-chip" id="mapLabelEditChip" hidden><span data-i18n="Upravuješ:">Upravuješ:</span><b id="mapLabelEditName"></b><button type="button" id="mapLabelEditCancel">×</button></div>
         <div class="row">
           <div><label data-i18n="Text popisku">Text popisku</label><input id="mapLabelText" type="text" placeholder="Např. Vídeň"></div>
-          <div><label data-i18n="Velikost všech popisků">Velikost všech popisků <span class="val" id="mapLabelSizeVal">28 px</span></label><input id="mapLabelSize" type="range" min="14" max="80" step="1" value="28"></div>
+          <div><label id="mapLabelSizeLabel" data-i18n="Velikost všech popisků">Velikost všech popisků <span class="val" id="mapLabelSizeVal">28 px</span></label><input id="mapLabelSize" type="range" min="12" max="160" step="1" value="28"></div>
         </div>
         <div class="row">
           <div><label data-i18n="Červený čtvereček">Červený čtvereček</label><select id="mapLabelSide"><option value="right" selected data-i18n="Vpravo">Vpravo</option><option value="left" data-i18n="Vlevo">Vlevo</option><option value="none" data-i18n="Bez čtverečku">Bez čtverečku</option></select></div>
@@ -1298,12 +1303,16 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
       <div class="section" id="scenePerimeterSection">
         <h3 data-i18n="Perimetr">Perimetr</h3>
         <div class="row">
-          <div><label data-i18n="Rádius">Rádius</label><input id="scenePerimeterRadius" type="number" min="0.001" step="0.1" value="100"></div>
+          <div><label data-i18n="Rádius">Rádius</label><input id="scenePerimeterRadius" type="text" inputmode="decimal" autocomplete="off" value="100"></div>
           <div><label data-i18n="Jednotka">Jednotka</label><select id="scenePerimeterUnit"><option value="km" selected data-i18n="kilometry">kilometry</option><option value="m" data-i18n="metry">metry</option></select></div>
         </div>
         <div class="row">
           <div class="color-row"><input id="scenePerimeterColor" type="color" value="#e22d2d"><label data-i18n="Barva vrstvy">Barva vrstvy</label></div>
           <div><label>Krytí výplně <span class="val" id="scenePerimeterOpacityVal">12 %</span></label><input id="scenePerimeterOpacity" type="range" min="0" max="80" step="1" value="12"></div>
+        </div>
+        <div class="row">
+          <div><label data-i18n="Text štítku">Text štítku</label><input id="scenePerimeterLabel" type="text" autocomplete="off" placeholder="5 km"></div>
+          <div><label data-i18n="Štítek">Štítek</label><select id="scenePerimeterLabelShow"><option value="1" selected data-i18n="Zobrazit">Zobrazit</option><option value="0" data-i18n="Skrýt">Skrýt</option></select></div>
         </div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addScenePerimeterBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
@@ -1321,6 +1330,10 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <div class="row">
           <div class="color-row"><input id="sceneDistanceColor" type="color" value="#ffd400"><label data-i18n="Barva linky">Barva linky</label></div>
           <div class="small" id="sceneDistanceInfo" style="display:flex;align-items:end"></div>
+        </div>
+        <div class="row">
+          <div><label data-i18n="Text štítku">Text štítku</label><input id="sceneDistanceLabel" type="text" autocomplete="off" placeholder="22 km"></div>
+          <div><label data-i18n="Štítek">Štítek</label><select id="sceneDistanceLabelShow"><option value="1" selected data-i18n="Zobrazit">Zobrazit</option><option value="0" data-i18n="Skrýt">Skrýt</option></select></div>
         </div>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addSceneDistanceBtn" data-i18n="Natáhni A → B">Natáhni A → B</button>
@@ -1725,7 +1738,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
     <div class="sc-row"><kbd>Esc</kbd><span data-i18n="sc_cancel">Zrušit vkládání a výběr</span></div>
     <div class="sc-row"><kbd>Delete</kbd><span data-i18n="sc_delete">Smazat vybraný objekt</span></div>
     <div class="sc-row"><kbd>Ctrl+C/V/D</kbd><span data-i18n="sc_copy">Kopírovat / vložit / duplikovat</span></div>
-    <div class="sc-row"><kbd>Ctrl+klik</kbd><span data-i18n="sc_multi_click">Přidat objekt do výběru</span></div>
+    <div class="sc-row"><kbd>Ctrl/Shift+klik</kbd><span data-i18n="sc_multi_click">Přidat objekt do výběru</span></div>
     <div class="sc-row"><kbd>Alt+táhnout</kbd><span data-i18n="sc_multi_rect">Vybrat objekty obdélníkem</span></div>
     <div class="sc-row"><kbd>Ctrl+A</kbd><span data-i18n="sc_multi_all">Vybrat všechny objekty scény</span></div>
     <div class="sc-row"><kbd>← ↑ ↓ →</kbd><span data-i18n="sc_nudge">Posunout vybrané (Shift = 10 px)</span></div>
@@ -5905,6 +5918,8 @@ function initScreenPan(){
   mapEl.addEventListener('auxclick', e => { if(e.button === 1) e.preventDefault(); }, true);
   mapEl.addEventListener('pointerdown', (e) => {
     if(!(e.button === 1 || (e.shiftKey && e.button === 0))) return;
+    // Shift+klik na objekt scény = přidat do výběru; Shift+klik při vkládání = vložit další
+    if(e.button === 0 && pzShiftClickIsSceneAction(e)) return;
     active = true;
     startX = e.clientX; startY = e.clientY;
     baseX = state.screenPan.x; baseY = state.screenPan.y;
@@ -6064,8 +6079,10 @@ function scenePerimeterRadiusMetersFromHandle(center, handleLngLat){
 function syncScenePerimeterInputs(item){
   if(!item) return;
   if($('scenePerimeterUnit')) $('scenePerimeterUnit').value = item.unit || 'km';
-  if($('scenePerimeterRadius')) $('scenePerimeterRadius').value = item.unit === 'm' ? String(Math.round(item.radiusMeters)) : String((item.radiusMeters / 1000).toFixed(item.radiusMeters % 1000 ? 2 : 0)).replace(/\.00$/,'');
+  if($('scenePerimeterRadius')) $('scenePerimeterRadius').value = item.unit === 'm' ? String(Math.round(item.radiusMeters)) : String(Number((item.radiusMeters / 1000).toFixed(2))).replace('.', ',');
   if($('scenePerimeterColor')) $('scenePerimeterColor').value = item.color || '#ffd400';
+  if($('scenePerimeterLabel')){ $('scenePerimeterLabel').value = item.labelText || ''; $('scenePerimeterLabel').placeholder = formatScenePerimeterDistance(item.radiusMeters, item.unit || 'km'); }
+  if($('scenePerimeterLabelShow')) $('scenePerimeterLabelShow').value = item.labelHidden ? '0' : '1';
   if($('scenePerimeterOpacity')) $('scenePerimeterOpacity').value = String(Math.round((Number(item.opacity ?? 0.12))*100));
   updateScenePerimeterOpacityReadout();
 }
@@ -6277,12 +6294,32 @@ function initScenePerimeterMapInteractions(m){
   const setCursor = cursor => { try{ m.getCanvas().style.cursor = cursor || ''; }catch(e){} };
   const feature = ev => ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle' && f?.properties?.id) || ev?.features?.find?.(f => f?.properties?.id) || null;
 
+  // Je bod (px) v pásu ±12 px kolem obvodu? U malých kruhů je vnitřní část pásu užší,
+  // aby šel kruh pořád chytit a posunout.
+  function perimeterEdgeHit(item, pt){
+    if(!item?.lngLat || !pt) return false;
+    try{
+      const c = m.project(item.lngLat), h = m.project(scenePerimeterHandlePosition(item));
+      const rpx = Math.hypot(h.x - c.x, h.y - c.y), d = Math.hypot(pt.x - c.x, pt.y - c.y);
+      return d >= rpx - Math.min(12, rpx * 0.35) && d <= rpx + 12;
+    }catch(e){ return false; }
+  }
+  function hoverCursor(ev){
+    if(state.draggingScenePerimeter || !isScenePerimeterMapInteractive()) return;
+    const f = feature(ev), item = f?.properties?.id ? getScenePerimeterById(f.properties.id) : null;
+    if(!item) return;
+    const pt = f.properties.point;
+    if(state.addingScenePerimeter && pt !== 'B') return;
+    setCursor(pt === 'A' ? 'move' : ((pt === 'B' || perimeterEdgeHit(item, ev.point)) ? 'nwse-resize' : 'grab'));
+  }
   function selectFromMap(ev, options={}){
     if(pzMultiSkipLayerPress(ev)) return null;
     // The A/B edit handles stay grabbable even while "insert" mode is armed, so you
     // can resize/move a freshly-placed perimeter without first turning insert off.
-    const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle');
+    // Při vkládání jde chytit jen bod B (velikost) — klik do středu A má přidat další, soustředný kruh.
+    const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle' && (!state.addingScenePerimeter || f?.properties?.point === 'B'));
     if((!isScenePerimeterMapInteractive() || state.addingScenePerimeter) && !onHandle) return null;
+    if(state.addingSceneDistance || state.drawingSceneDistance || state.addingSceneArrow) return null;
     // šipka nebo vzdálenost ležící uvnitř kruhu má přednost — jinak by nešla chytit
     if(!onHandle && ev?.point && (pickSceneArrowFeatureAt(ev.point) || pickSceneDistanceFeatureAt(ev.point))) return null;
     const f = feature(ev);
@@ -6292,7 +6329,7 @@ function initScenePerimeterMapInteractions(m){
     try{ ev.preventDefault?.(); }catch(e){}
     selectScenePerimeter(id, true);
     if(!options.silent){
-      setStatus(t('Perimetr vybrán. Tahem uvnitř kruhu měníš velikost, tahem za vnější okraj ho přesuneš, Delete smaže. Body A/B fungují taky.'));
+      setStatus(t('Perimetr vybrán. Tahem uvnitř kruhu ho přesuneš, tahem za okraj (nebo bod B) měníš velikost, Delete smaže.'));
     }
     return { item:getScenePerimeterById(id), feature:f };
   }
@@ -6347,10 +6384,11 @@ function initScenePerimeterMapInteractions(m){
   }
 
   function startDrag(ev){
-    if(state.draggingScenePerimeter || state.measureMode !== 'off') return;
+    // při kreslení vzdálenosti / šipky patří stisk jim, ne perimetru pod kurzorem
+    if(state.draggingScenePerimeter || state.measureMode !== 'off' || state.addingSceneDistance || state.drawingSceneDistance || state.addingSceneArrow) return;
     // While inserting, only the A/B handles edit (a press on open fill still places a
     // new perimeter) — this is what makes "place then immediately drag to edit" work.
-    const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle');
+    const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle' && (!state.addingScenePerimeter || f?.properties?.point === 'B'));
     if(state.addingScenePerimeter && !onHandle) return;
     if(pzMultiSkipLayerPress(ev)) return;
     if(isScenePerimeterMapInteractive() && pzGroupLayerDragStart(ev, 'p:' + (feature(ev)?.properties?.id || ''))) return;
@@ -6364,12 +6402,7 @@ function initScenePerimeterMapInteractions(m){
     let mode;
     if(point === 'A') mode = 'center';
     else if(point === 'B') mode = 'radius';
-    else {
-      // Grabbed the circle itself (no A/B handle). Inner area = resize (zvětšovat),
-      // outer ring/edge = move the whole perimeter (posouvat).
-      const R = Math.max(1, Number(item.radiusMeters) || 1);
-      mode = (startDist < 0.6 * R) ? 'resize' : 'move';
-    }
+    else mode = perimeterEdgeHit(item, ev.point) ? 'resize' : 'move';   // vnitřek = posun, pás kolem obvodu = velikost
     state.draggingScenePerimeter = {
       id:item.id,
       mode,
@@ -6398,7 +6431,8 @@ function initScenePerimeterMapInteractions(m){
   }
 
   layers.forEach(layerId => {
-    m.on('mouseenter', layerId, () => { if(isScenePerimeterMapInteractive() && !state.addingScenePerimeter) setCursor('grab'); });
+    m.on('mouseenter', layerId, hoverCursor);
+    m.on('mousemove', layerId, hoverCursor);
     m.on('mouseleave', layerId, () => { if(!state.draggingScenePerimeter) setCursor(''); });
     m.on('click', layerId, ev => selectFromMap(ev));
     m.on('mousedown', layerId, startDrag);
@@ -6431,12 +6465,13 @@ function initScenePerimeterMapInteractions(m){
       renderScenePerimeterList();
       refreshSceneEditMarkers(false);
       scheduleSceneLayerRedraw('perimeter-wheel');
-      setStatus(t('Radius perimetru upraven') + ': ' + scenePerimeterLabelText(item));
+      setStatus(t('Radius perimetru upraven') + ': ' + formatScenePerimeterDistance(item.radiusMeters, item.unit || 'km'));
     }, 220);
   });
 }
 function scenePerimeterMetersFromInputs(){
-  const raw = parseFloat($('scenePerimeterRadius')?.value || '0');
+  // desetinná čárka i mezery („2,5“, „1 500“) — type=text, aby prohlížeč čárku nezahodil
+  const raw = parseFloat(String($('scenePerimeterRadius')?.value || '0').replace(',', '.').replace(/\s/g, ''));
   const unit = $('scenePerimeterUnit')?.value === 'm' ? 'm' : 'km';
   const value = Number.isFinite(raw) && raw > 0 ? raw : 0;
   return unit === 'm' ? value : value * 1000;
@@ -6444,24 +6479,24 @@ function scenePerimeterMetersFromInputs(){
 function formatScenePerimeterDistance(meters, unit='km'){
   const m = Math.max(0, Number(meters) || 0);
   if(unit === 'm') return Math.round(m).toLocaleString('cs-CZ') + ' m';
+  // čisté číslo bez koncových nul: 5 km, 2,5 km, 22,3 km, 150 km
   const km = m / 1000;
-  const txt = km >= 100 ? Math.round(km).toLocaleString('cs-CZ') : (km >= 10 ? km.toFixed(1) : km.toFixed(2));
-  return txt.replace('.', ',') + ' km';
+  return Number(km >= 100 ? Math.round(km) : km.toFixed(km >= 10 ? 1 : 2)).toLocaleString('cs-CZ') + ' km';
 }
+// Text štítku: vlastní (item.labelText), jinak samotná délka — bez ladicích předpon.
 function scenePerimeterLabelText(item){
-  return 'R ' + formatScenePerimeterDistance(item.radiusMeters, item.unit || 'km');
+  return String(item?.labelText || '').trim() || formatScenePerimeterDistance(item.radiusMeters, item.unit || 'km');
 }
 function setScenePerimeterLabels(){
   (state.scenePerimeterLabelMarkers || []).forEach(mk => { try{ mk.remove(); }catch(e){} });
   state.scenePerimeterLabelMarkers = [];
   if(!state.map) return;
   (state.scenePerimeters || []).forEach(item => {
-    if(!item?.lngLat || !(Number(item.radiusMeters) > 0)) return;
+    if(!item?.lngLat || !(Number(item.radiusMeters) > 0) || item.labelHidden) return;
     const north = scenePerimeterLabelPosition(item);
     const el = document.createElement('div');
     el.className = 'scene-perimeter-label' + (item.id === state.selectedScenePerimeterId ? ' selected' : '');
     el.style.borderColor = item.color || '#ffd400';
-    el.style.color = item.color || '#ffd400';
     el.textContent = scenePerimeterLabelText(item);
     const mk = new maplibregl.Marker({element: el, anchor:'left', offset:[8,0]}).setLngLat(north).addTo(state.map);
     state.scenePerimeterLabelMarkers.push(mk);
@@ -6533,11 +6568,15 @@ function createScenePerimeterAt(lngLatObj, options={}){
   const opacity = Math.max(0, Math.min(0.8, Number(options.opacity ?? (($('scenePerimeterOpacity')?.value || 12) / 100))));
   const id = options.id || ('perim_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7));
   const item = {id, lngLat:[ll.lng, ll.lat], radiusMeters, unit, color, opacity};
+  if(options.labelText) item.labelText = String(options.labelText);
+  if(options.labelHidden) item.labelHidden = true;
   state.scenePerimeters.push(item);
-  selectScenePerimeter(id, false);
-  syncScenePerimeterInputs(item);
+  // V režimu vkládání se nový kruh nevybírá: pole Rádius pak nastavuje DALŠÍ kruh
+  // a klik do stejného středu přidá soustředný perimetr.
+  if(state.addingScenePerimeter && !options.select){ state.selectedScenePerimeterId = null; renderScenePerimeterList(); redrawScenePerimeters(); refreshSceneEditMarkers(false); }
+  else { selectScenePerimeter(id, false); syncScenePerimeterInputs(item); }
   scheduleSceneLayerRedraw('create-perimeter');
-  if(!options.silent) setStatus(t('Perimetr přidán') + ': ' + scenePerimeterLabelText(item) + ' · ' + t('tahem bodu A/B uprav, kolečkem měň radius, klikni jinam pro další'));
+  if(!options.silent) setStatus(t('Perimetr přidán') + ': ' + scenePerimeterLabelText(item) + ' · ' + (state.addingScenePerimeter ? t('změň Rádius a klikni znovu pro další kruh (i do stejného středu), Esc ukončí') : t('tahem bodu A/B uprav, kolečkem měň radius, klikni jinam pro další')));
   return item;
 }
 function updateSelectedScenePerimeter(options={}){
@@ -6554,7 +6593,7 @@ function updateSelectedScenePerimeter(options={}){
   redrawScenePerimeters();
   refreshSceneEditMarkers(false);
   scheduleSceneLayerRedraw('update-perimeter');
-  if(!silent) setStatus(t('Perimetr upraven') + ': ' + scenePerimeterLabelText(item));
+  if(!silent) setStatus(t('Perimetr upraven') + ': ' + formatScenePerimeterDistance(item.radiusMeters, item.unit || 'km'));
 }
 function deleteScenePerimeter(id){
   const idx = state.scenePerimeters.findIndex(item => item.id === id);
@@ -6843,8 +6882,37 @@ function handleSceneArrowClick(lngLat){
   createSceneArrow(state.sceneArrowDraft, ll);
   state.sceneArrowDraft = null;
   state.sceneArrowPreview = null;
-  setStatus(t('Šipka přidána.') + ' ' + t('Klikni dvakrát pro další, nebo vypni režim.'));
+  setStatus(t('Šipka přidána.') + ' ' + t('Klikni dvakrát nebo táhni pro další, Esc ukončí.'));
   return true;
+}
+// Šipka i tahem: stisk = začátek, puštění = hrot. Klik bez pohybu (<4 px) nechá
+// běžný postup klik → klik (obsluhuje handleSceneArrowClick).
+function initSceneArrowDragDraw(m){
+  if(!m || m.__tnSceneArrowDrag) return;
+  m.__tnSceneArrowDrag = true;
+  m.on('mousedown', ev => {
+    const oe = ev?.originalEvent;
+    if(!state.addingSceneArrow || state.sceneArrowDraft || !ev?.point || (oe && (oe.button || oe.ctrlKey || oe.metaKey || oe.shiftKey || oe.altKey))) return;
+    const p0 = {x: ev.point.x, y: ev.point.y}, a = [ev.lngLat.lng, ev.lngLat.lat];
+    let moved = false;
+    try{ m.dragPan.disable(); m.dragRotate.disable(); }catch(e){}
+    const mv = e => {
+      if(!e?.point) return;
+      if(!moved && Math.hypot(e.point.x - p0.x, e.point.y - p0.y) >= 4){ moved = true; state.sceneArrowDraft = a; }
+      if(moved){ state.sceneArrowPreview = [e.lngLat.lng, e.lngLat.lat]; setSceneArrowDataThrottled(); }
+    };
+    m.on('mousemove', mv);
+    window.addEventListener('mouseup', e => {
+      m.off('mousemove', mv);
+      try{ m.dragPan.enable(); m.dragRotate.enable(); }catch(_e){}
+      if(!moved || !state.addingSceneArrow) return;
+      let b = state.sceneArrowPreview || a;
+      try{ const r = m.getCanvas().getBoundingClientRect(), ll = m.unproject([e.clientX - r.left, e.clientY - r.top]); b = [ll.lng, ll.lat]; }catch(_e){}
+      state.ignoreNextMapClick = true;
+      setTimeout(() => { state.ignoreNextMapClick = false; }, 80);
+      handleSceneArrowClick(b);
+    }, {once:true});
+  });
 }
 
 // ===== SCENE DISTANCES (manual A-B measurement layers) =====
@@ -6921,15 +6989,14 @@ function formatSceneDistance(meters, unit='km'){
   const m = Math.max(0, Number(meters) || 0);
   if(unit === 'm') return Math.round(m).toLocaleString('cs-CZ') + ' m';
   const km = m / 1000;
-  const txt = km >= 100 ? Math.round(km).toLocaleString('cs-CZ') : (km >= 10 ? km.toFixed(1) : km.toFixed(2));
-  return txt.replace('.', ',') + ' km';
+  return Number(km >= 100 ? Math.round(km) : km.toFixed(km >= 10 ? 1 : 2)).toLocaleString('cs-CZ') + ' km';
 }
 function sceneDistanceMeters(item){
   if(!item?.a || !item?.b) return 0;
   return haversineKm(item.a, item.b) * 1000;
 }
 function sceneDistanceLabelText(item){
-  return 'A–B ' + formatSceneDistance(sceneDistanceMeters(item), item.unit || 'km');
+  return String(item?.labelText || '').trim() || formatSceneDistance(sceneDistanceMeters(item), item.unit || 'km');
 }
 function pickSceneDistanceFeatureAt(point){
   const m = state.map;
@@ -6943,6 +7010,7 @@ function pickSceneDistanceFeatureAt(point){
   return selected || feats.find(f => f?.properties?.id) || null;
 }
 function initSceneDistanceMapInteractions(m){
+  initSceneArrowDragDraw(m);
   if(!m || m.__tnSceneDistanceInteractions) return;
   m.__tnSceneDistanceInteractions = true;
   const layers = ['scene-distance-points-circle','scene-distances-line','scene-distances-glow'];
@@ -6956,6 +7024,7 @@ function initSceneDistanceMapInteractions(m){
     state.draggingViaPoint = false;
     try{ m.off('mousemove', moveDraw); }catch(e){}
     try{ m.off('touchmove', moveDraw); }catch(e){}
+    try{ m.off('mouseup', clickModeUp); }catch(e){}
     try{ m.dragPan.enable(); m.dragRotate.enable(); }catch(e){}
     setCursor('');
     if(cancel || !draft.item || sceneDistanceMeters(draft.item) < 5){
@@ -6977,17 +7046,52 @@ function initSceneDistanceMapInteractions(m){
   function moveDraw(ev){
     const draft = state.drawingSceneDistance;
     if(!draft || !ev?.lngLat) return;
+    if(!state.addingSceneDistance){ stopDrawing(true); return; }   // režim mezitím ukončen (Esc, klik jinam)
     draft.item.b = [ev.lngLat.lng, ev.lngLat.lat];
     redrawSceneDistances();
   }
+  // bod (px v mapě) z události okna — mouseup/touchend mimo mapu nemají ev.point
+  const domPoint = e => { try{ const r = m.getCanvas().getBoundingClientRect(), s = e.changedTouches?.[0] || e; return {x: s.clientX - r.left, y: s.clientY - r.top}; }catch(_e){ return null; } };
+  // Konec prvního stisku: tah = hotovo, klik bez pohybu = bod A čeká na druhý klik (bod B).
+  function firstUp(e){
+    const draft = state.drawingSceneDistance;
+    if(!draft || draft.clickMode) return;
+    const p = domPoint(e);
+    if(p && draft.p0 && Math.hypot(p.x - draft.p0.x, p.y - draft.p0.y) < 4){
+      draft.clickMode = true;
+      draft.item.b = draft.item.a.slice();
+      redrawSceneDistances();
+      try{ m.dragPan.enable(); m.dragRotate.enable(); }catch(_e){}
+      m.on('mouseup', clickModeUp);
+      setStatus(t('Bod A je na místě. Klikni do bodu B (Esc zruší).'));
+      return;
+    }
+    stopDrawing(false);
+  }
+  // Druhý klik (bez tažení — tažení mezi kliky jen posouvá mapu) položí bod B.
+  function clickModeUp(ev){
+    const draft = state.drawingSceneDistance;
+    if(!draft?.clickMode || !draft.press || !ev?.point) return;
+    const moved = Math.hypot(ev.point.x - draft.press.x, ev.point.y - draft.press.y) >= 4;
+    draft.press = null;
+    if(moved) return;
+    draft.item.b = [ev.lngLat.lng, ev.lngLat.lat];
+    stopDrawing(false);
+  }
 
   function startDraw(ev){
-    if(!state.addingSceneDistance || state.drawingSceneDistance || state.draggingSceneDistance || state.measureMode !== 'off') return;
+    const draft = state.drawingSceneDistance;
+    if(draft?.clickMode){
+      if(!state.addingSceneDistance){ stopDrawing(true); return; }
+      draft.press = ev?.point ? {x: ev.point.x, y: ev.point.y} : null;
+      return;
+    }
+    if(!state.addingSceneDistance || draft || state.draggingSceneDistance || state.measureMode !== 'off') return;
     if(ev?.originalEvent && ev.originalEvent.button != null && ev.originalEvent.button !== 0) return;
     const a = [ev.lngLat.lng, ev.lngLat.lat];
     const item = createSceneDistance(a, a, {silent:true, select:false});
     if(!item) return;
-    state.drawingSceneDistance = {item};
+    state.drawingSceneDistance = {item, p0: ev.point ? {x: ev.point.x, y: ev.point.y} : null};
     state.draggingViaPoint = true;
     state.ignoreNextMapClick = true;
     setCursor('crosshair');
@@ -6995,11 +7099,9 @@ function initSceneDistanceMapInteractions(m){
     try{ m.dragPan.disable(); m.dragRotate.disable(); }catch(e){}
     m.on('mousemove', moveDraw);
     m.on('touchmove', moveDraw);
-    m.once('mouseup', () => stopDrawing(false));
-    m.once('touchend', () => stopDrawing(false));
-    window.addEventListener('mouseup', () => stopDrawing(false), {once:true});
-    window.addEventListener('touchend', () => stopDrawing(false), {once:true});
-    setStatus(t('Táhni z bodu A do bodu B.'));
+    window.addEventListener('mouseup', firstUp, {once:true});
+    window.addEventListener('touchend', firstUp, {once:true});
+    setStatus(t('Táhni z bodu A do bodu B, nebo klikni do A a pak do B.'));
   }
 
   function selectFromMap(ev, options={}){
@@ -7101,11 +7203,10 @@ function setSceneDistanceLabels(){
   state.sceneDistanceLabelMarkers = [];
   if(!state.map) return;
   (state.sceneDistances || []).forEach(item => {
-    if(!item?.a || !item?.b) return;
+    if(!item?.a || !item?.b || item.labelHidden) return;
     const el = document.createElement('div');
     el.className = 'scene-distance-label' + (item.id === state.selectedSceneDistanceId ? ' selected' : '');
     el.style.borderColor = item.color || '#ffd400';
-    el.style.color = item.color || '#ffd400';
     el.textContent = sceneDistanceLabelText(item);
     const mk = new maplibregl.Marker({element: el, anchor:'left', offset:[8,0]}).setLngLat(sceneDistanceMidpoint(item)).addTo(state.map);
     state.sceneDistanceLabelMarkers.push(mk);
@@ -7158,6 +7259,8 @@ function selectSceneDistance(id, syncInputs=true){
     if($('sceneDistanceUnit')) $('sceneDistanceUnit').value = item.unit || 'km';
     if($('sceneDistanceColor')) $('sceneDistanceColor').value = item.color || '#ffd400';
     if($('sceneDistanceWidth')) $('sceneDistanceWidth').value = String(item.width || 3);
+    if($('sceneDistanceLabel')){ $('sceneDistanceLabel').value = item.labelText || ''; $('sceneDistanceLabel').placeholder = formatSceneDistance(sceneDistanceMeters(item), item.unit || 'km'); }
+    if($('sceneDistanceLabelShow')) $('sceneDistanceLabelShow').value = item.labelHidden ? '0' : '1';
     updateSceneDistanceWidthReadout();
     updateSceneDistanceInfo(item);
   }
@@ -7186,6 +7289,8 @@ function createSceneDistance(aObj, bObj, options={}){
     color: options.color || $('sceneDistanceColor')?.value || '#ffd400',
     width: Math.max(1, Number(options.width ?? $('sceneDistanceWidth')?.value ?? 3) || 3)
   };
+  if(options.labelText) item.labelText = String(options.labelText);
+  if(options.labelHidden) item.labelHidden = true;
   state.sceneDistances.push(item);
   if(options.select !== false) selectSceneDistance(id, false);
   else redrawSceneDistances();
@@ -8105,8 +8210,8 @@ function serializeProjectSnapshot(){
       durationSec: state.routeDurationSec || null     // doba jízdy z routeru (nepovinné)
     },
     sceneIcons: state.sceneIcons.map(item => ({id:item.id, data:item.data, size:item.size, lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
-    scenePerimeters: state.scenePerimeters.map(item => ({id:item.id, lngLat:item.lngLat, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity})),
-    sceneDistances: state.sceneDistances.map(item => ({id:item.id, a:item.a, b:item.b, unit:item.unit, color:item.color, width:item.width})),
+    scenePerimeters: state.scenePerimeters.map(item => ({id:item.id, lngLat:item.lngLat, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, labelText:item.labelText || undefined, labelHidden:item.labelHidden || undefined})),
+    sceneDistances: state.sceneDistances.map(item => ({id:item.id, a:item.a, b:item.b, unit:item.unit, color:item.color, width:item.width, labelText:item.labelText || undefined, labelHidden:item.labelHidden || undefined})),
     sceneArrows: state.sceneArrows.map(item => ({id:item.id, tail:item.tail, head:item.head, color:item.color, width:item.width})),
     closures: JSON.parse(JSON.stringify(state.pzClosures || [])),
     // 3D model: persist all transform/shadow scalars (the GLB binary itself is too big for
@@ -8260,8 +8365,8 @@ function applyBasicProjectSnapshot(snapshot){
   clearProjectSceneObjectsSilently();
   try{ state.multiSel?.clear(); }catch(e){}
   (snapshot.sceneIcons || []).forEach(item => createSceneIconAt(item.lngLat, {data:item.data, size:item.size, silent:true}));
-  (snapshot.scenePerimeters || []).forEach(item => createScenePerimeterAt(item.lngLat, {id:item.id, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, silent:true}));
-  (snapshot.sceneDistances || []).forEach(item => createSceneDistance(item.a, item.b, {id:item.id, unit:item.unit, color:item.color, width:item.width, silent:true}));
+  (snapshot.scenePerimeters || []).forEach(item => createScenePerimeterAt(item.lngLat, {id:item.id, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, labelText:item.labelText, labelHidden:item.labelHidden, select:true, silent:true}));
+  (snapshot.sceneDistances || []).forEach(item => createSceneDistance(item.a, item.b, {id:item.id, unit:item.unit, color:item.color, width:item.width, labelText:item.labelText, labelHidden:item.labelHidden, silent:true}));
   (snapshot.sceneArrows || []).forEach(item => createSceneArrow(item.tail, item.head, {id:item.id, color:item.color, width:item.width, silent:true}));
   // Obnovené objekty nemají zůstat vybrané (createSceneIconAt nově vloženou ikonku
   // vybírá): po kroku zpět jinak Backspace/Delete smazal neviditelně vybranou ikonku
@@ -10660,7 +10765,13 @@ function onMapClick(e){
     if(perimeterFeature?.properties?.id){ selectScenePerimeter(perimeterFeature.properties.id, true); return; }
   }
   if(state.addingSceneIcon){ addSceneIcon(e.lngLat); return; }
-  if(state.addingMapLabel){ addMapLabelAt(e.lngLat); return; }
+  if(state.addingMapLabel){
+    const more = !!e.originalEvent?.shiftKey;
+    addMapLabelAt(e.lngLat, {silent:true});
+    if(!more){ state.addingMapLabel = false; setActiveEditSection(null); updateSceneAddButtonStates(); }
+    setStatus(more ? t('Popisek přidán. Klikni znovu pro další, nebo Esc pro ukončení.') : t('Popisek přidán. Dvojklik ho přepíše, Shift+klik do mapy vloží další.'));
+    return;
+  }
   if(state.addingFlightPoint){
     // tlačítko „+ Zastávka": jeden klik = jedna zastávka, pak se vkládání samo vypne
     state.addingFlightPoint = false;
@@ -10957,6 +11068,7 @@ function pzSceneRow(x, cls, active, idx, mediaHtml, title, sub){
     if(ev.target.closest('.btn-remove')) return;
     pzMultiClear(true);
     pzSelectSingleByKey(x.key);
+    if(x.kind === 'label') setMapLabelEditing(x.item.id);   // řádek popisku = otevřít k úpravě v poli Text
     setStatus(t('Vybráno. Tažením nebo šipkami posuneš, Delete smaže, Ctrl+D duplikuje.'));
   });
   del.addEventListener('click', ev => { ev.stopPropagation(); try{ window.__pzPushUndo?.(); }catch(e){} pzObjDelete(x); });
@@ -11208,7 +11320,7 @@ function pzGroupDragEnd(){
 // další vrstvy pod kurzorem nesmí chytit taky.
 function pzMultiSkipLayerPress(ev){
   const oe = ev?.originalEvent;
-  return !!_pzGroup || !!(oe && (oe.ctrlKey || oe.metaKey));
+  return !!_pzGroup || !!(oe && (oe.ctrlKey || oe.metaKey || oe.shiftKey));
 }
 function pzGroupLayerDragStart(ev, key){
   const m = state.map;
@@ -11245,6 +11357,18 @@ function pzGroupLayerDragStart(ev, key){
   return true;
 }
 // Která šipka / vzdálenost / perimetr leží pod bodem (pro Ctrl+klik do mapy).
+// Má Shift+stisk v mapě patřit objektům scény (výběr, vkládání), ne posunu glóbu?
+function pzShiftClickIsSceneAction(e){
+  try{
+    // Shift+tažení v mapě je posun glóbu, takže Shift+zoom obdélníkem MapLibre se nikdy nepoužíval;
+    // vypnout ho, ať Shift+klik do mapy projde jako obyčejný klik.
+    state.map?.boxZoom?.disable?.();
+    if(e.target?.closest?.('.maplibregl-marker')) return true;
+    if(Object.values(SCENE_ADD_FLAGS).some(f => state[f])) return true;
+    const r = state.map.getCanvas().getBoundingClientRect();
+    return !!pzMultiPickLayerKeyAt({x: e.clientX - r.left, y: e.clientY - r.top});
+  }catch(_e){ return false; }
+}
 function pzMultiPickLayerKeyAt(point){
   const a = pickSceneArrowFeatureAt(point);
   if(a?.properties?.id) return 'a:' + a.properties.id;
@@ -11260,7 +11384,7 @@ function pzMultiPickLayerKeyAt(point){
 }
 function pzMultiMapClick(e){
   const oe = e?.originalEvent;
-  if(!oe || !(oe.ctrlKey || oe.metaKey)) return false;
+  if(!oe || !(oe.ctrlKey || oe.metaKey || oe.shiftKey)) return false;
   if(Object.values(SCENE_ADD_FLAGS).some(f => state[f]) || (state.measureMode && state.measureMode !== 'off')) return false;
   const key = pzMultiPickLayerKeyAt(e.point); if(!key) return false;
   state._pzMultiClickGuard = Date.now();
@@ -11274,7 +11398,7 @@ document.addEventListener('click', e => {
   if(!el) return;
   // klik, kterým končí tažení skupiny, nesmí výběr zrušit ani otevřít přepis popisku
   if(Date.now() - (state._pzGroupDragAt || 0) < 250){ e.stopPropagation(); e.preventDefault(); return; }
-  if(e.ctrlKey || e.metaKey){
+  if(e.ctrlKey || e.metaKey || e.shiftKey){
     if(pzMultiToggleEl(el)){ e.stopPropagation(); e.preventDefault(); }
     return;
   }
@@ -11290,11 +11414,11 @@ document.addEventListener('mousedown', e => {
 }, true);
 // Ctrl+klik na značku nesmí zároveň přidat zastávku trasy (mapa dostane mousedown)
 document.addEventListener('mousedown', e => {
-  if((e.ctrlKey || e.metaKey) && e.target?.closest?.(PZ_MARKER_SEL)) state._pzMultiClickGuard = Date.now();
+  if((e.ctrlKey || e.metaKey || e.shiftKey) && e.target?.closest?.(PZ_MARKER_SEL)) state._pzMultiClickGuard = Date.now();
 }, true);
 // Ctrl+klik na řádek v seznamu sekce přidá / odebere položku z výběru stejně jako v mapě.
 document.addEventListener('click', e => {
-  if(!(e.ctrlKey || e.metaKey)) return;
+  if(!(e.ctrlKey || e.metaKey || e.shiftKey)) return;
   const row = e.target?.closest?.('.wp-item[data-pz-key]');
   if(!row || e.target.closest('.btn-remove')) return;
   e.stopPropagation(); e.preventDefault();
@@ -11349,7 +11473,7 @@ function pzInitMarquee(){
   // klik do prázdné mapy výběr zruší (Ctrl+klik ne — ten výběr skládá nebo přidává zastávku)
   m.on('click', e => {
     const oe = e.originalEvent;
-    if(oe && (oe.ctrlKey || oe.metaKey)) return;
+    if(oe && (oe.ctrlKey || oe.metaKey || oe.shiftKey)) return;
     if(Date.now() - (state._pzMultiClickGuard || 0) <= 300 || !state.multiSel.size) return;
     const before = $('statusBar')?.textContent;
     pzMultiClear(true);
@@ -11447,7 +11571,7 @@ function applyMapLabelStyle(el, data){
   if(!el || !data) return;
   const bubble = el.querySelector('.map-label-bubble');
   if(bubble) bubble.textContent = data.text || 'Popisek';
-  const size = Math.max(14, parseInt(data.size || 28, 10));
+  const size = Math.max(12, parseInt(data.size || 28, 10));
   const side = pzLabelSide(data.side);
   el.dataset.side = side;
   el.dataset.lstyle = ['navy','red','dark'].includes(data.style) ? data.style : 'classic';
@@ -11473,8 +11597,47 @@ function refreshMapLabelSelection(){
     item.marker?.getElement?.().classList.toggle('selected', item.id === state.selectedMapLabelId);
   });
   renderMapLabelList();
+  syncMapLabelEditChip();
 }
 
+// Popisek, který uživatel výslovně otevřel k úpravě (klik na bublinu / řádek seznamu).
+// Jen tehdy Enter v poli Text popisku přepíše existující popisek; jinak vytváří nový.
+function syncMapLabelEditChip(){
+  const it = state.editingMapLabelId && state.editingMapLabelId === state.selectedMapLabelId ? getMapLabelById(state.editingMapLabelId) : null;
+  if(!it) state.editingMapLabelId = null;
+  const chip = $('mapLabelEditChip');
+  if(chip){
+    chip.hidden = !it;
+    if(it){
+      $('mapLabelEditName').textContent = String(it.text || '').replace(/\n/g, ' ');
+      const x = $('mapLabelEditCancel'); if(x){ x.title = t('Zrušit úpravu — pole pak vytvoří nový popisek'); x.setAttribute('aria-label', t('Zrušit úpravu')); }
+    }
+  }
+  syncMapLabelSizeControl();
+}
+function setMapLabelEditing(id){
+  state.editingMapLabelId = id || null;
+  if(id && $('mapLabelText')) $('mapLabelText').value = String(getMapLabelById(id)?.text || '').replace(/\n/g, ' ');
+  syncMapLabelEditChip();
+}
+// Které popisky mění posuvník velikosti: vybrané (i ve vícevýběru), jinak všechny.
+function mapLabelSizeTargets(){
+  const multi = [...(state.multiSel || [])].filter(k => k.startsWith('l:')).map(k => getMapLabelById(k.slice(2))).filter(Boolean);
+  if(multi.length) return multi;
+  const one = getMapLabelById(state.selectedMapLabelId);
+  return one ? [one] : null;
+}
+function syncMapLabelSizeControl(){
+  const sel = mapLabelSizeTargets();
+  const lab = $('mapLabelSizeLabel');
+  const key = sel ? (sel.length > 1 ? 'Velikost vybraných' : 'Velikost vybraného') : 'Velikost všech popisků';
+  if(lab && lab.dataset.i18n !== key){
+    lab.dataset.i18n = key;
+    for(const n of lab.childNodes){ if(n.nodeType === 3 && n.textContent.trim()){ n.textContent = t(key) + ' '; break; } }
+  }
+  if($('mapLabelSize') && document.activeElement !== $('mapLabelSize')) $('mapLabelSize').value = String(sel ? (sel[0].size || 28) : (state.mapLabelGlobalSize || 28));
+  if($('mapLabelSizeVal')) $('mapLabelSizeVal').textContent = ($('mapLabelSize')?.value || '28') + ' px';
+}
 function clearMapLabelSelection(){
   if(!state.selectedMapLabelId) return;
   state.selectedMapLabelId = null;
@@ -11488,7 +11651,7 @@ function selectMapLabel(id, syncInputs=true){
   if(id){ clearRoutePointSelection(); clearSceneIconSelection(); }
   if(syncInputs && item){
     if($('mapLabelText')) $('mapLabelText').value = item.text || '';
-    if($('mapLabelSize')) $('mapLabelSize').value = String(state.mapLabelGlobalSize || item.size || 28);
+    if($('mapLabelSize')) $('mapLabelSize').value = String(item.size || state.mapLabelGlobalSize || 28);
     if($('mapLabelSide')) $('mapLabelSide').value = pzLabelSide(item.side);
     if($('mapLabelStyle')) $('mapLabelStyle').value = item.style || 'classic';
   }
@@ -11505,8 +11668,9 @@ function renderMapLabelList(){
   }
   state.mapLabels.forEach((item, idx) => {
     list.appendChild(pzSceneRow({key:'l:' + item.id, kind:'label', item}, 'map-label-row', item.id === state.selectedMapLabelId, idx, '',
-      item.text || t('Popisek'), item.size + ' px'));
+      String(item.text || t('Popisek')).replace(/\n/g, ' '), item.size + ' px'));
   });
+  syncMapLabelEditChip();
 }
 
 function escapeHtml(str){
@@ -11574,7 +11738,7 @@ function flashMarkerHint(el){
 
 
 function applyMapLabelSizeToAll(sizeValue){
-  const size = Math.max(14, Math.min(80, parseInt(sizeValue ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
+  const size = Math.max(12, Math.min(160, parseInt(sizeValue ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
   state.mapLabelGlobalSize = size;
   if($('mapLabelSize')) $('mapLabelSize').value = String(size);
   state.mapLabels.forEach(item => {
@@ -11591,7 +11755,7 @@ function startMapLabelInlineEdit(id){
   const bubble = el?.querySelector?.('.map-label-bubble');
   if(!item || !bubble || bubble.isContentEditable) return;
   selectMapLabel(id, false);
-  setStatus(t('Přepiš text popisku: Enter uloží, Esc zruší. Smazat: červený křížek u popisku.'));
+  setStatus(t('Přepiš text popisku: Enter uloží, Shift+Enter nový řádek, Esc zruší.'));
   const oldText = item.text || 'Popisek';
   bubble.textContent = oldText;
   bubble.contentEditable = 'true';
@@ -11612,9 +11776,12 @@ function startMapLabelInlineEdit(id){
     bubble.classList.remove('editing');
     bubble.removeAttribute('role');
     bubble.removeAttribute('aria-label');
-    const text = save ? (bubble.textContent || '').replace(/\s+/g, ' ').trim() || 'Popisek' : oldText;
+    // zalomení řádků (Shift+Enter) zůstává, jen mezery a tabulátory se slučují
+    const raw = bubble.innerText != null ? bubble.innerText : bubble.textContent;
+    const text = save ? String(raw || '').replace(/\r/g, '').split('\n').map(l => l.replace(/[ \t\u00a0]+/g, ' ').trim()).filter(Boolean).join('\n') || 'Popisek' : oldText;
     updateMapLabel(id, {text});
-    if($('mapLabelText')) $('mapLabelText').value = text;
+    if($('mapLabelText')) $('mapLabelText').value = text.replace(/\n/g, ' ');
+    syncMapLabelEditChip();
     setStatus(save ? t('Popisek upraven.') : t('Úprava popisku zrušena.'));
   };
   bubble.addEventListener('mousedown', stop);
@@ -11623,7 +11790,10 @@ function startMapLabelInlineEdit(id){
   bubble.addEventListener('paste', stop);
   bubble.addEventListener('keydown', ev => {
     ev.stopPropagation();
-    if(ev.key === 'Enter'){
+    if(ev.key === 'Enter' && ev.shiftKey){
+      ev.preventDefault();
+      try{ document.execCommand('insertLineBreak'); }catch(e){}
+    }else if(ev.key === 'Enter'){
       ev.preventDefault();
       finish(true);
       bubble.blur();
@@ -11647,15 +11817,14 @@ function startMapLabelInlineEdit(id){
 
 function addMapLabelAt(lngLatObj, options={}){
   const textVal = (options.text != null ? String(options.text) : ($('mapLabelText')?.value || '')).trim() || 'Popisek';
-  const sizeVal = Math.max(14, Math.min(80, parseInt(options.size ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
-  state.mapLabelGlobalSize = sizeVal;
+  const sizeVal = Math.max(12, Math.min(160, parseInt(options.size ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
   const sideVal = pzLabelSide(options.side ?? $('mapLabelSide')?.value);
   const styleVal = String(options.style ?? $('mapLabelStyle')?.value ?? 'classic');
   const ll = normalizeLngLatInput(lngLatObj);
   const lngLat = [ll.lng, ll.lat];
   const id = 'label_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
   const el = createMapLabelElement(textVal, sizeVal, sideVal, styleVal);
-  el.title = 'Klikni pro přepsání, přetáhni za čtvereček/prostor popisku pro posun';
+  el.title = t('Klik vybere (Delete smaže), dvojklik nebo F2 přepíše text, tahem posuneš');
   el.querySelector('.map-label-del')?.addEventListener('mousedown', ev => ev.stopPropagation());
   el.querySelector('.map-label-del')?.addEventListener('click', ev => {
     ev.stopPropagation(); ev.preventDefault();
@@ -11685,8 +11854,20 @@ function addMapLabelAt(lngLatObj, options={}){
       rz.addEventListener('pointermove', move); rz.addEventListener('pointerup', up); rz.addEventListener('pointercancel', up);
     });
   }
+  // klik = výběr (jako u ikonek: Delete smaže, šipky posunou), dvojklik = přepsat text
   el.addEventListener('click', ev => {
     ev.stopPropagation();
+    if(ev.target.closest?.('.map-label-del') || ev.target.closest?.('.map-label-resize')) return;
+    if(state.suppressMapLabelEdit || el.querySelector('.map-label-bubble')?.isContentEditable) return;
+    if(ev.ctrlKey || ev.metaKey || ev.shiftKey) return;
+    // fokus z pole Text popisku pryč — jinak by Delete / šipky šly do pole, ne na popisek
+    try{ const a = document.activeElement; if(a && a !== document.body && pzIsTextEntry(a)) a.blur(); }catch(_e){}
+    selectMapLabel(id);
+    setMapLabelEditing(id);
+    setStatus(t('Popisek vybrán. Dvojklik nebo F2 přepíše text, Delete smaže, šipkami posuneš.'));
+  });
+  el.addEventListener('dblclick', ev => {
+    ev.stopPropagation(); ev.preventDefault();
     if(ev.target.closest?.('.map-label-del') || ev.target.closest?.('.map-label-resize')) return;
     if(state.suppressMapLabelEdit) return;
     startMapLabelInlineEdit(id);
@@ -11742,7 +11923,8 @@ function applySelectedMapLabelChanges(){
     text: ($('mapLabelText')?.value || '').trim() || 'Popisek',
     side: $('mapLabelSide')?.value || item.side || 'right'
   });
-  applyMapLabelSizeToAll($('mapLabelSize')?.value || item.size);
+  state.editingMapLabelId = null;   // úprava hotová — další Enter v poli vytvoří nový popisek
+  syncMapLabelEditChip();
   setStatus(t('Popisek upraven.'));
 }
 
@@ -11753,6 +11935,7 @@ function deleteMapLabel(id){
   state.mapLabels.splice(idx, 1);
   if(state.selectedMapLabelId === id) state.selectedMapLabelId = null;
   renderMapLabelList();
+  syncMapLabelEditChip();
   setStatus(t('Popisek smazán.'));
 }
 
@@ -11761,6 +11944,7 @@ function clearMapLabels(){
   state.mapLabels = [];
   state.selectedMapLabelId = null;
   renderMapLabelList();
+  syncMapLabelEditChip();
   pzMultiRefresh();
   setStatus(t('Všechny popisky smazány.'));
 }
@@ -16438,7 +16622,11 @@ async function drawBrowserMapFrame(targetCanvas, opts = {}){
         ctx.font = `${bs.fontWeight || 800} ${fontSize}px ${bs.fontFamily || 'sans-serif'}`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, b.x + padLeft, b.y + b.h / 2, Math.max(1, b.w - padLeft - padRight));
+        // víc řádků (Shift+Enter v popisku): každý řádek zvlášť, rovnoměrně na výšku bubliny
+        const lines = text.split('\n');
+        const padTop = (parseFloat(bs.paddingTop) || 0) * domScaleY, padBot = (parseFloat(bs.paddingBottom) || 0) * domScaleY;
+        const lineH = lines.length > 1 ? (b.h - padTop - padBot) / lines.length : 0;
+        lines.forEach((ln, i) => ctx.fillText(ln, b.x + padLeft, lines.length > 1 ? b.y + padTop + lineH * (i + 0.5) : b.y + b.h / 2, Math.max(1, b.w - padLeft - padRight)));
       }
 
       if(square && getComputedStyle(square).display !== 'none' && square.getBoundingClientRect().width > 0){
@@ -18176,32 +18364,50 @@ function bindUI(){
     const item = getScenePerimeterById(state.selectedScenePerimeterId);
     if(item) updateSelectedScenePerimeter();
   });
+  // V režimu vkládání pole Rádius nastavuje další kruh — vložený kruh nepřepisuje.
   $('scenePerimeterRadius')?.addEventListener('input', ()=>{
     const item = getScenePerimeterById(state.selectedScenePerimeterId);
-    if(item) updateSelectedScenePerimeter({silent:true});
+    if(item && !state.addingScenePerimeter) updateSelectedScenePerimeter({silent:true});
   });
   $('scenePerimeterRadius')?.addEventListener('change', ()=>{
     const item = getScenePerimeterById(state.selectedScenePerimeterId);
-    if(item) updateSelectedScenePerimeter();
+    if(item && !state.addingScenePerimeter) updateSelectedScenePerimeter();
   });
   // Enter in the radius field commits the new radius to the selected perimeter (with
   // confirmation), so you can click a perimeter, retype the number and press Enter.
   $('scenePerimeterRadius')?.addEventListener('keydown', (e)=>{
     if(e.key !== 'Enter') return;
     e.preventDefault();
+    if(state.addingScenePerimeter){ setStatus(t('Další perimetr bude mít rádius') + ' ' + formatScenePerimeterDistance(scenePerimeterMetersFromInputs(), $('scenePerimeterUnit')?.value === 'm' ? 'm' : 'km') + '. ' + t('Klikni do mapy.')); return; }
     const item = getScenePerimeterById(state.selectedScenePerimeterId);
     if(!item){ setStatus(t('Nejdřív vyber perimetr ze seznamu nebo klikni přímo na něj v mapě.')); return; }
     updateSelectedScenePerimeter();
     try{ e.target.select?.(); }catch(_e){}
   });
+  // Štítek perimetru / vzdálenosti: vlastní text (prázdné = délka) a skrytí — jen u vybrané položky
+  const bindTagLabel = (inputId, showId, getItem, redraw, renderList, hint) => {
+    const apply = (key, val) => {
+      const item = getItem();
+      if(!item){ setStatus(t(hint)); return; }
+      if(val) item[key] = val; else delete item[key];
+      redraw(); renderList(); scheduleSceneLayerRedraw('tag-label');
+    };
+    $(inputId)?.addEventListener('focus', () => { try{ window.__pzPushUndo?.(); }catch(e){} });
+    $(inputId)?.addEventListener('input', e => apply('labelText', e.target.value.trim()));
+    $(inputId)?.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); e.target.blur(); } });
+    $(showId)?.addEventListener('change', e => { try{ window.__pzPushUndo?.(); }catch(_e){} apply('labelHidden', e.target.value === '0'); });
+  };
+  bindTagLabel('scenePerimeterLabel', 'scenePerimeterLabelShow', () => getScenePerimeterById(state.selectedScenePerimeterId), redrawScenePerimeters, renderScenePerimeterList, 'Nejdřív vyber perimetr ze seznamu nebo klikni přímo na něj v mapě.');
+  bindTagLabel('sceneDistanceLabel', 'sceneDistanceLabelShow', () => getSceneDistanceById(state.selectedSceneDistanceId), redrawSceneDistances, renderSceneDistanceList, 'Nejdřív vyber vzdálenost ze seznamu nebo klikni přímo na ni v mapě.');
   $('scenePerimeterUnit')?.addEventListener('change', ()=>{
     const item = getScenePerimeterById(state.selectedScenePerimeterId);
-    if(item) updateSelectedScenePerimeter();
+    if(item && !state.addingScenePerimeter) updateSelectedScenePerimeter();
   });
   $('addScenePerimeterBtn')?.addEventListener('click', ()=>{
     const radiusMeters = scenePerimeterMetersFromInputs();
     if(!(radiusMeters > 0)){ setStatus(t('Zadej radius větší než nula.')); return; }
     const on = armSceneAddMode('perimeter');
+    if(on) clearScenePerimeterSelection();   // pole Rádius teď patří dalšímu kruhu
     setStatus(on ? t('Klikni do mapy pro vložení perimetru. Lze vložit opakovaně.') : t('Vkládání perimetru vypnuto.'));
   });
   $('clearScenePerimetersBtn')?.addEventListener('click', () => clearScenePerimeters());
@@ -18324,12 +18530,36 @@ function bindUI(){
   $('mapLabelText')?.addEventListener('keydown', e => {
     if(e.key !== 'Enter') return;
     e.preventDefault();
-    if(getMapLabelById(state.selectedMapLabelId) && !state.addingMapLabel){ try{ window.__pzPushUndo?.(); }catch(err){} applySelectedMapLabelChanges(); return; }
+    syncMapLabelEditChip();
+    if(state.editingMapLabelId && !state.addingMapLabel){ try{ window.__pzPushUndo?.(); }catch(err){} applySelectedMapLabelChanges(); return; }
     if(!state.addingMapLabel) armSceneAddMode('label');
     setStatus(t('Klikni do mapy, kam popisek vložit.'));
   });
+  $('mapLabelEditCancel')?.addEventListener('click', () => {
+    clearMapLabelSelection();
+    state.editingMapLabelId = null;
+    syncMapLabelEditChip();
+    if($('mapLabelText')){ $('mapLabelText').value = ''; $('mapLabelText').focus(); }
+    setStatus(t('Úprava zrušena. Napiš text nového popisku a stiskni Enter.'));
+  });
+  // Posuvník velikosti: vybrané popisky (i vícevýběr), jinak všechny.
   $('mapLabelSize')?.addEventListener('input', ()=>{
-    applyMapLabelSizeToAll($('mapLabelSize')?.value || state.mapLabelGlobalSize || 28);
+    const v = $('mapLabelSize')?.value || state.mapLabelGlobalSize || 28;
+    const sel = mapLabelSizeTargets();
+    if(sel) sel.forEach(it => updateMapLabel(it.id, {size: v}));
+    else applyMapLabelSizeToAll(v);
+    syncMapLabelSizeControl();
+  });
+  // F2 / Enter na vybraném popisku otevře přepis textu (mimo textová pole)
+  document.addEventListener('keydown', e => {
+    if(e.key !== 'F2' && e.key !== 'Enter') return;
+    if(e.ctrlKey || e.metaKey || e.altKey || pzIsTextEntry(e.target)) return;
+    const tag = (e.target?.tagName || '').toLowerCase();
+    if(e.key === 'Enter' && (tag === 'button' || tag === 'select' || tag === 'input' || tag === 'a' || e.target?.closest?.('[role="button"],[role="slider"]'))) return;
+    const id = state.selectedMapLabelId;
+    if(!id || !getMapLabelById(id) || (state.multiSel && state.multiSel.size > 1)) return;
+    e.preventDefault(); e.stopPropagation();
+    startMapLabelInlineEdit(id);
   });
   $('mapLabelSide')?.addEventListener('change', ()=>{
     const item = getMapLabelById(state.selectedMapLabelId);
@@ -18504,6 +18734,33 @@ function bindUI(){
   initSliderNumberPairs();
 }
 
+
+// Překlady k ručnímu ovládání objektů scény (popisky, perimetr, vzdálenost, šipka)
+Object.assign(I18N, {
+  "Perimetr vybrán. Tahem uvnitř kruhu ho přesuneš, tahem za okraj (nebo bod B) měníš velikost, Delete smaže.": {cs:"Perimetr vybrán. Tahem uvnitř kruhu ho přesuneš, tahem za okraj (nebo bod B) měníš velikost, Delete smaže.",sk:"Perimeter vybraný. Ťahom vnútri kruhu ho presunieš, ťahom za okraj (alebo bod B) meníš veľkosť, Delete zmaže.",bg:"Периметърът е избран. Влачене отвътре го мести, влачене за ръба (или точка B) променя размера, Delete изтрива.",hr:"Perimetar odabran. Povlačenjem unutar kruga ga pomičeš, povlačenjem za rub (ili točku B) mijenjaš veličinu, Delete briše.",ro:"Perimetru selectat. Tragi din interior pentru a-l muta, de margine (sau punctul B) pentru dimensiune, Delete șterge.",en:"Perimeter selected. Drag inside to move it, drag the edge (or point B) to resize, Delete removes it."},
+  "změň Rádius a klikni znovu pro další kruh (i do stejného středu), Esc ukončí": {cs:"změň Rádius a klikni znovu pro další kruh (i do stejného středu), Esc ukončí",sk:"zmeň Rádius a klikni znova pre ďalší kruh (aj do rovnakého stredu), Esc ukončí",bg:"смени радиуса и кликни пак за следващ кръг (и в същия център), Esc приключва",hr:"promijeni radijus i klikni ponovno za sljedeći krug (i u isto središte), Esc završava",ro:"schimbă raza și dă clic din nou pentru alt cerc (și în același centru), Esc încheie",en:"change the Radius and click again for another circle (even at the same centre), Esc ends"},
+  "Další perimetr bude mít rádius": {cs:"Další perimetr bude mít rádius",sk:"Ďalší perimeter bude mať rádius",bg:"Следващият периметър ще има радиус",hr:"Sljedeći perimetar imat će radijus",ro:"Următorul perimetru va avea raza",en:"The next perimeter will have a radius of"},
+  "Klikni do mapy.": {cs:"Klikni do mapy.",sk:"Klikni do mapy.",bg:"Кликни в картата.",hr:"Klikni u kartu.",ro:"Dă clic pe hartă.",en:"Click the map."},
+  "Text štítku": {cs:"Text štítku",sk:"Text štítku",bg:"Текст на етикета",hr:"Tekst oznake",ro:"Text etichetă",en:"Tag text"},
+  "Štítek": {cs:"Štítek",sk:"Štítok",bg:"Етикет",hr:"Oznaka",ro:"Etichetă",en:"Tag"},
+  "Zobrazit": {cs:"Zobrazit",sk:"Zobraziť",bg:"Покажи",hr:"Prikaži",ro:"Afișează",en:"Show"},
+  "Skrýt": {cs:"Skrýt",sk:"Skryť",bg:"Скрий",hr:"Sakrij",ro:"Ascunde",en:"Hide"},
+  "Nejdřív vyber vzdálenost ze seznamu nebo klikni přímo na ni v mapě.": {cs:"Nejdřív vyber vzdálenost ze seznamu nebo klikni přímo na ni v mapě.",sk:"Najprv vyber vzdialenosť zo zoznamu alebo klikni priamo na ňu v mape.",bg:"Първо избери разстояние от списъка или кликни върху него в картата.",hr:"Najprije odaberi udaljenost s popisa ili klikni na nju u karti.",ro:"Mai întâi alege o distanță din listă sau dă clic pe ea pe hartă.",en:"First pick a distance from the list or click it on the map."},
+  "Upravuješ:": {cs:"Upravuješ:",sk:"Upravuješ:",bg:"Редактираш:",hr:"Uređuješ:",ro:"Editezi:",en:"Editing:"},
+  "Zrušit úpravu": {cs:"Zrušit úpravu",sk:"Zrušiť úpravu",bg:"Откажи редакцията",hr:"Poništi uređivanje",ro:"Anulează editarea",en:"Stop editing"},
+  "Zrušit úpravu — pole pak vytvoří nový popisek": {cs:"Zrušit úpravu — pole pak vytvoří nový popisek",sk:"Zrušiť úpravu — pole potom vytvorí nový popisok",bg:"Откажи редакцията — полето ще създаде нов надпис",hr:"Poništi uređivanje — polje će zatim stvoriti novu oznaku",ro:"Anulează editarea — câmpul va crea o etichetă nouă",en:"Stop editing — the field will then create a new label"},
+  "Velikost vybraného": {cs:"Velikost vybraného",sk:"Veľkosť vybraného",bg:"Размер на избрания",hr:"Veličina odabrane",ro:"Mărimea celei selectate",en:"Selected label size"},
+  "Velikost vybraných": {cs:"Velikost vybraných",sk:"Veľkosť vybraných",bg:"Размер на избраните",hr:"Veličina odabranih",ro:"Mărimea celor selectate",en:"Selected labels size"},
+  "Přepiš text popisku: Enter uloží, Shift+Enter nový řádek, Esc zruší.": {cs:"Přepiš text popisku: Enter uloží, Shift+Enter nový řádek, Esc zruší.",sk:"Prepíš text popisku: Enter uloží, Shift+Enter nový riadok, Esc zruší.",bg:"Промени текста: Enter запазва, Shift+Enter нов ред, Esc отказва.",hr:"Prepiši tekst oznake: Enter sprema, Shift+Enter novi red, Esc odustaje.",ro:"Rescrie textul: Enter salvează, Shift+Enter rând nou, Esc anulează.",en:"Retype the label: Enter saves, Shift+Enter new line, Esc cancels."},
+  "Klik vybere (Delete smaže), dvojklik nebo F2 přepíše text, tahem posuneš": {cs:"Klik vybere (Delete smaže), dvojklik nebo F2 přepíše text, tahem posuneš",sk:"Klik vyberie (Delete zmaže), dvojklik alebo F2 prepíše text, ťahom posunieš",bg:"Клик избира (Delete изтрива), двоен клик или F2 редактира, влачене мести",hr:"Klik odabire (Delete briše), dvoklik ili F2 mijenja tekst, povlačenje pomiče",ro:"Clic selectează (Delete șterge), dublu clic sau F2 editează, tragi pentru mutare",en:"Click selects (Delete removes), double-click or F2 edits the text, drag to move"},
+  "Popisek vybrán. Dvojklik nebo F2 přepíše text, Delete smaže, šipkami posuneš.": {cs:"Popisek vybrán. Dvojklik nebo F2 přepíše text, Delete smaže, šipkami posuneš.",sk:"Popisok vybraný. Dvojklik alebo F2 prepíše text, Delete zmaže, šípkami posunieš.",bg:"Надписът е избран. Двоен клик или F2 редактира, Delete изтрива, стрелките местят.",hr:"Oznaka odabrana. Dvoklik ili F2 mijenja tekst, Delete briše, strelice pomiču.",ro:"Etichetă selectată. Dublu clic sau F2 editează, Delete șterge, săgețile mută.",en:"Label selected. Double-click or F2 edits the text, Delete removes, arrow keys move."},
+  "Popisek přidán. Klikni znovu pro další, nebo Esc pro ukončení.": {cs:"Popisek přidán. Klikni znovu pro další, nebo Esc pro ukončení.",sk:"Popisok pridaný. Klikni znova pre ďalší, alebo Esc na ukončenie.",bg:"Надписът е добавен. Кликни пак за следващ или Esc за край.",hr:"Oznaka dodana. Klikni ponovno za sljedeću ili Esc za kraj.",ro:"Etichetă adăugată. Dă clic din nou pentru încă una sau Esc pentru a încheia.",en:"Label added. Click again for another, or Esc to finish."},
+  "Popisek přidán. Dvojklik ho přepíše, Shift+klik do mapy vloží další.": {cs:"Popisek přidán. Dvojklik ho přepíše, Shift+klik do mapy vloží další.",sk:"Popisok pridaný. Dvojklik ho prepíše, Shift+klik do mapy vloží ďalší.",bg:"Надписът е добавен. Двоен клик го редактира, Shift+клик в картата добавя още един.",hr:"Oznaka dodana. Dvoklik je mijenja, Shift+klik u kartu dodaje sljedeću.",ro:"Etichetă adăugată. Dublu clic o editează, Shift+clic pe hartă adaugă încă una.",en:"Label added. Double-click edits it, Shift+click on the map adds another."},
+  "Úprava zrušena. Napiš text nového popisku a stiskni Enter.": {cs:"Úprava zrušena. Napiš text nového popisku a stiskni Enter.",sk:"Úprava zrušená. Napíš text nového popisku a stlač Enter.",bg:"Редакцията е отказана. Напиши текст на нов надпис и натисни Enter.",hr:"Uređivanje poništeno. Upiši tekst nove oznake i pritisni Enter.",ro:"Editare anulată. Scrie textul unei etichete noi și apasă Enter.",en:"Editing stopped. Type the text of a new label and press Enter."},
+  "Bod A je na místě. Klikni do bodu B (Esc zruší).": {cs:"Bod A je na místě. Klikni do bodu B (Esc zruší).",sk:"Bod A je na mieste. Klikni do bodu B (Esc zruší).",bg:"Точка A е поставена. Кликни в точка B (Esc отказва).",hr:"Točka A je postavljena. Klikni u točku B (Esc odustaje).",ro:"Punctul A este pus. Dă clic în punctul B (Esc anulează).",en:"Point A is set. Click point B (Esc cancels)."},
+  "Táhni z bodu A do bodu B, nebo klikni do A a pak do B.": {cs:"Táhni z bodu A do bodu B, nebo klikni do A a pak do B.",sk:"Ťahaj z bodu A do bodu B, alebo klikni do A a potom do B.",bg:"Влачи от A до B или кликни в A и после в B.",hr:"Povuci od točke A do B ili klikni u A pa u B.",ro:"Trage din A în B sau dă clic în A și apoi în B.",en:"Drag from A to B, or click A and then B."},
+  "Klikni dvakrát nebo táhni pro další, Esc ukončí.": {cs:"Klikni dvakrát nebo táhni pro další, Esc ukončí.",sk:"Klikni dvakrát alebo ťahaj pre ďalšiu, Esc ukončí.",bg:"Кликни два пъти или влачи за следваща, Esc приключва.",hr:"Klikni dvaput ili povuci za sljedeću, Esc završava.",ro:"Dă clic de două ori sau trage pentru încă una, Esc încheie.",en:"Click twice or drag for another, Esc ends."},
+});
 
 // ===== I18N SYSTEM =====
 const I18N_LANGS = ['cs','sk','bg','hr','ro','en'];
