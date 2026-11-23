@@ -42,24 +42,24 @@ var TOOLS = `
 gotoPlace {query} – přelet na místo (město, ulice, "lat,lng").
 showRegion {region} – výřez: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania.
 show3D {query?, pitch?, zoom?} – místo ve 3D (Liberty + náklon).
-setCamera {zoom?, zoomBy?, pitch?, bearing?} – kamera; zoomBy +1 přiblížit / -1 oddálit; pitch 0-85; bearing 0=sever.
+setCamera {zoom?, zoomBy?, pitch?, bearing?} – kamera, hodnoty jen čísla; zoom 0-22; zoomBy +1 přiblížit / -1 oddálit; pitch 0-85; bearing 0=sever.
 setBaseStyle {style} – podklad: positron (světlý, výchozí), liberty (3D budovy), bright, basic, terrain (reliéf), omt3d, satellite, hybrid, osmStandard, openTopo (turistická), cyclOsm, esriTerrain, political (politická).
 applyPreset {preset} – barevné schéma: tnSvetla, tnSvetlaKontrast, tnSvetlaVyrazna, tnModra (Modrá TN), tnStudio, tnLive (noční), libertyKlasicka, zelenaPrirodni (jako Google), modraPrirodni, mapycz, mapycomTuristicka (jako mapy.com), flightradar, waze, uber, ct24, tnNovaClean, novaBlue, novaTerrain, dark, slate, paper, news, sunset, ocean, mint, candy, neon, tn, reset.
-placeIcon {place, kind?, size?, zoom?} – ikona na místo; kind: pin, vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani.
+placeIcon {place, kind?, size?, zoom?} – ikona na místo (size 16-96 px, bez size výchozí); kind: pin, vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani.
 addLabel {place, text?, size?, side?, style?} – popisek; bez text = název místa; side right|left|none (none = bez červeného bodu, např. název státu); style classic|navy|red|dark.
 setLabelStyle {style, text?, all?} – změní styl existujících popisků (all:true = všech).
 drawArrow {from, to, color?, width?} – šipka z místa do místa (postup, migrace). NENÍ to trasa.
 measureDistance {from, to, color?} – vzdušná vzdálenost; číslo vrátí ve výsledku.
-drawPerimeter {place?, km?, meters?, color?} – kružnice/okruh kolem místa.
+drawPerimeter {place?, km?, meters?, color?} – kružnice/okruh kolem místa, rádius nejvýš 5000 km; bez place střed výřezu. Když redaktor místo nezmínil a ve scéně není jasný střed, zeptej se přes options.
 colorPolitical {country, color?, clear?} – obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR NEUMÍ.
 placeFlag {country, place?} – vlajka státu na mapu. Víc států = víc volání.
 roadClosure {from, to, via?, detourVia?, label?} – uzavírka silnice/dálnice mezi obcemi (via = obec na úseku, detourVia = objížďka).
 metroClosure {line?, station?, from?, to?, label?} – výluka pražského metra A/B/C: stanice nebo úsek.
 placeModel3d {place?, size?, scale?, rotation?, snap?} – umístí už nahraný GLB model.
 setColors {prvek:"barva", …} – barvy (#rrggbb nebo česky): route, routeDots, land, water, building, park, landcover, landuse, aeroway, roadMajor, roadMinor, motorway, roadPrimary, roadSecondary, railway, transit, label, labelHalo, boundary, countryBorder, perimeter, arrow, distance, country.
-setValues {ovladač:číslo, …} – čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, animStart 0-10 (prodleva startu), animEndHold 0-10 (pauza na konci — záběr po doběhnutí stojí), cameraPitch 0-85, routeEndpointSize 12-48.
+setValues {ovladač:číslo, …} – čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, animStart 0-10 (prodleva startu), animEndHold 0-10 (pauza na konci — záběr po doběhnutí stojí), cameraPitch 0-85, routeEndpointSize 12-48. sun*, shadow* a aoStrength jen na podkladu liberty.
 setLayers {vrstva:true/false, …} – zapnout/vypnout vrstvy: buildings, parks, labels, roadShields, majorRoads, minorRoads, motorways, primaryRoads, secondaryRoads, railways, waterways, metro, transit, boundaries, countryBorders, countryColors, landcover, landuse, aeroway, routeTrail, exportFrame.
-setGlobe {on} – glóbus.
+setGlobe {on} – glóbus: on true = zapnout, false = vypnout (plochá mapa).
 setShadows {on?, ao?, strength?} – on = stíny budov, ao = ambientní okluze (jiná věc), strength 0-100.
 setTransportMode {mode} – driving, truck, moto, train, metro, tram, boat, foot, cycle, planeDirect, planeArc, planeCustom.
 routeBetween {from, to, mode?} – najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné "via".
@@ -72,12 +72,12 @@ fitRoute {} – ukáže celou trasu.
 arcBestView {} – 3D pohled na letecký oblouk.
 playAnimation {action, time?} – play, pause, stop, rewind; seek + time (s) = zastavit na daném okamžiku.
 exportPng {} – uloží snímek PNG.
-selectObjects {action} – all, none, delete (ikonky a popisky).
-clearScene {what} – smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, all.
+selectObjects {action} – all, none, delete (objekty scény: popisky, ikonky, šipky, perimetry, vzdálenosti).
+clearScene {what} – smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles (další vozidla), all; víc druhů = pole ["labels","icons"].
 undo {} – krok zpět.  redo {} – krok vpřed.
 openTab {tab} – scena, trasa, animace, export, styly, projekt, nastaveni.
 openSection {section} – POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.
-setUiTheme {mode} – vzhled aplikace light|dark.
+setUiTheme {mode} – vzhled aplikace light|dark|toggle.
 setLanguage {lang} – cs, sk, bg, hr, ro, en.
 resetApp {} – rozhraní na začátek (nic nemaže).
 `.trim();
