@@ -15025,8 +15025,10 @@ function redistributeKeyframeTimes(){
 }
 function pzAnimUndoSnap(){ try{ window.__pzPushUndo?.(); }catch(e){} }
 // Název místa pro řádek záběru (asynchronně, z reverzního geokódování; chyba = bez názvu).
+const _pzKfNaming = new WeakSet();
 async function pzNameKeyframe(kf){
-  if(!kf?.view || kf.name) return;
+  if(!kf?.view || kf.name || _pzKfNaming.has(kf)) return;
+  _pzKfNaming.add(kf);   // každý záběr se dohledává jen jednou
   const z = kf.view.zoom, c = kf.view.center;
   try{
     const it = await reverseGeocode(c, z < 4.5 ? 3 : z < 7 ? 5 : 10), a = it?.address || {};
@@ -15065,7 +15067,7 @@ function updateCameraKeyframe(index){
   const kf = state.cameraAnim.keyframes[index]; let v = captureCameraView(); if(!kf || !v) return;
   pzAnimUndoSnap();
   if(state.cameraAnim.space === 'frame') v = pzMapToFrameView(v);
-  kf.view = v; delete kf.name;
+  kf.view = v; delete kf.name; _pzKfNaming.delete(kf);
   redistributeKeyframeTimes();
   state._camKfSel = index;
   renderCameraKeyframeList();
