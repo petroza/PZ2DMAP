@@ -67,6 +67,13 @@ const PLANS = {
   check(recog.length === 0, 'rozpoznání dalších povelů bez modelu' + (recog.length ? ' — nepoznal: ' + recog.join(', ') : ''));
   const notQuick = await page.evaluate(() => ['trasa z Prahy do Brna', 'udělej z toho volební mapu', 'nehoda na D1 u Humpolce směr Brno', 'ukaž Brno'].filter(q => { const p = window.__tnchat.quick(q); return p && !p.prepare; }));
   check(notQuick.length === 0, 'složitější zadání zůstávají modelu' + (notQuick.length ? ' — chybně rychlé: ' + notQuick.join(', ') : ''));
+  // zastávky / víc úseků / nejasné odkazy rychlý povel nehádá (dřív „Brna přes Jihlavu" → Francie, „to" → Tonga)
+  const toModel = await page.evaluate(() => ['trasa z Prahy do Brna přes Jihlavu', 'trasa z Prahy do Brna, pak do Vídně', 'šipka z Kyjeva přes Charkov na Doněck', 'obarvi to červeně',
+    'obarvi všechny sousedy Česka', 'vlajky EU'].filter(q => window.__tnchat.quick(q)));
+  check(toModel.length === 0, 'zastávky, „to" a nejasné státy rozhoduje model' + (toModel.length ? ' — chybně rychlé: ' + toModel.join(', ') : ''));
+  const qp = await page.evaluate(() => Promise.all(['obarvi Velkou Británii', 'vlajky Spojených států a Číny', 'tmavá mapa', 'smaž vlajky', 'vzdálenost mezi Prahou a Brnem'].map(q => window.__tnchat.plan(q))));
+  check(qp[0]?.calls[0]?.args.country === 'Velká Británie' && qp[1]?.calls.map(c => c.args.country).join() === 'Spojené státy,Čína' && qp[2]?.calls[0]?.args.preset === 'tnLive'
+    && /vlajky/.test(qp[3]?.say || '') && qp[4]?.calls[0]?.args.from === 'Praha' && qp[4]?.calls[0]?.args.to === 'Brno', 'víceslovné státy, tmavá mapa, smaž vlajky, 7. pád míst — ' + JSON.stringify(qp.map(p => p && (p.calls[0]?.args || p.say))));
   check(JSON.stringify(await page.evaluate(() => [window.__tnchat.guesses('Brně'), window.__tnchat.guesses('Humpolci').list[0], window.__tnchat.guesses('Zlíně').sure, window.__tnchat.guesses('Jihlavě').sure])) === JSON.stringify([{sure:'Brno'}, 'Humpolec', 'Zlín', 'Jihlava']), 'skloněné názvy míst se převedou do 1. pádu');
 
   m = await ask('vlak praha brno'); check(n === 1 && /Délka trasy \d/.test(m), 'trasa: 1 dotaz, délku doplní appka — ' + m);

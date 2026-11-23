@@ -13554,18 +13554,30 @@ function getFitPadding(){
   if(!state.map || !mapEl) return {top:base,right:base,bottom:base,left:base};
   const mapRect = mapEl.getBoundingClientRect();
   const frameVisible = $('showExportFrame')?.checked && $('exportFrame') && !$('exportFrame').classList.contains('hidden');
-  if(!frameVisible) return {top:base,right:base,bottom:base,left:base + getMapFreeAreaLeft()};
-  const frameRect = $('exportFrame').getBoundingClientRect();
-  // Keep the fitted route comfortably away from the export-frame edges
-  // (~10 % of the frame size instead of a fixed sliver).
-  const innerX = Math.max(36, Math.round(frameRect.width * 0.10));
-  const innerY = Math.max(36, Math.round(frameRect.height * 0.10));
-  return {
-    top: Math.max(base, Math.round(frameRect.top - mapRect.top) + innerY),
-    right: Math.max(base, Math.round(mapRect.right - frameRect.right) + innerX),
-    bottom: Math.max(base, Math.round(mapRect.bottom - frameRect.bottom) + innerY),
-    left: Math.max(base, Math.round(frameRect.left - mapRect.left) + innerX)
-  };
+  let pad;
+  if(!frameVisible) pad = {top:base,right:base,bottom:base,left:base + getMapFreeAreaLeft()};
+  else {
+    const frameRect = $('exportFrame').getBoundingClientRect();
+    // Keep the fitted route comfortably away from the export-frame edges
+    // (~10 % of the frame size instead of a fixed sliver).
+    const innerX = Math.max(36, Math.round(frameRect.width * 0.10));
+    const innerY = Math.max(36, Math.round(frameRect.height * 0.10));
+    pad = {
+      top: Math.max(base, Math.round(frameRect.top - mapRect.top) + innerY),
+      right: Math.max(base, Math.round(mapRect.right - frameRect.right) + innerX),
+      bottom: Math.max(base, Math.round(mapRect.bottom - frameRect.bottom) + innerY),
+      left: Math.max(base, Math.round(frameRect.left - mapRect.left) + innerX)
+    };
+  }
+  // Otevřený chat asistenta vpravo: výsledek jeho práce (trasa, měření) nesmí
+  // skončit pod panelem. Jen když vedle panelu zbude rozumné místo (ne telefon).
+  const chat = document.querySelector('.tnchat-panel.open');
+  if(chat){
+    const cr = chat.getBoundingClientRect();
+    const need = Math.round(mapRect.right - cr.left) + 16;
+    if(cr.width && cr.left > mapRect.left && need > pad.right && mapRect.width - pad.left - need > 240) pad.right = need;
+  }
+  return pad;
 }
 
 function fitRoute(){
@@ -20097,6 +20109,15 @@ Object.assign(I18N, {
   "Zpráva": {cs:"Zpráva",sk:"Správa",bg:"Съобщение",hr:"Poruka",ro:"Mesaj",en:"Message"},
   "Odeslat": {cs:"Odeslat",sk:"Odoslať",bg:"Изпрати",hr:"Pošalji",ro:"Trimite",en:"Send"},
   "Pracuji": {cs:"Pracuji",sk:"Pracujem",bg:"Работя",hr:"Radim",ro:"Lucrez",en:"Working"},
+  "Upřesni prosím:": {cs:"Upřesni prosím:",sk:"Upresni, prosím:",bg:"Уточни, моля:",hr:"Pojasni, molim:",ro:"Precizează, te rog:",en:"Please clarify:"},
+  "Zastavil jsem po {0} krocích – zkontroluj mapu, případně napiš, co dál.": {cs:"Zastavil jsem po {0} krocích – zkontroluj mapu, případně napiš, co dál.",sk:"Zastavil som po {0} krokoch – skontroluj mapu, prípadne napíš, čo ďalej.",bg:"Спрях след {0} стъпки – провери картата или напиши какво следва.",hr:"Stao sam nakon {0} koraka – provjeri kartu ili napiši što dalje.",ro:"M-am oprit după {0} pași – verifică harta sau scrie ce urmează.",en:"I stopped after {0} steps – check the map or tell me what next."},
+  "Zastaveno.": {cs:"Zastaveno.",sk:"Zastavené.",bg:"Спряно.",hr:"Zaustavljeno.",ro:"Oprit.",en:"Stopped."},
+  "Zastavuji": {cs:"Zastavuji",sk:"Zastavujem",bg:"Спирам",hr:"Zaustavljam",ro:"Opresc",en:"Stopping"},
+  "Zastavit": {cs:"Zastavit",sk:"Zastaviť",bg:"Спри",hr:"Zaustavi",ro:"Oprește",en:"Stop"},
+  "Napiš vlastní odpověď…": {cs:"Napiš vlastní odpověď…",sk:"Napíš vlastnú odpoveď…",bg:"Напиши свой отговор…",hr:"Napiši vlastiti odgovor…",ro:"Scrie propriul răspuns…",en:"Type your own answer…"},
+  "Nepovedlo se: {0}": {cs:"Nepovedlo se: {0}",sk:"Nepodarilo sa: {0}",bg:"Не се получи: {0}",hr:"Nije uspjelo: {0}",ro:"Nu a reușit: {0}",en:"Failed: {0}"},
+  "vlajky": {cs:"vlajky",sk:"vlajky",bg:"знамената",hr:"zastave",ro:"steagurile",en:"flags"},
+  "vozidla": {cs:"vozidla",sk:"vozidlá",bg:"превозните средства",hr:"vozila",ro:"vehiculele",en:"vehicles"},
   "Hledám místo": {cs:"Hledám místo",sk:"Hľadám miesto",bg:"Търся мястото",hr:"Tražim mjesto",ro:"Caut locul",en:"Looking up the place"},
   "Zkusit znovu": {cs:"Zkusit znovu",sk:"Skúsiť znova",bg:"Опитай отново",hr:"Pokušaj ponovno",ro:"Încearcă din nou",en:"Try again"},
   "Bez AI funguje dál:": {cs:"Bez AI funguje dál:",sk:"Bez AI funguje ďalej:",bg:"Без AI продължава да работи:",hr:"Bez AI i dalje radi:",ro:"Fără AI funcționează în continuare:",en:"Still works without AI:"},
@@ -23112,6 +23133,7 @@ function pzColorFromName(v){
 .tnchat-claudebox .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tnchat-claudebox button{background:var(--bg3);border:1px solid var(--border);color:var(--tx1);border-radius:6px;padding:3px 8px;font:600 11px var(--font);cursor:pointer}
 .tnchat-claudebox small{color:var(--tx2)}
+.tnchat-claudebox[hidden]{display:none}
 .pz-extra-more{display:flex;gap:6px;margin-top:6px}.pz-extra-more input[type=color]{width:34px;height:30px;padding:0;border:1px solid var(--border);border-radius:6px;background:none}.pz-extra-more input[type=text]{flex:1;min-width:0}
 .tnchat-log{flex:1 1 auto;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .tnchat-msg{font:13px/1.45 var(--font);padding:8px 11px;border-radius:10px;max-width:88%;white-space:pre-wrap;word-break:break-word}
@@ -23126,12 +23148,22 @@ function pzColorFromName(v){
 .tnchat-form input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow);outline:none}
 .tnchat-form button{background:var(--accent);border:none;color:#fff;padding:0 14px;border-radius:8px;cursor:pointer;font:700 13px var(--font)}
 .tnchat-form button:disabled{opacity:.5;cursor:not-allowed}
+.tnchat-form button[hidden]{display:none}
+.tnchat-form .tnchat-stop{background:var(--bg3);border:1px solid var(--border-hi);color:var(--tx1);font-size:12px}
+.tnchat-form .tnchat-stop:hover{border-color:var(--accent)}
 .tnchat-hint{padding:0 12px 10px;font:11px/1.4 var(--font);color:var(--tx3)}
 .tnchat-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 10px}
 .tnchat-chip{background:var(--bg3);border:1px solid var(--border);color:var(--tx2);font:600 11px var(--font);
   padding:5px 9px;border-radius:999px;cursor:pointer}
 .tnchat-chip:hover{border-color:var(--accent);color:var(--tx1)}
-@media(max-width:900px){.tnchat-fab{bottom:14px;right:14px;width:56px;height:56px}.tnchat-panel{bottom:70px;max-height:60vh}}
+/* Doptání: odpovědi jsou tlačítka, ne pasivní štítky */
+.tnchat-ask .tnchat-chip{border-color:var(--accent);color:var(--tx1);font-size:12.5px;padding:7px 11px}
+.tnchat-ask .tnchat-chip:hover{background:var(--accent);color:#fff}
+@media(max-width:900px){.tnchat-fab{bottom:14px;right:14px;width:56px;height:56px}.tnchat-panel{bottom:70px;max-height:calc(100dvh - 150px)}.tnchat-head{white-space:nowrap}}
+/* Dotyk: čipy aspoň 44 px vysoké */
+@media(pointer:coarse){.tnchat-chip{min-height:44px;padding:10px 14px;font-size:13px}}
+/* Nízký notebook (125 %): panel nesmí ležet přes +/− zoomu vpravo */
+@media(min-width:981px) and (max-height:700px){.tnchat-panel{right:64px}}
 /* Telefon: záložky byly po jedné na celou šířku (width:100% + flex:0 0 auto),
    hlavička na tři řádky, menu nešlo zavřít a přehrávač/stav/asistent se překrývaly. */
 .mobile-close-btn{display:none}
@@ -23893,6 +23925,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   <form class="tnchat-form" id="tnchatForm" autocomplete="off">
     <textarea id="tnchatInput" rows="1" placeholder="Napiš, co má mapa udělat…" aria-label="Zpráva"></textarea>
     <button type="submit" id="tnchatSend" aria-label="Odeslat">▲</button>
+    <button type="button" id="tnchatStop" class="tnchat-stop" aria-label="Zastavit" title="Zastavit" hidden>■</button>
   </form>
 </div>
 <script>
@@ -23905,7 +23938,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
 
   const $q = id => document.getElementById(id);
   const panel = $q('tnchatPanel'), log = $q('tnchatLog'), input = $q('tnchatInput'),
-        form = $q('tnchatForm'), sendBtn = $q('tnchatSend'), newBtn = $q('tnchatNew');
+        form = $q('tnchatForm'), sendBtn = $q('tnchatSend'), newBtn = $q('tnchatNew'), stopBtn = $q('tnchatStop');
   let history = [];   // [{role:'user'|'assistant', content:string}]
   let busy = false;
   let busyEl = null;
@@ -23943,6 +23976,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   }
   function setBusy(on, label){
     busy = on; sendBtn.disabled = on;
+    // během práce je místo Odeslat tlačítko Zastavit
+    sendBtn.hidden = on; stopBtn.hidden = !on;
     panel.classList.toggle('busy', on);
     if(on){
       if(!busyEl){ busyEl = document.createElement('div'); busyEl.className = 'tnchat-busy'; busyEl.setAttribute('role', 'status'); }
@@ -23959,7 +23994,14 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'tnchat-chip'; b.dataset.i18n = key; b.textContent = tr(key);
       // odesílá se český povel (rozpozná ho i rychlý povel bez AI), vidět je překlad
-      b.addEventListener('click', () => { if(busy) return; if(cls === 'tnchat-ask') row.remove(); ask(key, false, b.textContent); });
+      // „Jiné místo…", „Jinak…": nic neodesílat — jen fokus do pole s nápovědou
+      const own = cls === 'tnchat-ask' && (/…$|\.\.\.$/.test(key.trim()) || /^jin[éáýaei]|^jinak|^něco jiného/i.test(key.trim()));
+      b.addEventListener('click', () => {
+        if(busy) return;
+        if(own){ row.remove(); input.placeholder = tr('Napiš vlastní odpověď…'); input.focus(); return; }
+        if(cls === 'tnchat-ask') row.remove();
+        ask(key, false, b.textContent);
+      });
       row.appendChild(b);
     });
     return row;
@@ -24025,11 +24067,13 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
                            'playAnimation','exportPng','setUiTheme','setLanguage']);
   let undoTaken = false;   // jeden povel = jeden Krok zpět, i když spustí víc nástrojů
   // Spustí jeden nástroj z whitelistu (window.TNMAP). Nikdy nevyhodí — vrací výsledek.
-  async function runTool(call){
+  async function runTool(call, chat){
     const api = window.TNMAP;
     const name = call && call.tool;
     if(!api) return {ok:false, error:'API mapy není připravené.'};
     if(!name || name[0] === '_' || typeof api[name] !== 'function') return {ok:false, error:'Neznámý nástroj: ' + name};
+    // chat smí jen nástroje, které mu worker nabízí (export videa apod. ne)
+    if(chat && !CHAT_TOOLS.has(name)) return {ok:false, error:'Nástroj ' + name + ' asistent v chatu nepoužívá.'};
     if(!NO_UNDO.has(name) && !undoTaken){ undoTaken = true; try{ window.__pzPushUndo?.(); }catch(e){} }
     try{ window.tnFeature?.('tool:' + name); }catch(e){}
     try{
@@ -24136,7 +24180,9 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [/^(vzdalenost|mereni)/, 'distances', 'vzdálenosti', s => s.distances || 0],
     [/^(uzavirk|vyluk)/, 'closures', 'uzavírky', s => (s.closures || []).length],
     [/^(barv|obarven)/, 'colors', 'barvy států', s => Object.keys(s.colored || {}).length],
-    [/^tras/, 'route', 'trasu', s => s.route ? 1 : 0]
+    [/^vlajk/, 'flags', 'vlajky', s => (s.flags || []).length],
+    [/^(vozidl|auta|auto)/, 'vehicles', 'vozidla', s => (s.extraVehicles || []).length],
+    [/^tras/, 'route', 'trasu', (s, st) => (st && st.hasRoute) || s.line ? 1 : 0]
   ];
   // Událost na místě (dřív Rychlá scéna): ikonka + popisek nad ní.
   const EVENTS = [
@@ -24198,8 +24244,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [/^(oddal|oddalit|zoom out)( to| mapu| se)?( (jeste|trochu|vic|hodne))?$/, m => ({say: tr('Oddaluji.'), calls: one('setCamera', {zoomBy: /vic|hodne/.test(m[3] || '') ? -2 : -1}, tr('Oddálit'))})],
     [/^(reset|resetuj|na zacatek|domu)$/, () => ({say: tr('Vracím aplikaci na začátek.'), calls: one('resetApp', {}, tr('Na začátek'))})],
     // --- mazání (jde vrátit: snímek pro Krok zpět se dělá před prvním nástrojem)
-    [new RegExp('^(?:' + DEL + '(?: to)? (vsechno|vse|vsecko|celou scenu|scenu|celou mapu)|vycisti(?:t)? (mapu|scenu))$'), () => clearPlan('all', 'všechno', s =>
-      KINDS.reduce((n, k) => n + k[3](s), 0))],
+    [new RegExp('^(?:' + DEL + '(?: to)? (vsechno|vse|vsecko|celou scenu|scenu|celou mapu)|vycisti(?:t)? (mapu|scenu))$'), () => clearPlan('all', 'všechno', (s, st) =>
+      KINDS.reduce((n, k) => n + k[3](s, st), 0))],
     [new RegExp('^' + DEL + '(?: vsechny| vsechna| vsechnu| ty| ten| tu)? (\\w+)( statu| zemi)?$'), m => { const k = KINDS.find(([re]) => re.test(m[1])); return k ? clearPlan(k[1], k[2], k[3]) : null; }],
     // --- událost na místě: „nehoda v Humpolci", „dej požár do Ostravy"
     [new RegExp('^(?:(?:dej|pridej|vloz|oznac|ukaz|zobraz|vyznac) )?(nehod[au]|bourack[au]|havari[ei]|pozar|ohen|vybuch|exploz[ei]|polici[ei]|zasah|zachrank[au]|sanitk[au]|povoden|zaplav[ay]|varovani|spendlik|misto|bod) (?:je |byla? |se stala? )?(v|ve|na|u|do|pobliz|pri) (.+)$'),
@@ -24207,19 +24253,21 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     // --- bez AI i složitější povely (fungují i při vyčerpaném limitu) ---------------
     // trasa / cesta [dopravou] z X do Y   ·   vlakem z X do Y
     [/^(?:(?:udelej|nakresli|ukaz|dej|vykresli|chci) )?(?:(?:trasu|trasa|cestu|cesta|jizda|jizdu|let|prejezd|presun) )?(?:(autem|vlakem|lodi|lodi po \w+|kamionem|nakladakem|motorkou|pesky|peso|na kole|kolem|letadlem|metrem|tramvaji|autobusem) )?(?:z|ze|od) (.+) (?:do|na|k|ke) (.+?)(?: (autem|vlakem|lodi|kamionem|nakladakem|motorkou|pesky|na kole|letadlem|metrem|tramvaji|autobusem))?$/,
-      (m, words) => { const mode = OFF_MODE(m[1] || m[4]) || (/ (na kole|kolem)$/.test(m.input) ? 'cycle' : null); if(m[1] == null && m[4] == null && !/^(udelej |nakresli |vykresli )?(trasu|trasa|cestu|cesta|let|jizd)/.test(m.input)) return null;
+      (m, words, raw) => { const mode = OFF_MODE(m[1] || m[4]) || (/ (na kole|kolem)$/.test(m.input) ? 'cycle' : null); if(m[1] == null && m[4] == null && !/^(udelej |nakresli |vykresli )?(trasu|trasa|cestu|cesta|let|jizd)/.test(m.input)) return null;
+        if(isMulti(m.input, raw)) return null;      // „přes Jihlavu", „a pak do Vídně" → zastávky, rozhodne model
         const [a, b] = splitFromTo(words); if(!a || !b) return null;
         const plan = ([x, y]) => ({say: tr('Kreslím trasu {0} – {1}.', x, y), calls: one('routeBetween', {from: x, to: y, ...(mode ? {mode} : {})}, tr('Trasa'))});
-        // metro a tramvaj: stanice hledá síť MHD sama (i skloňované), geokodér by našel jiné místo
-        if(mode === 'metro' || mode === 'tram') return plan([a, b]);
+        // metro a tramvaj: stanice hledá síť MHD sama (i skloňované), geokodér by našel jiné místo;
+        // když stanici nenajde, nehlásit holou chybu — rozhodne (a případně se doptá) model
+        if(mode === 'metro' || mode === 'tram') return {...plan([a, b]), aiOnFail: true};
         return {prepare: () => offPlan([a, b], plan)}; }],
     // šipka z X do Y
     [/^(?:(?:udelej|nakresli|dej|pridej) )?sipk[auy]? (?:z|ze|od) (.+) (?:do|na|k|ke) (.+)$/,
-      (m, words) => { const [a, b] = splitFromTo(words); if(!a || !b) return null;
+      (m, words, raw) => { if(isMulti(m.input, raw)) return null; const [a, b] = splitFromTo(words); if(!a || !b) return null;
         return {prepare: () => offPlan([a, b], ([x, y]) => ({say: tr('Kreslím šipku {0} → {1}.', x, y), calls: one('drawArrow', {from: x, to: y}, tr('Šipka'))}))}; }],
     // vzdálenost z X do Y / kolik je to z X do Y / jak daleko
     [/^(?:zmer |zmerit |zmer mi )?(?:vzdalenost|vzdusnou carou|kolik (?:je to|km)|jak daleko(?: je to)?)(?: vzdusnou carou)? (?:z|ze|mezi|od) (.+) (?:do|a|k) (.+?)(?: vzdusnou carou)?$/,
-      (m, words) => { const [a, b] = splitFromTo(words, true); if(!a || !b) return null;
+      (m, words, raw) => { if(isMulti(m.input, raw)) return null; const [a, b] = splitFromTo(words, true); if(!a || !b) return null;
         return {prepare: () => offPlan([a, b], ([x, y]) => ({say: tr('Měřím vzdálenost {0} – {1}.', x, y), calls: one('measureDistance', {from: x, to: y}, tr('Vzdálenost'))}))}; }],
     // perimetr 5 km kolem X
     [/^(?:(?:udelej|nakresli|dej) )?(?:perimetr|okruh|kruh|kruznici)(?: o polomeru)? (\d+(?:[.,]\d+)?) ?(km|kilometru|kilometry|m|metru|metry) (?:kolem|okolo|od|z|v|u) (.+)$/,
@@ -24241,7 +24289,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [/^(?:(?:prepni|dej|pouzij|chci|nastav) )?(?:na |do )?(?:(?:preset|styl|schema|barvy|vzhled) )?(modr[aye] tn|tn modr[aay]|studio(?: tn)?|nocni(?: mapa)?|tn live|live|mapy ?cz|mapy\.cz|mapy ?com|turisticky styl|jako google|zelena prirodni|modra prirodni|liberty klasick[aa]|tmav[aye] (?:mapa|styl)|svetl[aye] (?:styl|preset))$/,
       m => { const k = m[1]; const P = [[/modr. tn|tn modr/, 'tnModra', 'Modrá – TN'], [/^studio/, 'tnStudio', 'Studio – TN'], [/nocni|live/, 'tnLive', 'Noc – TN Live'], [/mapy ?\.?cz/, 'mapycz', 'Mapy.cz'],
           [/mapy ?com|turistick/, 'mapycomTuristicka', 'Turistická'], [/google|zelena/, 'zelenaPrirodni', 'Zelená přírodní'], [/modra prirodni/, 'modraPrirodni', 'Modrá přírodní'], [/liberty/, 'libertyKlasicka', 'Liberty klasická'],
-          [/tmav/, 'dark', 'Tmavá'], [/svetl/, 'tnSvetla', 'Světlá']].find(([re]) => re.test(k));
+          [/tmav/, 'tnLive', 'Noc – TN Live'], [/svetl/, 'tnSvetla', 'Světlá']].find(([re]) => re.test(k));
         return P ? {say: tr('Přepínám preset: {0}.', P[2]), calls: one('applyPreset', {preset: P[1]}, P[2])} : null; }],
     // vozidlo na trase: ať tam jede sanitka / dej tam autobus
     [/^(?:at (?:tam |po trase )?jede |dej (?:tam |na trasu )?|vozidlo |ikona )(auto|kamion|nakladak|nakladni auto|vlak|metro|tramvaj|autobus|lod|hasici|hasice|policie|policejni auto|sanitka|sanitku|letadlo)$/,
@@ -24251,6 +24299,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   // --- pomůcky pro povely bez AI ---
   const OFF_MODE = w => { const k = String(w || ''); return /^autem/.test(k) ? 'driving' : /^vlakem/.test(k) ? 'train' : /^lodi/.test(k) ? 'boat' : /^(kamionem|nakladakem)/.test(k) ? 'truck'
     : /^motorkou/.test(k) ? 'moto' : /^pes/.test(k) ? 'foot' : /kol/.test(k) ? 'cycle' : /^letadlem/.test(k) ? 'planeArc' : /^metrem/.test(k) ? 'metro' : /^tramvaji/.test(k) ? 'tram' : /^autobusem/.test(k) ? 'driving' : null; };
+  // Víc úseků nebo zastávky („přes Jihlavu", „a pak do Vídně", „kromě …", čárka) rychlý povel neumí.
+  const isMulti = (k, raw) => /(^| )(pres|pak|potom|krome|vcetne|zpet|zpatky)( |$)/.test(k) || /[,;]/.test(String(raw || ''));
   const MODE_WORDS = /^(autem|vlakem|lodi|kamionem|nakladakem|motorkou|pesky|peso|kolem|letadlem|metrem|tramvaji|autobusem|vzdusnou|carou)$/;
   // „… z Prahy do Brna vlakem" → ['Prahy', 'Brna'] (původní slova s diakritikou)
   function splitFromTo(words, allowA){
@@ -24260,13 +24310,33 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     let j = -1; for(let k = sw.length - 1; k > i + 1; k--) if((['do', 'na', 'k', 'ke'].includes(sw[k]) && sw[k + 1] !== 'kole') || (allowA && sw[k] === 'a')){ j = k; break; }
     if(j < 0) return [];
     const tail = words.slice(j + 1).filter((w, k) => !MODE_WORDS.test(sw[j + 1 + k]) && !(sw[j + 1 + k] === 'na' && sw[j + 2 + k] === 'kole') && sw[j + 1 + k] !== 'kole');
-    return [words.slice(i + 1, j).join(' '), tail.join(' ')];
+    const from = words.slice(i + 1, j);
+    // delší „místo" je skoro jistě kus věty (… do Brna a odtud vlakem …) → ať rozhodne model
+    if(!from.length || from.length > 3 || !tail.length || tail.length > 3) return [];
+    return [from.join(' '), tail.join(' ')];
   }
-  // místa převést do 1. pádu (tabulka + ověření v geokodéru), jinak nechat, jak je
+  // místa převést do 1. pádu (tabulka + ověření v geokodéru). Neověřené místo se
+  // neposílá surové („Brnem" našel geokodér ve Francii) — rozhodne model a doptá se.
   async function offPlan(places, make){
     const out = [];
-    for(const p of places){ const hit = await resolvePlace(p).catch(() => null); out.push(hit?.name || p); }
+    for(const p of places){
+      const hit = (await resolvePlace(p).catch(() => null)) || (await rawPlace(p).catch(() => null));
+      if(!hit) return null;
+      out.push(hit.name);
+    }
     return make(out);
+  }
+  // Geokodér na celý napsaný název; bere se, jen když nalezený název sedí slovo
+  // od slova začátkem (skloňování mění konec: „Bílé Hory" → Bílá Hora; „Xqwzz" → nic).
+  async function rawPlace(p){
+    const geo = window.TNMAP && window.TNMAP._geocode;
+    if(!geo) return null;
+    const r = await geo(p);
+    const name = String(r.name || String(r.display || '').split(',')[0]).trim();
+    const a = stripDia(name).split(/[^a-z0-9]+/).filter(Boolean), b = stripDia(p).split(/[^a-z0-9]+/).filter(Boolean);
+    if(!name || !a.length || a.length !== b.length) return null;
+    const ok = a.every((w, i) => { const q = b[i], n = commonPrefixLen(w, q); return w === q || (n >= 3 && n >= Math.min(w.length, q.length) - 2); });
+    return ok ? {name, lat: r.lat, lng: r.lng} : null;
   }
   // státy ve 4. pádě → 1. pád (Ukrajinu → Ukrajina); barvy (modře → modrá)
   const COLOR_W = {cerven:'červená', modr:'modrá', zelen:'zelená', zlut:'žlutá', oranz:'oranžová', fialov:'fialová', ruzov:'růžová', sed:'šedá', cern:'černá', bil:'bílá', hned:'hnědá'};
@@ -24280,24 +24350,61 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     if(/u$/.test(k) && k.length > 4) return cap(t.slice(0, -1) + 'a');     // Ukrajinu → -a
     if(/ie$/.test(k)) return cap(t);                                        // Francie, Itálie
     return cap(t); };
+  // Státy, které rychlý povel zná (1. pád bez diakritiky → název). Co tu není
+  // („sousedy Česka", „to", „EU"), se nehádá — rozhodne model.
+  const COUNTRIES = {};
+  ('Česko|Česká republika|Slovensko|Německo|Rakousko|Polsko|Maďarsko|Ukrajina|Rusko|Bělorusko|Francie|Itálie|Španělsko|Portugalsko|Velká Británie|Británie|Anglie|Irsko|' +
+   'Spojené státy|USA|Amerika|Kanada|Mexiko|Švýcarsko|Nizozemsko|Holandsko|Belgie|Lucembursko|Dánsko|Švédsko|Norsko|Finsko|Island|Estonsko|Lotyšsko|Litva|' +
+   'Slovinsko|Chorvatsko|Srbsko|Bosna|Černá Hora|Albánie|Makedonie|Kosovo|Rumunsko|Bulharsko|Moldavsko|Řecko|Turecko|Kypr|Malta|Gruzie|Arménie|Ázerbájdžán|' +
+   'Kazachstán|Izrael|Palestina|Libanon|Sýrie|Irák|Írán|Afghánistán|Pákistán|Indie|Čína|Japonsko|Severní Korea|Jižní Korea|Vietnam|Thajsko|Indonésie|' +
+   'Austrálie|Egypt|Libye|Tunisko|Alžírsko|Maroko|Súdán|Etiopie|Nigérie|Jihoafrická republika|Brazílie|Argentina|Chile|Kolumbie|Venezuela|Peru|Kuba|' +
+   'Saúdská Arábie|Jemen|Katar|Spojené arabské emiráty|Grónsko').split('|').forEach(n => { COUNTRIES[stripDia(n)] = n; });
+  // víceslovné státy v pádech (4. a 2. pád; 1. pád najde COUNTRIES)
+  const COUNTRY_PHRASES = {'velkou britanii':'Velká Británie', 'velke britanie':'Velká Británie', 'spojene staty':'Spojené státy', 'spojenych statu':'Spojené státy',
+    'spojene staty americke':'Spojené státy', 'spojenych statu americkych':'Spojené státy', 'ceskou republiku':'Česká republika', 'ceske republiky':'Česká republika',
+    'severni koreu':'Severní Korea', 'severni koreje':'Severní Korea', 'jizni koreu':'Jižní Korea', 'jizni koreje':'Jižní Korea', 'cernou horu':'Černá Hora', 'cerne hory':'Černá Hora',
+    'saudskou arabii':'Saúdská Arábie', 'saudske arabie':'Saúdská Arábie', 'jihoafrickou republiku':'Jihoafrická republika', 'spojene arabske emiraty':'Spojené arabské emiráty'};
+  // jedno slovo → stát ze seznamu (zkouší běžné pádové koncovky), jinak null
+  function knownCountry(w){
+    const k = stripDia(String(w).replace(/[.,]$/, ''));
+    if(COUNTRIES[k]) return COUNTRIES[k];
+    const f = stripDia(countryNom(w)); if(COUNTRIES[f]) return COUNTRIES[f];
+    for(const [re, to] of [[/ii$/, 'ie'], [/u$/, 'o'], [/u$/, 'a'], [/y$/, 'a'], [/a$/, 'o'], [/e$/, 'o'], [/e$/, 'a'], [/em$/, 'o'], [/ou$/, 'a'], [/i$/, 'ie'], [/e$/, '']]){
+      if(re.test(k)){ const c = k.replace(re, to); if(COUNTRIES[c]) return COUNTRIES[c]; }
+    }
+    return null;
+  }
+  // slova → [{name, color?}] nebo null, když některé slovo není stát / barva / výplň
+  function countryTokens(ws, filler){
+    const out = []; let cur = null;
+    const sw = ws.map(w => stripDia(String(w).replace(/[.,]$/, '')));
+    for(let i = 0; i < ws.length; i++){
+      const k = sw[i];
+      if(filler.test(k)) continue;
+      let name = null;
+      for(const n of [4, 3, 2]){ if(sw.length < i + n) continue; const ph = sw.slice(i, i + n).join(' '), hit = COUNTRY_PHRASES[ph] || COUNTRIES[ph];
+        if(hit){ name = hit; i += n - 1; break; } }
+      if(!name){
+        const c = colorOf(ws[i]);
+        if(c){ if(cur && !cur.color){ cur.color = c; continue; } return null; }   // „obarvi to červeně" → model
+        name = knownCountry(ws[i]);
+      }
+      if(!name) return null;
+      cur = {name}; out.push(cur);
+    }
+    return out.length ? out : null;
+  }
   function countryList(ws){
-    return ws.filter(w => !/^(a|i|tam|taky|statu|state|vlajky|vlajku)$/.test(stripDia(w)) && !colorOf(w)).map(countryNom).filter(n => n.length > 1);
+    const r = countryTokens(ws, /^(a|i|tam|taky|take|statu|state|vlajky|vlajku|vlajka)$/);
+    return r && !r.some(p => p.color) ? r.map(p => p.name) : [];
   }
   function countryColorParts(ws){
-    const out = []; let cur = null;
-    for(const w of ws){
-      const k = stripDia(w);
-      if(/^(a|i|tam|na|stat|statu|mape|mapu|politicke|politickou)$/.test(k)) continue;
-      const c = colorOf(w);
-      if(c){ if(cur && !cur.color) cur.color = c; continue; }
-      cur = {name: countryNom(w)}; out.push(cur);
-    }
-    return out;
+    return countryTokens(ws, /^(a|i|tam|na|stat|statu|mape|mapu|politicke|politickou|barvou)$/) || [];
   }
   function base(style, name){ return {say: tr('Přepínám podklad: {0}.', name), calls: one('setBaseStyle', {style}, name)}; }
   function tab(id, name){ return {say: tr('Otevírám: {0}.', tr(name)), calls: one('openTab', {tab: id}, tr(name))}; }
   function clearPlan(what, name, count){
-    const n = count(mapState().scene || {});
+    const st = mapState(), n = count(st.scene || {}, st);
     if(!n) return {say: tr('Není co mazat: {0}.', tr(name))};
     return {say: tr('Mažu: {0}.', tr(name)) + ' ' + tr(UNDO_HINT), calls: one('clearScene', {what}, tr('Smazat') + ': ' + tr(name))};
   }
@@ -24323,8 +24430,12 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     'kutne hore':'Kutná Hora', 'kutne hory':'Kutná Hora', 'ceske lipe':'Česká Lípa', 'ceskem krumlove':'Český Krumlov',
     kyjeve:'Kyjev', kyjeva:'Kyjev', moskve:'Moskva', moskvy:'Moskva', berline:'Berlín', berlina:'Berlín', vidni:'Vídeň', vidne:'Vídeň',
     bratislave:'Bratislava', bratislavy:'Bratislava', varsave:'Varšava', varsavy:'Varšava', parizi:'Paříž', parize:'Paříž', londyne:'Londýn', londyna:'Londýn',
-    rime:'Řím', rima:'Řím', budapesti:'Budapešť', bruselu:'Brusel', washingtonu:'Washington'};
+    rime:'Řím', rima:'Řím', budapesti:'Budapešť', bruselu:'Brusel', washingtonu:'Washington',
+    // 7. pád („mezi Prahou a Brnem")
+    prahou:'Praha', brnem:'Brno', ostravou:'Ostrava', libercem:'Liberec', jihlavou:'Jihlava', zlinem:'Zlín', kladnem:'Kladno', opavou:'Opava',
+    pardubicemi:'Pardubice', kyjevem:'Kyjev', moskvou:'Moskva', berlinem:'Berlín', bratislavou:'Bratislava', varsavou:'Varšava', londynem:'Londýn', rimem:'Řím'};
   const ENDINGS = [   // [koncovka, náhrady v pořadí pravděpodobnosti]
+    [/cem$/, ['ec']], [/ou$/, ['a']], [/em$/, ['o', '', 'a']], [/ím$/, ['í']], [/emi$/, ['e', 'y']],
     [/ově$/, ['ov', 'ova']], [/ci$/, ['ec', 'c']], [/ce$/, ['ec', 'k', 'ce', 'c']], [/ze$/, ['ha']], [/ně$/, ['no', 'n', 'ň', 'na']],
     [/ni$/, ['eň', 'ň', 'n']], [/ře$/, ['r', 'ra']], [/ích$/, ['e']], [/ech$/, ['y']], [/ách$/, ['y']], [/ku$/, ['ek', 'k']],
     [/mě$/, ['mo', 'm']], [/ě$/, ['a', '']], [/u$/, ['', 'o']], [/i$/, ['', 'ě']], [/y$/, ['a']], [/a$/, ['a', '', 'o']], [/e$/, ['e', '']]
@@ -24374,7 +24485,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     if(!k || k.length > 110) return null;
     for(const [re, make] of QUICK){
       const m = re.exec(k);
-      if(m){ const plan = make(m, words); if(plan) return plan; }
+      if(m){ const plan = make(m, words, text); if(plan) return plan; }
     }
     return null;
   }
@@ -24399,16 +24510,17 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   }
 
   // Provede plán rychlého povelu. Vrací false, když se z něj stal dotaz pro model.
-  async function runQuick(quick, userText){
+  async function runQuick(quick, userText, run){
     if(quick.prepare){
       setBusy(true, tr('Hledám místo'));
       quick = await quick.prepare();
+      if(run.stop) throw CANCEL;
       setBusy(true);
       if(!quick) return false;
     }
     try{ window.tnFeature?.('ai:quick'); }catch(_e){}
     // Nejdřív provést, pak teprve odpovědět — ať chat netvrdí „Přehrávám", když není co.
-    const rows = [], done = [];
+    const rows = [], done = [], results = [];
     let fail = null;
     let localSay = null;
     if(quick.local){
@@ -24418,38 +24530,64 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
       done.push('local → ' + (ok ? 'ok' : 'CHYBA'));
     }
     for(const c of (quick.calls || [])){
-      const out = await runTool(c);
+      const out = await runTool(c, true);
+      // stanici MHD nenašel → místo holé chyby rozhodne model (doptá se)
+      if(out.ok === false && quick.aiOnFail && !rows.length) return false;
       rows.push([c.label || c.tool, out.ok !== false]);
+      results.push({tool: c.tool, result: out});
       if(out.ok === false && !fail) fail = out.error || tr('Nepodařilo se.');
       done.push(c.tool + '(' + JSON.stringify(c.args || {}) + ') → ' + (out.ok === false ? 'CHYBA: ' + (out.error || '') : 'ok'));
     }
-    const reply = fail ? tr(fail) : (localSay || quick.say);
+    if(run.stop) throw CANCEL;
+    // délka trasy / vzdálenost / perimetr: číslo hned do odpovědi
+    const extra = fail ? '' : localReadback(results);
+    const reply = fail ? tr(fail) : ((localSay || quick.say || '') + (extra ? ' ' + extra : '')).trim();
     if(reply) add('bot', reply);
     rows.forEach(([label, ok]) => addAction(label, ok));
     history.push({role:'assistant', content: (reply || '') + '\n[provedeno: ' + done.join('; ') + ']'});
     return true;
   }
 
+  // Běžící dotaz: jde zastavit (tlačítko ■, Nová konverzace). stop = uživatel zrušil.
+  const CANCEL = {cancel: true};
+  let run = null;
+  function cancelRun(silent){
+    if(!run) return;
+    run.stop = true; run.silent = !!silent;
+    try{ run.ctl?.abort(); }catch(e){}
+  }
+  // Chatová cesta smí jen nástroje z promptu workeru (Claude/MCP má vlastní cestu).
+  const CHAT_TOOLS = new Set(['gotoPlace','showRegion','show3D','setCamera','setBaseStyle','applyPreset','placeIcon','addLabel','setLabelStyle',
+    'drawArrow','measureDistance','drawPerimeter','colorPolitical','placeFlag','roadClosure','metroClosure','placeModel3d','setColors','setValues',
+    'setLayers','setGlobe','setShadows','setTransportMode','routeBetween','routeLine','setVehicle','addVehicle','setVehicleColors','setCameraFlight',
+    'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp']);
+
   async function ask(userText, isRetry, shown){
     if(busy) return;
+    const me = run = {stop: false, ctl: null};
     setBusy(true);
     undoTaken = false;
+    // staré nabídky doptání už neplatí (klik by poslal „Ano" do jiného kontextu)
+    log.querySelectorAll('.tnchat-ask').forEach(r => r.remove());
+    applyAttrs();   // placeholder po volbě „Jiné…" zpět
     if(!isRetry){
       add('user', shown || userText);
       history.push({role:'user', content:userText});
       try{ window.TNMAP._bump?.(); }catch(_e){}
     }
+    let bubble = null;
     try{
       const quick = quickCommand(userText);
-      if(quick && await runQuick(quick, userText)) return;
+      if(quick && await runQuick(quick, userText, me)) return;
+      if(me.stop) throw CANCEL;
       try{ window.tnFeature?.('ai:llm'); }catch(_e){}
-      let bubble = null;
       const say = text => { if(!text) return; if(bubble) bubble.textContent = text; else bubble = add('bot', text); };
       let rounds = 0, toolResults = null;
       while(rounds++ < MAX_ROUNDS){
-        const ctl = new AbortController();
+        if(me.stop) throw CANCEL;
+        const ctl = me.ctl = new AbortController();
         const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
-        let res;
+        let res, data;
         try{
           res = await fetch(TNCHAT_ENDPOINT, {
             method:'POST', headers:{'Content-Type':'application/json'}, signal: ctl.signal,
@@ -24461,23 +24599,30 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
               toolResults
             })
           });
+          if(res.ok) data = await res.json();
         } finally { clearTimeout(timer); }
+        if(me.stop) throw CANCEL;
         if(!res.ok){ const err = new Error('HTTP ' + res.status); err.status = res.status; throw err; }
-        const data = await res.json();
         // Vyčerpaný denní limit Workers AI: hláška v jazyce rozhraní + co jde dál bez AI.
         if(data.quota){ addNotice(tr('Denní limit AI je vyčerpaný, obnoví se v 1:00.')); return; }
 
         const calls = Array.isArray(data.calls) ? data.calls : [];
         bubble = null;   // každé kolo má vlastní bublinu pod kroky toho předchozího
-        say(data.say);
         if(!calls.length){
-          if(!data.say) say(tr('Hotovo.'));
           // Doptání: asistent zadání nerozuměl → nabídne odpovědi na klepnutí (jde i napsat vlastní).
           const opts = Array.isArray(data.options) ? data.options.filter(o => typeof o === 'string' && o.trim()).slice(0, 4) : [];
-          if(opts.length){ append(chipRow(opts, 'tnchat-ask')); try{ window.tnFeature?.('ai:ask'); }catch(_e){} }
-          history.push({role:'assistant', content: data.say || 'Hotovo.'});
+          say(data.say || tr(opts.length ? 'Upřesni prosím:' : 'Hotovo.'));
+          if(opts.length){
+            const q = bubble;
+            append(chipRow(opts, 'tnchat-ask'));
+            // na malém displeji nahoře otázka, pod ní odpovědi (ne jen tlačítka bez otázky)
+            if(q) log.scrollTop = Math.max(0, log.scrollTop + q.getBoundingClientRect().top - log.getBoundingClientRect().top - 8);
+            try{ window.tnFeature?.('ai:ask'); }catch(_e){}
+          }
+          history.push({role:'assistant', content: (data.say || (opts.length ? 'Upřesni prosím:' : 'Hotovo.')) + (opts.length ? '\n[nabídnuto: ' + opts.join(' | ') + ']' : '')});
           break;
         }
+        say(data.say);
         // Vykonej nástroje popořadě a nasbírej výsledky pro další kolo.
         // Model občas pošle dva přelety v jednom plánu (např. „ukaž Brno a Ostravu");
         // viditelný by byl jen ten poslední, takže ty další zahodíme — ušetří to
@@ -24486,6 +24631,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
         let moved = false;
         toolResults = [];
         for(const c of calls){
+          if(me.stop) throw CANCEL;
           if(MOVERS.includes(c.tool)){
             if(moved){
               addAction((c.label || c.tool) + ' — ' + tr('přeskočeno'), false);
@@ -24504,7 +24650,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
             }
             moved = true;
           }
-          const out = await runTool(c);
+          const out = await runTool(c, true);
+          if(me.stop) throw CANCEL;
           addAction((c.label || c.tool), out.ok !== false);
           toolResults.push({tool:c.tool, args:c.args || {}, result:out});
         }
@@ -24515,13 +24662,18 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
           return c.tool + '(' + JSON.stringify(c.args || {}).slice(0, 160) + ') → ' + (r && r.ok === false ? 'CHYBA: ' + String(r.error || '').slice(0, 80) : 'ok');
         }).join('; ');
         history.push({role:'assistant', content:(data.say || '') + '\n[provedeno: ' + doneTxt + ']'});
-        if(data.done) break;
+        const failed = toolResults.filter(r => r.result && r.result.ok === false);
+        // Selhaný nástroj: věta „Ukazuji Prahu." by lhala → ještě jedno kolo, model vysvětlí nebo se doptá.
+        if(data.done && !failed.length) break;
+        if(data.done && rounds >= MAX_ROUNDS){
+          add('err', tr('Nepovedlo se: {0}', failed.map(r => String(r.result.error || r.tool)).join('; ')));
+          break;
+        }
         // Druhé kolo modelu jen kvůli větě „trasa má 205 km" stojí celý prompt
         // (~7 000 tokenů) z denního limitu. Když všechno prošlo a jde jen o
         // trasu / měření / perimetr, číslo doplníme sami a dotaz ušetříme.
         const LOCAL_OK = new Set(['routeBetween','measureDistance','drawPerimeter','fitRoute','arcBestView','setTransportMode','gotoPlace']);
-        const allOk = toolResults.length && toolResults.every(r => r.result && r.result.ok !== false);
-        if(allOk && calls.every(c => LOCAL_OK.has(c.tool))){
+        if(!failed.length && toolResults.length && calls.every(c => LOCAL_OK.has(c.tool))){
           const extra = localReadback(toolResults);
           if(extra){
             say(((data.say || '').trim() + ' ' + extra).trim());
@@ -24530,14 +24682,25 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
             break;
           }
         }
+        // Strop kol: přiznat, že asistent skončil, ne tiše přestat.
+        if(rounds >= MAX_ROUNDS){
+          const msg = tr('Zastavil jsem po {0} krocích – zkontroluj mapu, případně napiš, co dál.', MAX_ROUNDS);
+          add('bot', msg); history.push({role:'assistant', content: msg});
+          break;
+        }
       }
     }catch(e){
-      // Síť / časový limit / chyba serveru. Dotaz v historii zůstává — „Zkusit znovu" ho pošle znovu.
-      const st = e && e.status;
-      addNotice(st ? tr('Asistent teď neodpovídá (chyba serveru {0}).', st)
-                   : tr('Asistent teď neodpovídá — zkontroluj připojení k internetu.'), userText);
+      if(me.stop || e === CANCEL){
+        // Zastaveno uživatelem: bez hlášky o síti; co už se stihlo, zůstává (Ctrl+Z).
+        if(!me.silent){ const msg = tr('Zastaveno.') + (undoTaken ? ' ' + tr(UNDO_HINT) : ''); add('bot', msg); history.push({role:'assistant', content: msg}); }
+      } else {
+        // Síť / časový limit / chyba serveru. Dotaz v historii zůstává — „Zkusit znovu" ho pošle znovu.
+        const st = e && e.status;
+        addNotice(st ? tr('Asistent teď neodpovídá (chyba serveru {0}).', st)
+                     : tr('Asistent teď neodpovídá — zkontroluj připojení k internetu.'), userText);
+      }
     }finally{
-      setBusy(false); focusInput();
+      if(run === me){ run = null; setBusy(false); focusInput(); }
     }
   }
 
@@ -24560,7 +24723,9 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   }
   $q('tnchatFab').addEventListener('click', () => setOpen(!panel.classList.contains('open')));
   $q('tnchatClose').addEventListener('click', () => setOpen(false));
-  newBtn.addEventListener('click', () => { if(busy) return; history = []; showEmpty(); focusInput(); });
+  // Nová konverzace i během práce: běžící dotaz tiše zruší
+  newBtn.addEventListener('click', () => { if(run){ cancelRun(true); run = null; setBusy(false); } history = []; showEmpty(); applyAttrs(); focusInput(); });
+  stopBtn.addEventListener('click', () => { if(!run) return; cancelRun(false); if(busyEl) busyEl.textContent = tr('Zastavuji'); });
   document.addEventListener('keydown', e => {
     if(e.key === 'Escape' && panel.classList.contains('open')) setOpen(false);
   });
@@ -24573,7 +24738,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   // Texty mimo data-i18n (titulky, placeholder) přeložit při každé změně jazyka.
   const ATTRS = [[$q('tnchatFab'), 'title', 'AI asistent mapy'], [$q('tnchatFab'), 'aria-label', 'AI asistent'], [panel, 'aria-label', 'AI asistent mapy'],
                  [newBtn, 'title', 'Nová konverzace'], [newBtn, 'aria-label', 'Nová konverzace'], [$q('tnchatClose'), 'aria-label', 'Zavřít'],
-                 [input, 'placeholder', 'Napiš, co má mapa udělat…'], [input, 'aria-label', 'Zpráva'], [sendBtn, 'aria-label', 'Odeslat']];
+                 [input, 'placeholder', 'Napiš, co má mapa udělat…'], [input, 'aria-label', 'Zpráva'], [sendBtn, 'aria-label', 'Odeslat'],
+                 [stopBtn, 'aria-label', 'Zastavit'], [stopBtn, 'title', 'Zastavit']];
   const applyAttrs = () => ATTRS.forEach(([el, a, key]) => { if(el) el.setAttribute(a, tr(key)); });
   try{ new MutationObserver(applyAttrs).observe(document.documentElement, {attributes:true, attributeFilter:['lang']}); }catch(e){}
   applyAttrs();
