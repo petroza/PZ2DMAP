@@ -313,7 +313,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .endpoint-shape .t-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .route-dot.dot-wp{background:var(--yellow);width:22px;height:22px;font-size:10px;border-width:1.5px}
 /* náhled z hledání: dutý kroužek s nožkou nad místem, jiný než ikonky scény */
-.place-search-pin{width:20px;height:30px;cursor:pointer;position:relative}
+.place-search-pin{width:20px;height:30px;cursor:pointer}
 .place-search-pin::before{content:"";position:absolute;left:0;top:0;width:20px;height:20px;box-sizing:border-box;border-radius:50%;border:4px solid #e63946;box-shadow:0 0 0 2px #fff,0 2px 6px rgba(0,0,0,.35)}
 .place-search-pin::after{content:"";position:absolute;left:9px;top:20px;width:2px;height:10px;background:#e63946;box-shadow:0 0 0 1px #fff}
 .status-bar .place-search-add{margin-left:10px;padding:3px 10px;vertical-align:middle}
@@ -424,7 +424,14 @@ html[data-ui="light"] .settings-status.error{color:#b4232f}
 
 
 
-.map-label-marker{position:relative;width:0;height:0;display:block;overflow:visible;pointer-events:auto;cursor:grab;user-select:none}
+/* bez position:relative — přebíjelo absolute z .maplibregl-marker a značky se pak skládaly
+   v toku pod sebe (popisek o výšku kroužku hledání níž než kotva, v exportu jinde) */
+.map-label-marker{width:0;height:0;display:block;overflow:visible;pointer-events:auto;cursor:grab;user-select:none}
+/* Zapnuté vkládání (popisek, ikonka, perimetr, šipka…): klik kamkoli vkládá — HTML značky
+   klik nepohltí, projde do mapy. Odznak nahoře ukazuje, co běží. */
+#map.pz-adding .maplibregl-marker,#map.pz-adding .maplibregl-marker *{pointer-events:none!important}
+#map.pz-adding .maplibregl-canvas-container.maplibregl-interactive{cursor:crosshair}
+.pz-add-badge{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:5;pointer-events:none;background:var(--accent,#2f81f7);color:#fff;font:700 12px/1 var(--font,sans-serif);padding:7px 12px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap}
 .map-label-marker:active{cursor:grabbing}
 .map-label-content{position:absolute;top:0;display:flex;align-items:center;gap:8px;transform:translateY(-50%);pointer-events:auto}
 .map-label-marker[data-side="right"] .map-label-content{right:calc(var(--label-dot-size,14px) / -2);flex-direction:row}
@@ -2843,12 +2850,33 @@ function setStatus(msg, type){
 // Reflects active insert modes on their toggle buttons so it's obvious the tool is armed.
 function updateSceneAddButtonStates(){
   if(typeof state === 'undefined') return;
-  const set = (btn, on) => { if(!btn) return; btn.classList.toggle('is-on', !!on); btn.style.background = on ? 'var(--accent)' : ''; btn.style.borderColor = on ? 'var(--accent)' : ''; btn.style.color = on ? '#fff' : ''; };
+  // Zapnuté tlačítko říká, že režim běží a dalším klikem skončí (dřív ho grafik po výběru
+  // dlaždice ikonky zmáčkl znovu „Klikni do mapy" a tím vkládání omylem vypnul).
+  const set = (btn, on) => { if(!btn) return; btn.classList.toggle('is-on', !!on); btn.style.background = on ? 'var(--accent)' : ''; btn.style.borderColor = on ? 'var(--accent)' : ''; btn.style.color = on ? '#fff' : '';
+    const offTx = btn.dataset.i18n ? t(btn.dataset.i18n) : null;
+    if(on){ const onTx = t('Vkládám – ukončit'); if(btn.textContent !== onTx) btn.textContent = onTx; }
+    else if(btn.dataset.pzOn && offTx) btn.textContent = offTx;
+    if(on) btn.dataset.pzOn = '1'; else delete btn.dataset.pzOn; };
   set(document.getElementById('addScenePerimeterBtn'), state.addingScenePerimeter);
   set(document.getElementById('addSceneDistanceBtn'), state.addingSceneDistance);
   set(document.getElementById('addSceneArrowBtn'), state.addingSceneArrow);
   set(document.getElementById('addSceneIconBtn'), state.addingSceneIcon);
   set(document.getElementById('addMapLabelBtn'), state.addingMapLabel);
+  set(document.getElementById('placeModel3dBtn'), state.addingModel3d);
+  // Trvalý odznak na mapě + třída pz-adding (křížek, HTML značky klik nepohltí)
+  try{
+    const mapEl = document.getElementById('map');
+    if(mapEl && typeof SCENE_ADD_FLAGS !== 'undefined'){
+      const BADGE = {label:'Vkládám popisky – Esc ukončí', icon:'Vkládám ikonky – Esc ukončí', perimeter:'Vkládám perimetry – Esc ukončí', arrow:'Vkládám šipky – Esc ukončí', distance:'Měřím vzdálenost – Esc ukončí', model3d:'Umísťuji 3D model – Esc ukončí', flight:'Vkládám zastávku – Esc ukončí'};
+      const mode = Object.keys(SCENE_ADD_FLAGS).find(k => state[SCENE_ADD_FLAGS[k]]);
+      mapEl.classList.toggle('pz-adding', !!mode);
+      let badge = mapEl.querySelector(':scope > .pz-add-badge');
+      if(mode){
+        if(!badge){ badge = document.createElement('div'); badge.className = 'pz-add-badge'; badge.setAttribute('role', 'status'); mapEl.appendChild(badge); }
+        const tx = t(BADGE[mode] || 'Vkládám – Esc ukončí'); if(badge.textContent !== tx) badge.textContent = tx;
+      }else if(badge) badge.remove();
+    }
+  }catch(e){}
   // Zelený roh = do této sekce teď půjde klik do mapy (zapnuté vkládání).
   // Dřív svítil u každé sekce, do které grafik jen klikl, a nic neříkal.
   try{
@@ -6399,6 +6427,7 @@ function initScenePerimeterMapInteractions(m){
   }
   function hoverCursor(ev){
     if(state.draggingScenePerimeter || !isScenePerimeterMapInteractive()) return;
+    if(pzAddModeOn() && !state.addingScenePerimeter) return;   // vkládá se jiný objekt — kurzor zůstane křížek
     const f = feature(ev), item = f?.properties?.id ? getScenePerimeterById(f.properties.id) : null;
     if(!item) return;
     const pt = f.properties.point;
@@ -6413,6 +6442,8 @@ function initScenePerimeterMapInteractions(m){
     const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle' && (!state.addingScenePerimeter || f?.properties?.point === 'B'));
     if((!isScenePerimeterMapInteractive() || state.addingScenePerimeter) && !onHandle) return null;
     if(state.addingSceneDistance || state.drawingSceneDistance || state.addingSceneArrow) return null;
+    // vkládání popisku / ikonky (a dalších) do kruhu má přednost před výběrem perimetru
+    if(pzAddModeOn() && !state.addingScenePerimeter) return null;
     // šipka nebo vzdálenost ležící uvnitř kruhu má přednost — jinak by nešla chytit
     if(!onHandle && ev?.point && (pickSceneArrowFeatureAt(ev.point) || pickSceneDistanceFeatureAt(ev.point))) return null;
     const f = feature(ev);
@@ -6483,6 +6514,7 @@ function initScenePerimeterMapInteractions(m){
     // new perimeter) — this is what makes "place then immediately drag to edit" work.
     const onHandle = !!ev?.features?.find?.(f => f?.layer?.id === 'scene-perimeter-handles-circle' && (!state.addingScenePerimeter || f?.properties?.point === 'B'));
     if(state.addingScenePerimeter && !onHandle) return;
+    if(pzAddModeOn() && !state.addingScenePerimeter) return;   // stisk při vkládání jiného objektu kruh netáhne
     if(pzMultiSkipLayerPress(ev)) return;
     if(isScenePerimeterMapInteractive() && pzGroupLayerDragStart(ev, 'p:' + (feature(ev)?.properties?.id || ''))) return;
     try{ window.__pzPushUndo?.(); }catch(e){}
@@ -6929,7 +6961,7 @@ function pzBindArrowBodyDrag(m){
     setTimeout(() => { state.ignoreNextMapClick = false; }, 120);
   };
   const start = ev => {
-    if(state.addingSceneArrow || state.measureMode !== 'off' || state.draggingScenePerimeter || state.draggingSceneDistance) return;
+    if(pzAddModeOn() || state.measureMode !== 'off' || state.draggingScenePerimeter || state.draggingSceneDistance) return;
     if(ev.originalEvent?.target?.closest?.('.scene-edit-handle')) return;   // úchyt T/H se táhne sám
     if(pzMultiSkipLayerPress(ev)) return;
     const f = pickSceneArrowFeatureAt(ev.point); if(!f) return;
@@ -6948,7 +6980,7 @@ function pzBindArrowBodyDrag(m){
   };
   ['scene-arrows-fill','scene-arrows-casing'].forEach(id => {
     m.on('mousedown', id, start); m.on('touchstart', id, start);
-    m.on('mouseenter', id, () => { if(!state.addingSceneArrow && !drag) m.getCanvas().style.cursor = 'grab'; });
+    m.on('mouseenter', id, () => { if(!pzAddModeOn() && !drag) m.getCanvas().style.cursor = 'grab'; });
     m.on('mouseleave', id, () => { if(!drag) m.getCanvas().style.cursor = ''; });
   });
 }
@@ -7199,7 +7231,7 @@ function initSceneDistanceMapInteractions(m){
 
   function selectFromMap(ev, options={}){
     if(pzMultiSkipLayerPress(ev)) return null;
-    if(!isSceneDistanceMapInteractive() || state.addingSceneDistance) return null;
+    if(!isSceneDistanceMapInteractive() || pzAddModeOn()) return null;
     const f = feature(ev);
     const id = f?.properties?.id;
     if(!id) return null;
@@ -7246,7 +7278,7 @@ function initSceneDistanceMapInteractions(m){
   }
 
   function startDrag(ev){
-    if(state.draggingSceneDistance || state.addingSceneDistance || state.measureMode !== 'off') return;
+    if(state.draggingSceneDistance || pzAddModeOn() || state.measureMode !== 'off') return;
     const f = feature(ev);
     if(!f?.properties?.id) return;
     if(pzMultiSkipLayerPress(ev)) return;
@@ -7281,7 +7313,7 @@ function initSceneDistanceMapInteractions(m){
   m.on('mousedown', startDraw);
   m.on('touchstart', startDraw);
   layers.forEach(layerId => {
-    m.on('mouseenter', layerId, () => { if(isSceneDistanceMapInteractive() && !state.addingSceneDistance) setCursor('grab'); });
+    m.on('mouseenter', layerId, () => { if(isSceneDistanceMapInteractive() && !pzAddModeOn()) setCursor('grab'); });
     m.on('mouseleave', layerId, () => { if(!state.draggingSceneDistance && !state.drawingSceneDistance) setCursor(''); });
     m.on('click', layerId, ev => selectFromMap(ev));
     m.on('mousedown', layerId, startDrag);
@@ -10500,6 +10532,8 @@ function model3dHasModel(){ return !!(state.model3d && state.model3d.gltf); }
 // ===== Active edit section (green corner triangle) + mutually-exclusive insert modes =====
 const SCENE_ADD_FLAGS = { perimeter:'addingScenePerimeter', distance:'addingSceneDistance', icon:'addingSceneIcon', label:'addingMapLabel', flight:'addingFlightPoint', model3d:'addingModel3d', arrow:'addingSceneArrow' };
 const SCENE_MODE_SECTION = { perimeter:'scenePerimeterSection', distance:'sceneDistanceSection', icon:'sceneIconSection', label:'mapLabelSection', model3d:'model3dSection', arrow:'sceneArrowSection' };
+// Je zapnuté některé vkládání? Pak klik do mapy vkládá a nevybírá/netáhne objekty pod ním.
+function pzAddModeOn(){ try{ return Object.values(SCENE_ADD_FLAGS).some(f => state[f]); }catch(e){ return false; } }
 function clearAllSceneAddModes(){ Object.values(SCENE_ADD_FLAGS).forEach(f => { state[f] = false; }); }
 function setActiveEditSection(id){
   state.activeEditSection = id || null;
@@ -10929,6 +10963,16 @@ function onMapClick(e){
   if(state.addingSceneArrow){ handleSceneArrowClick(e.lngLat); return; }
   if(state.addingScenePerimeter){ createScenePerimeterAt(e.lngLat); return; }
   if(state.addingSceneDistance) return;
+  // Zapnuté vkládání má přednost před výběrem: klik do kruhu, na šipku či vzdálenost
+  // dřív objekt vybral a popisek/ikonka nevznikly.
+  if(state.addingSceneIcon){ addSceneIcon(e.lngLat); return; }
+  if(state.addingMapLabel){
+    // režim zůstává zapnutý (jako u ikonek) do Esc nebo kliku na tlačítko; text se bere
+    // pokaždé aktuální z pole Text popisku. Shift+klik už nic zvláštního nedělá.
+    addMapLabelAt(e.lngLat, {silent:true});
+    setStatus(t('Popisek přidán. Klikni pro další, Esc ukončí.'));
+    return;
+  }
   if(isSceneDistanceMapInteractive()){
     const distanceFeature = pickSceneDistanceFeatureAt(e.point);
     if(distanceFeature?.properties?.id){ selectSceneDistance(distanceFeature.properties.id, true); return; }
@@ -10940,14 +10984,6 @@ function onMapClick(e){
   if(isScenePerimeterMapInteractive()){
     const perimeterFeature = pickScenePerimeterFeatureAt(e.point);
     if(perimeterFeature?.properties?.id){ selectScenePerimeter(perimeterFeature.properties.id, true); return; }
-  }
-  if(state.addingSceneIcon){ addSceneIcon(e.lngLat); return; }
-  if(state.addingMapLabel){
-    const more = !!e.originalEvent?.shiftKey;
-    addMapLabelAt(e.lngLat, {silent:true});
-    if(!more){ state.addingMapLabel = false; setActiveEditSection(null); updateSceneAddButtonStates(); }
-    setStatus(more ? t('Popisek přidán. Klikni znovu pro další, nebo Esc pro ukončení.') : t('Popisek přidán. Dvojklik ho přepíše, Shift+klik do mapy vloží další.'));
-    return;
   }
   if(state.addingFlightPoint){
     // tlačítko „+ Zastávka": jeden klik = jedna zastávka, pak se vkládání samo vypne
@@ -19314,12 +19350,18 @@ function bindUI(){
     const f = e.target.files?.[0]; if(!f) return; state.sceneIconData = await handleFileToDataUrl(f); $('sceneIconPreview').innerHTML = `<img src="${escapeHtml(state.sceneIconData)}" alt="">`;
     document.querySelectorAll('#pzIconPalette .pz-icon-pick').forEach(x => x.classList.remove('btn-primary'));
     // nahraná ikonka jde rovnou vkládat — bez dalšího tlačítka
-    if(!state.addingSceneIcon) armSceneAddMode('icon');
+    if(!state.addingSceneIcon){ armSceneAddMode('icon'); state._pzIconArmedAt = (state.sceneIcons || []).length; }
     setStatus(t('Ikonka načtena — klikni do mapy, kam ji dát.'));
   });
   $('addSceneIconBtn')?.addEventListener('click', ()=>{
     // bez vybrané ikonky se vkládá špendlík místa (nejčastější volba)
     if(!state.sceneIconData && !state.addingSceneIcon) pzPickBuiltinIcon('pin');
+    // Režim zapnutý výběrem dlaždice / nahráním, zatím bez vložené ikonky: přirozený další
+    // krok „Klikni do mapy" ho nesmí vypnout (dřív hlásil „Vkládání ikonek ukončeno").
+    if(state.addingSceneIcon && state._pzIconArmedAt === (state.sceneIcons || []).length){
+      state._pzIconArmedAt = null; setStatus(t('Klikni do mapy.')); return;
+    }
+    state._pzIconArmedAt = null;
     const on = armSceneAddMode('icon');
     setStatus(on ? t('Klikni do mapy pro vložení ikonky. Lze vložit opakovaně.') : t('Vkládání ikonek ukončeno.'));
   });
@@ -19592,6 +19634,16 @@ Object.assign(I18N, {
   "Perimetr vybrán. Tahem uvnitř kruhu ho přesuneš, tahem za okraj (nebo bod B) měníš velikost, Delete smaže.": {cs:"Perimetr vybrán. Tahem uvnitř kruhu ho přesuneš, tahem za okraj (nebo bod B) měníš velikost, Delete smaže.",sk:"Perimeter vybraný. Ťahom vnútri kruhu ho presunieš, ťahom za okraj (alebo bod B) meníš veľkosť, Delete zmaže.",bg:"Периметърът е избран. Влачене отвътре го мести, влачене за ръба (или точка B) променя размера, Delete изтрива.",hr:"Perimetar odabran. Povlačenjem unutar kruga ga pomičeš, povlačenjem za rub (ili točku B) mijenjaš veličinu, Delete briše.",ro:"Perimetru selectat. Tragi din interior pentru a-l muta, de margine (sau punctul B) pentru dimensiune, Delete șterge.",en:"Perimeter selected. Drag inside to move it, drag the edge (or point B) to resize, Delete removes it."},
   "změň Rádius a klikni znovu pro další kruh (i do stejného středu), Esc ukončí": {cs:"změň Rádius a klikni znovu pro další kruh (i do stejného středu), Esc ukončí",sk:"zmeň Rádius a klikni znova pre ďalší kruh (aj do rovnakého stredu), Esc ukončí",bg:"смени радиуса и кликни пак за следващ кръг (и в същия център), Esc приключва",hr:"promijeni radijus i klikni ponovno za sljedeći krug (i u isto središte), Esc završava",ro:"schimbă raza și dă clic din nou pentru alt cerc (și în același centru), Esc încheie",en:"change the Radius and click again for another circle (even at the same centre), Esc ends"},
   "Další perimetr bude mít rádius": {cs:"Další perimetr bude mít rádius",sk:"Ďalší perimeter bude mať rádius",bg:"Следващият периметър ще има радиус",hr:"Sljedeći perimetar imat će radijus",ro:"Următorul perimetru va avea raza",en:"The next perimeter will have a radius of"},
+  "Popisek přidán. Klikni pro další, Esc ukončí.": {cs:"Popisek přidán. Klikni pro další, Esc ukončí.",sk:"Popisok pridaný. Klikni pre ďalší, Esc ukončí.",bg:"Надписът е добавен. Кликни за следващ, Esc за край.",hr:"Oznaka dodana. Klikni za sljedeću, Esc za kraj.",ro:"Etichetă adăugată. Dă clic pentru încă una, Esc pentru a încheia.",en:"Label added. Click for another, Esc to finish."},
+  "Vkládám – ukončit": {cs:"Vkládám – ukončit",sk:"Vkladám – ukončiť",bg:"Поставям – спри",hr:"Umećem – završi",ro:"Inserez – oprește",en:"Placing – stop"},
+  "Vkládám popisky – Esc ukončí": {cs:"Vkládám popisky – Esc ukončí",sk:"Vkladám popisky – Esc ukončí",bg:"Поставям надписи – Esc за край",hr:"Umećem oznake – Esc za kraj",ro:"Inserez etichete – Esc pentru a încheia",en:"Placing labels – Esc to stop"},
+  "Vkládám ikonky – Esc ukončí": {cs:"Vkládám ikonky – Esc ukončí",sk:"Vkladám ikonky – Esc ukončí",bg:"Поставям икони – Esc за край",hr:"Umećem ikone – Esc za kraj",ro:"Inserez pictograme – Esc pentru a încheia",en:"Placing icons – Esc to stop"},
+  "Vkládám perimetry – Esc ukončí": {cs:"Vkládám perimetry – Esc ukončí",sk:"Vkladám perimetre – Esc ukončí",bg:"Поставям периметри – Esc за край",hr:"Umećem perimetre – Esc za kraj",ro:"Inserez perimetre – Esc pentru a încheia",en:"Placing perimeters – Esc to stop"},
+  "Vkládám šipky – Esc ukončí": {cs:"Vkládám šipky – Esc ukončí",sk:"Vkladám šípky – Esc ukončí",bg:"Поставям стрелки – Esc за край",hr:"Umećem strelice – Esc za kraj",ro:"Inserez săgeți – Esc pentru a încheia",en:"Placing arrows – Esc to stop"},
+  "Měřím vzdálenost – Esc ukončí": {cs:"Měřím vzdálenost – Esc ukončí",sk:"Meriam vzdialenosť – Esc ukončí",bg:"Измервам разстояние – Esc за край",hr:"Mjerim udaljenost – Esc za kraj",ro:"Măsor distanța – Esc pentru a încheia",en:"Measuring distance – Esc to stop"},
+  "Umísťuji 3D model – Esc ukončí": {cs:"Umísťuji 3D model – Esc ukončí",sk:"Umiestňujem 3D model – Esc ukončí",bg:"Поставям 3D модел – Esc за край",hr:"Postavljam 3D model – Esc za kraj",ro:"Plasez modelul 3D – Esc pentru a încheia",en:"Placing 3D model – Esc to stop"},
+  "Vkládám zastávku – Esc ukončí": {cs:"Vkládám zastávku – Esc ukončí",sk:"Vkladám zastávku – Esc ukončí",bg:"Поставям спирка – Esc за край",hr:"Umećem stajalište – Esc za kraj",ro:"Inserez o oprire – Esc pentru a încheia",en:"Placing a stop – Esc to stop"},
+  "Vkládám – Esc ukončí": {cs:"Vkládám – Esc ukončí",sk:"Vkladám – Esc ukončí",bg:"Поставям – Esc за край",hr:"Umećem – Esc za kraj",ro:"Inserez – Esc pentru a încheia",en:"Placing – Esc to stop"},
   "Klikni do mapy.": {cs:"Klikni do mapy.",sk:"Klikni do mapy.",bg:"Кликни в картата.",hr:"Klikni u kartu.",ro:"Dă clic pe hartă.",en:"Click the map."},
   "Text štítku": {cs:"Text štítku",sk:"Text štítku",bg:"Текст на етикета",hr:"Tekst oznake",ro:"Text etichetă",en:"Tag text"},
   "Štítek": {cs:"Štítek",sk:"Štítok",bg:"Етикет",hr:"Oznaka",ro:"Etichetă",en:"Tag"},
@@ -21628,7 +21680,7 @@ function pzBuildIconPalette(){
       pzPickBuiltinIcon(kind);
       // Výběr ikony rovnou zapne vkládání — dřív hláška radila „klikni do mapy",
       // ale klik nic neudělal, dokud grafik nezmáčkl ještě „Klikni do mapy".
-      if(!state.addingSceneIcon) armSceneAddMode('icon');
+      if(!state.addingSceneIcon){ armSceneAddMode('icon'); state._pzIconArmedAt = (state.sceneIcons || []).length; }
       setStatus(t('Ikona „{0}“ vybraná — klikni do mapy, kam ji dát.', b.textContent.trim() || it.label));
     });
     grid.appendChild(b);
