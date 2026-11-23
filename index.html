@@ -1305,23 +1305,30 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div><label>Od</label><input id="pzClFrom" type="text" placeholder="např. Humpolec"></div>
             <div><label>Do</label><input id="pzClTo" type="text" placeholder="např. Jihlava"></div>
           </div>
+          <div class="row">
+            <div><label>Objížďka přes</label><input id="pzClDetour" type="text" placeholder="např. Pelhřimov"></div>
+            <div><label>Nápis</label><input id="pzClLabel" type="text" placeholder="UZAVŘENO"></div>
+          </div>
           <details class="compact-details">
             <summary>Další možnosti</summary>
             <div class="row">
               <div><label>Přes</label><input id="pzClVia" type="text" placeholder="např. Větrný Jeníkov"></div>
-              <div><label>Objížďka přes</label><input id="pzClDetour" type="text" placeholder="např. Pelhřimov"></div>
+              <div><label>Barva objížďky</label><input id="pzClDetourColor" type="color" value="#f59f00"></div>
             </div>
           </details>
-          <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClRoadBtn">Vyznačit</button></div>
+          <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClRoadBtn">Vyznačit</button><button type="button" class="btn btn-sm" id="pzClRoadCancel" style="display:none">Zrušit úpravu</button></div>
         </div>
         <div class="pz-cl-form" data-cl-form="metro" hidden>
           <div class="row">
             <div><label>Linka</label><select id="pzClMetroLine"><option value="A">A</option><option value="B">B</option><option value="C">C</option></select></div>
             <div><label>Stanice</label><select id="pzClMetroFrom"></select></div>
           </div>
-          <label>Až po</label>
-          <select id="pzClMetroTo"></select>
-          <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClMetroBtn">Vyznačit</button></div>
+          <div class="row">
+            <div><label>Až po</label><select id="pzClMetroTo"></select></div>
+            <div><label>Nápis</label><input id="pzClMetroLabel" type="text" placeholder="MIMO PROVOZ"></div>
+          </div>
+          <label class="check" style="margin-top:8px"><input id="pzClMetroAllNames" type="checkbox"> <span data-i18n="Názvy všech stanic">Názvy všech stanic</span></label>
+          <div class="btns"><button type="button" class="btn btn-primary btn-sm" id="pzClMetroBtn">Vyznačit</button><button type="button" class="btn btn-sm" id="pzClMetroCancel" style="display:none">Zrušit úpravu</button></div>
         </div>
         <div id="pzClosureList" class="wp-list"></div>
         <div class="btns pz-list-foot" id="pzClosureFoot" hidden><button type="button" class="btn btn-sm btn-danger" id="pzClClearBtn">Smazat vše</button></div>
@@ -20104,6 +20111,16 @@ Object.assign(I18N, {
   "Uzavírky smazány.": {cs:"Uzavírky smazány.",sk:"Uzávierky zmazané.",bg:"Затварянията са изтрити.",hr:"Zatvaranja su obrisana.",ro:"Închiderile au fost șterse.",en:"Closures cleared."},
   "Uzavírka smazána.": {cs:"Uzavírka smazána.",sk:"Uzávierka zmazaná.",bg:"Затварянето е изтрито.",hr:"Zatvaranje je obrisano.",ro:"Închiderea a fost ștearsă.",en:"Closure deleted."},
   "např. Větrný Jeníkov": {cs:"např. Větrný Jeníkov",sk:"napr. Větrný Jeníkov",bg:"напр. Větrný Jeníkov",hr:"npr. Větrný Jeníkov",ro:"de ex. Větrný Jeníkov",en:"e.g. Větrný Jeníkov"},
+  "Nápis": {cs:"Nápis",sk:"Nápis",bg:"Надпис",hr:"Natpis",ro:"Inscripție",en:"Caption"},
+  "UZAVŘENO": {cs:"UZAVŘENO",sk:"UZAVRETÉ",bg:"ЗАТВОРЕНО",hr:"ZATVORENO",ro:"ÎNCHIS",en:"CLOSED"},
+  "MIMO PROVOZ": {cs:"MIMO PROVOZ",sk:"MIMO PREVÁDZKY",bg:"НЕ РАБОТИ",hr:"IZVAN PROMETA",ro:"ÎNCHIS",en:"OUT OF SERVICE"},
+  "Barva objížďky": {cs:"Barva objížďky",sk:"Farba obchádzky",bg:"Цвят на обхода",hr:"Boja obilaska",ro:"Culoarea ocolirii",en:"Detour colour"},
+  "Názvy všech stanic": {cs:"Názvy všech stanic",sk:"Názvy všetkých staníc",bg:"Имена на всички станции",hr:"Nazivi svih stanica",ro:"Numele tuturor stațiilor",en:"All station names"},
+  "Upravit": {cs:"Upravit",sk:"Upraviť",bg:"Редактирай",hr:"Uredi",ro:"Editează",en:"Edit"},
+  "Uložit změny": {cs:"Uložit změny",sk:"Uložiť zmeny",bg:"Запази промените",hr:"Spremi promjene",ro:"Salvează modificările",en:"Save changes"},
+  "Uzavírka upravena.": {cs:"Uzavírka upravena.",sk:"Uzávierka upravená.",bg:"Затварянето е променено.",hr:"Zatvaranje je izmijenjeno.",ro:"Închiderea a fost modificată.",en:"Closure updated."},
+  "Uprav pole a klikni na Uložit změny.": {cs:"Uprav pole a klikni na Uložit změny.",sk:"Uprav polia a klikni na Uložiť zmeny.",bg:"Промени полетата и натисни Запази промените.",hr:"Izmijeni polja i klikni Spremi promjene.",ro:"Modifică câmpurile și apasă Salvează modificările.",en:"Edit the fields and click Save changes."},
+  "Tuhle uzavírku nejde upravit (chybí zadání), zadej ji znovu.": {cs:"Tuhle uzavírku nejde upravit (chybí zadání), zadej ji znovu.",sk:"Túto uzávierku nemožno upraviť (chýba zadanie), zadaj ju znova.",bg:"Това затваряне не може да се редактира (липсват данни), въведи го отново.",hr:"Ovo zatvaranje nije moguće urediti (nedostaju podaci), unesi ga ponovno.",ro:"Această închidere nu poate fi editată (lipsesc datele), introdu-o din nou.",en:"This closure can't be edited (its input is missing), enter it again."},
   "Hledám…": {cs:"Hledám…",sk:"Hľadám…",bg:"Търся…",hr:"Tražim…",ro:"Caut…",en:"Searching…"},
   // .
   // .
@@ -21270,8 +21287,68 @@ document.addEventListener('keydown', e => {
 // ===========================================================================
 function pzClosures(){ return (state.pzClosures = state.pzClosures || []); }
 
+// Délka lomené čáry v km.
+function pzLineKm(coords){ let s = 0; for(let i = 1; i < (coords || []).length; i++) s += haversineKm(coords[i-1], coords[i]); return s; }
+// Místo uzavírky hledané kolem referenčního bodu. geocode() bral první výsledek
+// na světě: objížďka „přes Rudu" vedla do Polska (Ruda Śląska), Podolí z Hlubočep
+// do Brna. Kandidáti z Nominatimu + Photonu (ten upřednostní okolí ref), stejný
+// název do 50 km od ref vyhrává; s upřesněním za čárkou („Ruda, Žďár") věříme pořadí.
+async function pzGeocodeNear(q, ref){
+  q = String(q || '').trim();
+  const ll = parseLatLng(q);
+  if(ll) return ll;
+  const pt = it => [+it.lon, +it.lat];
+  let cands = [];
+  try{ cands = await searchPlaces(q, 8); }catch(e){}
+  if(/,/.test(q) && cands.length) return pt(cands[0]);
+  if(ref){ try{ cands = cands.concat(await searchPlacesPhoton(q, 8, ref)); }catch(e){} }
+  cands = cands.filter(it => isFinite(+it.lat) && isFinite(+it.lon));
+  if(!cands.length) throw new Error('Nenalezeno');
+  if(!ref) return pt(cands[0]);
+  const fold = v => String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const key = fold(q), same = it => fold(it.name || it.namedetails?.name || String(it.display_name || '').split(',')[0]) === key;
+  // sídla a úřední celky před ulicemi a řekami stejného jména
+  const town = it => /^(place|boundary)$/.test(it.class || it.category || '') ? 0 : 8;
+  const near = cands.map((it, i) => ({it, i, km: haversineKm(ref, pt(it))})).filter(x => x.km <= 50)
+    .sort((x, y) => (same(y.it) - same(x.it)) || (x.km + town(x.it)) - (y.km + town(y.it)));
+  if(near.length && (same(near[0].it) || !cands.some(same))) return pt(near[0].it);
+  return pt(cands.find(same) || cands[0]);
+}
+// Vzdálenost bodu od lomené čáry v km (rovinná aproximace, na úrovni uzavírky stačí).
+function pzDistToLineKm(p, coords){
+  const kx = 111.32 * Math.cos(p[1] * Math.PI / 180), ky = 110.57;
+  let best = Infinity;
+  for(let i = 1; i < coords.length; i++){
+    const ax = (coords[i-1][0] - p[0]) * kx, ay = (coords[i-1][1] - p[1]) * ky;
+    const bx = (coords[i][0] - p[0]) * kx, by = (coords[i][1] - p[1]) * ky;
+    const dx = bx - ax, dy = by - ay, L = dx*dx + dy*dy;
+    const t = L ? Math.max(0, Math.min(1, -(ax*dx + ay*dy) / L)) : 0;
+    best = Math.min(best, Math.hypot(ax + dx*t, ay + dy*t));
+  }
+  return coords.length === 1 ? haversineKm(p, coords[0]) : best;
+}
+// Objížďka nesmí jet po uzavřeném úseku (OSRM o uzavírce neví a vede ji po D1
+// k dalšímu exitu). Začátek a konec ležící na úseku (<60 m) uřízneme; poslední
+// bod na úseku necháme, aby objížďka na uzavírku navazovala.
+function pzTrimDetour(detour, section){
+  if(!detour?.length || !section?.length) return detour;
+  const on = p => pzDistToLineKm(p, section) < 0.06;
+  let i = 0, j = detour.length - 1;
+  while(i < j && on(detour[i + 1])) i++;
+  while(j > i && on(detour[j - 1])) j--;
+  return j - i >= 1 ? detour.slice(i, j + 1) : detour;
+}
 // Úsek po silnici přes OSRM, se stejnou zálohou jako trasa autem.
-async function pzRoadPath(points){
+// opts.tryReverse: nečekaně dlouhý úsek (smyčka kvůli jednosměrnému pruhu, most
+// Barrandov → Braník 5 km) zkusit obráceně a vzít kratší.
+async function pzRoadPath(points, opts){
+  if(opts?.tryReverse && points.length >= 2){
+    const fwd = await pzRoadPath(points), air = haversineKm(points[0], points[points.length-1]);
+    if(air > 0.05 && pzLineKm(fwd) > 1.6 * air){
+      try{ const rev = await pzRoadPath(points.slice().reverse()); if(pzLineKm(rev) < pzLineKm(fwd)) return rev.slice().reverse(); }catch(e){}
+    }
+    return fwd;
+  }
   const cs = points.map(p => `${p[0]},${p[1]}`).join(';');
   const urls = [
     `https://router.project-osrm.org/route/v1/car/${cs}?overview=full&geometries=geojson`,
@@ -21318,11 +21395,14 @@ function pzEnsureClosureLayers(m){
   const add = def => { if(!m.getLayer(def.id)){ try{ m.addLayer(def); }catch(e){} } };
   const kind = k => ['==', ['get','kind'], k];
   const round = {'line-cap':'round','line-join':'round'};
-  // objížďka pod uzavírkou, aby uzavřený úsek zůstal nahoře
+  // objížďka pod uzavírkou, aby uzavřený úsek zůstal nahoře. Bílý obrys + tmavý
+  // stín: oranžová čárkovaná na oranžových silnicích presetu (Čistá navigační) zmizela.
+  add({id:'pzuz-objizdka-stin', type:'line', source:'pz-closures', filter:kind('detour'), layout:round,
+       paint:{'line-color':'rgba(0,0,0,0.4)', 'line-width':['interpolate',['linear'],['zoom'],5,8,12,14]}});
   add({id:'pzuz-objizdka-obrys', type:'line', source:'pz-closures', filter:kind('detour'), layout:round,
-       paint:{'line-color':'rgba(0,0,0,0.45)', 'line-width':['interpolate',['linear'],['zoom'],5,5,12,10]}});
+       paint:{'line-color':'#ffffff', 'line-width':['interpolate',['linear'],['zoom'],5,6,12,10]}});
   add({id:'pzuz-objizdka', type:'line', source:'pz-closures', filter:kind('detour'), layout:round,
-       paint:{'line-color':'#f59f00', 'line-width':['interpolate',['linear'],['zoom'],5,3,12,6], 'line-dasharray':[1.6,1.1]}});
+       paint:{'line-color':['coalesce',['get','color'],'#f59f00'], 'line-width':['interpolate',['linear'],['zoom'],5,3,12,6], 'line-dasharray':[1.6,1.1]}});
   add({id:'pzuz-usek-obrys', type:'line', source:'pz-closures', filter:kind('road'), layout:round,
        paint:{'line-color':'#5a0b10', 'line-width':['interpolate',['linear'],['zoom'],5,8,12,15]}});
   add({id:'pzuz-usek', type:'line', source:'pz-closures', filter:kind('road'), layout:round,
@@ -21350,7 +21430,13 @@ function pzEnsureClosureLayers(m){
   // Názvy stanic: při oddálení se jinak přetiskly přes sebe i přes „MIMO PROVOZ"
   // (Anděl × Smíchovské nádraží). Vlastní vrstva pod hlavním nápisem, kolize zapnuté,
   // takže se překrývající název skryje. Hlavní nápis se kreslí vždy a blokuje okolí.
-  add({id:'pzuz-text-stanice', type:'symbol', source:'pz-closures', filter:['all', kind('label'), ['has','minor']],
+  // Přestupní / všechny stanice uvnitř úseku: menší, vedle bodu (kam se vejde), pod názvy konců.
+  add({id:'pzuz-text-prestup', type:'symbol', source:'pz-closures', filter:['all', kind('label'), ['has','side']],
+       layout:{'text-field':['get','text'], 'text-font':['Noto Sans Bold'], 'text-size':['coalesce',['get','size'],15],
+               'text-letter-spacing':0.04, 'text-allow-overlap':false, 'text-padding':2,
+               'text-variable-anchor':['left','right','top','bottom'], 'text-radial-offset':0.8, 'text-justify':'auto'},
+       paint:{'text-color':['coalesce',['get','color'],'#3d434b'], 'text-halo-color':'#ffffff', 'text-halo-width':3}});
+  add({id:'pzuz-text-stanice', type:'symbol', source:'pz-closures', filter:['all', kind('label'), ['has','minor'], ['!', ['has','side']]],
        layout:{'text-field':['get','text'], 'text-font':['Noto Sans Bold'], 'text-size':['coalesce',['get','size'],16],
                'text-letter-spacing':0.06, 'text-allow-overlap':false, 'text-ignore-placement':false, 'text-padding':2,
                'text-offset':['coalesce',['get','offset'],['literal',[0,-1.6]]], 'text-anchor':'center'},
@@ -21362,15 +21448,26 @@ function pzEnsureClosureLayers(m){
        paint:{'text-color':['coalesce',['get','color'],'#c1121f'], 'text-halo-color':'#ffffff', 'text-halo-width':3}});
 }
 
+// Přestupy: jiná linka metra, nebo vlak (hlavní nádraží).
+const PZ_METRO_RAIL_TRANSFERS = ['Hlavní nádraží','Smíchovské nádraží','Nádraží Holešovice','Nádraží Veleslavín'];
+function pzMetroIsTransfer(name, line){
+  return PZ_METRO_RAIL_TRANSFERS.includes(name) ||
+    Object.keys(PRAHA_METRO_STATIONS).some(L => L !== line && PRAHA_METRO_STATIONS[L].some(s => s.name === name));
+}
+// Tmavší odstín barvy objížďky pro nápis (žlutá s bílým halo by nešla číst).
+function pzDarkHex(hex){
+  const n = parseInt(String(hex).slice(1), 16);
+  return '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * 0.72).toString(16).padStart(2, '0')).join('');
+}
 function pzClosureFeatures(){
   const F = [];
   const line = (coords, kind, extra) => F.push({type:'Feature', properties:Object.assign({kind}, extra || {}), geometry:{type:'LineString', coordinates:coords}});
   const pt = (c, props) => F.push({type:'Feature', properties:props, geometry:{type:'Point', coordinates:c}});
   pzClosures().forEach(c => {
     if(c.detour?.length > 1){
-      line(c.detour, 'detour');
+      line(c.detour, 'detour', c.detourColor ? {color: c.detourColor} : null);
       const mid = pzLineMidpoint(c.detour);
-      if(mid) pt(mid, {kind:'label', text:'OBJÍŽĎKA', color:'#b35c00', size:18});
+      if(mid) pt(mid, {kind:'label', text: c.detourLabel || 'OBJÍŽĎKA', color: c.detourColor ? pzDarkHex(c.detourColor) : '#b35c00', size:18});
     }
     if(c.kind === 'road' && c.coords?.length > 1){
       line(c.coords, 'road');
@@ -21383,21 +21480,31 @@ function pzClosureFeatures(){
       if(c.coords?.length > 1) line(c.coords, 'metro', {color: PZ_METRO_LINE_COLORS[c.line] || '#8b929b'});
       // Úsek: křížek a název jen na koncích, mezilehlé stanice jako šedé tečky —
       // jinak se u delšího úseku názvy na celoměstském záběru překrývají.
+      // Přestupní stanice (jiná linka metra, hlavní nádraží) ale název mají —
+      // podle nich divák úsek pozná. c.allNames pojmenuje všechny.
       const sts = c.stations || [];
       sts.forEach((st, i) => {
         const isEnd = i === 0 || i === sts.length - 1;
         pt(st.coord, {kind: isEnd ? 'end' : 'stop'});
         if(isEnd) pt(st.coord, {kind:'label', text: st.name, size:17, color:'#1b1f24', offset:[0,1.5], minor:1});
+        else if(c.allNames || pzMetroIsTransfer(st.name, c.line)) pt(st.coord, {kind:'label', text: st.name, size:15, color:'#3d434b', minor:1, side:1});
       });
-      const mid = c.coords?.length > 1 ? pzLineMidpoint(c.coords) : c.stations?.[0]?.coord;
+      // Hlavní nápis do nejdelší mezery mezi stanicemi — v polovině čáry ležel
+      // přesně na Muzeu / Hlavním nádraží a jejich názvy přebil.
+      let mid = c.coords?.length > 1 ? pzLineMidpoint(c.coords) : c.stations?.[0]?.coord;
+      if(sts.length >= 3){
+        let gi = 0, gd = -1;
+        for(let i = 1; i < sts.length; i++){ const d = haversineKm(sts[i-1].coord, sts[i].coord); if(d > gd){ gd = d; gi = i; } }
+        mid = [(sts[gi-1].coord[0] + sts[gi].coord[0]) / 2, (sts[gi-1].coord[1] + sts[gi].coord[1]) / 2];
+      }
       if(mid) pt(mid, {kind:'label', text: c.label || 'MIMO PROVOZ', size:20});
     }
   });
   return {type:'FeatureCollection', features:F};
 }
 
-const PZ_CLOSURE_LAYERS = ['pzuz-objizdka-obrys','pzuz-objizdka','pzuz-usek-obrys','pzuz-usek','pzuz-usek-pruhy',
-  'pzuz-podzemi-obrys','pzuz-podzemi','pzuz-podzemi-pruhy','pzuz-zastavka','pzuz-konec','pzuz-konec-x','pzuz-text-stanice','pzuz-text'];
+const PZ_CLOSURE_LAYERS = ['pzuz-objizdka-stin','pzuz-objizdka-obrys','pzuz-objizdka','pzuz-usek-obrys','pzuz-usek','pzuz-usek-pruhy',
+  'pzuz-podzemi-obrys','pzuz-podzemi','pzuz-podzemi-pruhy','pzuz-zastavka','pzuz-konec','pzuz-konec-x','pzuz-text-prestup','pzuz-text-stanice','pzuz-text'];
 function pzRedrawClosures(){
   const m = state.map; if(!m?.isStyleLoaded?.()) return;
   pzEnsureClosureLayers(m);
@@ -21408,6 +21515,8 @@ function pzRedrawClosures(){
   try{ pzRenderClosureList(); }catch(e){}
 }
 
+// Bez seznamu = celá scéna: všechny uzavírky + ikonky, popisky, trasa… Dřív se
+// rámovala jen poslední uzavírka a předchozí objekty vypadly z rámečku.
 function pzFitClosures(list){
   const pts = [];
   (list || pzClosures()).forEach(c => {
@@ -21415,6 +21524,7 @@ function pzFitClosures(list){
     (c.detour || []).forEach(p => pts.push(p));
     (c.stations || []).forEach(s => pts.push(s.coord));
   });
+  if(!list){ try{ pzSceneLngLats().forEach(p => pts.push(p)); }catch(e){} }
   if(!pts.length) return;
   const bb = pzFeaturesBBox([{geometry:{coordinates:pts}}]);
   if(!bb) return;
@@ -21422,7 +21532,15 @@ function pzFitClosures(list){
   if(bb[1][0] - bb[0][0] < 0.004 && bb[1][1] - bb[0][1] < 0.004){
     bb[0][0] -= 0.012; bb[0][1] -= 0.008; bb[1][0] += 0.012; bb[1][1] += 0.008;
   }
-  window.TNMAP._fitTwo(bb[0], bb[1]);
+  // Rezerva na texty: názvy stanic pod bodem (~2 řádky), nápis nad čárou (~2 řádky).
+  try{
+    state.screenPan = {x:0, y:0};
+    const pad = getFitPadding();
+    const cv = state.map.getCanvas(), W = cv.clientWidth || 800, H = cv.clientHeight || 600;
+    if(pad.top + pad.bottom + 80 + 120 < H){ pad.bottom += 44; pad.top += 36; }
+    if(pad.left + pad.right + 48 + 160 < W){ pad.left += 24; pad.right += 24; }
+    state.map.fitBounds(bb, {padding: pad, duration: 900});
+  }catch(e){ window.TNMAP._fitTwo(bb[0], bb[1]); }
 }
 
 function pzRenderClosureList(){
@@ -21430,10 +21548,16 @@ function pzRenderClosureList(){
   const list = pzClosures();
   box.innerHTML = list.length ? '' : '<div class="small" style="opacity:.6;padding:4px 2px">' + escapeHtml(t('Žádné uzavírky.')) + '</div>';
   const foot = $('pzClosureFoot'); if(foot) foot.hidden = !list.length;
+  if(state.pzEditingClosure && !list.some(c => c.id === state.pzEditingClosure)) pzSetClosureEditing(null);
   list.forEach(c => {
     const row = document.createElement('div');
-    row.className = 'wp-item' + (c === state.pzSelectedClosure ? ' active' : '');
+    row.className = 'wp-item' + (c === state.pzSelectedClosure || c.id === state.pzEditingClosure ? ' active' : '');
     row.innerHTML = `<span class="small">${escapeHtml(c.title || 'Uzavírka')}</span>`;
+    // ✎ vrátí hodnoty do formuláře a Vyznačit pak uzavírku přepíše (dřív smazat a zadat znovu)
+    const ed = document.createElement('button');
+    ed.className = 'btn-remove'; ed.type = 'button'; ed.textContent = '✎'; ed.title = t('Upravit');
+    ed.addEventListener('click', ev => { ev.stopPropagation(); pzEditClosure(c); });
+    row.appendChild(ed);
     const del = document.createElement('button');
     del.className = 'btn-remove'; del.type = 'button'; del.textContent = '×'; del.title = 'Smazat';
     del.addEventListener('click', ev => { ev.stopPropagation(); state.pzClosures = pzClosures().filter(x => x !== c); pzRedrawClosures(); setStatus(t('Uzavírka smazána.')); });
@@ -21441,6 +21565,36 @@ function pzRenderClosureList(){
     row.addEventListener('click', () => { state.pzSelectedClosure = c; pzRenderClosureList(); pzFitClosures([c]); });
     box.appendChild(row);
   });
+}
+// Režim úprav: tlačítko Vyznačit → „Uložit změny", vedle „Zrušit úpravu".
+function pzSetClosureEditing(id){
+  state.pzEditingClosure = id || null;
+  [['pzClRoadBtn','pzClRoadCancel'], ['pzClMetroBtn','pzClMetroCancel']].forEach(([b, x]) => {
+    if($(b) && !$(b).disabled) $(b).textContent = t(id ? 'Uložit změny' : 'Vyznačit');
+    if($(x)) $(x).style.display = id ? "" : "none";
+  });
+}
+function pzEditClosure(c){
+  if(state.pzEditingClosure === c.id){ pzSetClosureEditing(null); pzRenderClosureList(); return; }
+  const set = (id, v) => { if($(id)) $(id).value = v == null ? '' : v; };
+  if(c.kind === 'metro'){
+    pzSetClosureTab('metro');
+    set('pzClMetroLine', c.line); pzFillMetroStationSelects();
+    set('pzClMetroFrom', c.from || c.stations?.[0]?.name); set('pzClMetroTo', c.to || '');
+    set('pzClMetroLabel', /^(MIMO PROVOZ|UZAVŘENO)$/.test(c.label) ? '' : c.label);
+    if($('pzClMetroAllNames')) $('pzClMetroAllNames').checked = !!c.allNames;
+  } else {
+    pzSetClosureTab('road');
+    if(!c.from){ setStatus(t('Tuhle uzavírku nejde upravit (chybí zadání), zadej ji znovu.'), 'error'); return; }
+    set('pzClFrom', c.from); set('pzClTo', c.to); set('pzClVia', c.via); set('pzClDetour', c.detourVia);
+    set('pzClLabel', c.label === 'UZAVŘENO' ? '' : c.label);
+    set('pzClDetourColor', c.detourColor || '#f59f00');
+    if(c.via || c.detourColor){ const d = $('pzClVia')?.closest('details'); if(d) d.open = true; }
+  }
+  state.pzSelectedClosure = c;
+  pzSetClosureEditing(c.id);
+  pzRenderClosureList();
+  setStatus(t('Uprav pole a klikni na Uložit změny.'));
 }
 
 function pzSetClosureTab(tab){
@@ -21453,24 +21607,34 @@ function pzSetClosureTab(tab){
 function pzBindClosureUI(){
   const run = async (btn, fn) => {
     const b = $(btn); if(!b || b.disabled) return;
-    const txt = b.textContent; b.disabled = true; b.textContent = t('Hledám…');
-    try{ const r = await fn(); setStatus(r.ok ? t('Uzavírka vyznačena.') : r.error, r.ok ? undefined : 'error'); }
+    const editing = !!state.pzEditingClosure; b.disabled = true; b.textContent = t('Hledám…');
+    try{
+      const r = await fn();
+      if(r.ok) pzSetClosureEditing(null);
+      setStatus(r.ok ? (r.warning || t(editing ? 'Uzavírka upravena.' : 'Uzavírka vyznačena.')) : r.error, r.ok && !r.warning ? undefined : 'error');
+    }
     catch(e){ setStatus(String(e?.message || e), 'error'); }
-    finally{ b.disabled = false; b.textContent = txt; }
+    finally{ b.disabled = false; pzSetClosureEditing(state.pzEditingClosure); }
   };
   const road = () => {
     const from = $('pzClFrom').value.trim(), to = $('pzClTo').value.trim();
     if(!from || !to){ setStatus(t('Vyplň místa Od a Do.'), 'error'); (from ? $('pzClTo') : $('pzClFrom')).focus(); return; }
-    run('pzClRoadBtn', () => window.TNMAP.roadClosure({from, to, via: $('pzClVia').value.trim(), detourVia: $('pzClDetour').value.trim()}));
+    const col = $('pzClDetourColor')?.value || '';
+    run('pzClRoadBtn', () => window.TNMAP.roadClosure({from, to, via: $('pzClVia').value.trim(), detourVia: $('pzClDetour').value.trim(),
+      label: $('pzClLabel')?.value.trim() || undefined, detourColor: col.toLowerCase() === '#f59f00' ? '' : col,
+      replaceId: state.pzEditingClosure || undefined}));
   };
   $('pzClRoadBtn')?.addEventListener('click', road);
   // Enter v poli = totéž co tlačítko (snímek pro krok zpět dělá jinak klik na tlačítko)
-  ['pzClFrom','pzClTo','pzClVia','pzClDetour'].forEach(id => $(id)?.addEventListener('keydown', e => {
+  ['pzClFrom','pzClTo','pzClVia','pzClDetour','pzClLabel'].forEach(id => $(id)?.addEventListener('keydown', e => {
     if(e.key !== 'Enter') return;
     e.preventDefault(); try{ window.__pzPushUndo?.(); }catch(_e){} road();
   }));
   $('pzClMetroBtn')?.addEventListener('click', () => run('pzClMetroBtn', () => window.TNMAP.metroClosure({
-    line: $('pzClMetroLine').value, from: $('pzClMetroFrom').value, to: $('pzClMetroTo').value || undefined})));
+    line: $('pzClMetroLine').value, from: $('pzClMetroFrom').value, to: $('pzClMetroTo').value || undefined,
+    label: $('pzClMetroLabel')?.value.trim() || undefined, allNames: !!$('pzClMetroAllNames')?.checked,
+    replaceId: state.pzEditingClosure || undefined})));
+  ['pzClRoadCancel','pzClMetroCancel'].forEach(id => $(id)?.addEventListener('click', () => { pzSetClosureEditing(null); pzRenderClosureList(); }));
   $('pzClClearBtn')?.addEventListener('click', () => { window.TNMAP.clearClosures(); setStatus(t('Uzavírky smazány.')); });
   $('pzClMetroLine')?.addEventListener('change', pzFillMetroStationSelects);
   document.querySelectorAll('#pzClosureSection [data-cl-tab]').forEach(b => b.addEventListener('click', () => pzSetClosureTab(b.dataset.clTab)));
@@ -22014,36 +22178,51 @@ function pzColorFromName(v){
     // Úsek po skutečné silnici mezi dvěma místy (případně přes průjezdní body,
     // aby šel vynutit správný tah — „D1 od Humpolce přes Pelhřimov… "),
     // volitelně s objížďkou přes jiná místa.
-    async roadClosure({from, to, via, detourVia, label, fit} = {}){
+    async roadClosure({from, to, via, detourVia, label, detourLabel, detourColor, replaceId, fit} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to (odkud a kam je silnice uzavřená).'};
-      const geo = async q => { const g = await geocode(String(q)); return [+g.lon, +g.lat]; };
       const list = v => (Array.isArray(v) ? v : (v ? String(v).split(/\s*[;|]\s*/) : [])).filter(Boolean);
+      const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
       let a, b, vias, dvias;
       const HOW = ' Zkus přesnější název (obec, okres) nebo souřadnice.';
-      try{ a = await geo(from); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.' + HOW}; }
-      try{ b = await geo(to); }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.' + HOW}; }
-      try{ vias = await Promise.all(list(via).map(geo)); }catch(e){ return {ok:false, error:'Místo v poli „Přes" jsem nenašel.' + HOW}; }
-      try{ dvias = await Promise.all(list(detourVia).map(geo)); }catch(e){ return {ok:false, error:'Místo v poli „Objížďka přes" jsem nenašel.' + HOW}; }
-      let coords, detour = null;
-      try{ coords = await pzRoadPath([a, ...vias, b]); }
+      // Od kolem středu výřezu, Do kolem Od, Přes a Objížďka kolem středu úsečky Od–Do.
+      try{ a = await pzGeocodeNear(from, placeSearchRefPoint()); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.' + HOW}; }
+      try{ b = await pzGeocodeNear(to, a); }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.' + HOW}; }
+      const ab = mid(a, b);
+      try{ vias = []; for(const q of list(via)) vias.push(await pzGeocodeNear(q, ab)); }catch(e){ return {ok:false, error:'Místo v poli „Přes" jsem nenašel.' + HOW}; }
+      try{ dvias = []; for(const q of list(detourVia)) dvias.push(await pzGeocodeNear(q, ab)); }catch(e){ return {ok:false, error:'Místo v poli „Objížďka přes" jsem nenašel.' + HOW}; }
+      let coords, detour = null, warning = '';
+      try{ coords = await pzRoadPath([a, ...vias, b], {tryReverse: !vias.length}); }
       catch(e){ return {ok:false, error:'Úsek silnice se nepodařilo najít — zkus to znovu, nebo zadej bližší místa.'}; }
+      const km = pzLineKm(coords), air = haversineKm(a, b), fmt = v => v >= 10 ? Math.round(v) : v.toFixed(1);
+      // Absurdní výsledek (místo nalezené jinde, než grafik myslel) = chyba, ne tiché oddálení.
+      if(!vias.length && km > 10 && km > 4 * air)
+        return {ok:false, error:'Úsek „' + from + ' – ' + to + '" vede ' + fmt(km) + ' km daleko – upřesni místo (obec, okres).'};
+      if(!vias.length && km > 2.5 * air) warning = 'Úsek je nečekaně dlouhý (' + fmt(km) + ' km), zkontroluj ho.';
+      else if(km > 100) warning = 'Úsek má ' + fmt(km) + ' km, zkontroluj, že místa sedí.';
       if(dvias.length){
         try{ detour = await pzRoadPath([a, ...dvias, b]); }
         catch(e){ return {ok:false, error:'Objížďku se nepodařilo najít — zkus jiné místo v poli „Objížďka přes".'}; }
+        const dkm = pzLineKm(detour);
+        if(dkm > 150 || (dkm > 20 && dkm > 4 * km))
+          return {ok:false, error:'Objížďka přes „' + list(detourVia).join(', ') + '" vede ' + fmt(dkm) + ' km daleko – upřesni místo (obec, okres).'};
+        detour = pzTrimDetour(detour, coords);
       }
-      const km = coords.reduce((s, p, i) => i ? s + haversineKm(coords[i-1], p) : 0, 0);
-      const c = {id:'cl_' + Date.now().toString(36), kind:'road', coords, detour,
+      const old = replaceId ? pzClosures().find(x => x.id === replaceId) : null;
+      const c = {id: old ? old.id : 'cl_' + Date.now().toString(36), kind:'road', coords, detour,
+                 from: String(from), to: String(to), via: list(via).join('; '), detourVia: list(detourVia).join('; '),
                  label: label ? String(label).toUpperCase() : 'UZAVŘENO',
-                 title: `Silnice ${from} – ${to} (${km >= 10 ? Math.round(km) : km.toFixed(1)} km)` + (detour ? ' + objížďka' : '')};
-      pzClosures().push(c);
+                 detourLabel: detourLabel ? String(detourLabel).toUpperCase() : '',
+                 detourColor: detourColor && /^#[0-9a-f]{6}$/i.test(detourColor) ? detourColor.toLowerCase() : '',
+                 title: `Silnice ${from} – ${to} (${fmt(km)} km)` + (detour ? ' + objížďka' : '')};
+      if(old) pzClosures().splice(pzClosures().indexOf(old), 1, c); else pzClosures().push(c);
       pzRedrawClosures();
-      if(fit !== false) pzFitClosures([c]);
-      return {ok:true, km:+km.toFixed(1), detour: !!detour};
+      if(fit !== false) pzFitClosures();
+      return Object.assign({ok:true, km:+km.toFixed(1), detour: !!detour}, warning ? {warning} : {});
     },
     // ---- uzavírka metra ------------------------------------------------------
     // Jedna stanice („Můstek uzavřen"), nebo úsek linky mezi dvěma stanicemi
     // („C mimo provoz mezi Florencí a Kačerovem"). Linku lze vynechat, dohledá se.
-    async metroClosure({line, station, from, to, label, fit} = {}){
+    async metroClosure({line, station, from, to, label, allNames, replaceId, fit} = {}){
       const a = pzFindMetroStation(from || station, line);
       if(!a) return {ok:false, error:'Stanici „' + (from || station || '') + '" jsem v metru nenašel.'};
       let b = null;
@@ -22054,7 +22233,7 @@ function pzColorFromName(v){
           const b2 = pzFindMetroStation(to, line);
           const a2 = b2 && pzFindMetroStation(from || station, b2.line);
           if(!a2) return {ok:false, error:'Stanice „' + to + '" není na stejné lince jako „' + (from || station) + '".'};
-          return window.TNMAP.metroClosure({line:b2.line, from: from || station, to, label, fit});
+          return window.TNMAP.metroClosure({line:b2.line, from: from || station, to, label, allNames, replaceId, fit});
         }
       }
       const L = a.line, list = PRAHA_METRO_STATIONS[L];
@@ -22069,14 +22248,16 @@ function pzColorFromName(v){
         stations = [list[a.index]];
         title = `Metro ${L}: ${a.name}`;
       }
-      const c = {id:'cl_' + Date.now().toString(36), kind:'metro', line:L, stations, coords, title,
+      const old = replaceId ? pzClosures().find(x => x.id === replaceId) : null;
+      const c = {id: old ? old.id : 'cl_' + Date.now().toString(36), kind:'metro', line:L, stations, coords, title,
+                 from: stations[0].name, to: stations.length > 1 ? stations[stations.length-1].name : '', allNames: !!allNames,
                  label: label ? String(label).toUpperCase() : (coords ? 'MIMO PROVOZ' : 'UZAVŘENO')};
-      pzClosures().push(c);
+      if(old) pzClosures().splice(pzClosures().indexOf(old), 1, c); else pzClosures().push(c);
       // linka musí být vidět, jinak uzavírka visí ve vzduchu
       const chk = $('showMetro');
       if(chk && !chk.checked){ chk.checked = true; chk.dispatchEvent(new Event('change', {bubbles:true})); }
       pzRedrawClosures();
-      if(fit !== false) pzFitClosures([c]);
+      if(fit !== false) pzFitClosures();
       return {ok:true, line:L, stations: stations.map(x => x.name)};
     },
     clearClosures(){ state.pzClosures = []; pzRedrawClosures(); return {ok:true}; },
