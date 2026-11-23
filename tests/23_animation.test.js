@@ -9,6 +9,9 @@ async function start(opts){
   const o = await open(opts);
   await o.ctx.route(/routing\.openstreetmap\.de|router\.project-osrm\.org/, r => r.fulfill({status:200, contentType:'application/json',
     body: JSON.stringify({code:'Ok', routes:[{geometry:{type:'LineString', coordinates:ROAD}, distance:205000, duration:7500, legs:[]}], waypoints:[]})}));
+  // názvy záběrů (reverzní geokódování) — podvržené, ať test nezávisí na síti
+  await o.ctx.route(/nominatim\.openstreetmap\.org\/reverse/, r => { const lon = +new URL(r.request().url()).searchParams.get('lon');
+    r.fulfill({status:200, contentType:'application/json', body: JSON.stringify({address:{city: lon > 16.5 ? 'Brno' : lon > 15.3 ? 'Jihlava' : 'Praha'}})}); });
   const {page} = o;
   page.setDefaultTimeout(90000);   // vytížený stroj: kliknutí čeká na ustálení prvku i desítky sekund
   o.route = async () => { const r = await page.evaluate(() => window.TNMAP.routeBetween({from:'50.08, 14.42', to:'49.19, 16.6', mode:'driving'})); await page.waitForTimeout(1500); return r; };
@@ -18,6 +21,10 @@ async function start(opts){
       empty: g('floatingPlayer').classList.contains('is-empty'), tabPlaying: g('animTabPlayBtn').classList.contains('is-playing'),
       status: g('statusBar').textContent.trim()}; });
   o.cam = () => page.evaluate(() => { const m = window.__tnMap, c = m.getCenter(); return {lng:c.lng, lat:c.lat, zoom:m.getZoom(), pitch:m.getPitch(), bearing:m.getBearing()}; });
+  // sledovaný bod leží uprostřed výřezu exportu (ne okna mapy) — tak vyjde ve videu uprostřed
+  o.atFrame = (lng, lat) => page.evaluate(([lng, lat]) => { const m = window.__tnMap, p = m.project([lng, lat]), mr = m.getCanvas().getBoundingClientRect();
+    const fr = document.getElementById('exportFrame').getBoundingClientRect();
+    return Math.hypot(mr.left + p.x - (fr.left + fr.width / 2), mr.top + p.y - (fr.top + fr.height / 2)) < 4; }, [lng, lat]);
   o.anim = () => page.evaluate(() => JSON.parse(JSON.stringify(window.__pzFns.serializeProjectSnapshot().animation)));
   o.playing = (want = true) => page.waitForFunction(w => window.__pzFns.state.animPlaying === w, want, {timeout: 20000}).then(() => true, () => false);
   o.elapsedOver = s => page.waitForFunction(s => window.__pzFns.state.animElapsed > s, s, {timeout: 20000}).then(() => true, () => false);
@@ -44,7 +51,7 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   await page.click('#animTabPlayBtn'); await page.waitForTimeout(200);
   s = await o.st();
   check(!s.playing && /trasu/i.test(s.status), 'Přehrát bez trasy jen poradí: ' + s.status);
-  const first = await page.evaluate(() => { const b = document.querySelector('.tab-pane[data-pane="animace"] .section-body'); const k = [...b.children].filter(e => e.offsetParent !== null);
+  const first = await page.evaluate(() => { const b = document.querySelector('.tab-pane[data-pane="animace"] .section-body'); const k = [...b.children].filter(e => e.offsetParent !== null && e.id !== 'animEmptyHint');
     return [k[0]?.id, k[1]?.querySelector('label')?.textContent.trim()]; });
   check(first[0] === 'animTabPlayBtn' && /Délka animace/.test(first[1]), 'první v záložce je Přehrát a Délka animace');
   check(await page.$$eval('.tab-pane[data-pane="animace"] p.hint', e => e.length) === 0, 'v záložce nejsou vysvětlující odstavce');
@@ -150,7 +157,7 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   const home = await o.cam();
   await page.click('[data-cammode2="follow"]'); await page.waitForTimeout(300);
   c = await o.cam();
-  check(near(c.pitch, 45, 0.5) && near(c.lng, 14.42, 0.01) && near(c.lat, 50.08, 0.01), 'Sleduje objekt: kamera se nakloní nad start trasy');
+  check(near(c.pitch, 45, 0.5) && await o.atFrame(14.42, 50.08), 'Sleduje objekt: kamera se nakloní, start trasy je uprostřed výřezu exportu');
   await page.evaluate(() => window.TNMAP.setValues({cameraPitch: 60})); await page.waitForTimeout(200);
   check(near((await o.cam()).pitch, 60, 0.5), 'náklon kamery se projeví hned, bez přehrání');
   await page.click('#followCameraRotate'); await page.waitForTimeout(300);
@@ -159,7 +166,7 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   check(c.lng > 14.5 && near(c.pitch, 60, 0.5), `při přehrávání kamera jede s objektem (${c.elapsed.toFixed(1)} s, ${c.lng.toFixed(2)}°)`);
   await page.click('#animStopBtn'); await page.waitForTimeout(300);
   const stopped = await o.cam();
-  check(near(stopped.lng, 14.42, 0.01) && near(stopped.lat, 50.08, 0.01) && near(stopped.pitch, 60, 0.5), 'po stopu se sledující kamera vrátí na první snímek');
+  check(await o.atFrame(14.42, 50.08) && near(stopped.pitch, 60, 0.5), 'po stopu se sledující kamera vrátí na první snímek');
   await page.click('#followCameraRotate'); await page.waitForTimeout(300);
   check(near((await o.cam()).bearing, home.bearing, 0.5) && await page.$eval('#camHeadingSmoothField', e => e.offsetParent === null), 'vypnutí otáčení kameru srovná');
   // skrytý objekt: kamera se po stopu vrátí taky
@@ -167,7 +174,7 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   c = await o.playUntil(2);
   await page.click('#animStopBtn'); await page.waitForTimeout(300);
   const back = await o.cam();
-  check(c.lng > 14.5 && near(back.lng, 14.42, 0.01) && near(back.lat, 50.08, 0.01), 'se skrytým objektem se kamera po stopu vrátí na start');
+  check(Math.abs(c.lng - back.lng) > 0.05 && await o.atFrame(14.42, 50.08), 'se skrytým objektem se kamera po stopu vrátí na start');
   await page.evaluate(() => document.getElementById('animDot').click());
   await page.click('[data-cammode2="static"]'); await page.waitForTimeout(300);
   c = await o.cam();
@@ -178,21 +185,40 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   check(/Přidat záběr/.test((await o.st()).status), 'Přelet bez záběrů poradí, co dál');
   const views = [{center:[14.5,50.05], zoom:9, pitch:0, bearing:0}, {center:[16.6,49.19], zoom:11, pitch:50, bearing:40}, {center:[15.6,49.4], zoom:8.5, pitch:20, bearing:-20}];
   for(const vw of views){ await page.evaluate(vw => window.__tnMap.jumpTo(vw), vw); await page.click('#cameraAddKeyframeBtn'); await page.waitForTimeout(120); }
-  const rows = () => page.$$eval('#cameraKeyframeList .camera-kf-info', e => e.map(x => x.textContent));
+  // řádek = „místo · čas" (zoom se neukazuje); pro kontrolu pořadí se k němu přidá zoom ze stavu
+  const rows = () => page.evaluate(() => { const kfs = window.__pzFns.state.cameraAnim.keyframes;
+    return [...document.querySelectorAll('#cameraKeyframeList .camera-kf-info')].map((x, i) => x.textContent.replace(/^[^·\d][^·]* · /, '') + ' · zoom ' + kfs[i].view.zoom.toFixed(1)); });
+  await page.waitForTimeout(3500);   // názvy míst se dohledávají postupně
+  const names = await page.$$eval('#cameraKeyframeList .camera-kf-info', e => e.map(x => x.textContent));
+  check(/^Praha · 0\.0 s$/.test(names[0]) && /^Brno · \d/.test(names[1]) && /^Jihlava · 8\.0 s/.test(names[2]), 'řádky záběrů ukazují místo a čas: ' + names.join(' | '));
   let rw = await rows();
-  // zoom v seznamu je zoom výřezu exportu (šířka 1280 px) — liší se od mapy o stálý posun
+  // zoom záběru je zoom výřezu exportu (šířka 1280 px) — liší se od mapy o stálý posun
   const zOff = parseFloat((rw[0] || '').split('zoom ')[1]) - 9;
   const zs = z => (z + zOff).toFixed(1).replace('.', '\\.');
-  check(rw.length === 3 && new RegExp('^0\\.0 s · zoom ' + zs(9) + '$').test(rw[0]) && new RegExp('^4\\.0 s · zoom ' + zs(11) + ' · 50°$').test(rw[1]) && /^8\.0 s/.test(rw[2]), 'tři záběry s časy: ' + rw.join(' | '));
+  const tMid = parseFloat(rw[1]);
+  check(rw.length === 3 && new RegExp('^0\\.0 s · zoom ' + zs(9) + '$').test(rw[0]) && new RegExp('^\\d+\\.\\d s · 50° · zoom ' + zs(11) + '$').test(rw[1]) && /^8\.0 s/.test(rw[2]) && tMid > 0.5 && tMid < 7.5,
+    'tři záběry s časy (čas úseků podle délky dráhy): ' + rw.join(' | '));
   await page.click('#cameraKeyframeList .camera-kf-row:nth-child(3) .kf-up'); await page.waitForTimeout(150);
   rw = await rows();
-  check(new RegExp('zoom ' + zs(8.5)).test(rw[1]) && new RegExp('zoom ' + zs(11)).test(rw[2]) && /^4\.0 s/.test(rw[1]), 'záběr jde přeřadit: ' + rw.join(' | '));
+  check(new RegExp('zoom ' + zs(8.5)).test(rw[1]) && new RegExp('zoom ' + zs(11)).test(rw[2]) && /^\d+\.\d s/.test(rw[1]), 'záběr jde přeřadit: ' + rw.join(' | '));
   await o.undo();
   rw = await rows();
   check(new RegExp('zoom ' + zs(11)).test(rw[1]) && new RegExp('zoom ' + zs(8.5)).test(rw[2]), 'krok zpět vrátí pořadí záběrů');
   await page.click('#cameraKeyframeList .camera-kf-row:nth-child(3) .kf-del'); await page.waitForTimeout(150);
   rw = await rows();
-  check(rw.length === 2 && new RegExp('^8\\.0 s · zoom ' + zs(11)).test(rw[1]), 'záběr jde odebrat, časy se přepočítají');
+  check(rw.length === 2 && new RegExp('^8\\.0 s · 50° · zoom ' + zs(11)).test(rw[1]), 'záběr jde odebrat, časy se přepočítají');
+  // dvojklik na Přidat záběr nepřidá stejný záběr podruhé
+  await page.evaluate(() => window.__tnMap.jumpTo({center:[15.2,49.7], zoom:9, pitch:0, bearing:0}));
+  await page.dblclick('#cameraAddKeyframeBtn'); await page.waitForTimeout(300);
+  check((await rows()).length === 3 && /Stejný záběr/.test((await o.st()).status), 'dvojklik na Přidat záběr přidá záběr jen jednou');
+  // ⟳ přepíše záběr aktuálním pohledem, klik na řádek na záběr najede
+  await page.evaluate(() => window.__tnMap.jumpTo({center:[15.4,49.5], zoom:8, pitch:0, bearing:0}));
+  await page.click('#cameraKeyframeList .camera-kf-row:nth-child(3) .kf-update'); await page.waitForTimeout(200);
+  check(new RegExp('zoom ' + zs(8) + '$').test((await rows())[2]), '⟳ uloží aktuální pohled do záběru');
+  await page.click('#cameraKeyframeList .camera-kf-row:nth-child(1) .camera-kf-info'); await page.waitForTimeout(1300);
+  c = await o.cam();
+  check(near(c.lng, 14.5, 0.01) && near(c.zoom, 9, 0.05) && await page.$$eval('#cameraKeyframeList .camera-kf-row.is-active', e => e.length) === 1, 'klik na řádek najede na záběr a zvýrazní ho');
+  await page.click('#cameraKeyframeList .camera-kf-row:nth-child(3) .kf-del'); await page.waitForTimeout(150);
   await page.evaluate(() => window.__tnMap.jumpTo({center:[15,49.6], zoom:7, pitch:0, bearing:0}));   // grafik si mapu posunul jinam
   c = await o.playUntil(3.5);
   check(c.elapsed < 7.5 && c.lng > 14.6 && c.lng < 16.6 && c.pitch > 3, `přelet hýbe kamerou mezi záběry (${c.elapsed.toFixed(1)} s: ${c.lng.toFixed(2)}°, náklon ${c.pitch.toFixed(0)}°)`);
@@ -282,7 +308,7 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   const ui = await page.evaluate(() => ({num: document.getElementById('animDurationNum').value, start: document.getElementById('animStartNum').value, smooth: document.getElementById('objSmoothNum').value,
     mode: document.querySelector('.camera-mode2-btn.active')?.dataset.cammode2, rows: document.querySelectorAll('#cameraKeyframeList .camera-kf-row').length,
     arc: document.getElementById('cameraLift').value === '0', info: document.getElementById('animInfo').textContent, last: document.querySelector('#cameraKeyframeList .camera-kf-row:last-child .camera-kf-info')?.textContent}));
-  check(ui.num === '14' && ui.start === '2.5' && ui.smooth === '30' && ui.mode === 'keyframes' && ui.rows === 2 && ui.arc === true && / \/ 16\.5 s$/.test(ui.info) && /^16\.5 s/.test(ui.last),
+  check(ui.num === '14' && ui.start === '2.5' && ui.smooth === '30' && ui.mode === 'keyframes' && ui.rows === 2 && ui.arc === true && / \/ 16\.5 s$/.test(ui.info) && /(^| · )16\.5 s/.test(ui.last),
     'ovládací prvky po načtení odpovídají projektu: ' + JSON.stringify(ui));
   await page.evaluate(snap => { snap.animation = {...snap.animation, ...snap.__follow}; window.__pzFns.applyProjectSnapshot(snap); }, {...flight, __follow: follow}); await page.waitForTimeout(900);
   a = await o.anim();

@@ -1400,6 +1400,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <svg class="ap-ico-pause" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/></svg>
           <span class="ap-txt-play" data-i18n="Přehrát">Přehrát</span><span class="ap-txt-pause" data-i18n="Pozastavit">Pozastavit</span>
         </button>
+        <div class="small hint anim-empty-hint" id="animEmptyHint" hidden><span data-i18n="Není co přehrát — nejdřív přidej trasu nebo záběry kamery (níž v sekci Kamera).">Není co přehrát — nejdřív přidej trasu nebo záběry kamery (níž v sekci Kamera).</span> <button type="button" class="anim-empty-link" id="animEmptyHintRoute" data-i18n="Přejít na Trasu">Přejít na Trasu</button></div>
         <div class="anim-field">
           <div class="anim-field-head">
             <label for="animDuration" data-i18n="Délka animace">Délka animace</label>
@@ -1451,7 +1452,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </details>
       </div>
 
-      <div class="section" id="cameraAnimSection">
+      <div class="section" id="cameraAnimSection" data-default-open="1">
         <h3 data-i18n="Kamera">Kamera</h3>
         <input id="cameraAnimEnabled" type="checkbox" class="file-input-hidden" tabindex="-1" aria-hidden="true">
         <input id="followCamera" type="checkbox" class="file-input-hidden" tabindex="-1" aria-hidden="true">
@@ -14753,7 +14754,8 @@ function normalizeCameraAnim(cam){
   let kfs = [], arc = cam.arc !== false;
   if(cam.mode === 'keyframes'){
     kfs = (Array.isArray(cam.keyframes) ? cam.keyframes : []).filter(k => okView(k?.view))
-      .map((k, i) => ({t:+k.t || 0, view:fix(k.view), i})).sort((x, y) => (x.t - y.t) || (x.i - y.i)).map(k => ({t:k.t, view:k.view}));
+      .map((k, i) => ({t:+k.t || 0, view:fix(k.view), i, name: typeof k.name === 'string' && k.name ? k.name.slice(0, 40) : null})).sort((x, y) => (x.t - y.t) || (x.i - y.i))
+      .map(k => ({t:k.t, view:k.view, ...(k.name ? {name:k.name} : {})}));
   } else if(okView(cam.start) && okView(cam.end)){
     kfs = [{t:0, view:fix(cam.start)}, {t:1, view:fix(cam.end)}];
     arc = cam.mode !== 'zoom';
@@ -14782,28 +14784,110 @@ function pzCamShift(v, g, dir){
   const z = v.zoom + (dir > 0 ? g.dz : 0), W = 512 * Math.pow(2, z);
   const mc = maplibregl.MercatorCoordinate.fromLngLat({lng: v.center[0], lat: v.center[1]});
   const b = (v.bearing || 0) * Math.PI / 180, rx = g.dx * Math.cos(b) - g.dy * Math.sin(b), ry = g.dx * Math.sin(b) + g.dy * Math.cos(b);
-  const ll = new maplibregl.MercatorCoordinate(mc.x - dir * rx / W, mc.y - dir * ry / W).toLngLat();
+  // posun nejvýš o necelou polovinu světa — při velkém oddálení by střed přeskočil na druhou stranu zeměkoule
+  const cl = d => Math.max(-0.45, Math.min(0.45, d));
+  const ll = new maplibregl.MercatorCoordinate(mc.x - cl(dir * rx / W), Math.max(0, Math.min(1, mc.y - cl(dir * ry / W)))).toLngLat();
   return {...v, center: [ll.lng, ll.lat]};
 }
 function pzFrameToMapView(v){
   const g = pzCamFrameGeom(); if(!g || !v) return v;
-  try{ const o = pzCamShift(v, g, 1); o.zoom = Math.max(0, Math.min(22, v.zoom + g.dz)); return o; }catch(e){ return v; }
+  let zMin = 0; try{ zMin = state.map.getMinZoom() || 0; }catch(e){}
+  try{ const o = pzCamShift(v, g, 1); o.zoom = Math.max(zMin, Math.min(22, v.zoom + g.dz)); return o; }catch(e){ return v; }
 }
 function pzMapToFrameView(v){
   const g = pzCamFrameGeom(); if(!g || !v) return v;
   try{ const o = pzCamShift(v, g, -1); o.zoom = v.zoom - g.dz; return o; }catch(e){ return v; }
 }
 const pzCamToMap = v => state.cameraAnim?.space === 'frame' ? pzFrameToMapView(v) : v;
+// Průběh přeletu v čase: volba „Průběh rychlosti" platí i pro kameru; „Konstantní rychlost"
+// má u kamery jemný rozjezd a dojezd (jako flyTo), aby se obraz neutrhl z místa.
+function pzCamEase(x){
+  x = Math.max(0, Math.min(1, x));
+  const mode = $('animEasing')?.value || 'linear';
+  return mode === 'linear' ? (1 - Math.cos(Math.PI * x)) / 2 : applyAnimEasing(x);
+}
+// Časová osa přeletu: každý úsek se navzorkuje a změří, kolik „obrazovek" pohybu oko uvidí
+// (posun v šířkách záběru + změna zoomu + náklon/otočení). Čas se dělí podle té délky a uvnitř
+// úseku se parametr přepočítá tak, aby rychlost byla stálá — kamera na prostředních záběrech
+// nezastaví a krátký úsek neběží stejně dlouho jako dlouhý.
+const PZ_CAM_SAMPLES = 48;
+let _pzCamTl = {key:'', tl:null};
+function pzCamViewport(){
+  let V = 1280;
+  if(state.cameraAnim?.space !== 'frame'){ try{ const c = state.map.getCanvas(); V = Math.max(c.clientWidth || 0, c.clientHeight || 0) || 1280; }catch(err){} }
+  return V;
+}
+function pzCamTimeline(){
+  const kfs = state.cameraAnim?.keyframes || [];
+  const lift = pzCamLift(), V = pzCamViewport();
+  const key = JSON.stringify([kfs.map(k => k.view), lift, V]);
+  if(_pzCamTl.key === key && _pzCamTl.tl) return _pzCamTl.tl;
+  const segs = [];
+  for(let i = 0; i + 1 < kfs.length; i++){
+    const s = kfs[i].view, e = kfs[i + 1].view, cum = [0];
+    let prev = pzCamFlyView(s, e, 0, lift), L = 0;
+    for(let j = 1; j <= PZ_CAM_SAMPLES; j++){
+      const v = pzCamFlyView(s, e, j / PZ_CAM_SAMPLES, lift);
+      let a, b; try{ a = maplibregl.MercatorCoordinate.fromLngLat({lng: prev.center[0], lat: prev.center[1]}); b = maplibregl.MercatorCoordinate.fromLngLat({lng: v.center[0], lat: v.center[1]}); }catch(err){ a = b = {x:0, y:0}; }
+      let dx = b.x - a.x; if(dx > 0.5) dx -= 1; else if(dx < -0.5) dx += 1;
+      const wm = V / Math.pow(2, (prev.zoom + v.zoom) / 2) / 512;   // šířka záběru v podílu světa
+      const dPan = Math.hypot(dx, b.y - a.y) / wm, dZ = Math.abs(v.zoom - prev.zoom) * Math.LN2;
+      const dRot = Math.abs(v.pitch - prev.pitch) / 60 + Math.abs(((v.bearing - prev.bearing) % 360 + 540) % 360 - 180) / 90;
+      L += Math.hypot(dPan, dZ) + dRot; cum.push(L); prev = v;
+    }
+    segs.push({s, e, L, cum});
+  }
+  let total = segs.reduce((a, g) => a + g.L, 0);
+  if(!(total > 1e-6)){ segs.forEach(g => { g.L = 1; g.cum = g.cum.map((_, j) => j / PZ_CAM_SAMPLES); }); total = segs.length || 1; }
+  _pzCamTl = {key, tl: {segs, total, lift}};
+  return _pzCamTl.tl;
+}
 function getCameraStateAtProgress(t){
   const kfs = state.cameraAnim?.keyframes || [];   // pořadí v seznamu = pořadí přeletu
   const n = kfs.length;
   if(!n) return null;
   if(n === 1) return interpView(kfs[0].view, kfs[0].view, 0);
-  const pos = Math.max(0, Math.min(1, t)) * (n - 1);
-  const i = Math.min(n - 2, Math.floor(pos));
-  const f = pos - i;
-  const s = kfs[i].view, e = kfs[i + 1].view;
-  return pzCamFlyView(s, e, _easeInOutCubic(f), pzCamLift());
+  const tl = pzCamTimeline();
+  let D = pzCamEase(t) * tl.total, i = 0;
+  while(i < tl.segs.length - 1 && D > tl.segs[i].L){ D -= tl.segs[i].L; i++; }
+  const g = tl.segs[i], c = g.cum, Lg = Math.max(0, Math.min(g.L, D));
+  // stálá rychlost uvnitř úseku: ujetá délka → parametr křivky
+  let j = 1; while(j < c.length - 1 && c[j] < Lg) j++;
+  const f = c[j] > c[j - 1] ? (j - 1 + (Lg - c[j - 1]) / (c[j] - c[j - 1])) / PZ_CAM_SAMPLES : (j - 1) / PZ_CAM_SAMPLES;
+  return pzCamFlyView(g.s, g.e, Math.max(0, Math.min(1, f)), tl.lift);
+}
+// Kdy kamera záběrem projde (podíl délky animace) — podle délky úseků a průběhu rychlosti.
+function pzCamKeyframeTimes(){
+  const kfs = state.cameraAnim?.keyframes || [], n = kfs.length;
+  if(n < 2) return kfs.map(() => 0);
+  const tl = pzCamTimeline(), out = [0];
+  let acc = 0;
+  for(let i = 0; i < tl.segs.length; i++){
+    acc += tl.segs[i].L;
+    const target = Math.min(1, acc / tl.total);
+    let lo = 0, hi = 1;
+    for(let k = 0; k < 30; k++){ const mid = (lo + hi) / 2; if(pzCamEase(mid) < target) lo = mid; else hi = mid; }
+    out.push(i === tl.segs.length - 1 ? 1 : (lo + hi) / 2);
+  }
+  return out;
+}
+// Při 0 % zdvihu kamera mezi vzdálenými místy jen sviští — poradit, ať zdvih přidá.
+function pzCamNoLiftWarn(){
+  const kfs = state.cameraAnim?.keyframes || [];
+  if(pzCamLift() > 0.01 || kfs.length < 2) return false;
+  const V = pzCamViewport();
+  let worst = 0;
+  for(let i = 0; i + 1 < kfs.length; i++){
+    const s = kfs[i].view, e = kfs[i + 1].view;
+    try{
+      const a = maplibregl.MercatorCoordinate.fromLngLat({lng: s.center[0], lat: s.center[1]}), b = maplibregl.MercatorCoordinate.fromLngLat({lng: e.center[0], lat: e.center[1]});
+      let dx = b.x - a.x; if(dx > 0.5) dx -= 1; else if(dx < -0.5) dx += 1;
+      worst = Math.max(worst, Math.hypot(dx, b.y - a.y) * 512 / (V / Math.pow(2, Math.min(s.zoom, e.zoom))));
+    }catch(err){}
+  }
+  if(worst <= 8) return false;
+  setStatus(t('Bez zdvihu kamera přeletí {0} obrazovek — zvyš Výšku zdvihu.', Math.round(worst)));
+  return true;
 }
 // Výška zdvihu kamery (0 = bez oddálení, 1 = automaticky podle vzdálenosti, až 2,5).
 function pzCamLift(){
@@ -14813,6 +14897,7 @@ function pzCamLift(){
   return isFinite(v) ? Math.max(0, Math.min(2.5, v)) : 1;
 }
 function pzSyncCamLiftUi(){
+  state._camLiftBefore = null;   // rozdělaná úprava (tažení / psaní) skončila nebo ji přepsal krok zpět
   const v = String(Math.round(pzCamLift() * 100));
   if($('cameraLift')) $('cameraLift').value = v;
   if($('cameraLiftNum')) $('cameraLiftNum').value = v;
@@ -14840,12 +14925,26 @@ function pzCamFlyView(s, e, f, lift){
     w = w0 * Math.pow(w1 / w0, f);
     uf = Math.abs(w1 - w0) < 1e-9 * w0 ? f : (w - w0) / (w1 - w0);
   };
+  // Malé přerámování (cíl skoro v záběru) = najet rovnou, bez pumpování zoomu;
+  // zdvih naplno až od skoku přes dvě šířky záběru.
+  const ss = Math.max(0, Math.min(1, (u1 / Math.max(w0, w1) - 0.5) / 1.5));
+  lift = lift * ss * ss * (3 - 2 * ss);
   if(u1 < 1e-7) { w = w0 * Math.pow(w1 / w0, f); uf = 0; }
   else if(!(lift > 0.01)) flat();
   else {
-    const rho = 1.8 * lift, r2 = rho * rho;
-    const bi = i => (w1 * w1 - w0 * w0 + (i ? -1 : 1) * r2 * r2 * u1 * u1) / (2 * (i ? w1 : w0) * r2 * u1);
-    const r0 = -Math.asinh(bi(0)), r1 = -Math.asinh(bi(1)), S = (r1 - r0) / rho;
+    const params = rho => { const r2 = rho * rho, bi = i => (w1 * w1 - w0 * w0 + (i ? -1 : 1) * r2 * r2 * u1 * u1) / (2 * (i ? w1 : w0) * r2 * u1);
+      const r0 = -Math.asinh(bi(0)), r1 = -Math.asinh(bi(1));
+      return {rho, r2, r0, r1, wMax: w0 * Math.cosh(r0) / (r0 <= 0 && r1 >= 0 ? 1 : Math.min(Math.cosh(r0), Math.cosh(r1)))}; };
+    // 100 % ≈ křivka flyTo (rho 1,42). Strop: kamera nevystoupá výš, než kdy je vidět skoro
+    // celý svět — jinak střed v půlce dlouhého přeletu uskočil na druhou stranu zeměkoule.
+    const cap = Math.max(0.8 * 512, w0, w1);
+    let P = params(1.42 * lift);
+    if(!(P.wMax <= cap)){
+      let lo = 0.02, hi = P.rho;
+      for(let k = 0; k < 28; k++){ const mid = (lo + hi) / 2, q = params(mid); if(!(q.wMax <= cap)) hi = mid; else lo = mid; }
+      P = params(lo);
+    }
+    const {rho, r2, r0, r1} = P, S = (r1 - r0) / rho;
     if(!isFinite(S) || !(S > 1e-9)) flat();
     else if(f >= 1){ w = w1; uf = 1; }
     else {
@@ -14918,27 +15017,71 @@ function updateCameraAnimUI(){
   // Plynulost natáčení má smysl jen se zapnutým otáčením.
   const smooth = $('camHeadingSmoothField'); if(smooth) smooth.style.display = $('followCameraRotate')?.checked ? 'block' : 'none';
 }
+// Čas záběru = kdy jím kamera skutečně projde (úseky dostanou čas podle délky dráhy).
 function redistributeKeyframeTimes(){
   const kfs = state.cameraAnim.keyframes;
-  const n = kfs.length;
-  kfs.forEach((kf, i) => { kf.t = n <= 1 ? 0 : i / (n - 1); });
+  let ts = null; try{ ts = pzCamKeyframeTimes(); }catch(e){}
+  kfs.forEach((kf, i) => { kf.t = ts && isFinite(ts[i]) ? ts[i] : (kfs.length <= 1 ? 0 : i / (kfs.length - 1)); });
 }
 function pzAnimUndoSnap(){ try{ window.__pzPushUndo?.(); }catch(e){} }
+// Název místa pro řádek záběru (asynchronně, z reverzního geokódování; chyba = bez názvu).
+async function pzNameKeyframe(kf){
+  if(!kf?.view || kf.name) return;
+  const z = kf.view.zoom, c = kf.view.center;
+  try{
+    const it = await reverseGeocode(c, z < 4.5 ? 3 : z < 7 ? 5 : 10), a = it?.address || {};
+    const nm = String(a.city || a.town || a.village || a.municipality || it?.name || a.state || a.country || '').trim();
+    if(nm && state.cameraAnim.keyframes.includes(kf) && kf.view.center === c){ kf.name = nm.slice(0, 40); renderCameraKeyframeList(); }
+  }catch(e){}
+}
+// Shodný záběr s posledním (dvojklik na „Přidat záběr") — kamera by na místě jen stála.
+function pzSameCamView(a, b){
+  if(!a || !b || !state.map) return false;
+  try{
+    const p = state.map.project(a.center), q = state.map.project(b.center);
+    return Math.hypot(p.x - q.x, p.y - q.y) < 2 && Math.abs(a.zoom - b.zoom) < 0.02 && Math.abs(a.pitch - b.pitch) < 0.5
+      && Math.abs(((a.bearing - b.bearing) % 360 + 540) % 360 - 180) < 0.5;
+  }catch(e){ return false; }
+}
 function addCameraKeyframe(){
   let v = captureCameraView(); if(!v) return;
+  const kfs0 = state.cameraAnim.keyframes;
+  if(kfs0.length && pzSameCamView(pzCamToMap(kfs0[kfs0.length - 1].view), v)){ setStatus(t('Stejný záběr jako předchozí — posuň mapu.')); return; }
   pzAnimUndoSnap();
   if(!state.cameraAnim.keyframes.length) state.cameraAnim.space = 'frame';   // nové přelety ve výřezu exportu
   if(state.cameraAnim.space === 'frame') v = pzMapToFrameView(v);
-  state.cameraAnim.keyframes.push({ t: 0, view: v });
+  const kf = { t: 0, view: v };
+  state.cameraAnim.keyframes.push(kf);
   redistributeKeyframeTimes();
   renderCameraKeyframeList();
   updatePlayerUi();
+  pzNameKeyframe(kf);
   const n = state.cameraAnim.keyframes.length;
   setStatus(n < 2 ? t('Záběr 1 uložen. Najeď mapou na další a přidej ho.') : t('Záběr {0} uložen. Přehraj animaci.', n));
+  pzCamNoLiftWarn();
+}
+// Záběr přepsat aktuálním pohledem mapy (oprava záběru bez mazání a přeřazování).
+function updateCameraKeyframe(index){
+  const kf = state.cameraAnim.keyframes[index]; let v = captureCameraView(); if(!kf || !v) return;
+  pzAnimUndoSnap();
+  if(state.cameraAnim.space === 'frame') v = pzMapToFrameView(v);
+  kf.view = v; delete kf.name;
+  redistributeKeyframeTimes();
+  state._camKfSel = index;
+  renderCameraKeyframeList();
+  pzNameKeyframe(kf);
+  setStatus(t('Záběr {0} aktualizován na aktuální pohled.', index + 1));
+}
+function previewCameraKeyframe(index){
+  const kf = state.cameraAnim.keyframes[index];
+  if(!kf || !state.map || state.animPlaying) return;
+  state._camKfSel = index;
+  renderCameraKeyframeList();
+  state.map.flyTo({ ...pzCamToMap(kf.view), duration: 700 });
 }
 function removeCameraKeyframe(index){
   pzAnimUndoSnap();
-  state.cameraAnim.keyframes.splice(index, 1);
+  state.cameraAnim.keyframes.splice(index, 1); state._camKfSel = null;
   redistributeKeyframeTimes();
   renderCameraKeyframeList();
   updatePlayerUi();
@@ -14949,7 +15092,7 @@ function moveCameraKeyframe(index, delta){
   const to = index + delta;
   if(index < 0 || to < 0 || index >= kfs.length || to >= kfs.length) return;
   pzAnimUndoSnap();
-  kfs.splice(to, 0, kfs.splice(index, 1)[0]);
+  kfs.splice(to, 0, kfs.splice(index, 1)[0]); state._camKfSel = null;
   redistributeKeyframeTimes();
   renderCameraKeyframeList();
   if(!state.animPlaying) refreshAnimatedMarkerPreview();
@@ -14957,7 +15100,7 @@ function moveCameraKeyframe(index, delta){
 function clearCameraKeyframes(){
   if(!state.cameraAnim.keyframes.length) return;
   pzAnimUndoSnap();
-  state.cameraAnim.keyframes = [];
+  state.cameraAnim.keyframes = []; state._camKfSel = null;
   renderCameraKeyframeList();
   updatePlayerUi();
   setStatus(t('Záběry kamery smazány.'));
@@ -14966,6 +15109,7 @@ function renderCameraKeyframeList(){
   const list = $('cameraKeyframeList'); if(!list) return;
   const kfs = state.cameraAnim.keyframes || [];
   const {delay, dur} = animTiming();
+  redistributeKeyframeTimes();   // časy podle délky úseků, zdvihu a průběhu rychlosti
   list.innerHTML = '';
   const clr = $('cameraClearKeyframesBtn'); if(clr) clr.disabled = !kfs.length;
   const mkBtn = (cls, html, title, fn, disabled) => {
@@ -14977,17 +15121,21 @@ function renderCameraKeyframeList(){
   };
   kfs.forEach((kf, i) => {
     const row = document.createElement('div');
-    row.className = 'camera-kf-row';
+    row.className = 'camera-kf-row' + (state._camKfSel === i ? ' is-active' : '');
     const no = document.createElement('span'); no.className = 'wp-badge'; no.textContent = String(i + 1);
     const label = document.createElement('span');
     label.className = 'camera-kf-info';
-    // čas, kdy kamera záběrem prochází (včetně prodlevy startu)
-    label.textContent = `${(delay + kf.t * dur).toFixed(1)} s · zoom ${kf.view.zoom.toFixed(1)}` + (kf.view.pitch >= 0.5 ? ` · ${kf.view.pitch.toFixed(0)}°` : '');
+    // místo · čas, kdy kamera záběrem prochází (včetně prodlevy startu); klik = najet na záběr
+    const time = `${(delay + kf.t * dur).toFixed(1)} s`;
+    label.textContent = (kf.name ? `${kf.name} · ${time}` : time) + (kf.view.pitch >= 0.5 ? ` · ${kf.view.pitch.toFixed(0)}°` : '');
+    label.title = t('Najet na záběr');
+    label.addEventListener('click', () => previewCameraKeyframe(i));
     row.appendChild(no); row.appendChild(label);
     row.appendChild(mkBtn('kf-up', '↑', t('Posunout výš'), () => moveCameraKeyframe(i, -1), i === 0));
     row.appendChild(mkBtn('kf-down', '↓', t('Posunout níž'), () => moveCameraKeyframe(i, 1), i === kfs.length - 1));
     row.appendChild(mkBtn('kf-view', '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
-      t('Náhled'), () => { if(state.map && !state.animPlaying) state.map.flyTo({ ...pzCamToMap(kf.view), duration: 700 }); }));
+      t('Náhled'), () => previewCameraKeyframe(i)));
+    row.appendChild(mkBtn('kf-update', '⟳', t('Uložit aktuální pohled do záběru'), () => updateCameraKeyframe(i)));
     row.appendChild(mkBtn('kf-del btn-danger', '×', t('Smazat'), () => removeCameraKeyframe(i)));
     list.appendChild(row);
   });
@@ -15022,7 +15170,13 @@ function setAnimProgress(progress){
   // setting them every frame (proven by content-equivalence simulation).
   const ghostSrc = state.map.getSource('route-ghost');
   const animSrc = state.map.getSource('route-anim');
-  if(showTrail){
+  // V klidu (začátek, nic nehraje ani se neexportuje video) je trasa celá v plné barvě —
+  // dřív zůstala jen vybledlá předkreslená čára (náhled i PNG).
+  const atRest = progress <= 0.0001 && !state.animPlaying && !state._exportKeepSession;
+  if(showTrail && atRest){
+    setSrcData(ghostSrc, routeGhostFC());
+    setSrcData(animSrc, routeRestFC());
+  } else if(showTrail){
     const partial = sliced.coords.length > 1 ? lineStringFC(sliced.coords) : FC_EMPTY;
     setSrcData(ghostSrc, routeGhostFC());   // prázdné, když je „Předkreslit celou trasu" vypnuté
     setSrcData(animSrc, partial);
@@ -15107,9 +15261,13 @@ function setAnimProgress(progress){
     try{
       let lift = 0;
       if(isArc3dActive()){ const lp = arc3dLiftPx(point, eased); lift = Array.isArray(lp) ? (lp[1]||0) : (lp||0); }
-      if(lift) camOpts.offset = [0, lift];
+      // Objekt drží uprostřed VÝŘEZU exportu (ne okna mapy) — jinak vyjel ve videu ke kraji.
+      const g = pzCamFrameGeom();
+      const off = [g?.dx || 0, (g?.dy || 0) + lift];
+      if(off[0] || off[1]) camOpts.offset = off;
     }catch(e){}
-    state.map.jumpTo(camOpts);
+    // jumpTo posun (offset) ignoruje — easeTo bez trvání ho použije a skočí hned
+    if(camOpts.offset) state.map.easeTo({...camOpts, duration:0, animate:false}); else state.map.jumpTo(camOpts);
   }
   updateAnimReadout();
 }
@@ -15119,6 +15277,14 @@ function playAnimation(){
     const camWaiting = !!state.cameraAnim?.enabled;
     setStatus(camWaiting ? t('Přelet potřebuje aspoň dva záběry — přidej je v záložce Animace.') : t('Nejdřív najdi trasu nebo nastav kameru.'));
     updatePlayerUi();
+    // V záložce Animace ukázat, kde se kamera nastavuje: rozbalit a krátce zvýraznit sekci Kamera.
+    const sec = $('cameraAnimSection');
+    if(sec && state.currentTab === 'animace'){
+      try{ if(sec.classList.contains('collapsed')) setAccordionOpen(sec, true, null, false); }catch(e){}
+      sec.classList.remove('pz-attn'); void sec.offsetWidth; sec.classList.add('pz-attn');
+      setTimeout(() => sec.classList.remove('pz-attn'), 1500);
+      try{ sec.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+    }
     return;
   }
   cancelAnimationFrame(state.animFrame);
@@ -15209,6 +15375,7 @@ function updatePlayerUi(){
   const stop = $('animStopBtn'); if(stop) stop.disabled = !canPlay;
   const tabBtn = $('animTabPlayBtn');
   if(tabBtn){ tabBtn.classList.toggle('is-playing', playing); tabBtn.classList.toggle('is-empty', !canPlay); tabBtn.setAttribute('aria-pressed', playing ? 'true' : 'false'); }
+  const hint = $('animEmptyHint'); if(hint) hint.hidden = canPlay || playing;   // proč je Přehrát ztlumené a kam pro trasu
 }
 
 async function handleFileToDataUrl(file){
@@ -17809,7 +17976,7 @@ function bindUI(){
   ['animIconSize','animStart','animDuration','cameraPitch','animManualAngle'].forEach(id => $(id)?.addEventListener('input', refreshAnimatedMarkerPreview));
   $$('.sys-icon-btn').forEach(btn => btn.addEventListener('click', ()=> setAnimSystemIcon(btn.dataset.sysIcon)));
   ['animDot','followCamera','showTrail','followCameraRotate'].forEach(id => $(id)?.addEventListener('change', refreshAnimatedMarkerPreview));
-  $('animEasing')?.addEventListener('change', ()=>{ state.camSmoothedBearing = null; updateEasingPreview(); refreshAnimatedMarkerPreview(); });
+  $('animEasing')?.addEventListener('change', ()=>{ state.camSmoothedBearing = null; updateEasingPreview(); refreshAnimatedMarkerPreview(); if(state.cameraAnim?.keyframes?.length) renderCameraKeyframeList(); });   // průběh platí i pro přelet → časy záběrů
   function refreshVehicleColors(palette){
     pzSetVehiclePalette(palette);
     if(pzHasVehiclePalette(state.animSystemIcon) || pzIsSprite(state.animSystemIcon)) state.animIconData = pzVehicleImage(state.animSystemIcon);
@@ -18090,6 +18257,7 @@ function bindUI(){
   $('animPlayBtn')?.addEventListener('click', playAnimation);
   $('animPauseBtn')?.addEventListener('click', pauseAnimation);
   $('animTabPlayBtn')?.addEventListener('click', toggleAnimationPlayback);
+  $('animEmptyHintRoute')?.addEventListener('click', () => setTab('trasa'));
   $('animStopBtn')?.addEventListener('click', stopAnimation);
   // „Na začátek" při přehrávání pokračuje od nuly (dřív čas hned skočil zpátky).
   $('animRewindBtn')?.addEventListener('click', ()=>{ seekAnimationToTime(0); setStatus(t('Animace vrácena na začátek.')); });
@@ -18124,10 +18292,27 @@ function bindUI(){
     state.camSmoothedBearing = null;
     updateCameraAnimUI();
   });
-  const pzOnLift = v => { pzAnimUndoSnap?.(); state.cameraAnim.lift = Math.max(0, Math.min(2.5, (+v || 0) / 100)); state.cameraAnim.arc = state.cameraAnim.lift > 0; if(!state.animPlaying) refreshAnimatedMarkerPreview(); };
-  $('cameraLift')?.addEventListener('change', e => pzOnLift(e.target.value));
-  $('cameraLiftNum')?.addEventListener('change', e => pzOnLift(e.target.value));
-  $('cameraLift')?.addEventListener('input', e => { state.cameraAnim.lift = Math.max(0, Math.min(2.5, (+e.target.value || 0) / 100)); state.cameraAnim.arc = state.cameraAnim.lift > 0; });
+  // Výška zdvihu: použije se ukázaná hodnota (po 5 %), jedna úprava = jeden krok zpět,
+  // prázdné / nečíselné pole vrátí původní hodnotu. Během tažení / psaní se zdvih mění
+  // živě, krok zpět se ale bere ze stavu před úpravou (_camLiftBefore).
+  const pzLiftSet = v => { state.cameraAnim.lift = v; state.cameraAnim.arc = v > 0; };
+  const pzOnLift = v => {
+    const before = state._camLiftBefore ?? pzCamLift(); state._camLiftBefore = null;
+    const raw = String(v ?? '').replace(',', '.').trim(), n = parseFloat(raw);
+    pzLiftSet(before);
+    if(raw === '' || !isFinite(n)){ pzSyncCamLiftUi(); return; }
+    const lift = Math.max(0, Math.min(250, Math.round(n / 5) * 5)) / 100;
+    if(Math.abs(lift - before) > 1e-9){ pzAnimUndoSnap(); pzLiftSet(lift); }
+    pzSyncCamLiftUi();
+    if(lift === before) return;
+    renderCameraKeyframeList();
+    if(!state.animPlaying) refreshAnimatedMarkerPreview();
+    pzCamNoLiftWarn();
+  };
+  // capture: před párovým posluchačem, který pole přepíše hodnotou posuvníku
+  $('cameraLift')?.addEventListener('change', e => pzOnLift(e.target.value), true);
+  $('cameraLiftNum')?.addEventListener('change', e => pzOnLift(e.target.value), true);
+  $('cameraLift')?.addEventListener('input', e => { if(state._camLiftBefore == null) state._camLiftBefore = pzCamLift(); pzLiftSet(Math.max(0, Math.min(2.5, (+e.target.value || 0) / 100))); });
 
   // Krok zpět v záložce Animace: číselná pole, výběr křivky a posuvníky ovládané
   // klávesnicí (obecný snímek se dělá jen při stisku myši na posuvníku / zaškrtávátku).
@@ -18679,6 +18864,13 @@ Object.assign(I18N, {
   // .
   // .
   // [i18n:animace] překlady oblasti „animace" vkládej pod tento řádek
+  "Bez zdvihu kamera přeletí {0} obrazovek — zvyš Výšku zdvihu.": {cs:"Bez zdvihu kamera přeletí {0} obrazovek — zvyš Výšku zdvihu.",sk:"Bez zdvihu kamera preletí {0} obrazoviek — zvýš Výšku zdvihu.",bg:"Без издигане камерата ще прелети {0} екрана — увеличи Височината на издигане.",hr:"Bez podizanja kamera preleti {0} zaslona — povećaj Visinu podizanja.",ro:"Fără ridicare, camera trece peste {0} ecrane — mărește Înălțimea ridicării.",en:"Without lift the camera sweeps across {0} screens — raise the Camera lift height."},
+  "Stejný záběr jako předchozí — posuň mapu.": {cs:"Stejný záběr jako předchozí — posuň mapu.",sk:"Rovnaký záber ako predchádzajúci — posuň mapu.",bg:"Същият кадър като предишния — премести картата.",hr:"Isti kadar kao prethodni — pomakni kartu.",ro:"Același cadru ca precedentul — mută harta.",en:"Same shot as the previous one — move the map."},
+  "Záběr {0} aktualizován na aktuální pohled.": {cs:"Záběr {0} aktualizován na aktuální pohled.",sk:"Záber {0} aktualizovaný na aktuálny pohľad.",bg:"Кадър {0} е обновен с текущия изглед.",hr:"Kadar {0} ažuriran na trenutni prikaz.",ro:"Cadrul {0} a fost actualizat la vederea curentă.",en:"Shot {0} updated to the current view."},
+  "Najet na záběr": {cs:"Najet na záběr",sk:"Prejsť na záber",bg:"Отиди на кадъра",hr:"Idi na kadar",ro:"Mergi la cadru",en:"Go to shot"},
+  "Uložit aktuální pohled do záběru": {cs:"Uložit aktuální pohled do záběru",sk:"Uložiť aktuálny pohľad do záberu",bg:"Запази текущия изглед в кадъра",hr:"Spremi trenutni prikaz u kadar",ro:"Salvează vederea curentă în cadru",en:"Save the current view into this shot"},
+  "Není co přehrát — nejdřív přidej trasu nebo záběry kamery (níž v sekci Kamera).": {cs:"Není co přehrát — nejdřív přidej trasu nebo záběry kamery (níž v sekci Kamera).",sk:"Nie je čo prehrať — najprv pridaj trasu alebo zábery kamery (nižšie v sekcii Kamera).",bg:"Няма какво да се пусне — първо добави маршрут или кадри на камерата (по-долу в секция Камера).",hr:"Nema što pokrenuti — prvo dodaj rutu ili kadrove kamere (niže u odjeljku Kamera).",ro:"Nu e nimic de redat — adaugă mai întâi un traseu sau cadre de cameră (mai jos, în secțiunea Cameră).",en:"Nothing to play yet — add a route or camera shots first (below in the Camera section)."},
+  "Přejít na Trasu": {cs:"Přejít na Trasu",sk:"Prejsť na Trasu",bg:"Към Маршрут",hr:"Idi na Rutu",ro:"Mergi la Traseu",en:"Go to Route"},
   "Pozastavit": {cs:"Pozastavit",sk:"Pozastaviť",bg:"Пауза",hr:"Pauziraj",ro:"Pauză",en:"Pause"},
   "Další možnosti": {cs:"Další možnosti",sk:"Ďalšie možnosti",bg:"Още опции",hr:"Više opcija",ro:"Mai multe opțiuni",en:"More options"},
   "Plynulost pohybu": {cs:"Plynulost pohybu",sk:"Plynulosť pohybu",bg:"Плавност на движението",hr:"Glatkoća kretanja",ro:"Fluiditatea mișcării",en:"Motion smoothing"},
@@ -21311,12 +21503,15 @@ function pzColorFromName(v){
         let c = k && k.center;
         if(typeof c === 'string'){ try{ const g = await geocode(c); c = [+g.lon, +g.lat]; }catch(e){ return {ok:false, error:'Záběr „' + k.center + '" jsem nenašel.'}; } }
         if(!Array.isArray(c) || !isFinite(c[0]) || !isFinite(c[1]) || !isFinite(+k.zoom)) return {ok:false, error:'Každý záběr potřebuje center a zoom.'};
-        views.push({center:[+c[0], +c[1]], zoom: Math.max(1, Math.min(20, +k.zoom)), pitch: Math.max(0, Math.min(85, +k.pitch || 0)), bearing: +k.bearing || 0});
+        views.push({center:[+c[0], +c[1]], zoom: Math.max(1, Math.min(20, +k.zoom)), pitch: Math.max(0, Math.min(85, +k.pitch || 0)), bearing: +k.bearing || 0,
+          name: String(k.name || (typeof k.center === 'string' ? k.center : '')).trim().slice(0, 40)});
       }
       // center/zoom = co bude v EXPORTU (střed výřezu, zoom pro výřez široký 1280 px);
       // na mapu v okně se převádí až při přehrávání (pzFrameToMapView).
       try{ window.__pzPushUndo?.(); }catch(e){}
-      state.cameraAnim.keyframes = views.map(v => ({t:0, view:v}));
+      // název místa pro seznam záběrů: zadaný text, jinak se dohledá (asynchronně)
+      state.cameraAnim.keyframes = views.map(({name, ...v}) => ({t:0, view:v, ...(name ? {name} : {})}));
+      state.cameraAnim.keyframes.forEach(kf => pzNameKeyframe(kf));
       state.cameraAnim.space = 'frame';
       if(lift != null && isFinite(+lift)){ state.cameraAnim.lift = Math.max(0, Math.min(2.5, +lift)); state.cameraAnim.arc = state.cameraAnim.lift > 0; }
       else if(arc != null){ state.cameraAnim.arc = !!arc; if(arc && !(state.cameraAnim.lift > 0)) state.cameraAnim.lift = 1; }
@@ -21705,6 +21900,13 @@ html[data-ui="light"] .nav-mini-danger{color:#c4232d;border-color:rgba(196,35,45
 .tab-pane[data-pane="animace"] .camera-kf-info{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--tx1);font-variant-numeric:tabular-nums;padding-left:3px}
 .tab-pane[data-pane="animace"] .camera-kf-row .btn{padding:0;width:26px;height:24px;flex:0 0 26px;font-size:13px;line-height:1}
 .tab-pane[data-pane="animace"] .camera-kf-row .btn:disabled{opacity:.3;cursor:default}
+.tab-pane[data-pane="animace"] .camera-kf-info{cursor:pointer}
+.tab-pane[data-pane="animace"] .camera-kf-info:hover{text-decoration:underline}
+.tab-pane[data-pane="animace"] .camera-kf-row.is-active{border-color:#26d0c4;box-shadow:inset 0 0 0 1px rgba(38,208,196,.55)}
+.anim-empty-hint{margin:-8px 0 12px;font-size:11.5px;line-height:1.45;color:var(--tx2)}
+.anim-empty-hint .anim-empty-link{background:none;border:0;padding:0;color:var(--accent-hi);font:inherit;text-decoration:underline;cursor:pointer}
+@keyframes pzAttn{0%,100%{box-shadow:0 0 0 0 rgba(38,208,196,0)}30%{box-shadow:0 0 0 2px rgba(38,208,196,.85)}}
+.section.pz-attn{animation:pzAttn 1.4s ease 1}
 /* Plovoucí přehrávač */
 .floating-player[hidden],.player-btn[hidden]{display:none}
 .floating-player .player-controls{flex-wrap:nowrap}
