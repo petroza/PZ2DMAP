@@ -12,7 +12,7 @@ GET /client/v4/accounts/{account_id}/workers/services/tnmap-chat/environments/pr
 (endpoint `/workers/scripts/tnmap-chat/content` vrací API tokenu chybu 10405
 „Method not allowed for this authentication scheme")
 
-**Aktuálně nasazeno:** `ac445edd-b179-4d1f-8d62-fe6be9aeb730` = tento soubor — model Gemma 4
+**Aktuálně nasazeno:** `014ab18d-bdd5-4c2f-874a-4a3c89fb7391` = tento soubor — model Gemma 4
 (`@cf/google/gemma-4-26b-a4b-it`, bez přemýšlení), zkrácený prompt, doptávání s nabídkou odpovědí (`options`); ~30 neuronů na dotaz (~300 dotazů/den).
 Srovnávací test `tools/ai_bench.mjs`: 39/42. Rollback na Llamu 3.3 70B: `aaedbf8d-7b5c-4fc9-9347-ab7620aca255`. Model
 `@cf/meta/llama-3.3-70b-instruct-fp8-fast`, `temperature 0.2`, `max_tokens 1200`.
