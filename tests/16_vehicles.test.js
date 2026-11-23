@@ -105,6 +105,29 @@ const ROAD = [[14.42,50.08],[14.5,50.06],[14.55,50.02],[14.52,49.98],[14.6,49.95
     const d = await dl; check(!!d, 'export PNG ' + t);
     if(d) await d.saveAs(path.join(OUT, 'vehicles_' + t + '.png'));
   }
+  // další vozidla a srážka (addVehicle = nástroj asistenta i konektoru)
+  const ex = await page.evaluate(async () => {
+    const T = window.TNMAP, F = window.__pzFns, st = F.state, clr = () => { st.pzExtraVehicles = []; };
+    const r = {};
+    clr(); r.far = await T.addVehicle({type:'vlak', crashAt:'48.2082,16.3738'});            // Vídeň: daleko od trasy
+    clr(); r.crashOnly = await T.addVehicle({type:'vlak', crash:true});
+    clr(); r.firstHalf = await T.addVehicle({type:'vlak', crashAt:'49.62,15.25'}); const ci = F.pzCrashInfo(); r.t0 = ci && ci.t0;
+    clr(); r.forms = await T.addVehicle({type:'vlaky'}); r.plane = await T.addVehicle({type:'letadlo'}); r.moto = await T.addVehicle({type:'motorka'});
+    r.delays = st.pzExtraVehicles.map(v => v.delay);
+    // druhé vozidlo stejným směrem: checkbox Srážka schovaný
+    clr(); F.pzExtraVehicles().push({type:'car', reverse:true, delay:0}); document.getElementById('pzExtraAdd').click();
+    r.crashBoxShown = [...document.querySelectorAll('.pz-extra-row')].map(x => getComputedStyle(x.querySelector('.pz-extra-crash')).display !== 'none');
+    clr(); F.setAnimProgress(1); const parts = F.pzVehicleParts(st._pzVehVp); r.endVisible = parts.length > 0 && !parts[0].hidden;
+    clr();
+    return r;
+  });
+  check(ex.far.ok === false && ex.far.distanceKm > 50, 'srážka daleko od trasy → chyba se vzdáleností (' + ex.far.distanceKm + ' km)');
+  check(ex.crashOnly.ok && ex.crashOnly.crash && ex.crashOnly.reverse, 'crash:true sám přepne na protijedoucí');
+  check(ex.firstHalf.ok && ex.firstHalf.crashFraction < 0.5 && ex.t0 >= 0, 'srážka v první polovině trasy funguje (t0 ' + ex.t0 + ')');
+  check(ex.forms.ok && ex.forms.vehicle === 'train' && ex.plane.ok === false && /hlavní/.test(ex.plane.error) && /kamion/.test(ex.moto.error), 'typ vozidla v jiném tvaru, české chybové hlášky');
+  check(ex.delays[0] === 0.15, 'další vozidlo stejným směrem vyjede o 15 % později (' + ex.delays + ')');
+  check(JSON.stringify(ex.crashBoxShown.slice(-1)) === '[false]', 'u vozidla stejným směrem není volba Srážka');
+  check(ex.endVisible, 'v cíli vozidlo zůstane stát v záběru');
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close(); done();
 })();

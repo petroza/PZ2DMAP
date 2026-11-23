@@ -333,6 +333,9 @@ input[type=color]:hover{border-color:var(--accent)}
 .pz-extra-row select{min-width:0;width:100%}
 .pz-extra-delay{grid-column:1 / -1;display:block;margin:0}
 .pz-extra-delay input{width:100%}
+.pz-extra-crash,.pz-extra-crashtxt{grid-column:1 / -1;margin:0}
+.pz-extra-crash[hidden],.pz-extra-crashtxt[hidden]{display:none}
+.pz-extra-crashtxt input{width:100%}
 .pz-line-row{margin-top:8px}.pz-line-row input{width:100%}
 .pz-line-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 8px;align-items:center;margin:8px 0}
 .pz-line-grid select{width:100%;min-width:0}
@@ -8232,7 +8235,7 @@ function serializeProjectSnapshot(){
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
       wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
-      extraVehicles: pzExtraVehicles().map(v => ({type: v.type, reverse: !!v.reverse, delay: +v.delay || 0, crash: !!v.crash, crashFrac: v.crashFrac ?? null, crashLabel: v.crashLabel ?? null, speed: v.speed ?? null, color: v.color || null, label: v.label || ''})),
+      extraVehicles: pzExtraVehicles().map(v => ({type: v.type, reverse: !!v.reverse, delay: +v.delay || 0, crash: !!v.crash, crashFrac: v.crashFrac ?? null, crashLL: Array.isArray(v.crashLL) ? v.crashLL : null, crashLabel: v.crashLabel ?? null, speed: v.speed ?? null, color: v.color || null, label: v.label || ''})),
       mainVehLabel: ($('pzMainVehLabel')?.value || ''),
       routeHold: parseInt($('pzRouteHold')?.value ?? '60', 10),
       vehiclePalette: pzVehiclePalette(),
@@ -8347,7 +8350,7 @@ function applyBasicProjectSnapshot(snapshot){
   pzSetVehiclePalette(animation.vehiclePalette);
   if($('pzVehicleShadow')) $('pzVehicleShadow').checked = animation.vehicleShadow !== false;
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
-  state.pzExtraVehicles = Array.isArray(animation.extraVehicles) ? animation.extraVehicles.filter(v => v && PZ_EXTRA_LABELS[v.type]).map(v => ({type: v.type, reverse: !!v.reverse, delay: Math.max(0, Math.min(0.9, +v.delay || 0)), crash: !!v.crash && !!v.reverse, ...(v.crashLabel != null ? {crashLabel: String(v.crashLabel).slice(0, 30)} : {}), ...(v.speed != null ? {speed: Math.max(0.2, Math.min(2, +v.speed))} : {}), ...(v.crashFrac != null ? {crashFrac: Math.max(0.5, Math.min(0.999, +v.crashFrac))} : {}), color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : null, label: String(v.label || '').slice(0, 40)})) : [];
+  state.pzExtraVehicles = Array.isArray(animation.extraVehicles) ? animation.extraVehicles.filter(v => v && PZ_EXTRA_LABELS[v.type]).map(v => ({type: v.type, reverse: !!v.reverse, delay: Math.max(0, Math.min(0.9, +v.delay || 0)), crash: !!v.crash && !!v.reverse, ...(v.crashLabel != null ? {crashLabel: String(v.crashLabel).slice(0, 30)} : {}), ...(v.speed != null ? {speed: Math.max(0.2, Math.min(2, +v.speed))} : {}), ...(v.crashFrac != null ? {crashFrac: Math.max(0.02, Math.min(0.98, +v.crashFrac))} : {}), ...(Array.isArray(v.crashLL) && v.crashLL.length === 2 && v.crashLL.every(Number.isFinite) ? {crashLL: v.crashLL.slice()} : {}), color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : null, label: String(v.label || '').slice(0, 40)})) : [];
   if($('pzMainVehLabel')) $('pzMainVehLabel').value = String(animation.mainVehLabel || '').slice(0, 40);
   try{ pzRenderExtraList(); }catch(e){}
   if($('pzRouteHold')){ const h = Number.isFinite(+animation.routeHold) ? Math.max(0, Math.min(100, +animation.routeHold)) : 60; $('pzRouteHold').value = String(h); $('pzRouteHoldVal').textContent = h + ' %'; }
@@ -13912,8 +13915,6 @@ function pzClipSquare(planes){
   }
   return cut ? poly : null;
 }
-// Průběh animace (0–1) → poloha přídě: od bodu A až do chvíle, kdy celé vozidlo
-// zajede do bodu B (pak je pod maskou schované). Hodnota > 1 = příď za cílem.
 // Velikost vozidla v px; u dalších vozidel (kreslí se s dočasně přepnutým typem)
 // se počítá z posuvníku pro jejich typ, ne z HTML značky hlavního vozidla.
 function pzVehBaseSizePx(){
@@ -13935,33 +13936,65 @@ function pzReversedRoute(route){
   return _pzRevRoute.rev;
 }
 // Kreslí hlavní i další vozidla (další pod hlavním).
+// Překážky pro cedulky (px plátna): piny A/B i s názvem města, který bývá nad pinem. Box [x, y, w, h].
+function pzTagObstacles(map, toOut, k){
+  const out = [], r = 17 * k;
+  [state.pointA, state.pointB].forEach(ll => { try{ if(!ll) return; const c = map.project(ll), [x, y] = toOut([c.x, c.y]); out.push([x - r * 2, y - r * 3, r * 4, r * 4]); }catch(e){} });
+  return out;
+}
+// Titulková bezpečná zóna pro cedulky v px plátna [x0, y0, x1, y1]: v exportu 5 % od okraje
+// obrazu, v náhledu 5 % od okraje exportního rámu (ať cedulka nevyjede mimo výsledný záběr).
+function pzTagSafe(ctx){
+  const W = ctx.canvas.width, H = ctx.canvas.height;
+  try{
+    const fr = $('exportFrame'), mc = state.map?.getCanvas?.();
+    if(!state._exporting && $('showExportFrame')?.checked && fr && !fr.classList.contains('hidden') && mc && ctx.canvas !== mc){
+      const m = mc.getBoundingClientRect(), f = fr.getBoundingClientRect(), sx = W / (m.width || 1), sy = H / (m.height || 1);
+      if(f.width > 20 && f.height > 20){ const x0 = (f.left - m.left) * sx, y0 = (f.top - m.top) * sy, fw = f.width * sx, fh = f.height * sy; return [x0 + fw * 0.05, y0 + fh * 0.05, x0 + fw * 0.95, y0 + fh * 0.95]; }
+    }
+  }catch(e){}
+  return [W * 0.05, H * 0.05, W * 0.95, H * 0.95];
+}
+const _pzTagPick = new Map();
+function pzBoxHit(b, list){ let s = 0; for(const o of list){ const w = Math.min(b[0] + b[2], o[0] + o[2]) - Math.max(b[0], o[0]), h = Math.min(b[1] + b[3], o[1] + o[3]) - Math.max(b[1], o[1]); if(w > 0 && h > 0) s += w * h; } return s; }
 // Cedulka u jedoucího vozidla (jede s ním; v náhledu i v exportu). Bílý box s pruhem
-// v barvě vozidla, nad přídí. Bez textu se nekreslí.
-function pzDrawVehicleTag(ctx, map, toOut, k, vp, text, color, below){
+// v barvě vozidla, nad přídí. Bez textu se nekreslí. obst = boxy, kterým se má vyhnout
+// (piny A/B, jiné cedulky); nakreslená cedulka se do nich přidá.
+function pzDrawVehicleTag(ctx, map, toOut, k, vp, text, color, below, obst){
   if(!text) return;
   const parts = pzVehicleParts(vp); if(!parts.length) return;
-  const vis = parts.filter(q => !q.hidden && !q.clip); if(vis.length < Math.max(1, Math.ceil(parts.length / 2))) return;
-  // cedulka u ZADNÍHO dílu soupravy, který je v záběru: příď (a místo střetu) zůstane volná.
-  // Vozidlo mimo záběr cedulku nemá (dřív visela u okraje obrazu daleko od vlaku).
   const W = ctx.canvas.width, H = ctx.canvas.height;
-  const onScr = vis.map(q => { const c = map.project(q.c); return toOut([c.x, c.y]); }).filter(([x, y]) => x > W * 0.03 && x < W * 0.97 && y > H * 0.04 && y < H * 0.96);
-  if(onScr.length < Math.max(1, Math.ceil(vis.length / 2))) return;
-  const [ox, oy] = onScr[onScr.length - 1];
+  // kreslí se, kdykoli je z vozidla v záběru aspoň kus (i na startu z bodu A a v cíli);
+  // vozidlo celé mimo záběr cedulku nemá (dřív visela u okraje obrazu daleko od vlaku)
+  const inView = parts.some(q => { if(q.hidden) return false; const c = map.project(q.c), [x, y] = toOut([c.x, c.y]); return x > -W * 0.02 && x < W * 1.02 && y > -H * 0.02 && y < H * 1.02; });
+  if(!inView) return;
+  // kotva = vedoucí díl (lokomotiva/tahač): jede plynule, neskáče, když se vagony vynoří zpoza masky
+  const c0 = map.project(parts[0].c), [ox, oy] = toOut([c0.x, c0.y]);
   const fs = Math.round(Math.max(12, parseInt($('animIconSize')?.value || '34', 10) * 0.5) * k);
   ctx.save();
   ctx.font = `800 ${fs}px Inter, Arial, sans-serif`;
   const padX = fs * 0.55, padY = fs * 0.38, bar = fs * 0.28, w = ctx.measureText(text).width + padX * 2 + bar, h = fs + padY * 2;
-  const mX = W * 0.05, mY = H * 0.05;   // cedulka zůstane v titulkové bezpečné zóně
-  const x = Math.max(mX, Math.min(W - mX - w, ox - w / 2)), y = Math.max(mY, Math.min(H - mY - h, below ? oy + fs * 1.6 : oy - h - fs * 1.6));
+  const [sx0, sy0, sx1, sy1] = pzTagSafe(ctx);   // cedulka zůstane v titulkové bezpečné zóně
+  const place = (bl, dx = 0) => { const x = Math.max(sx0, Math.min(sx1 - w, ox - w / 2 + dx)), y = Math.max(sy0, Math.min(sy1 - h, bl ? oy + fs * 1.6 : oy - h - fs * 1.6)); return [x, y, w, h, bl]; };
+  // přednostně nad (protijedoucí pod) vozidlem; když by zakryla pin A/B nebo jinou cedulku,
+  // zkusí druhou stranu a posun do strany
+  const list = obst || [], cand = [place(below), place(!below), place(below, w * 0.75), place(below, -w * 0.75), place(!below, w * 0.75), place(!below, -w * 0.75)];
+  // naposledy zvolená poloha má přednost, dokud je volná (cedulka nepřeskakuje sem a tam)
+  const key = text + '|' + !!below, prev = _pzTagPick.get(key) || 0;
+  let bi = 0, bs = Infinity;
+  for(const i of [prev, ...cand.keys()]){ const sc = pzBoxHit(cand[i], list); if(sc < bs - 1){ bi = i; bs = sc; } if(!sc) break; }
+  _pzTagPick.set(key, bi); const best = cand[bi];
+  const [x, y] = best, bl = best[4];
   ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 8 * k; ctx.shadowOffsetY = 2 * k;
   ctx.fillStyle = '#ffffff'; ctx.fillRect(x, y, w, h);
   ctx.shadowColor = 'transparent';
   ctx.fillStyle = color || '#e63946'; ctx.fillRect(x, y, bar, h);
   // tenká spojnice k vozidlu
   ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = Math.max(1, 1.5 * k);
-  const lx = Math.max(x + bar, Math.min(x + w - 2, ox)); ctx.beginPath(); if(below){ ctx.moveTo(lx, y); ctx.lineTo(ox, oy + fs * 0.5); } else { ctx.moveTo(lx, y + h); ctx.lineTo(ox, oy - fs * 0.5); } ctx.stroke();
+  const lx = Math.max(x + bar, Math.min(x + w - 2, ox)); ctx.beginPath(); if(bl){ ctx.moveTo(lx, y); ctx.lineTo(ox, oy + fs * 0.5); } else { ctx.moveTo(lx, y + h); ctx.lineTo(ox, oy - fs * 0.5); } ctx.stroke();
   ctx.fillStyle = '#111'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + bar + padX, y + h / 2 + fs * 0.04);
   ctx.restore();
+  list.push([x, y, w, h]);
 }
 function pzDrawAllVehicles(ctx, map, toOut, k){
   const extras = pzExtraVehicles(), raw = state._pzVehRaw;
@@ -13998,6 +14031,7 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
   }
   if(state._pzVehVp != null && pzIsRail(state.animSystemIcon)) pzDrawVehicle(ctx, map, toOut, k, state._pzVehVp);
   // Srážka: v místě střetu pulzující červený záblesk (od chvíle, kdy se vozidla potkají)
+  let crashAt = null;
   try{
     const ci = crashCI;
     if(ci && raw != null && raw >= ci.rStar - 0.002){
@@ -14015,31 +14049,58 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
         g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,60,40,.95)'); g.addColorStop(1, 'rgba(255,40,40,0)');
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ox, oy, R * 0.55, 0, Math.PI * 2); ctx.fill();
         ctx.globalAlpha = 1;
-        // cedulka střetu (objeví se až se srážkou): červený box vpravo dole od místa
-        const txt = String(ci.v.crashLabel ?? 'SRÁŽKA').trim();
-        if(txt){
-          const fs = Math.round(Math.max(14, parseInt($('animIconSize')?.value || '34', 10) * 0.62) * kt);
-          ctx.font = `900 ${fs}px Inter, Arial, sans-serif`;
-          const padX = fs * 0.55, padY = fs * 0.36, w = ctx.measureText(txt).width + padX * 2, h = fs + padY * 2;
-          const bx = ox + R * 0.75, by = oy + R * 0.85;
-          ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10 * kt; ctx.shadowOffsetY = 3 * kt;
-          ctx.fillStyle = '#e8202a'; ctx.fillRect(bx, by, w, h);
-          ctx.shadowColor = 'transparent';
-          ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(txt, bx + padX, by + h / 2 + fs * 0.04);
-        }
+        crashAt = [ox, oy, R];
         ctx.restore();
       }
     }
   }catch(e){}
-  // cedulky až nakonec, ať je vozidla nepřekryjí
+  // cedulky až nakonec, ať je vozidla nepřekryjí; vyhýbají se pinům A/B i sobě navzájem
+  const obst = pzTagObstacles(map, toOut, kt);
+  if(!(raw > 0)) _pzTagPick.clear();   // na začátku animace volí cedulky polohu znovu
   const mainLabel = ($('pzMainVehLabel')?.value || '').trim();
-  if(mainLabel && state._pzVehVp != null) try{ pzDrawVehicleTag(ctx, map, toOut, kt, state._pzVehVp, mainLabel, state.vehicleAuto === false ? $('pzVehicleBody')?.value : null); }catch(e){}
+  if(mainLabel && state._pzVehVp != null) try{ pzDrawVehicleTag(ctx, map, toOut, kt, state._pzVehVp, mainLabel, state.vehicleAuto === false ? $('pzVehicleBody')?.value : null, false, obst); }catch(e){}
   if(tags.length){
     const keep = {icon: state.animSystemIcon, route: state.routeCoords};
     // protijedoucí vozidlo má cedulku pod soupravou — u srážky se cedulky nepotkají
-    try{ tags.forEach(([type, rev, vp, text, col]) => { state.animSystemIcon = type; state.routeCoords = rev ? pzReversedRoute(keep.route) : keep.route; pzDrawVehicleTag(ctx, map, toOut, kt, vp, text, col, rev); }); }
+    try{ tags.forEach(([type, rev, vp, text, col]) => { state.animSystemIcon = type; state.routeCoords = rev ? pzReversedRoute(keep.route) : keep.route; pzDrawVehicleTag(ctx, map, toOut, kt, vp, text, col, rev, obst); }); }
     finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; }
   }
+  // cedulka střetu (objeví se až se srážkou): kolmo na trasu na tu stranu, kde nezakryje
+  // pin B, cedulky vozidel ani vozidla na trase; prázdný text = bez cedulky
+  if(crashAt) try{
+    const txt = String(crashCI.v.crashLabel ?? 'SRÁŽKA').trim();
+    if(txt){
+      const [ox, oy, R] = crashAt, W = ctx.canvas.width, H = ctx.canvas.height;
+      const fs = Math.round(Math.max(14, parseInt($('animIconSize')?.value || '34', 10) * 0.62) * kt);
+      ctx.save();
+      ctx.font = `900 ${fs}px Inter, Arial, sans-serif`;
+      const padX = fs * 0.55, padY = fs * 0.36, w = ctx.measureText(txt).width + padX * 2, h = fs + padY * 2;
+      // směr trasy v místě střetu (na obrazovce) → normála
+      const pr = q => { const c = map.project(q); return toOut([c.x, c.y]); };
+      const p1 = pr(pointAtProgress(state.routeCoords, Math.max(0, crashCI.f - 0.01))), p2 = pr(pointAtProgress(state.routeCoords, Math.min(1, crashCI.f + 0.01)));
+      let dx = p2[0] - p1[0], dy = p2[1] - p1[1]; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+      const [sx0, sy0, sx1, sy1] = pzTagSafe(ctx), B = state.pointB ? pr(state.pointB) : null;
+      const box = (nx, ny, s) => {
+        const off = R * 0.8 + Math.abs(nx) * w / 2 + Math.abs(ny) * h / 2 + s;
+        const cx = ox + nx * off + dx * s, cy = oy + ny * off + dy * s;
+        return [Math.max(sx0, Math.min(sx1 - w, cx - w / 2)), Math.max(sy0, Math.min(sy1 - h, cy - h / 2)), w, h];
+      };
+      let best = null, bs = Infinity;
+      for(const sg of [1, -1]) for(const s of [0, fs * 1.5, -fs * 1.5]){
+        const b = box(-dy * sg, dx * sg, s);
+        let sc = pzBoxHit(b, obst) * 4;
+        if(B){ const cx = b[0] + w / 2, cy = b[1] + h / 2; sc -= Math.min(Math.hypot(cx - B[0], cy - B[1]), W * 0.25); }   // čím dál od pinu B, tím líp
+        sc += Math.abs(s);
+        if(sc < bs){ bs = sc; best = b; }
+      }
+      const [bx, by] = best;
+      ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10 * kt; ctx.shadowOffsetY = 3 * kt;
+      ctx.fillStyle = '#e8202a'; ctx.fillRect(bx, by, w, h);
+      ctx.shadowColor = 'transparent';
+      ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(txt, bx + padX, by + h / 2 + fs * 0.04);
+      ctx.restore();
+    }
+  }catch(e){}
 }
 function pzRenderExtraList(){
   const box = $('pzExtraList'); if(!box) return;
@@ -14049,11 +14110,14 @@ function pzRenderExtraList(){
       <select class="pz-extra-type" aria-label="${escapeHtml(t('Vozidlo'))}">${types.map(k => `<option value="${k}"${k === v.type ? ' selected' : ''}>${escapeHtml(t(PZ_EXTRA_LABELS[k]))}</option>`).join('')}</select>
       <select class="pz-extra-dir" aria-label="${escapeHtml(t('Směr'))}"><option value="0"${v.reverse ? '' : ' selected'}>${escapeHtml(t('Stejným směrem'))}</option><option value="1"${v.reverse ? ' selected' : ''}>${escapeHtml(t('Proti směru'))}</option></select>
       <button type="button" class="btn btn-sm pz-extra-del" title="${escapeHtml(t('Odebrat'))}" aria-label="${escapeHtml(t('Odebrat'))}">×</button>
-      <label class="pz-extra-delay"><span>${escapeHtml(t('Vyjede později'))}</span> <span class="val">${Math.round((+v.delay || 0) * 100)} %</span>
-        <input type="range" class="pz-extra-delay-in" min="0" max="90" step="1" value="${Math.round((+v.delay || 0) * 100)}"></label>
+      ${v.crash && v.reverse ? `<label class="pz-extra-delay"><span>${escapeHtml(t('Místo střetu (% trasy)'))}</span> <span class="val">${Math.round(pzCrashFrac(v) * 100)} %</span>
+        <input type="range" class="pz-extra-delay-in" min="5" max="95" step="1" value="${Math.round(pzCrashFrac(v) * 100)}"></label>` : `<label class="pz-extra-delay"><span>${escapeHtml(t('Vyjede později'))}</span> <span class="val">${Math.round((+v.delay || 0) * 100)} %</span>
+        <input type="range" class="pz-extra-delay-in" min="0" max="90" step="1" value="${Math.round((+v.delay || 0) * 100)}"></label>`}
       <div class="pz-extra-more"><input type="color" class="pz-extra-color" value="${escapeHtml(v.color || '#ffffff')}" title="${escapeHtml(t('Barva vozidla'))}" aria-label="${escapeHtml(t('Barva vozidla'))}">
         <input type="text" class="pz-extra-label" maxlength="40" value="${escapeHtml(v.label || '')}" placeholder="${escapeHtml(t('Cedulka u vozidla'))}" aria-label="${escapeHtml(t('Cedulka u vozidla'))}"></div>
       <label class="check pz-extra-crash"${v.reverse ? '' : ' hidden'}><input type="checkbox" class="pz-extra-crash-in"${v.crash ? ' checked' : ''}> <span>${escapeHtml(t('Srážka — zastavit v místě střetu'))}</span></label>
+      <label class="pz-extra-crashtxt"${v.crash && v.reverse ? '' : ' hidden'}><span>${escapeHtml(t('Text u srážky'))}</span>
+        <input type="text" class="pz-extra-crashlabel" maxlength="30" value="${escapeHtml(v.crashLabel ?? 'SRÁŽKA')}" placeholder="${escapeHtml(t('bez cedulky'))}"></label>
     </div>`).join('');
 }
 function pzExtraChanged(){ try{ refreshAnimatedMarkerPreview(); pzRenderVehicleLive(); state.map?.triggerRepaint?.(); }catch(e){} }
@@ -14062,7 +14126,9 @@ function pzInitExtraUi(){
   add.addEventListener('click', () => {
     try{ window.__pzPushUndo?.(); }catch(e){}
     const main = PZ_SPRITES[state.animSystemIcon] ? state.animSystemIcon : 'car';
-    pzExtraVehicles().push({type: main, reverse: pzExtraVehicles().length % 2 === 0, delay: 0});
+    const rev = pzExtraVehicles().length % 2 === 0;
+    // stejným směrem vyjede o kus později (15 %, 30 %…), jinak by jelo přesně pod hlavním a nebylo vidět
+    pzExtraVehicles().push({type: main, reverse: rev, delay: rev ? 0 : pzSameDirDelay()});
     pzRenderExtraList(); pzExtraChanged();
   });
   box.addEventListener('change', e => {
@@ -14070,15 +14136,23 @@ function pzInitExtraUi(){
     if(e.target.classList.contains('pz-extra-type')) v.type = e.target.value;
     if(e.target.classList.contains('pz-extra-dir')){ v.reverse = e.target.value === '1'; if(!v.reverse) v.crash = false; pzRenderExtraList(); }
     if(e.target.classList.contains('pz-extra-color')) v.color = e.target.value;
-    if(e.target.classList.contains('pz-extra-crash-in')){ try{ window.__pzPushUndo?.(); }catch(_e){} v.crash = e.target.checked; }
+    if(e.target.classList.contains('pz-extra-crash-in')){
+      try{ window.__pzPushUndo?.(); }catch(_e){}
+      v.crash = e.target.checked; if(v.crash) v.reverse = true;   // srážka jen s protijedoucím
+      pzRenderExtraList();
+    }
     pzExtraChanged();
   });
   box.addEventListener('input', e => {
     if(e.target.classList.contains('pz-extra-label')){ const v = pzExtraVehicles()[+e.target.closest('.pz-extra-row').dataset.i]; if(v){ v.label = e.target.value; pzExtraChanged(); } return; }
     if(e.target.classList.contains('pz-extra-color')){ const v = pzExtraVehicles()[+e.target.closest('.pz-extra-row').dataset.i]; if(v){ v.color = e.target.value; pzExtraChanged(); } return; }
+    if(e.target.classList.contains('pz-extra-crashlabel')){ const v = pzExtraVehicles()[+e.target.closest('.pz-extra-row').dataset.i]; if(v){ v.crashLabel = e.target.value; pzExtraChanged(); } return; }
     if(!e.target.classList.contains('pz-extra-delay-in')) return;
     const row = e.target.closest('.pz-extra-row'), v = pzExtraVehicles()[+row.dataset.i]; if(!v) return;
-    v.delay = (+e.target.value || 0) / 100; row.querySelector('.pz-extra-delay .val').textContent = e.target.value + ' %';
+    // u srážky posuvník posouvá místo střetu (podíl trasy od A), jinak zpoždění výjezdu
+    if(v.crash && v.reverse){ v.crashFrac = (+e.target.value || 50) / 100; delete v.crashLL; }
+    else v.delay = (+e.target.value || 0) / 100;
+    row.querySelector('.pz-extra-delay .val').textContent = e.target.value + ' %';
     pzExtraChanged();
   });
   box.addEventListener('click', e => {
@@ -14090,46 +14164,73 @@ function pzInitExtraUi(){
   pzRenderExtraList();
   $('pzMainVehLabel')?.addEventListener('input', () => pzExtraChanged());
 }
+// Nejbližší bod trasy k místu ll = [lng, lat]: {frac (podíl trasy od A), distKm, ll (bod na trase)}.
+// Body trasy bývají řídké — hledá se na úsecích, ne jen v bodech.
+function pzProjectOnRoute(ll, route = state.routeCoords){
+  if(!ll || !(route?.length > 1)) return null;
+  const {cum, total} = cumulativeRouteLengths(route); if(!(total > 0)) return null;
+  const kx = 111.32 * Math.cos(ll[1] * Math.PI / 180), ky = 110.57, px = ll[0] * kx, py = ll[1] * ky;
+  let best = Infinity, at = 0, pt = route[0];
+  for(let i = 1; i < route.length; i++){
+    const ax = route[i - 1][0] * kx, ay = route[i - 1][1] * ky, bx = route[i][0] * kx, by = route[i][1] * ky;
+    const L = (bx - ax) ** 2 + (by - ay) ** 2, tt = L ? Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L)) : 0;
+    const dd = Math.hypot(ax + tt * (bx - ax) - px, ay + tt * (by - ay) - py);
+    if(dd < best){ best = dd; at = cum[i - 1] + tt * (cum[i] - cum[i - 1]); pt = [(ax + tt * (bx - ax)) / kx, (ay + tt * (by - ay)) / ky]; }
+  }
+  return {frac: at / total, distKm: best, ll: pt};
+}
+const PZ_CRASH_MAX_KM = 3;   // dál od trasy místo srážky neleží
+// Podíl trasy od A, kde se vozidla srazí (bez zadaného místa z „Vyjede později").
+function pzCrashFrac(v){ return Math.max(0.02, Math.min(0.98, v.crashFrac != null ? +v.crashFrac : 1 / (2 - Math.max(0, Math.min(0.9, +v.delay || 0))))); }
+// Zpoždění dalšího vozidla stejným směrem: 15 %, 30 %… (ať nejede schované pod hlavním).
+function pzSameDirDelay(){ return Math.min(0.9, 0.15 * (pzExtraVehicles().filter(x => x && !x.reverse).length + 1)); }
+// Místo srážky drží zeměpisný bod (crashLL): po prohození A↔B nebo nové trase se podíl
+// trasy přepočítá; když už bod na trase neleží, srážka se vypne a appka to ohlásí.
+const _pzCrashSig = new WeakMap();
+function pzCrashSync(v, route){
+  const c = _pzCrashSig.get(v);
+  if(!c || c.route !== route){
+    const n = route.length, sig = [n, route[0][0], route[0][1], route[n - 1][0], route[n - 1][1], cumulativeRouteLengths(route).total.toFixed(3)].join('|');
+    if(Array.isArray(v.crashLL) && (c ? c.sig !== sig : true)){
+      const p = pzProjectOnRoute(v.crashLL, route);
+      if(!p || p.distKm > PZ_CRASH_MAX_KM){
+        v.crash = false; delete v.crashLL;
+        try{ setStatus('Místo srážky na nové trase neleží — srážku jsem vypnul.', 'error'); pzRenderExtraList(); }catch(e){}
+      } else v.crashFrac = p.frac;
+    }
+    _pzCrashSig.set(v, {route, sig});
+  }
+  if(v.crash && !Array.isArray(v.crashLL)){ const pt = pointAtProgress(route, pzCrashFrac(v)); if(pt) v.crashLL = [+pt[0], +pt[1]]; }
+}
 // Srážka: vozidlo v protisměru s volbou „Srážka" — příďe obou vozidel dojedou do místa
-// střetu (podíl trasy f od A) a tam zůstanou. Délka soupravy se počítá z velikosti na
-// obrazovce, takže se zpoždění protijedoucího vozidla dopočítává pro aktuální přiblížení.
+// střetu (podíl trasy f od A) a tam zůstanou. Místo střetu může být kdekoli na trase:
+// když je blízko A, protijedoucí vyjede hned na začátku a jede úměrně rychleji.
 function pzCrashInfo(){
+  const route = state.routeCoords;
+  if(!(route?.length > 1)) return null;
   const v = (state.pzExtraVehicles || []).find(x => x && x.reverse && x.crash);
-  if(!v || !(state.routeCoords?.length > 1)) return null;
-  const f = Math.max(0.5, Math.min(0.999, v.crashFrac != null ? +v.crashFrac : 1 / (2 - Math.max(0, Math.min(0.9, +v.delay || 0)))));
-  const kM = Math.max(1, pzVehicleProgress(1));
-  const keep = {icon: state.animSystemIcon, route: state.routeCoords, size: state._pzSizeOverride};
-  let kX = 1;
-  // protijedoucí vozidlo se kreslí s velikostí z „Velikosti ikonky" (jako v pzDrawAllVehicles)
-  try{ if(PZ_SPRITES[v.type]) state.animSystemIcon = v.type; state.routeCoords = pzReversedRoute(keep.route);
-       state._pzSizeOverride = parseInt($('animIconSize')?.value || '34', 10) * pzVehicleSizeK(); kX = Math.max(1, pzVehicleProgress(1)); }
-  finally{ state.animSystemIcon = keep.icon; state.routeCoords = keep.route; state._pzSizeOverride = keep.size; }
-  const rStar = f / kM, ex = (1 - f) / kX;
-  const d = Math.max(0, Math.min(0.95, (rStar - ex) / (1 - ex)));
+  if(!v) return null;
+  // (během kreslení protijedoucího je trasa dočasně otočená — tehdy nepřepočítávat)
+  if(route !== _pzRevRoute.rev) pzCrashSync(v, route);
+  if(!v.crash) return null;
+  const f = pzCrashFrac(v), rStar = f;              // příď hlavního vozidla je v místě střetu v čase rStar
   // Protijedoucí vozidlo jede reálným tempem: stejně rychle jako vozidlo na trase
   // (× speed, výchozí 0,7 — vyjíždí ze stanice), takže vyjede dřív a ke střetu se rozjíždí.
-  const sp = Math.max(0.2, Math.min(2, +v.speed || 0.7));
-  const t0 = rStar - (1 - f) / (sp * kM);            // čas výjezdu (v průběhu animace)
-  const vpAt = r => Math.max(0, Math.min(1 - f, sp * kM * (r - t0)));   // příď protijedoucího od B
-  return {v, f, rStar, d, t0, vpAt};
+  // Nestihlo by to od začátku animace → vyjede hned a jede rychleji.
+  let sp = Math.max(0.2, Math.min(2, +v.speed || 0.7));
+  if(rStar - (1 - f) / sp < 0) sp = (1 - f) / rStar;
+  const t0 = rStar - (1 - f) / sp;                  // čas výjezdu (v průběhu animace)
+  const vpAt = r => Math.max(0, Math.min(1 - f, sp * (r - t0)));   // příď protijedoucího od B
+  return {v, f, rStar, d: Math.max(0, t0), t0, vpAt};
 }
 function pzCrashRaw(raw){
   const c = pzCrashInfo();
   return c ? Math.min(raw, c.rStar) : raw;
 }
-function pzVehicleProgress(e){
-  try{
-    const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
-    if(!pzIsRail(type) || !m || !route || route.length < 2) return e;
-    const {total} = cumulativeRouteLengths(route); if(!(total > 0)) return e;
-    const sizePx = pzVehBaseSizePx() * ((state._exporting && state._exportMarkerScale) || 1);
-    const lead = pointAtProgress(route, Math.min(1, e)) || route[0];
-    const U = sizePx * 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
-    const spec = pzConsistSpec() || {rear:0.5, units:[]};
-    const len = spec.units.reduce((a, u) => a + u.front + u.back, spec.rear + 0.5) * U;
-    return e * (total + len) / total;
-  }catch(err){ return e; }
-}
+// Průběh animace (0–1) → poloha přídě. Na startu vyjíždí příď z bodu A (zbytek pod
+// maskou), v cíli příď zastaví v bodě B a vozidlo i s cedulkou zůstane stát v záběru
+// (dřív celé zajelo pod masku a poslední záběr i pauza na konci byly bez vozidla).
+function pzVehicleProgress(e){ return e; }
 function pzRailPose(progress){
   const type = state.animSystemIcon, m = state.map, route = state.routeCoords;
   if(!pzIsRail(type) || !m || !route || route.length < 2) return null;
@@ -18974,6 +19075,10 @@ Object.assign(I18N, {
   "Stejným směrem": {cs:"Stejným směrem",sk:"Rovnakým smerom",bg:"В същата посока",hr:"Istim smjerom",ro:"În aceeași direcție",en:"Same direction"},
   "Proti směru": {cs:"Proti směru",sk:"Proti smeru",bg:"В обратна посока",hr:"Suprotnim smjerom",ro:"În sens opus",en:"Opposite direction"},
   "Vyjede později": {cs:"Vyjede později",sk:"Vyrazí neskôr",bg:"Тръгва по-късно",hr:"Kreće kasnije",ro:"Pornește mai târziu",en:"Starts later"},
+  "Místo střetu (% trasy)": {cs:"Místo střetu (% trasy)",sk:"Miesto stretu (% trasy)",bg:"Място на удара (% от маршрута)",hr:"Mjesto sudara (% rute)",ro:"Locul impactului (% din traseu)",en:"Collision point (% of route)"},
+  "Text u srážky": {cs:"Text u srážky",sk:"Text pri zrážke",bg:"Текст при сблъсъка",hr:"Tekst kod sudara",ro:"Text la coliziune",en:"Collision label"},
+  "bez cedulky": {cs:"bez cedulky",sk:"bez štítku",bg:"без табелка",hr:"bez oznake",ro:"fără etichetă",en:"no label"},
+  "Místo srážky na nové trase neleží — srážku jsem vypnul.": {cs:"Místo srážky na nové trase neleží — srážku jsem vypnul.",sk:"Miesto zrážky na novej trase neleží — zrážku som vypol.",bg:"Мястото на сблъсъка не е на новия маршрут — сблъсъкът е изключен.",hr:"Mjesto sudara nije na novoj ruti — sudar je isključen.",ro:"Locul coliziunii nu e pe noul traseu — coliziunea a fost oprită.",en:"The collision point is not on the new route — collision turned off."},
   "Odebrat": {cs:"Odebrat",sk:"Odobrať",bg:"Премахни",hr:"Ukloni",ro:"Elimină",en:"Remove"},
   "Vozidlo": {cs:"Vozidlo",sk:"Vozidlo",bg:"Превозно средство",hr:"Vozilo",ro:"Vehicul",en:"Vehicle"},
   "Směr": {cs:"Směr",sk:"Smer",bg:"Посока",hr:"Smjer",ro:"Direcție",en:"Direction"},
@@ -21018,6 +21123,8 @@ function pzColorFromName(v){
   // animace (tests/23_animation.test.js)
   Object.assign(window.__pzFns, {pauseAnimation, seekAnimationToTime, setCameraUiMode, getCameraUiMode, cameraAnimReady,
     getCameraStateAtProgress, normalizeCameraAnim, animTiming, applyAnimEasing});
+  // vozidla a srážky (tests/16_vehicles.test.js)
+  Object.assign(window.__pzFns, {pzCrashInfo, pzProjectOnRoute, pointAtProgress});
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
     version: 1,
@@ -21972,35 +22079,38 @@ function pzColorFromName(v){
     },
     // Další vozidlo na stejné trase (víc vozidel v jedné animaci).
     async addVehicle({type, reverse, delay, crash, crashAt, crashLabel, speed, label, color} = {}){
-      const k = String(type || '').toLowerCase();
-      const alias = {auto:'car', kamion:'truck', nakladni:'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', policie:'police', sanitka:'ambulance'};
-      const t = PZ_EXTRA_LABELS[k] ? k : alias[k];
-      if(!t) return {ok:false, error:'Vozidlo „' + type + '" neznám. Mám: ' + Object.keys(PZ_EXTRA_LABELS).join(', ') + '.'};
+      // typ česky i v jiném tvaru (vlaky, vlakem, sanitkou, lodí…)
+      const k = String(type || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const alias = {auto:'car', osobak:'car', kamion:'truck', nakladni:'lorry', nakladak:'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', policie:'police', sanitka:'ambulance', metro:'metro', souprava:'train'};
+      const stem = w => w.replace(/(ami|ech|em|ou|um|y|u|a|e|i|o)$/, '');
+      let t = PZ_EXTRA_LABELS[k] ? k : alias[k];
+      if(!t){ const st = stem(k); const hit = Object.keys(alias).find(a => st.length >= 3 && stem(a) === st); if(hit) t = alias[hit]; }
+      if(!t && /^(letadl|plane|letoun)/.test(k)) return {ok:false, error:'Letadlo jede jen jako hlavní vozidlo (setVehicle) — jako další vozidlo na trase ho přidat nejde.'};
+      if(!t) return {ok:false, error:'Vozidlo „' + type + '" neznám. Mám: ' + Object.values(PZ_EXTRA_LABELS).map(x => x.toLowerCase()).join(', ') + '.'};
       if(!(state.routeCoords || []).length) return {ok:false, error:'Nejdřív je potřeba trasa — další vozidlo jede po ní.'};
-      // crashAt = místo střetu ("lat,lng" nebo název): zpoždění se dopočítá tak, aby se
-      // vozidla potkala právě tam (místo musí ležet v druhé polovině trasy od A).
-      let d = Math.max(0, Math.min(0.9, +delay || 0)), frac = null;
+      // srážka jde jen s protijedoucím vozidlem
+      if(crash && !reverse) reverse = true;
+      // crashAt = místo střetu ("lat,lng" nebo název) kdekoli na trase; časování se dopočítá
+      // tak, aby se vozidla potkala právě tam. Místo daleko od trasy → chyba se vzdáleností.
+      let d = Math.max(0, Math.min(0.9, +delay || 0)), frac = null, crashLL = null, distKm = null;
+      const notes = [];
       if(crashAt){
         let ll; try{ const g = await geocode(String(crashAt)); ll = [+g.lon, +g.lat]; }catch(e){ return {ok:false, error:'Místo střetu „' + crashAt + '" jsem nenašel.'}; }
-        const rc = state.routeCoords, {cum, total} = cumulativeRouteLengths(rc);
-        // nejbližší bod na úsecích trasy (body trasy bývají řídké)
-        let best = Infinity, at = 0; const kx = Math.cos(ll[1] * Math.PI / 180);
-        for(let i = 1; i < rc.length; i++){
-          const ax = rc[i - 1][0] * kx, ay = rc[i - 1][1], bx = rc[i][0] * kx, by = rc[i][1], px = ll[0] * kx, py = ll[1];
-          const L = (bx - ax) ** 2 + (by - ay) ** 2, tt = L ? Math.max(0, Math.min(1, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / L)) : 0;
-          const dd = Math.hypot(ax + tt * (bx - ax) - px, ay + tt * (by - ay) - py);
-          if(dd < best){ best = dd; at = cum[i - 1] + tt * (cum[i] - cum[i - 1]); }
-        }
-        frac = at / total;
-        if(frac < 0.5) return {ok:false, error:'Místo střetu je v první polovině trasy — prohoď start a cíl trasy (A↔B), pak to zkus znovu.', fraction: +frac.toFixed(3)};
-        d = Math.max(0, Math.min(0.9, 2 - 1 / frac)); reverse = true; crash = true;   // zpoždění se pak dopočítává podle přiblížení
+        const p = pzProjectOnRoute(ll);
+        if(!p) return {ok:false, error:'Nejdřív je potřeba trasa — další vozidlo jede po ní.'};
+        distKm = +p.distKm.toFixed(1);
+        if(p.distKm > PZ_CRASH_MAX_KM) return {ok:false, error:'Místo „' + crashAt + '" je ' + Math.round(p.distKm) + ' km od trasy — srážka musí být na trase. Nejbližší bod trasy je ' + Math.round(p.frac * 100) + ' % cesty od startu. Zeptej se, kde přesně na trase se mají vozidla srazit.', distanceKm: distKm, nearestPoint: {lat: +p.ll[1].toFixed(5), lng: +p.ll[0].toFixed(5)}, fraction: +p.frac.toFixed(3)};
+        frac = Math.max(0.02, Math.min(0.98, p.frac)); crashLL = ll;
+        d = frac >= 0.5 ? Math.max(0, Math.min(0.9, 2 - 1 / frac)) : 0; reverse = true; crash = true;
       }
+      // stejným směrem bez zpoždění by jelo přesně pod hlavním vozidlem a nebylo by vidět
+      if(delay == null && !reverse){ d = pzSameDirDelay(); notes.push('Vyjede o ' + Math.round(d * 100) + ' % později, aby nejelo schované pod hlavním vozidlem.'); }
       try{ window.__pzPushUndo?.(); }catch(e){}
       const col = color != null ? pzColorFromName(color) : null;
       if(color != null && !col) return {ok:false, error:'Barvu „' + color + '" neznám.'};
-      pzExtraVehicles().push({type: t, reverse: !!reverse, delay: d, crash: !!crash && !!reverse, ...(frac != null ? {crashFrac: frac} : {}), ...(crashLabel != null ? {crashLabel: String(crashLabel).slice(0, 30)} : {}), ...(speed != null ? {speed: Math.max(0.2, Math.min(2, +speed || 0.7))} : {}), color: col, label: label != null ? String(label).slice(0, 40) : ''});
+      pzExtraVehicles().push({type: t, reverse: !!reverse, delay: d, crash: !!crash && !!reverse, ...(frac != null ? {crashFrac: frac} : {}), ...(crashLL ? {crashLL} : {}), ...(crashLabel != null ? {crashLabel: String(crashLabel).slice(0, 30)} : {}), ...(speed != null ? {speed: Math.max(0.2, Math.min(2, +speed || 0.7))} : {}), color: col, label: label != null ? String(label).slice(0, 40) : ''});
       pzRenderExtraList(); pzExtraChanged();
-      return {ok:true, vehicle:t, reverse:!!reverse, delay: +d.toFixed(3), crash: !!crash && !!reverse, ...(frac != null ? {crashFraction: +frac.toFixed(3)} : {}), count: pzExtraVehicles().length + 1};
+      return {ok:true, vehicle:t, reverse:!!reverse, delay: +d.toFixed(3), crash: !!crash && !!reverse, ...(frac != null ? {crashFraction: +frac.toFixed(3), distanceKm: distKm} : {}), count: pzExtraVehicles().length + 1, ...(notes.length ? {note: notes.join(' ')} : {})};
     },
     setVehicleColors({preset, body, accent, shadow} = {}){
       const sel = $('pzVehiclePreset'), bodyEl = $('pzVehicleBody'), accEl = $('pzVehicleAccent');
