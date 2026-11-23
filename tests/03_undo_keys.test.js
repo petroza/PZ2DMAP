@@ -43,6 +43,18 @@ const {check, done, open, status} = require('./lib');
   const r = await page.evaluate(async () => { window.__pzPushUndo(); await window.TNMAP.routeBetween({from:'Praha', to:'Londýn', mode:'planeDirect'}); await new Promise(r => setTimeout(r, 1200)); window.TNMAP.undo(); await new Promise(r => setTimeout(r, 1500));
     const mk = document.querySelector('.animated-marker'); return {marker: document.querySelectorAll('.animated-marker').length, a: document.getElementById('startInput').value, cls: mk ? mk.className + ' / ' + (mk.parentElement?.className || '') : '', rc: (window.__pzFns.state.routeCoords || []).length, playing: window.__pzFns.state.animPlaying}; });
   check(r.marker === 0 && r.a === '', 'krok zpět po nové trase odstraní objekt i text pole A ' + JSON.stringify(r));
+  // popisky si po kroku zpět drží vlastní velikost a nezůstanou vybrané; posun mapy ani Delete bez výběru historii nemění
+  const q = await page.evaluate(async () => { const S = window.__pzFns.state, T = window.TNMAP, sl = ms => new Promise(r => setTimeout(r, ms));
+    T.clearScene({what:'all'}); await sl(300);
+    window.__pzPushUndo(); await T.addLabel({place:'Brno', text:'BIG', size:50, fit:false});
+    window.__pzPushUndo(); await T.addLabel({place:'Brno', text:'small', size:18, fit:false});
+    window.__pzPushUndo(); await T.placeIcon({place:'Brno', kind:'policie', fit:false}); await sl(300);
+    window.__tnMap.jumpTo({center:[16.7, 49.3]}); window.__pzPushUndo(); window.__tnMap.jumpTo({center:[16.5, 49.1]}); window.__pzPushUndo();
+    window.__pzUndo(); await sl(1500);
+    return {sizes: S.mapLabels.map(l => l.text + ':' + l.size).join(','), icons: S.sceneIcons.length, sel: S.selectedMapLabelId || null}; });
+  check(q.sizes === 'BIG:50,small:18' && q.icons === 0 && !q.sel, 'Ctrl+Z (i po posunu mapy) vrátí ikonku, popisky drží velikost a nejsou vybrané ' + JSON.stringify(q));
+  await page.keyboard.press('Escape'); await page.keyboard.press('Delete'); await page.waitForTimeout(400);
+  check(await page.$eval('#redoActionBtn', b => !b.disabled) && await page.evaluate(() => window.__pzFns.state.mapLabels.length) === 2, 'Delete bez výběru nic nesmaže a nechá Vpřed');
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close(); done();
 })();

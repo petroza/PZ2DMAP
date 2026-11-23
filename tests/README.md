@@ -20,8 +20,8 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 |---|---|
 | 01 syntax | všechny skripty v `index.html` jdou zparsovat |
 | 02 controls | proklikne všechny ovládací prvky na všech záložkách bez chyby |
-| 03 undo_keys | Ctrl+Z/Y, Delete, Ctrl+D, tažení a smazání popisku, krok zpět po trase |
-| 04 project_roundtrip | bohatá scéna → uložit → načíst v čistém prohlížeči beze ztrát |
+| 03 undo_keys | Ctrl+Z/Y, Delete, Ctrl+D, tažení a smazání popisku, krok zpět po trase; posun mapy není krok, popisky po kroku zpět drží velikost, Delete bez výběru nechá Vpřed |
+| 04 project_roundtrip | bohatá scéna → uložit → načíst v čistém prohlížeči beze ztrát (i výřez exportního rámu) |
 | 05 icon_palette | paleta vestavěných ikonek: klik + klik do mapy, přetažení do mapy na místo puštění, Ctrl+Z |
 | 06 labels_export | styly popisků Nova na mapě i v exportu PNG |
 | 07 advanced | Pokročilé funkce schované / zapnuté / zapamatované |
