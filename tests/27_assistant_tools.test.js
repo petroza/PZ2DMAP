@@ -20,7 +20,7 @@ const {check, done, open, status} = require('./lib');
   const ids = [...new Set([...toolsTxt.slice(toolsTxt.indexOf('POVOLENÁ ID')).matchAll(/\b([a-zA-Z0-9]+Section)\b/g)].map(m => m[1]))];
   const noSec = await page.evaluate(ids => ids.filter(id => !document.getElementById(id)), ids);
   check(ids.length >= 12 && noSec.length === 0, `všech ${ids.length} sekcí pro openSection existuje` + (noSec.length ? ' — chybí ' + noSec.join(', ') : ''));
-  check(!/pzTemplateSection|czPoliticalSection|weatherLayersSection|setWeather \{|region\?/.test(worker), 'worker neodkazuje na zrušené věci (Rychlá scéna, kraje, počasí)');
+  check(!/pzTemplateSection|czPoliticalSection|weatherLayersSection|setWeather \{/.test(worker), 'worker neodkazuje na zrušené věci (Rychlá scéna, stará sekce krajů, počasí)');
   const tabs = await page.evaluate(() => window.TNMAP.catalog.tabs);
   check(['scena', 'trasa', 'animace', 'export', 'styly', 'projekt', 'nastaveni'].every(t => tabs.includes(t)), 'záložky: 5 + Projekt + Nastavení');
 
