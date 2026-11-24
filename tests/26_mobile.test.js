@@ -216,6 +216,7 @@ function smallTargets(page){
       check(!ov.length, `${dev}: výběr (Smazat + Hotovo) bez překryvů` + (ov.length ? ' — ' + ov.join(', ') : ''));
       await tapSel(page, '#pzTouchDeleteBtn');
       check(await page.$$eval('.scene-icon-marker', e => e.length) === 0, `${dev}: „Smazat" v pruhu smaže vybrané`);
+      await page.waitForTimeout(300);   // smazání se zapíše do historie až po animaci pruhu
       await tapSel(page, '#undoActionBtn');
       check(await page.$$eval('.scene-icon-marker', e => e.length) === 2, `${dev}: krok zpět smazané vrátí`);
       // popisek
