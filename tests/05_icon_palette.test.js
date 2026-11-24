@@ -22,6 +22,8 @@ const {check, done, open, tab, openSection} = require('./lib');
   };
   await drag('#pzIconPalette .pz-icon-pick[data-kind="pozar"]', 1200, 600);
   check(await n() === 2, 'přetažení ikony z palety do mapy ji vloží');
+  const names = await page.$$eval(ICONS, e => e.map(x => x.textContent));
+  check(/Výbuch/.test(names[0]) && /Požár/.test(names[1]), 'seznam ikonek ukazuje typ (Výbuch, Požár) ' + JSON.stringify(names));
   const centers = await page.$$eval('.maplibregl-marker.scene-icon-marker', els => els.map(e => { const r = e.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }));
   check(centers.some(([x, y]) => Math.abs(x - 1200) < 4 && Math.abs(y - 600) < 4), 'ikonka leží přesně na místě puštění');
   await drag('#pzIconPalette .pz-icon-pick[data-kind="nehoda"]', 200, 500);
