@@ -335,7 +335,8 @@ input[type=color]:hover{border-color:var(--accent)}
 .pz-extra-row select{min-width:0;width:100%}
 .pz-extra-delay{grid-column:1 / -1;display:block;margin:0}
 .pz-extra-delay input{width:100%}
-.pz-extra-crash,.pz-extra-crashtxt{grid-column:1 / -1;margin:0}
+.pz-extra-row .pz-extra-delay{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 6px}.pz-extra-row .pz-extra-delay input{flex:1 0 100%}
+.pz-extra-more,.pz-extra-crash,.pz-extra-crashtxt{grid-column:1 / -1;margin:0}
 .pz-extra-crash[hidden],.pz-extra-crashtxt[hidden]{display:none}
 .pz-extra-crashtxt input{width:100%}
 .pz-line-row{margin-top:8px}.pz-line-row input{width:100%}
@@ -1153,12 +1154,12 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
             <div><label for="pzVehicleAccent" data-i18n="Akcent">Akcent</label><input type="color" id="pzVehicleAccent" value="#48cfa5"></div>
           </div>
         </div>
+        <div style="margin-top:10px"><label for="pzMainVehLabel" data-i18n="Cedulka u vozidla">Cedulka u vozidla</label><input id="pzMainVehLabel" type="text" maxlength="40" data-i18n-placeholder="Např. Os 9409" placeholder="Např. Os 9409"></div>
         <div id="pzExtraBox" style="margin-top:12px">
           <label data-i18n="Další vozidla na trase">Další vozidla na trase</label>
           <div id="pzExtraList"></div>
           <button type="button" class="btn btn-sm" id="pzExtraAdd" data-i18n="+ Přidat vozidlo">+ Přidat vozidlo</button>
         </div>
-        <div style="margin-top:10px"><label for="pzMainVehLabel" data-i18n="Cedulka u vozidla">Cedulka u vozidla</label><input id="pzMainVehLabel" type="text" maxlength="40" data-i18n-placeholder="Např. Os 9409" placeholder="Např. Os 9409"></div>
         <label class="check" id="pzVehicleShadowRow" style="margin-top:10px"><input id="pzVehicleShadow" type="checkbox" checked> <span data-i18n="Stín pod vozidlem">Stín pod vozidlem</span></label>
         <label class="check" style="margin-top:10px"><input id="invertIcons" type="checkbox">  Invertovat ikonky (pro světlou mapu)</label>
 
@@ -1464,6 +1465,13 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <input id="animDuration" type="range" min="1" max="180" step="0.5" value="8">
         </div>
         <div class="anim-field">
+          <div class="anim-field-head">
+            <label for="animEndHold" data-i18n="Pauza na konci">Pauza na konci</label>
+            <span class="anim-num"><input id="animEndHoldNum" class="num-mini" type="number" min="0" max="10" step="0.5" value="0" aria-label="Pauza na konci"><span class="anim-unit">s</span></span>
+          </div>
+          <input id="animEndHold" type="range" min="0" max="10" step="0.5" value="0">
+        </div>
+        <div class="anim-field">
           <div class="anim-field-head"><label for="animEasing" data-i18n="Průběh rychlosti">Průběh rychlosti</label></div>
           <div class="easing-row">
             <select id="animEasing" style="flex:1;margin-bottom:0">
@@ -1487,13 +1495,6 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
               <span class="anim-num"><input id="animStartNum" class="num-mini" type="number" min="0" max="10" step="0.5" value="0" aria-label="Prodleva startu"><span class="anim-unit">s</span></span>
             </div>
             <input id="animStart" type="range" min="0" max="10" step="0.5" value="0">
-          </div>
-          <div class="anim-field">
-            <div class="anim-field-head">
-              <label for="animEndHold" data-i18n="Pauza na konci">Pauza na konci</label>
-              <span class="anim-num"><input id="animEndHoldNum" class="num-mini" type="number" min="0" max="10" step="0.5" value="0" aria-label="Pauza na konci"><span class="anim-unit">s</span></span>
-            </div>
-            <input id="animEndHold" type="range" min="0" max="10" step="0.5" value="0">
           </div>
           <div class="anim-field">
             <div class="anim-field-head">
@@ -1538,15 +1539,15 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <div id="cameraKeyframesBox" style="display:none">
             <button type="button" class="btn btn-primary anim-play-wide" id="cameraAddKeyframeBtn" data-i18n="Přidat záběr">Přidat záběr</button>
             <div id="cameraKeyframeList" class="camera-kf-list"></div>
+            <div class="anim-field" id="cameraLiftField" title="Jak vysoko se kamera při přeletu mezi vzdálenými místy zvedne (oddálí). 100 % = automaticky podle vzdálenosti, 0 % = bez zdvihu.">
+              <div class="anim-field-head">
+                <label for="cameraLift" data-i18n="Výška zdvihu kamery">Výška zdvihu kamery</label>
+                <span class="anim-num"><input id="cameraLiftNum" class="num-mini" type="number" min="0" max="250" step="5" value="100" aria-label="Výška zdvihu kamery"><span class="anim-unit">%</span></span>
+              </div>
+              <input id="cameraLift" type="range" min="0" max="250" step="5" value="100">
+            </div>
             <details class="compact-details" id="cameraMoreDetails">
               <summary data-i18n="Další možnosti">Další možnosti</summary>
-              <div class="anim-field" title="Jak vysoko se kamera při přeletu mezi vzdálenými místy zvedne (oddálí). 100 % = automaticky podle vzdálenosti, 0 % = bez zdvihu.">
-                <div class="anim-field-head">
-                  <label for="cameraLift" data-i18n="Výška zdvihu kamery">Výška zdvihu kamery</label>
-                  <span class="anim-num"><input id="cameraLiftNum" class="num-mini" type="number" min="0" max="250" step="5" value="100" aria-label="Výška zdvihu kamery"><span class="anim-unit">%</span></span>
-                </div>
-                <input id="cameraLift" type="range" min="0" max="250" step="5" value="100">
-              </div>
               <button type="button" class="btn btn-sm btn-danger" id="cameraClearKeyframesBtn" data-i18n="Smazat vše">Smazat vše</button>
             </details>
           </div>
@@ -8586,7 +8587,7 @@ function serializeProjectSnapshot(){
       animSystemIcon: state.animSystemIcon || null,
       invertIcons: !!$('invertIcons')?.checked,
       wagonCount: parseInt($('pzWagonCount')?.value ?? '2', 10) || 0,
-      extraVehicles: pzExtraVehicles().map(v => ({type: v.type, reverse: !!v.reverse, delay: +v.delay || 0, crash: !!v.crash, crashFrac: v.crashFrac ?? null, crashLL: Array.isArray(v.crashLL) ? v.crashLL : null, crashLabel: v.crashLabel ?? null, speed: v.speed ?? null, color: v.color || null, label: v.label || ''})),
+      extraVehicles: pzExtraVehicles().map(v => ({type: v.type, reverse: !!v.reverse, delay: +v.delay || 0, gapLen: v.gapLen ?? null, crash: !!v.crash, crashFrac: v.crashFrac ?? null, crashLL: Array.isArray(v.crashLL) ? v.crashLL : null, crashLabel: v.crashLabel ?? null, speed: v.speed ?? null, color: v.color || null, label: v.label || ''})),
       mainVehLabel: ($('pzMainVehLabel')?.value || ''),
       routeHold: parseInt($('pzRouteHold')?.value ?? '60', 10),
       vehiclePalette: pzVehiclePalette(),
@@ -8706,7 +8707,7 @@ function applyBasicProjectSnapshot(snapshot){
   pzSetVehiclePalette(animation.vehiclePalette);
   if($('pzVehicleShadow')) $('pzVehicleShadow').checked = animation.vehicleShadow !== false;
   state.animIconData = state.animSystemIcon ? pzVehicleImage(state.animSystemIcon) : (animation.animIconData || null);
-  state.pzExtraVehicles = Array.isArray(animation.extraVehicles) ? animation.extraVehicles.filter(v => v && PZ_EXTRA_LABELS[v.type]).map(v => ({type: v.type, reverse: !!v.reverse, delay: Math.max(0, Math.min(0.9, +v.delay || 0)), crash: !!v.crash && !!v.reverse, ...(v.crashLabel != null ? {crashLabel: String(v.crashLabel).slice(0, 30)} : {}), ...(v.speed != null ? {speed: Math.max(0.2, Math.min(2, +v.speed))} : {}), ...(v.crashFrac != null ? {crashFrac: Math.max(0.02, Math.min(0.98, +v.crashFrac))} : {}), ...(Array.isArray(v.crashLL) && v.crashLL.length === 2 && v.crashLL.every(Number.isFinite) ? {crashLL: v.crashLL.slice()} : {}), color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : null, label: String(v.label || '').slice(0, 40)})) : [];
+  state.pzExtraVehicles = Array.isArray(animation.extraVehicles) ? animation.extraVehicles.filter(v => v && PZ_EXTRA_LABELS[v.type]).map(v => ({type: v.type, reverse: !!v.reverse, delay: Math.max(0, Math.min(0.9, +v.delay || 0)), ...(v.gapLen != null && isFinite(+v.gapLen) ? {gapLen: Math.max(0.5, Math.min(10, +v.gapLen))} : {}), crash: !!v.crash && !!v.reverse, ...(v.crashLabel != null ? {crashLabel: String(v.crashLabel).slice(0, 30)} : {}), ...(v.speed != null ? {speed: Math.max(0.2, Math.min(2, +v.speed))} : {}), ...(v.crashFrac != null ? {crashFrac: Math.max(0.02, Math.min(0.98, +v.crashFrac))} : {}), ...(Array.isArray(v.crashLL) && v.crashLL.length === 2 && v.crashLL.every(Number.isFinite) ? {crashLL: v.crashLL.slice()} : {}), color: /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : null, label: String(v.label || '').slice(0, 40)})) : [];
   if($('pzMainVehLabel')) $('pzMainVehLabel').value = String(animation.mainVehLabel || '').slice(0, 40);
   try{ pzRenderExtraList(); }catch(e){}
   if($('pzRouteHold')){ const h = Number.isFinite(+animation.routeHold) ? Math.max(0, Math.min(100, +animation.routeHold)) : 60; $('pzRouteHold').value = String(h); $('pzRouteHoldVal').textContent = h + ' %'; }
@@ -14592,6 +14593,11 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
   let crashCI = null; try{ crashCI = pzCrashInfo(); }catch(e){}
   if(extras.length && raw != null && state.routeCoords?.length > 1){
     const keep = {icon: state.animSystemIcon, route: state.routeCoords, size: state._pzSizeOverride, ov: state._pzColorOverride};
+    // pronásledovatelé (stejným směrem) jedou v koloně za hlavním vozidlem s odstupem v délkách
+    // vozidla — dojedou za něj, ne do stejného bodu (dřív při dojezdu leželi na ujíždějícím voze)
+    const total = cumulativeRouteLengths(keep.route).total, mainVp = pzVehicleProgress(raw);
+    let backKm = 0, aheadLen = 0;
+    try{ aheadLen = pzVehLenKm(mainVp); }catch(e){}
     state._pzExtraDraw = true;   // letadlo jako další vozidlo kreslí pzVehicleParts jedním dílem
     try{
       extras.forEach(v => {
@@ -14605,6 +14611,10 @@ function pzDrawAllVehicles(ctx, map, toOut, k){
         if(ci){
           if(raw < ci.t0) return;                            // ještě nevyjelo
           vp = ci.vpAt(raw);
+        } else if(!v.reverse){
+          let own = 0; try{ own = pzVehLenKm(mainVp); }catch(e){}
+          backKm += aheadLen + pzExtraGap(v) * own; aheadLen = own;
+          vp = Math.max(0, mainVp - (total > 0 ? backKm / total : 0));   // na startu stojí schované za bodem A
         } else {
           const d = Math.max(0, Math.min(0.9, +v.delay || 0)), e = Math.max(0, Math.min(1, (raw - d) / (1 - d)));
           if(raw < d) return;                                // ještě nevyjelo
@@ -14698,7 +14708,8 @@ function pzRenderExtraList(){
       <select class="pz-extra-dir" aria-label="${escapeHtml(t('Směr'))}"><option value="0"${v.reverse ? '' : ' selected'}>${escapeHtml(t('Stejným směrem'))}</option><option value="1"${v.reverse ? ' selected' : ''}>${escapeHtml(t('Proti směru'))}</option></select>
       <button type="button" class="btn btn-sm pz-extra-del" title="${escapeHtml(t('Odebrat'))}" aria-label="${escapeHtml(t('Odebrat'))}">×</button>
       ${v.crash && v.reverse ? `<label class="pz-extra-delay"><span>${escapeHtml(t('Místo střetu (% trasy)'))}</span> <span class="val">${Math.round(pzCrashFrac(v) * 100)} %</span>
-        <input type="range" class="pz-extra-delay-in" min="5" max="95" step="1" value="${Math.round(pzCrashFrac(v) * 100)}"></label>` : `<label class="pz-extra-delay"><span>${escapeHtml(t('Vyjede později'))}</span> <span class="val">${Math.round((+v.delay || 0) * 100)} %</span>
+        <input type="range" class="pz-extra-delay-in" min="5" max="95" step="1" value="${Math.round(pzCrashFrac(v) * 100)}"></label>` : !v.reverse ? `<label class="pz-extra-delay"><span>${escapeHtml(t('Odstup (délky aut)'))}</span> <span class="val">${String(pzExtraGap(v)).replace('.', ',')}×</span>
+        <input type="range" class="pz-extra-gap-in" min="0.5" max="10" step="0.5" value="${pzExtraGap(v)}"></label>` : `<label class="pz-extra-delay"><span>${escapeHtml(t('Zpoždění'))}</span> <span class="val">${Math.round((+v.delay || 0) * 100)} %</span>
         <input type="range" class="pz-extra-delay-in" min="0" max="90" step="1" value="${Math.round((+v.delay || 0) * 100)}"></label>`}
       <div class="pz-extra-more"><input type="color" class="pz-extra-color" value="${escapeHtml(v.color || '#ffffff')}" title="${escapeHtml(t('Barva vozidla'))}" aria-label="${escapeHtml(t('Barva vozidla'))}">
         <input type="text" class="pz-extra-label" maxlength="40" value="${escapeHtml(v.label || '')}" placeholder="${escapeHtml(t('Cedulka u vozidla'))}" aria-label="${escapeHtml(t('Cedulka u vozidla'))}"></div>
@@ -14715,8 +14726,8 @@ function pzInitExtraUi(){
     // typ jako hlavní vozidlo (u letecké trasy letadlo), směr stejný jako hlavní
     const ic = state.animSystemIcon || PZ_MODE_ICON[state.currentTransportMode];
     const main = PZ_EXTRA_LABELS[ic] ? ic : (/^plane/.test(state.currentTransportMode || '') ? 'plane' : 'car');
-    // stejným směrem vyjede o kus později (15 %, 30 %…), jinak by jelo přesně pod hlavním a nebylo vidět
-    pzExtraVehicles().push({type: main, reverse: false, delay: pzSameDirDelay()});
+    // stejným směrem jede v koloně za hlavním s odstupem 1 délky vozidla (nejede schované pod ním)
+    pzExtraVehicles().push({type: main, reverse: false, delay: 0, gapLen: 1});
     pzRenderExtraList(); pzExtraChanged();
   });
   box.addEventListener('change', e => {
@@ -14735,6 +14746,12 @@ function pzInitExtraUi(){
     if(e.target.classList.contains('pz-extra-label')){ const v = pzExtraVehicles()[+e.target.closest('.pz-extra-row').dataset.i]; if(v){ v.label = e.target.value; pzExtraChanged(); } return; }
     if(e.target.classList.contains('pz-extra-color')){ const v = pzExtraVehicles()[+e.target.closest('.pz-extra-row').dataset.i]; if(v){ v.color = e.target.value; pzExtraChanged(); } return; }
     if(e.target.classList.contains('pz-extra-crashlabel')){ const v = pzExtraVehicles()[+e.target.closest('.pz-extra-row').dataset.i]; if(v){ v.crashLabel = e.target.value; pzExtraChanged(); } return; }
+    if(e.target.classList.contains('pz-extra-gap-in')){
+      const row = e.target.closest('.pz-extra-row'), v = pzExtraVehicles()[+row.dataset.i]; if(!v) return;
+      v.gapLen = Math.max(0.5, Math.min(10, +e.target.value || 1));
+      row.querySelector('.pz-extra-delay .val').textContent = String(v.gapLen).replace('.', ',') + '×';
+      pzExtraChanged(); return;
+    }
     if(!e.target.classList.contains('pz-extra-delay-in')) return;
     const row = e.target.closest('.pz-extra-row'), v = pzExtraVehicles()[+row.dataset.i]; if(!v) return;
     // u srážky posuvník posouvá místo střetu (podíl trasy od A), jinak zpoždění výjezdu
@@ -14770,6 +14787,21 @@ function pzProjectOnRoute(ll, route = state.routeCoords){
 const PZ_CRASH_MAX_KM = 3;   // dál od trasy místo srážky neleží
 // Podíl trasy od A, kde se vozidla srazí (bez zadaného místa z „Vyjede později").
 function pzCrashFrac(v){ return Math.max(0.02, Math.min(0.98, v.crashFrac != null ? +v.crashFrac : 1 / (2 - Math.max(0, Math.min(0.9, +v.delay || 0))))); }
+// Odstup pronásledovatele stejným směrem v délkách vozidla (0,5–10). Starší projekty měly
+// „Vyjede později" (podíl trasy) — převede se: 15 % ≈ 1,5 délky.
+function pzExtraGap(v){
+  const g = v?.gapLen != null ? +v.gapLen : (+v?.delay > 0 ? Math.round(+v.delay * 20) / 2 : 1);
+  return Math.max(0.5, Math.min(10, isFinite(g) ? g : 1));
+}
+// Délka vozidla state.animSystemIcon (i se soupravou) v km na trase state.routeCoords při
+// současném přiblížení — vozidla mají na obrazovce stálou velikost (stejně jako pzRailPose).
+function pzVehLenKm(vp){
+  const m = state.map, route = state.routeCoords; if(!m || !(route?.length > 1)) return 0;
+  const lead = pointAtProgress(route, Math.max(0, Math.min(1, vp || 0))) || route[0];
+  const U = pzVehBaseSizePx() * ((state._exporting && state._exportMarkerScale) || 1) * 40075.016686 * Math.cos(lead[1] * Math.PI / 180) / (512 * Math.pow(2, m.getZoom()));
+  const spec = (pzIsRail(state.animSystemIcon) && pzConsistSpec()) || {rear:0.5, units:[]};
+  return spec.units.reduce((a, u) => a + u.front + u.back, spec.rear + 0.5) * U;
+}
 // Zpoždění dalšího vozidla stejným směrem: 15 %, 30 %… (ať nejede schované pod hlavním).
 function pzSameDirDelay(){ return Math.min(0.9, 0.15 * (pzExtraVehicles().filter(x => x && !x.reverse).length + 1)); }
 // Místo srážky drží zeměpisný bod (crashLL): po prohození A↔B nebo nové trase se podíl
@@ -15385,7 +15417,8 @@ function refreshAnimatedMarkerPreview(){
   // bez trasy (např. krok zpět před „Najít trasu") nesmí na mapě zůstat objekt ani souprava
   if(!state.routeCoords.length){ try{ removeAnimMarker(); }catch(e){} try{ pzUpdateConsist(null); }catch(e){} return; }
   if(!$('animDot')?.checked){ removeAnimMarker(); return; }
-  setAnimProgress(getCurrentAnimationProgress());
+  // úprava trasy / ikony kamerou nehýbe — na záběr přeletu ji nastaví přehrávání, posuvník, export a 👁
+  setAnimProgress(getCurrentAnimationProgress(), {camera: false});
 }
 
 // Marker alignment shared by the live preview AND the export, so the rendered
@@ -15789,8 +15822,8 @@ function normalizeCameraAnim(cam){
   let kfs = [], arc = cam.arc !== false;
   if(cam.mode === 'keyframes'){
     kfs = (Array.isArray(cam.keyframes) ? cam.keyframes : []).filter(k => okView(k?.view))
-      .map((k, i) => ({t:+k.t || 0, view:fix(k.view), i, name: typeof k.name === 'string' && k.name ? k.name.slice(0, 40) : null})).sort((x, y) => (x.t - y.t) || (x.i - y.i))
-      .map(k => ({t:k.t, view:k.view, ...(k.name ? {name:k.name} : {})}));
+      .map((k, i) => ({t:+k.t || 0, view:fix(k.view), i, name: typeof k.name === 'string' && k.name ? k.name.slice(0, 40) : null, man: !!k.tManual})).sort((x, y) => (x.t - y.t) || (x.i - y.i))
+      .map(k => ({t:k.t, view:k.view, ...(k.name ? {name:k.name} : {}), ...(k.man ? {tManual:true} : {})}));
   } else if(okView(cam.start) && okView(cam.end)){
     kfs = [{t:0, view:fix(cam.start)}, {t:1, view:fix(cam.end)}];
     arc = cam.mode !== 'zoom';
@@ -15798,7 +15831,7 @@ function normalizeCameraAnim(cam){
     kfs = [{t:0, view:fix(okView(cam.start) ? cam.start : cam.end)}];   // rozdělaný přelet — záběr neztratit
     arc = cam.mode !== 'zoom';
   }
-  kfs.forEach((kf, i) => { kf.t = kfs.length <= 1 ? 0 : i / (kfs.length - 1); });
+  kfs.forEach((kf, i) => { if(!kf.tManual) kf.t = kfs.length <= 1 ? 0 : i / (kfs.length - 1); else kf.t = Math.max(0, Math.min(1, kf.t)); });
   let lift = isFinite(+cam.lift) && cam.lift !== null && cam.lift !== '' ? Math.max(0, Math.min(2.5, +cam.lift)) : 1;
   if(!arc) lift = 0;
   return {enabled: !!cam.enabled, mode:'keyframes', start:null, end:null, keyframes:kfs, arc: lift > 0, lift, space: cam.space === 'frame' ? 'frame' : null};
@@ -15826,7 +15859,9 @@ function pzCamShift(v, g, dir){
 }
 function pzFrameToMapView(v){
   const g = pzCamFrameGeom(); if(!g || !v) return v;
-  let zMin = 0; try{ zMin = state.map.getMinZoom() || 0; }catch(e){}
+  // na glóbu neořezávat podle getMinZoom(): MapLibre tam minZoom koriguje šířkou (log2(1/cos lat)),
+  // takže oddálená Země pod minZoom jde; ořez ji ukládal/ukazoval přiblíženou (1,65 místo 0,87)
+  let zMin = 0; try{ if(!isGlobeProjectionOn()) zMin = state.map.getMinZoom() || 0; }catch(e){}
   try{ const o = pzCamShift(v, g, 1); o.zoom = Math.max(zMin, Math.min(22, v.zoom + g.dz)); return o; }catch(e){ return v; }
 }
 function pzMapToFrameView(v){
@@ -15855,7 +15890,7 @@ function pzCamViewport(){
 function pzCamTimeline(){
   const kfs = state.cameraAnim?.keyframes || [];
   const lift = pzCamLift(), V = pzCamViewport();
-  const key = JSON.stringify([kfs.map(k => k.view), lift, V]);
+  const key = JSON.stringify([kfs.map(k => k.view), lift, V, kfs.map(k => k.tManual ? +k.t : null)]);
   if(_pzCamTl.key === key && _pzCamTl.tl) return _pzCamTl.tl;
   const segs = [];
   for(let i = 0; i + 1 < kfs.length; i++){
@@ -15881,21 +15916,37 @@ function pzCamTimeline(){
 // plynulá křivka s rozjezdem a dojezdem a stálou rychlostí přes prostřední záběry) a pauza
 // (dva stejné záběry za sebou = kamera stojí). Pauza trvá jako průměrný pohybový úsek,
 // takže „3× stejný záběr a pak nájezd" drží kameru stát jako dřív.
+// Ručně zadaný čas záběru (kf.tManual) je kotva: časová osa se rozdělí na úseky mezi kotvami
+// a uvnitř každého se čas dělí stejně jako dřív. Před prvním / za posledním záběrem kamera stojí.
+function pzCamAnchors(){
+  const kfs = state.cameraAnim?.keyframes || [], n = kfs.length, out = [];
+  let prev = 0;
+  kfs.forEach((k, i) => {
+    if(!(i === 0 || i === n - 1 || k.tManual)) return;
+    let tt = k.tManual && isFinite(+k.t) ? Math.max(0, Math.min(1, +k.t)) : (i === 0 ? 0 : 1);
+    tt = Math.max(prev, tt); prev = tt; out.push([i, tt]);
+  });
+  return out;
+}
 function pzCamGroups(){
   const tl = pzCamTimeline();
   if(tl._groups) return tl._groups;
   const moving = tl.segs.filter(g => g.L > 1e-4);
   const avg = moving.length ? moving.reduce((a, g) => a + g.L, 0) / moving.length : 1;
-  const groups = [];
-  tl.segs.forEach((g, i) => {
-    const mv = g.L > 1e-4, last = groups[groups.length - 1];
-    if(mv && last && last.move) { last.segs.push(i); last.L += g.L; }
-    else groups.push({move: mv, segs: [i], L: mv ? g.L : 0});
-  });
-  // váha v čase: pohyb podle délky, pauza jako průměrný úsek
-  groups.forEach(G => { G.W = G.move ? G.L : avg * G.segs.length; });
-  const W = groups.reduce((a, G) => a + G.W, 0) || 1;
-  let acc = 0; groups.forEach(G => { G.t0 = acc / W; acc += G.W; G.t1 = acc / W; });
+  const groups = [], an = pzCamAnchors();
+  for(let a = 0; a + 1 < an.length; a++){
+    const [i0, T0] = an[a], [i1, T1] = an[a + 1], gs = [];
+    for(let i = i0; i < i1; i++){
+      const g = tl.segs[i]; if(!g) continue;
+      const mv = g.L > 1e-4, last = gs[gs.length - 1];
+      if(mv && last && last.move) { last.segs.push(i); last.L += g.L; }
+      else gs.push({move: mv, segs: [i], L: mv ? g.L : 0});
+    }
+    // váha v čase: pohyb podle délky, pauza jako průměrný úsek
+    gs.forEach(G => { G.W = G.move ? G.L : avg * G.segs.length; });
+    const W = gs.reduce((s, G) => s + G.W, 0) || 1;
+    let acc = 0; gs.forEach(G => { G.t0 = T0 + (T1 - T0) * acc / W; acc += G.W; G.t1 = T0 + (T1 - T0) * acc / W; groups.push(G); });
+  }
   return (tl._groups = groups);
 }
 function pzCamSegAt(g, Lg){
@@ -15921,7 +15972,7 @@ function getCameraStateAtProgress(t){
 function pzCamKeyframeTimes(){
   const kfs = state.cameraAnim?.keyframes || [], n = kfs.length;
   if(n < 2) return kfs.map(() => 0);
-  const tl = pzCamTimeline(), groups = pzCamGroups(), out = [0];
+  const tl = pzCamTimeline(), groups = pzCamGroups(), an = pzCamAnchors(), out = [an[0][1]];
   groups.forEach(G => {
     let acc = 0;
     G.segs.forEach((si, k) => {
@@ -15933,7 +15984,7 @@ function pzCamKeyframeTimes(){
       out.push(G.t0 + (G.t1 - G.t0) * (k === G.segs.length - 1 ? 1 : (lo + hi) / 2));
     });
   });
-  out[out.length - 1] = 1;
+  an.forEach(([i, tt]) => { out[i] = tt; });   // kotvy přesně (i ty v půli pohybu)
   return out;
 }
 // Při 0 % zdvihu kamera mezi vzdálenými místy jen sviští — poradit, ať zdvih přidá.
@@ -15952,7 +16003,33 @@ function pzCamNoLiftWarn(){
   }
   if(worst <= 8) return false;
   setStatus(t('Bez zdvihu kamera přeletí {0} obrazovek — zvyš Výšku zdvihu.', Math.round(worst)));
+  // ovladač ukázat a krátce zvýraznit, ať ho grafik nemusí hledat
+  try{ const f = $('cameraLiftField'); if(f){ f.hidden = false; f.scrollIntoView({block:'nearest'}); const r = $('cameraLift'); r.classList.remove('pz-flash'); void r.offsetWidth; r.classList.add('pz-flash'); } }catch(e){}
   return true;
+}
+// Uplatní se zdvih aspoň na jednom úseku? (u malého přerámování — cíl skoro v záběru — se
+// kamera nezvedá, viz ss v pzCamFlyView). Vrací největší podíl zdvihu 0–1.
+function pzCamLiftEffect(){
+  const kfs = state.cameraAnim?.keyframes || [], V = pzCamViewport();
+  let best = 0;
+  for(let i = 0; i + 1 < kfs.length; i++){
+    const s = kfs[i].view, e = kfs[i + 1].view;
+    try{
+      const a = maplibregl.MercatorCoordinate.fromLngLat({lng: s.center[0], lat: s.center[1]}), b = maplibregl.MercatorCoordinate.fromLngLat({lng: e.center[0], lat: e.center[1]});
+      let dx = b.x - a.x; if(dx > 0.5) dx -= 1; else if(dx < -0.5) dx += 1;
+      const u1 = Math.hypot(dx, b.y - a.y) * 512, w = Math.max(V / Math.pow(2, s.zoom), V / Math.pow(2, e.zoom));
+      best = Math.max(best, Math.max(0, Math.min(1, (u1 / w - 0.5) / 1.5)));
+    }catch(err){}
+  }
+  return best;
+}
+// Posuvník zdvihu: vidět jen s aspoň dvěma záběry, ztlumený, když se zdvih nikde neuplatní.
+function pzSyncCamLiftField(){
+  const n = state.cameraAnim?.keyframes?.length || 0, f = $('cameraLiftField'); if(!f) return;
+  f.hidden = n < 2;
+  const inert = n >= 2 && pzCamLiftEffect() <= 0.001;
+  ['cameraLift', 'cameraLiftNum'].forEach(id => $(id)?.classList.toggle('is-inert', inert));
+  f.dataset.inert = inert ? '1' : '';
 }
 // Výška zdvihu kamery (0 = bez oddálení, 1 = automaticky podle vzdálenosti, až 2,5).
 function pzCamLift(){
@@ -16091,14 +16168,33 @@ function redistributeKeyframeTimes(){
 function pzAnimUndoSnap(){ try{ window.__pzPushUndo?.(); }catch(e){} }
 // Název místa pro řádek záběru (asynchronně, z reverzního geokódování; chyba = bez názvu).
 const _pzKfNaming = new WeakSet();
+// Krátký název: první z dvojjazyčných variant („Saint-Josse… - Sint-Joost…"), ořez na celé slovo.
+function pzKfNameCut(nm, max = 28){
+  nm = String(nm || '').split(/\s+[-–\/]\s+|,/)[0].trim();
+  if(nm.length <= max) return nm;
+  const cut = nm.slice(0, max), sp = cut.search(/[\s-][^\s-]*$/);
+  return (sp > max * 0.5 ? cut.slice(0, sp) : cut).replace(/[\s-]+$/, '') + '…';
+}
+// Hledané místo (kroužek z Hledat) v záběru → název podle něj (Brusel, ne čtvrť Saint-Josse).
+function pzKfSearchName(){
+  try{
+    const mk = state.placeSearchMarker, m = state.map; if(!mk || !m) return '';
+    const ll = mk.getLngLat(), p = m.project(ll), c = m.getCanvas(), w = c.clientWidth, h = c.clientHeight;
+    if(!(p.x > w * 0.15 && p.x < w * 0.85 && p.y > h * 0.15 && p.y < h * 0.85)) return '';
+    return pzKfNameCut($('placeSearchInput')?.value || '');
+  }catch(e){ return ''; }
+}
 async function pzNameKeyframe(kf){
   if(!kf?.view || kf.name || _pzKfNaming.has(kf)) return;
   _pzKfNaming.add(kf);   // každý záběr se dohledává jen jednou
   const z = kf.view.zoom, c = kf.view.center;
+  // oddálené záběry: celý svět / Evropa (dřív podle státu ve středu — „Rusko", „Česko")
+  if(z < 3){ kf.name = t('Svět'); renderCameraKeyframeList(); return; }
+  if(z < 4.5 && c[0] > -25 && c[0] < 45 && c[1] > 34 && c[1] < 72){ kf.name = t('Evropa'); renderCameraKeyframeList(); return; }
   try{
     const it = await reverseGeocode(c, z < 4.5 ? 3 : z < 7 ? 5 : 10), a = it?.address || {};
-    const nm = String(a.city || a.town || a.village || a.municipality || it?.name || a.state || a.country || '').trim();
-    if(nm && state.cameraAnim.keyframes.includes(kf) && kf.view.center === c){ kf.name = nm.slice(0, 40); renderCameraKeyframeList(); }
+    const nm = pzKfNameCut(a.city || a.town || a.village || a.municipality || it?.name || a.state || a.country || '');
+    if(nm && state.cameraAnim.keyframes.includes(kf) && kf.view.center === c && !kf.name){ kf.name = nm; renderCameraKeyframeList(); }
   }catch(e){}
 }
 // Shodný záběr s posledním (dvojklik na „Přidat záběr") — kamera by na místě jen stála.
@@ -16117,7 +16213,8 @@ function addCameraKeyframe(){
   pzAnimUndoSnap();
   if(!state.cameraAnim.keyframes.length) state.cameraAnim.space = 'frame';   // nové přelety ve výřezu exportu
   if(state.cameraAnim.space === 'frame') v = pzMapToFrameView(v);
-  const kf = { t: 0, view: v };
+  const kf = { t: 0, view: v }, sn = v.zoom >= 4.5 ? pzKfSearchName() : '';   // u přehledu Evropy/světa ne název hledané obce
+  if(sn) kf.name = sn;
   state.cameraAnim.keyframes.push(kf);
   redistributeKeyframeTimes();
   renderCameraKeyframeList();
@@ -16133,6 +16230,7 @@ function updateCameraKeyframe(index){
   pzAnimUndoSnap();
   if(state.cameraAnim.space === 'frame') v = pzMapToFrameView(v);
   kf.view = v; delete kf.name; _pzKfNaming.delete(kf);
+  { const sn = v.zoom >= 4.5 ? pzKfSearchName() : ''; if(sn) kf.name = sn; }
   redistributeKeyframeTimes();
   state._camKfSel = index;
   renderCameraKeyframeList();
@@ -16160,6 +16258,7 @@ function moveCameraKeyframe(index, delta){
   if(index < 0 || to < 0 || index >= kfs.length || to >= kfs.length) return;
   pzAnimUndoSnap();
   kfs.splice(to, 0, kfs.splice(index, 1)[0]); state._camKfSel = null;
+  kfs.forEach(k => { delete k.tManual; });   // po přeřazení časy znovu podle délky úseků
   redistributeKeyframeTimes();
   renderCameraKeyframeList();
   if(!state.animPlaying) refreshAnimatedMarkerPreview();
@@ -16172,6 +16271,42 @@ function clearCameraKeyframes(){
   updatePlayerUi();
   setStatus(t('Záběry kamery smazány.'));
 }
+// Ruční čas záběru v sekundách (mezi sousedními ručními časy); prázdné = zase automaticky.
+function setCameraKeyframeTime(index, val){
+  const kfs = state.cameraAnim.keyframes, kf = kfs[index]; if(!kf) return;
+  const {delay, dur} = animTiming(), raw = String(val ?? '').replace(',', '.').trim(), sec = parseFloat(raw);
+  if(raw !== '' && !isFinite(sec)){ renderCameraKeyframeList(); return; }
+  pzAnimUndoSnap();
+  if(raw === ''){ delete kf.tManual; setStatus(t('Čas záběru {0} se počítá automaticky.', index + 1)); }
+  else {
+    let lo = 0, hi = 1;
+    kfs.forEach((k, j) => { if(!k.tManual || j === index) return; if(j < index) lo = Math.max(lo, +k.t || 0); else hi = Math.min(hi, +k.t || 0); });
+    kf.t = Math.max(lo, Math.min(hi, (sec - delay) / Math.max(0.001, dur))); kf.tManual = true;
+    setStatus(t('Záběr {0} v čase {1} s.', index + 1, (delay + kf.t * dur).toFixed(1)));
+  }
+  redistributeKeyframeTimes();
+  renderCameraKeyframeList();
+}
+// Přejmenování záběru dvojklikem (Enter / opuštění pole uloží, Esc zruší, prázdné = název místa).
+function pzRenameKeyframe(index, label){
+  const kf = state.cameraAnim.keyframes[index]; if(!kf || !label) return;
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.maxLength = 40; inp.value = kf.name || ''; inp.className = 'camera-kf-name';
+  inp.setAttribute('aria-label', t('Název záběru'));
+  let done = false;
+  const finish = ok => {
+    if(done) return; done = true;
+    const v = inp.value.trim().slice(0, 40);
+    if(ok && v !== (kf.name || '')){
+      pzAnimUndoSnap();
+      if(v) kf.name = v; else { delete kf.name; _pzKfNaming.delete(kf); pzNameKeyframe(kf); }
+    }
+    renderCameraKeyframeList();
+  };
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if(e.key === 'Enter'){ e.preventDefault(); finish(true); } else if(e.key === 'Escape'){ e.preventDefault(); finish(false); } });
+  inp.addEventListener('blur', () => finish(true));
+  label.replaceWith(inp); inp.focus(); inp.select();
+}
 function renderCameraKeyframeList(){
   const list = $('cameraKeyframeList'); if(!list) return;
   const kfs = state.cameraAnim.keyframes || [];
@@ -16179,6 +16314,7 @@ function renderCameraKeyframeList(){
   redistributeKeyframeTimes();   // časy podle délky úseků, zdvihu a průběhu rychlosti
   list.innerHTML = '';
   const clr = $('cameraClearKeyframesBtn'); if(clr) clr.disabled = !kfs.length;
+  try{ pzSyncCamLiftField(); }catch(e){}
   const mkBtn = (cls, html, title, fn, disabled) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'btn btn-sm ' + cls; b.innerHTML = html; b.title = title; b.setAttribute('aria-label', title);
@@ -16192,12 +16328,20 @@ function renderCameraKeyframeList(){
     const no = document.createElement('span'); no.className = 'wp-badge'; no.textContent = String(i + 1);
     const label = document.createElement('span');
     label.className = 'camera-kf-info';
-    // místo · čas, kdy kamera záběrem prochází (včetně prodlevy startu); klik = najet na záběr
-    const time = `${(delay + kf.t * dur).toFixed(1)} s`;
-    label.textContent = (kf.name ? `${kf.name} · ${time}` : time) + (kf.view.pitch >= 0.5 ? ` · ${kf.view.pitch.toFixed(0)}°` : '');
-    label.title = t('Najet na záběr');
+    // místo (· náklon); klik = najet na záběr, dvojklik = přejmenovat
+    label.textContent = (kf.name || t('Záběr {0}', i + 1)) + (kf.view.pitch >= 0.5 ? ` · ${kf.view.pitch.toFixed(0)}°` : '');
+    label.title = t('Najet na záběr') + ' · ' + t('dvojklik = přejmenovat');
     label.addEventListener('click', () => previewCameraKeyframe(i));
-    row.appendChild(no); row.appendChild(label);
+    label.addEventListener('dblclick', e => { e.preventDefault(); pzRenameKeyframe(i, label); });
+    // čas, kdy kamera záběrem prochází (včetně prodlevy startu) — jde přepsat; prázdné = automaticky
+    const time = document.createElement('input');
+    time.type = 'number'; time.step = '0.1'; time.min = String(+delay.toFixed(1)); time.max = String(+(delay + dur).toFixed(1));
+    time.className = 'num-mini camera-kf-time' + (kf.tManual ? ' is-manual' : '');
+    time.value = (delay + kf.t * dur).toFixed(1);
+    time.title = t('Čas záběru (s) — prázdné pole = automaticky'); time.setAttribute('aria-label', t('Čas záběru (s)'));
+    time.addEventListener('change', () => setCameraKeyframeTime(i, time.value));
+    const tw = document.createElement('span'); tw.className = 'camera-kf-tw'; tw.appendChild(time); tw.appendChild(Object.assign(document.createElement('span'), {className: 'anim-unit', textContent: 's'}));
+    row.appendChild(no); row.appendChild(label); row.appendChild(tw);
     row.appendChild(mkBtn('kf-up', '↑', t('Posunout výš'), () => moveCameraKeyframe(i, -1), i === 0));
     row.appendChild(mkBtn('kf-down', '↓', t('Posunout níž'), () => moveCameraKeyframe(i, 1), i === kfs.length - 1));
     row.appendChild(mkBtn('kf-view', '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -16208,9 +16352,10 @@ function renderCameraKeyframeList(){
   });
 }
 
-function setAnimProgress(progress){
+function setAnimProgress(progress, opts){
   // Camera animation runs independently — it works even without a route (news flyover/zoom).
-  const cameraDriven = applyCameraAnimProgress(progress);
+  // opts.camera === false: jen objekt na trase, kamera zůstane, kde ji grafik nechal.
+  const cameraDriven = opts?.camera === false ? cameraAnimReady() : applyCameraAnimProgress(progress);
   if(!state.routeCoords.length){ updateAnimReadout(); return; }
   // The object's distance along the route is eased; the camera timeline above stays linear.
   const vp = pzVehicleProgress(pzCrashRaw(applyAnimEasing(progress)));   // příď (u vozidel z obrázků až za cíl)
@@ -19597,7 +19742,10 @@ function bindUI(){
     if(lift === before) return;
     renderCameraKeyframeList();
     if(!state.animPlaying) refreshAnimatedMarkerPreview();
-    pzCamNoLiftWarn();
+    // potvrzení nové výšky (dřív zůstalo viset varování „Bez zdvihu…“ i po zvýšení)
+    if(!pzCamNoLiftWarn()) setStatus((state.cameraAnim.keyframes.length >= 2 && pzCamLiftEffect() <= 0.001)
+      ? t('Výška zdvihu {0} % — u těchto záběrů se zdvih neuplatní (cíl je už v prvním záběru).', Math.round(lift * 100))
+      : t('Výška zdvihu {0} %.', Math.round(lift * 100)));
   };
   // capture: před párovým posluchačem, který pole přepíše hodnotou posuvníku
   $('cameraLift')?.addEventListener('change', e => pzOnLift(e.target.value), true);
@@ -20164,7 +20312,18 @@ Object.assign(I18N, {
   "+ Přidat vozidlo": {cs:"+ Přidat vozidlo",sk:"+ Pridať vozidlo",bg:"+ Добави превозно средство",hr:"+ Dodaj vozilo",ro:"+ Adaugă vehicul",en:"+ Add vehicle"},
   "Stejným směrem": {cs:"Stejným směrem",sk:"Rovnakým smerom",bg:"В същата посока",hr:"Istim smjerom",ro:"În aceeași direcție",en:"Same direction"},
   "Proti směru": {cs:"Proti směru",sk:"Proti smeru",bg:"В обратна посока",hr:"Suprotnim smjerom",ro:"În sens opus",en:"Opposite direction"},
+  "Záběr {0}": {cs:"Záběr {0}",sk:"Záber {0}",bg:"Кадър {0}",hr:"Kadar {0}",ro:"Cadrul {0}",en:"Shot {0}"},
+  "dvojklik = přejmenovat": {cs:"dvojklik = přejmenovat",sk:"dvojklik = premenovať",bg:"двоен клик = преименуване",hr:"dvoklik = preimenuj",ro:"dublu clic = redenumire",en:"double-click = rename"},
+  "Název záběru": {cs:"Název záběru",sk:"Názov záberu",bg:"Име на кадъра",hr:"Naziv kadra",ro:"Numele cadrului",en:"Shot name"},
+  "Čas záběru (s)": {cs:"Čas záběru (s)",sk:"Čas záberu (s)",bg:"Време на кадъра (s)",hr:"Vrijeme kadra (s)",ro:"Timpul cadrului (s)",en:"Shot time (s)"},
+  "Čas záběru (s) — prázdné pole = automaticky": {cs:"Čas záběru (s) — prázdné pole = automaticky",sk:"Čas záberu (s) — prázdne pole = automaticky",bg:"Време на кадъра (s) — празно поле = автоматично",hr:"Vrijeme kadra (s) — prazno polje = automatski",ro:"Timpul cadrului (s) — câmp gol = automat",en:"Shot time (s) — empty field = automatic"},
+  "Čas záběru {0} se počítá automaticky.": {cs:"Čas záběru {0} se počítá automaticky.",sk:"Čas záberu {0} sa počíta automaticky.",bg:"Времето на кадър {0} се изчислява автоматично.",hr:"Vrijeme kadra {0} računa se automatski.",ro:"Timpul cadrului {0} se calculează automat.",en:"Shot {0} time is calculated automatically."},
+  "Záběr {0} v čase {1} s.": {cs:"Záběr {0} v čase {1} s.",sk:"Záber {0} v čase {1} s.",bg:"Кадър {0} в {1} s.",hr:"Kadar {0} u {1} s.",ro:"Cadrul {0} la {1} s.",en:"Shot {0} at {1} s."},
   "Vyjede později": {cs:"Vyjede později",sk:"Vyrazí neskôr",bg:"Тръгва по-късно",hr:"Kreće kasnije",ro:"Pornește mai târziu",en:"Starts later"},
+  "Výška zdvihu {0} %.": {cs:"Výška zdvihu {0} %.",sk:"Výška zdvihu {0} %.",bg:"Височина на издигане {0} %.",hr:"Visina podizanja {0} %.",ro:"Înălțimea ridicării {0} %.",en:"Lift height {0} %."},
+  "Výška zdvihu {0} % — u těchto záběrů se zdvih neuplatní (cíl je už v prvním záběru).": {cs:"Výška zdvihu {0} % — u těchto záběrů se zdvih neuplatní (cíl je už v prvním záběru).",sk:"Výška zdvihu {0} % — pri týchto záberoch sa zdvih neuplatní (cieľ je už v prvom zábere).",bg:"Височина на издигане {0} % — при тези кадри издигането няма ефект (целта е вече в първия кадър).",hr:"Visina podizanja {0} % — kod ovih kadrova podizanje nema učinka (cilj je već u prvom kadru).",ro:"Înălțimea ridicării {0} % — la aceste cadre ridicarea nu are efect (ținta e deja în primul cadru).",en:"Lift height {0} % — the lift has no effect for these shots (the target is already in the first shot)."},
+  "Zpoždění": {cs:"Zpoždění",sk:"Oneskorenie",bg:"Закъснение",hr:"Kašnjenje",ro:"Întârziere",en:"Delay"},
+  "Odstup (délky aut)": {cs:"Odstup (délky aut)",sk:"Odstup (dĺžky áut)",bg:"Дистанция (дължини на коли)",hr:"Razmak (duljine vozila)",ro:"Distanță (lungimi de mașină)",en:"Gap (car lengths)"},
   "Místo střetu (% trasy)": {cs:"Místo střetu (% trasy)",sk:"Miesto stretu (% trasy)",bg:"Място на удара (% от маршрута)",hr:"Mjesto sudara (% rute)",ro:"Locul impactului (% din traseu)",en:"Collision point (% of route)"},
   "Text u srážky": {cs:"Text u srážky",sk:"Text pri zrážke",bg:"Текст при сблъсъка",hr:"Tekst kod sudara",ro:"Text la coliziune",en:"Collision label"},
   "bez cedulky": {cs:"bez cedulky",sk:"bez štítku",bg:"без табелка",hr:"bez oznake",ro:"fără etichetă",en:"no label"},
@@ -22551,7 +22710,7 @@ function pzColorFromName(v){
     get state(){ return state; }};
   // animace (tests/23_animation.test.js)
   Object.assign(window.__pzFns, {pauseAnimation, seekAnimationToTime, setCameraUiMode, getCameraUiMode, cameraAnimReady,
-    getCameraStateAtProgress, normalizeCameraAnim, animTiming, applyAnimEasing});
+    getCameraStateAtProgress, normalizeCameraAnim, animTiming, applyAnimEasing, pzCamKeyframeTimes, setCameraKeyframeTime, pzFrameToMapView, pzMapToFrameView, pzCamLiftEffect, pzVehLenKm, pzExtraGap, pzKfNameCut});
   // vozidla a srážky (tests/16_vehicles.test.js)
   Object.assign(window.__pzFns, {pzCrashInfo, pzProjectOnRoute, pointAtProgress});
   window.TNMAP = {
@@ -23953,6 +24112,15 @@ html[data-ui="light"] .nav-mini-danger{color:#c4232d;border-color:rgba(196,35,45
 .tab-pane[data-pane="animace"] .camera-kf-row{gap:5px;padding:5px 6px}
 .tab-pane[data-pane="animace"] .camera-kf-info{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px;color:var(--tx1);font-variant-numeric:tabular-nums;padding-left:3px}
 .tab-pane[data-pane="animace"] .camera-kf-row .btn{padding:0;width:26px;height:24px;flex:0 0 26px;font-size:13px;line-height:1}
+.camera-kf-tw{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.camera-kf-tw .camera-kf-time{width:46px;height:24px;padding:0 3px;font-size:11.5px;text-align:right;font-variant-numeric:tabular-nums}
+.camera-kf-time.is-manual{font-weight:800;border-color:var(--accent,#48cfa5)}
+.camera-kf-tw .anim-unit{font-size:11px;color:var(--tx2,inherit)}
+.camera-kf-name{flex:1;min-width:0;height:24px;font-size:11.5px;padding:0 4px}
+#cameraLift.is-inert,#cameraLiftNum.is-inert{opacity:.45}
+#cameraLiftField[hidden]{display:none}
+.pz-flash{animation:pzFlash 1.4s ease-out 1}
+@keyframes pzFlash{0%,40%{box-shadow:0 0 0 3px var(--accent,#48cfa5)}100%{box-shadow:0 0 0 0 transparent}}
 .tab-pane[data-pane="animace"] .camera-kf-row .btn:disabled{opacity:.3;cursor:default}
 .tab-pane[data-pane="animace"] .camera-kf-info{cursor:pointer}
 .tab-pane[data-pane="animace"] .camera-kf-info:hover{text-decoration:underline}
