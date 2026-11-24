@@ -36,6 +36,7 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 | 22 route | Trasa: klik/psaní/tažení A a B, prohození, zastávky, vlastní kreslená trasa, 10 druhů dopravy, chybové stavy, délka a doba, „Předkreslit celou trasu“ v náhledu i exportu PNG, krok zpět po každé akci (geokódování i OSRM podvržené) |
 | 28 style_layers | Styl a mapové vrstvy: preset se použije a označí („upraveno“ po ruční změně), přepnutí podkladu zachová scénu, na satelitu zmizí volby bez účinku, obarvený stát je v seznamu i v exportu PNG, uzavírka přežije přepnutí podkladu a krok zpět |
 | 32 kraje | Kraje ČR: názvy krajů jak je píšou reportéři (MSK, Vysočina, bez diakritiky, v pádech), Obarvit / Obrys v panelu, paleta po kliknutí do kraje, ostatní kraje, názvy krajů, krok zpět, uložení a načtení projektu, nástroj colorRegion (zadání reportérů), datová škála `pzKraje.colorByValue`, kraj v exportu PNG, kraje nad výplní států na Politické mapě |
+| 33 datova_mapa | Datová mapa: „Česko: 26,6 / Slovensko: 43,5" i řádky z Excelu, česká čísla a jednotky, státy / kraje / města (tečka + číslo, neznámé město ohlásí), pásma s kulatými hranicemi i vlastní, škály TN, čísla jen u vybraných (i z asistenta „ČR, Německa"), čísla u měst se nepřekrývají, legenda v bezpečné zóně a přetažení do rohu, krok zpět, projekt, clearScene, barvy legendy a území v exportu PNG |
 | 20 api_d1 | serverové API nad náhradní D1 (node:sqlite): token, ochrana proti hromadnému smazání, historie verzí a obnova, statistika |
 | 90 batch_export (pomalý) | hromadný export 16:9 + 9:16 |
 

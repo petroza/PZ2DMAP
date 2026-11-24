@@ -79,3 +79,18 @@ coordinates rounded to 4 decimals (~320 kB). Whenever a region is coloured or
 outlined, the app appends „ČÚZK" to the map-source watermark, which is also
 burnt into PNG and video exports. The file is fetched the first time regions
 are used (Scéna › Kraje ČR or the `colorRegion` assistant tool).
+
+## Czech towns (data map)
+
+| file | contents | source |
+|---|---|---|
+| `assets/mesta_cz.json` | 610 Czech municipalities with the status *město*, *statutární město* or *hlavní město* (`[name, lng, lat, okres]`) | ČÚZK, RÚIAN – ArcGIS service `ags.cuzk.cz/arcgis/rest/services/RUIAN/MapServer`, layers 12 (Obec, `statuskod` 3–5) and 11 (CastObce, definition points) (downloaded 2026-11-24) |
+
+**© ČÚZK, CC BY 4.0.** The point of a town is the definition point of its
+part (část obce) of the same name; where no part has that name, the main
+quarter (Město, Vnitřní Město, „… I") or the median of all parts was used, and
+13 large towns (Ostrava, Brno, Ústí nad Labem, Frýdek-Místek …) were placed
+on their centre by hand. Coordinates rounded to 3 decimals (~21 kB). Used by
+Scéna › Datová mapa (`dataMap` assistant tool) to put a dot and a number at
+each town without geocoding; while such towns are shown, „ČÚZK" is appended
+to the map-source watermark. Towns not in the list are geocoded (Nominatim).

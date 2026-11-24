@@ -218,6 +218,28 @@ export const MAP_TOOLS = [
   }
  },
  {
+  "name": "dataMap",
+  "description": "datová mapa (kartogram) z čísel od reportéra: rows = [{\"name\":\"Česko\",\"value\":26.6}, …] – státy, kraje ČR nebo města (jde i text \"Česko: 26,6 / Slovensko: 43,5\"); státy a kraje obarví barevnou škálou po pásmech, města dostanou tečku v barvě pásma; čísla v mapě s jednotkou (unit \"%\", \"Kč\", \"mil. Kč\"…); scale = red (TN červená, \"v červených odstínech\") | blue (TN modrá) | orange | green | purple | gray nebo pole barev; bands = počet pásem (výchozí 4) nebo hranice [2, 5, 10] = \"méně než 2 %, 2–5 %, 5–10 %, více než 10 %\"; labels = \"all\" | \"none\" (jen barevná škála) | [\"Česko\",\"Německo\"] (čísla jen u nich); legendTitle = nadpis legendy (legenda s pásmy je vždy, legend = roh bl|tl|tr|br nebo false); kind = country|kraj|city když to nejde poznat; clear:true = smazat datovou mapu. Hodnoty opiš přesně ze zadání, nic nedopočítávej.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "rows": {},
+    "unit": {},
+    "scale": {},
+    "bands": {},
+    "labels": {},
+    "legendTitle": {},
+    "legend": {},
+    "kind": {},
+    "clear": {}
+   },
+   "required": [
+    "rows"
+   ],
+   "additionalProperties": true
+  }
+ },
+ {
   "name": "placeFlag",
   "description": "vlajka státu na mapu. Víc států = víc volání.",
   "inputSchema": {
@@ -508,7 +530,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "clearScene",
-  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles (další vozidla), all; víc druhů = pole [\"labels\",\"icons\"].",
+  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, colors, regions, data (datová mapa), flags, route, vehicles (další vozidla), all; víc druhů = pole [\"labels\",\"icons\"].",
   "inputSchema": {
    "type": "object",
    "properties": {
