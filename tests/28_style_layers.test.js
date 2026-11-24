@@ -135,7 +135,7 @@ const ROAD = [[15.36,49.54],[15.42,49.50],[15.5,49.46],[15.59,49.40]];
 
   // --- uzavírka a krok zpět
   await tab(page, 'scena'); await openSection(page, 'pzClosureSection');
-  await page.click('#pzClosureList .wp-item:first-child .btn-remove'); await page.waitForTimeout(500);
+  await page.click('#pzClosureList .wp-item:first-child .btn-remove:last-child'); await page.waitForTimeout(500);   // poslední = ×, před ním je ✎
   check((await scene()).closures === 1, 'křížek smaže jednu uzavírku');
   await page.click('#undoActionBtn'); await page.waitForTimeout(1500);
   s = await scene();
