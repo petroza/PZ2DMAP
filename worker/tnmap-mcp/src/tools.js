@@ -467,6 +467,34 @@ export const MAP_TOOLS = [
   }
  },
  {
+  "name": "setTitle",
+  "description": "titulek grafiky (\"Název:\" ze zadání) vlevo nahoře a zdroj dat (\"Zdroj:\") vlevo dole, je i v PNG a videu; style navy|red|classic|dark; off:true skryje oba, off:\"title\"/\"source\" jen jeden.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "title": {},
+    "source": {},
+    "style": {},
+    "off": {}
+   },
+   "additionalProperties": true
+  }
+ },
+ {
+  "name": "setExportName",
+  "description": "název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra, porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "popis": {},
+    "nick": {},
+    "porad": {},
+    "oprava": {}
+   },
+   "additionalProperties": true
+  }
+ },
+ {
   "name": "exportPng",
   "description": "uloží snímek PNG.",
   "inputSchema": {
@@ -491,7 +519,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "clearScene",
-  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles (další vozidla), all; víc druhů = pole [\"labels\",\"icons\"].",
+  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles (další vozidla), title (titulek a zdroj), all; víc druhů = pole [\"labels\",\"icons\"].",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -537,7 +565,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "openSection",
-  "description": "POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.",
+  "description": "POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, exportTitleSection, exportNameSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.",
   "inputSchema": {
    "type": "object",
    "properties": {
