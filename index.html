@@ -4897,6 +4897,7 @@ const state = {
   placeSearchResults: [],
   placeSearchMarker: null,
   placeSearchToken: 0,
+  placeSearchQuery: '',   // dotaz, ke kterému patří placeSearchResults (Enter je použije)
   // Přelet kamery = řada záběrů (keyframes). Dřívější režimy „Přelet" a „Zoom" (start + cíl)
   // se při načtení převedou na dva záběry; arc = oddálení uprostřed přeletu.
   cameraAnim: { enabled:false, mode:'keyframes', start:null, end:null, keyframes:[], arc:true, lift:1 }
@@ -12680,7 +12681,7 @@ function parseLatLng(text){
 function getSearchAcceptLanguage(lang){
   const key = String(lang || currentLang || 'cs').toLowerCase();
   const prefs = {
-    cs:['cs','sk','en'],
+    cs:['cs','en'],   // bez slovenštiny: v českých výsledcích bylo „Brusel - Hlavné mesto"
     sk:['sk','cs','en'],
     bg:['bg','en','cs'],
     hr:['hr','sr','bs','en','cs'],
@@ -12739,11 +12740,20 @@ function getPlaceResultMeta(item){
 
 function getPlaceZoom(item){
   const key = String(item?.addresstype || item?.type || '').toLowerCase();
+  const cls = String(item?.category || item?.class || '').toLowerCase();
+  const all = key + ' ' + String(item?.type || '').toLowerCase();
+  // kontinent/oceán a moře: Nominatim je vrací jako bod bez obrysu → dřív zoom 13 do vody
+  if(/continent|ocean/.test(all)) return 3;
+  if(/\b(sea|bay|gulf|strait|channel|sound)\b/.test(all)) return 5;
   if(/country/.test(key)) return 4;
   if(/state|region|province|county/.test(key)) return 6;
   if(/city|town|municipality/.test(key)) return 10;
   if(/village|hamlet|suburb|neighbourhood|neighborhood/.test(key)) return 12;
-  if(/road|street|residential|quarter/.test(key)) return 14;
+  // náměstí, budova, škola, památka, obchod… = konkrétní místo → přiblížit na ulice
+  if(/house|building|square|university|school|college|attraction|museum|monument|memorial|castle|stadium|hospital|station|theatre|church|cathedral/.test(all)
+    || /^(building|amenity|tourism|shop|office|historic|leisure|craft|man_made)$/.test(cls)) return 17;
+  if(/quarter/.test(key)) return 14;
+  if(/road|street|residential|pedestrian|footway|primary|secondary|tertiary/.test(all) || cls === 'highway') return 16;
   return 13;
 }
 
@@ -12756,9 +12766,12 @@ function getPlaceFitMaxZoom(item){
 }
 // Obrys přes půl zeměkoule (Francie se zámořím, Rusko přes datovou hranici)
 // k zarovnání nepoužít — vyletí se na střed místa.
-function placeBoundsUsable(b){
+function placeBoundsUsable(b, item){
   if(!b || b.isEmpty()) return false;
-  return Math.abs(b.getEast() - b.getWest()) < 60 && Math.abs(b.getNorth() - b.getSouth()) < 40;
+  const w = Math.abs(b.getEast() - b.getWest()), h = Math.abs(b.getNorth() - b.getSouth());
+  if(w < 0.001 && h < 0.001) return false;   // bodový obrys (moře „56,0000 ± 0,00005") by přiblížil naplno
+  if(/continent|ocean/.test(String(item?.addresstype || item?.type || '').toLowerCase())) return false;   // hrubý obrys kontinentu → střed, zoom 3
+  return w < 60 && h < 40;
 }
 function getBoundsFromPlaceItem(item){
   const bb = item?.boundingbox;
@@ -12788,6 +12801,14 @@ async function searchPlaces(query, limit=8){
   url.searchParams.set('limit', String(Math.max(1, Math.min(10, limit))));
   url.searchParams.set('q', q);
   url.searchParams.set('accept-language', getSearchAcceptLanguage(currentLang));
+  // Přednost místům ve výřezu (bez „bounded" — vzdálená místa se pořád najdou)
+  try{
+    const m = state.map;
+    if(m && m.getZoom() >= 5){
+      const b = m.getBounds(), cl = v => Math.max(-180, Math.min(180, v));
+      url.searchParams.set('viewbox', [cl(b.getWest()), b.getNorth(), cl(b.getEast()), b.getSouth()].map(v => v.toFixed(4)).join(','));
+    }
+  }catch(e){}
   await nominatimThrottle();
   // Nominatim pod zátěží občas vrátí prázdný seznam nebo chybu a grafik pak
   // dostal „Místo nenalezeno" u Humpolce. Záloha: Photon (Komoot, také OSM data).
@@ -12804,17 +12825,40 @@ async function searchPlaces(query, limit=8){
     if(ref && haversineKm(ref, placePointFromItem(first)) > 1500 && !(+first.importance >= 0.45)){
       try{
         const near = (await searchPlacesPhoton(q, limit, ref)).filter(it => haversineKm(ref, placePointFromItem(it)) <= 1500);
-        if(near.length) return near.concat(data).slice(0, Math.max(1, limit));
+        if(near.length) return dedupePlaceResults(near.concat(data)).slice(0, Math.max(1, limit));
       }catch(e){}
     }
-    return data;
+    return dedupePlaceResults(data);
   }
   try{
     const alt = await searchPlacesPhoton(q, limit, placeSearchRefPoint());
-    if(alt.length) return alt;
+    if(alt.length) return dedupePlaceResults(alt);
   }catch(e){}
   if(Array.isArray(data)) return data;
   throw new Error('Geocoding failed');
+}
+// Krátký klíč názvu místa (bez diakritiky) pro porovnání výsledků.
+function placeNameKey(it){
+  return normalizeLoose(it?.name || it?.namedetails?.name || normalizePlaceLabel(it).split(',')[0]);
+}
+const isSettlementPlace = it => String(it?.category || it?.class || '') === 'place'
+  && /^(city|town|village|hamlet|suburb|neighbourhood|quarter|locality|isolated_dwelling)$/.test(String(it?.type || ''));
+// Totéž místo dvakrát (Dubaj: správní obvod + město, obec: katastr + uzel obce) →
+// jedna položka; přednost má uzel sídla (střed obce, ne těžiště katastru v poli).
+// Totéž = stejné jméno a bod jednoho leží v obrysu druhého (nebo do 2 km) —
+// sousední obce stejného jména (Uhřice u Hodonína a u Vyškova) zůstanou zvlášť.
+function dedupePlaceResults(items){
+  const out = [];
+  const inBox = (it, pt) => { const b = getBoundsFromPlaceItem(it); return !!b && b.contains(pt) && Math.abs(b.getEast() - b.getWest()) < 5; };
+  const samePlace = (o, it) => { const a = placePointFromItem(o), b = placePointFromItem(it);
+    return haversineKm(a, b) < 2 || (!isSettlementPlace(o) && inBox(o, b)) || (!isSettlementPlace(it) && inBox(it, a)); };
+  for(const it of items || []){
+    const k = placeNameKey(it);
+    const j = k ? out.findIndex(o => placeNameKey(o) === k && samePlace(o, it)) : -1;
+    if(j < 0) out.push(it);
+    else if(isSettlementPlace(it) && !isSettlementPlace(out[j])) out[j] = it;
+  }
+  return out;
 }
 // Bod, kolem kterého hledání míst upřednostní výsledky: střed výřezu (na celé
 // zeměkouli střed Česka).
@@ -12845,15 +12889,24 @@ async function searchPlacesPhoton(q, limit=8, near=null){
       address: {city: pr.city, county: pr.county, state: pr.state, country: pr.country, country_code: (pr.countrycode || '').toLowerCase()},
       _source: 'photon'
     };
-  }).filter(it => isFinite(+it.lat) && isFinite(+it.lon));
+  }).filter(it => isFinite(+it.lat) && isFinite(+it.lon))
+    // stát/kraj se stejným jménem jako dotaz dopředu (ne osada stejného jména)
+    .map((it, i) => ({it, i, top: /^(country|state)$/.test(it.type) && placeNameKey(it) === normalizeLoose(q) ? 0 : 1}))
+    .sort((a, b) => a.top - b.top || a.i - b.i).map(x => x.it);
 }
 
-async function geocode(q){
+async function geocode(q, near){
   const parsed = parseLatLng(q);
   if(parsed) return { lon: parsed[0], lat: parsed[1], display_name: `${parsed[1].toFixed(5)}, ${parsed[0].toFixed(5)}`, boundingbox: null };
-  const data = await searchPlaces(q, 1);
+  // 5 kandidátů místo 1 (searchPlaces už dá uzel obce před katastr); víc míst
+  // stejného jména („Uhřice" ×5) → to nejbližší k výřezu, pokud první není výrazně
+  // významnější (Praha zůstane Praha, i když je mapa jinde).
+  const data = await searchPlaces(q, 5);
   if(!data || !data.length) throw new Error('Nenalezeno');
-  return data[0];
+  const ref = near || placeSearchRefPoint(), k0 = placeNameKey(data[0]), imp = it => +it.importance || 0;
+  if(!ref || !k0 || /,/.test(String(q))) return data[0];   // upřesnění za čárkou = věřit pořadí
+  const same = data.filter(it => placeNameKey(it) === k0 && imp(data[0]) - imp(it) < 0.12);
+  return same.reduce((a, b) => haversineKm(ref, placePointFromItem(b)) < haversineKm(ref, placePointFromItem(a)) ? b : a, data[0]);
 }
 
 async function reverseGeocode(lngLat, zoom=10){
@@ -12924,7 +12977,7 @@ function focusPlaceResult(item){
   if(!isFinite(point[0]) || !isFinite(point[1])){ setStatus(t('Místo nenalezeno.'), 'error'); return; }
   state.screenPan = {x:0, y:0};
   const bounds = getBoundsFromPlaceItem(item);
-  if(placeBoundsUsable(bounds)){
+  if(placeBoundsUsable(bounds, item)){
     state.map.fitBounds(bounds, {padding:getFitPadding(), duration:900, maxZoom:getPlaceFitMaxZoom(item)});
   }else{
     state.map.flyTo({center:point, zoom:getPlaceZoom(item), duration:900});
@@ -12935,7 +12988,20 @@ function focusPlaceResult(item){
   const pin = document.createElement('div');
   pin.className = 'place-search-pin';
   pin.title = t('Jen náhled hledání — do exportu se nedostane. Klikni pro vložení ikonky.');
-  pin.addEventListener('click', ev => { ev.stopPropagation(); addIconAtPlaceSearch(point); });
+  pin.addEventListener('click', ev => {
+    ev.stopPropagation();
+    // Běží vkládání (popisek, šipka…) nebo barvení/vlajky/popisky států → klik na pin
+    // je klik do mapy (dřív vložil ikonku místo palety nebo popisku).
+    if(placeSearchPinPassThrough()){
+      try{
+        const r = state.map.getCanvas().getBoundingClientRect();
+        const pt = new maplibregl.Point(ev.clientX - r.left, ev.clientY - r.top);
+        onMapClick({lngLat: state.map.unproject(pt), point: pt, originalEvent: ev});
+      }catch(e){ console.error(e); }
+      return;
+    }
+    addIconAtPlaceSearch(point);
+  });
   state.placeSearchMarker = new maplibregl.Marker({element: pin, anchor: 'bottom'}).setLngLat(point).addTo(state.map);
   if($('placeSearchInput')) $('placeSearchInput').value = normalizePlaceLabel(item) || $('placeSearchInput').value;
   clearPlaceSearchResults();   // seznam jinak zůstal viset přes záložky
@@ -12945,7 +13011,28 @@ function focusPlaceResult(item){
     b.type = 'button'; b.className = 'btn btn-sm place-search-add'; b.textContent = t('Přidat ikonku sem');
     b.addEventListener('click', () => addIconAtPlaceSearch(point));
     statusEl.appendChild(b);
+    // popisek s názvem místa přesně na souřadnici (dřív Popisky → text → klik do mapy)
+    const lb = document.createElement('button');
+    lb.type = 'button'; lb.className = 'btn btn-sm place-search-add'; lb.textContent = t('Přidat popisek sem');
+    lb.addEventListener('click', () => addLabelAtPlaceSearch(point, item));
+    statusEl.appendChild(lb);
   }catch(e){}
+}
+// Klik na pin hledání patří mapě, když je zapnuté vkládání nebo nástroj států.
+function placeSearchPinPassThrough(){
+  try{
+    if(pzAddModeOn() || (state.measureMode && state.measureMode !== 'off')) return true;
+    if(['pzFlagsOn','pzCountryLabelsOn','paintPoliticalCountryOnClick'].some(id => pzToolOpen(id))) return true;
+    return ($('baseStyle')?.value || '') === 'political' && pzToolOpen('pzClickPaintOn');
+  }catch(e){ return false; }
+}
+// Z náhledu hledání popisek scény s krátkým názvem místa („Brno", ne celá adresa).
+function addLabelAtPlaceSearch(point, item){
+  try{ window.__pzPushUndo?.(); }catch(e){}
+  const text = normalizePlaceLabel(item).split(',')[0].trim();
+  addMapLabelAt({lng: point[0], lat: point[1]}, {text: text || t('Popisek'), silent: true});
+  clearPlaceSearchMarker();
+  setStatus(t('Popisek vložen na nalezené místo. Dvojklikem přepíšeš text.'));
 }
 // Z náhledu hledání skutečná ikonka scény (ta jde do exportu).
 function addIconAtPlaceSearch(point){
@@ -12966,14 +13053,28 @@ async function performPlaceSearch({focusFirst=false, keepList=true} = {}){
     return;
   }
   const token = ++state.placeSearchToken;
+  // Enter nad zobrazenými návrhy téhož dotazu: vzít první návrh, nehledat znovu —
+  // druhý dotaz při výpadku Nominatimu skočil z „Polsko · stát" do osady u Klatov.
+  if(focusFirst && state.placeSearchResults?.length && state.placeSearchQuery === query){
+    focusPlaceResult(state.placeSearchResults[0]);
+    if(!keepList) clearPlaceSearchResults();
+    return;
+  }
   setStatus(t('Hledám místo…'));
   try{
     const items = await searchPlaces(query, 8);
     if(token !== state.placeSearchToken) return;
     state.placeSearchResults = items;
+    state.placeSearchQuery = query;
     renderPlaceSearchResults(items);
     if(!items.length){
       setStatus(t('Místo nenalezeno.'));
+      return;
+    }
+    // Výsledek nesedí na dotaz (chybí slovo, nebo malé místo daleko od výřezu) →
+    // neskákat, nechat seznam otevřený („Jižní most Kyjev" → Jižní, Most v ČR).
+    if(focusFirst && placeResultSuspicious(query, items[0])){
+      setStatus(t('Výsledek přesně neodpovídá dotazu — vyber místo ze seznamu.'));
       return;
     }
     if(focusFirst) focusPlaceResult(items[0]);
@@ -12985,6 +13086,22 @@ async function performPlaceSearch({focusFirst=false, keepList=true} = {}){
     clearPlaceSearchResults();
     setStatus(t('Místo nenalezeno.'));
   }
+}
+
+function placeResultSuspicious(query, item){
+  if(!item || parseLatLng(query)) return false;
+  const hay = normalizeLoose([normalizePlaceLabel(item), ...Object.values(item.namedetails || {})].join(' '));
+  // slovo dotazu ≥ 4 znaky musí ve výsledku být (kmen bez koncovky: „Brně" ~ „Brno")
+  const words = normalizeLoose(query).split(' ').filter(w => w.length >= 4);
+  if(words.some(w => !hay.includes(w.slice(0, Math.max(3, w.length - 2))))) return true;
+  try{
+    const m = state.map;
+    if(m && m.getZoom() >= 6 && !(+item.importance >= 0.45)){
+      const c = m.getCenter();
+      if(haversineKm([c.lng, c.lat], placePointFromItem(item)) > 300) return true;
+    }
+  }catch(e){}
+  return false;
 }
 
 function clearPlaceSearch(){
@@ -13122,10 +13239,12 @@ function pickNavSuggest(id, idx){
   // mapy dopadl jinam. Kamera se pohne až s nalezenou trasou.
   try{
     const m = state.map, z = m.getZoom();
-    if(z >= 7){
+    // Let (oblouk/vlastní) nebo glóbus: start/cíl jen ukázat, nepřibližovat na ulice města
+    const flight = /^plane/.test(state.currentTransportMode || '') || isGlobeProjectionOn();
+    if(z >= 7 || flight){
       const p = m.project(lngLat), cv = m.getCanvas(), W = cv.clientWidth, H = cv.clientHeight;
       const inView = p.x > W * 0.05 && p.x < W * 0.95 && p.y > H * 0.05 && p.y < H * 0.95;
-      if(!inView) m.easeTo({center: lngLat, duration: 500});
+      if(!inView) m.easeTo({center: lngLat, zoom: z >= 7 ? z : Math.min(z, 4), duration: 500});
       if(state.currentTransportMode === 'planeCustom'){ rebuildCustomPreview(); }
       setStatus(t(pointType === 'A' ? 'Start nastaven. Zadej cíl nebo klikni do mapy.' : 'Cíl nastaven. Zadej start nebo klikni do mapy.'));
       return;
@@ -13134,7 +13253,7 @@ function pickNavSuggest(id, idx){
   try {
     state.screenPan = {x:0, y:0};
     const bounds = (typeof getBoundsFromPlaceItem === 'function') ? getBoundsFromPlaceItem(item) : null;
-    if(placeBoundsUsable(bounds)){
+    if(placeBoundsUsable(bounds, item)){
       state.map.fitBounds(bounds, { padding: getFitPadding(), duration: 700, maxZoom: getPlaceFitMaxZoom(item) });
     } else {
       state.map.flyTo({ center: lngLat, zoom: (typeof getPlaceZoom === 'function' ? getPlaceZoom(item) : 13), duration: 700 });
@@ -13801,9 +13920,12 @@ function recomputeArc3dSegments(){
     } else coords.push(...leg);
   }
   const n = coords.length;
-  const distKm = haversineKm(coords[0], coords[n - 1]);
+  // délka podél řetězu A → zastávky → B (zpáteční let má A = B)
+  const cum = [0];
+  for(let i = 1; i < n; i++) cum.push(cum[i-1] + haversineKm(coords[i-1], coords[i]));
+  const distKm = cum[n - 1];
   if(distKm < 30) return;
-  const maxAltM = Math.min(900000, Math.max(40000, distKm * 180));
+  const maxAltM = arc3dMaxAltForKm(distKm);
   // Thin plate: small vertical thickness keeps the per-segment "wall" short, so
   // the stepped top edge is imperceptible — the band reads as a smooth tube.
   const thickM = Math.max(1500, maxAltM * 0.012);
@@ -13822,11 +13944,13 @@ function recomputeArc3dSegments(){
     right.push([coords[i][0] - dLng, coords[i][1] - dLat]);
   }
   for(let i = 1; i < n; i++){
-    const tMid = (i - 0.5) / (n - 1);
-    const alt = maxAltM * Math.sin(Math.PI * tMid);
+    // t podle vzdálenosti (sedí s polohou letadla); výška po úsecích — se zastávkou
+    // každý úsek vlastní oblouk, který na zastávce přistane
+    const tMid = (cum[i-1] + cum[i]) / 2 / distKm;
+    const alt = arc3dChainAltAt(tMid);
     state.arc3dSegments.push({
       type: 'Feature',
-      properties: { t: i / (n - 1), base: Math.round(alt), height: Math.round(alt + thickM) },
+      properties: { t: cum[i] / distKm, base: Math.round(alt), height: Math.round(alt + thickM) },
       geometry: { type: 'Polygon', coordinates: [[
         left[i-1], left[i], right[i], right[i-1], left[i-1]
       ]] }
@@ -14153,8 +14277,16 @@ async function findRoute(){
     if(!coords || coords.length < 2) throw routeErr('noroute');
     if(mode === 'tram'){
       // tramvaje jezdí jen ve městech — bod daleko od kolejí nepřichytávat
-      const off = Math.max(haversineKm(ra, coords[0]), haversineKm(rb, coords[coords.length-1]));
+      const offA = haversineKm(ra, coords[0]), offB = haversineKm(rb, coords[coords.length-1]);
+      const off = Math.max(offA, offB);
       if(off > 1.5) throw routeErr('offnet');
+      // oba body přichycené ke stejnému kusu koleje → „Trasa nalezena. 0,1 km" je nesmysl
+      if(pzLineKm(coords) < 0.2 && haversineKm(ra, rb) > 0.5) throw routeErr('offnet');
+      // přichycení dál než 300 m grafikovi říct (Pankrác → Budějovická tiše skončilo 0,9 km jinde)
+      if(off > 0.3){
+        const which = offB >= offA ? 'B' : 'A';
+        state._pzRouteWarn = t('Pozor: bod {0} je {1} km od tramvajové trati, přichycen k nejbližší koleji.', which, off.toFixed(1).replace('.', ','));
+      }
     }
     if(mode === 'train' || mode === 'boat'){
       // Síť je jen česká: bod daleko od ní by se „přichytil" stovky km jinde.
@@ -15547,14 +15679,28 @@ function mat4mul(a,b){           // column-major a·b
   return o;
 }
 function arc3dAltMeters(eased){  // same altitude the arc ribbon uses at this progress
-  try{
-    if(!state.pointA || !state.pointB) return 0;
-    let distKm=0; const via=(state.manualViaPoints||[]).map(p=>p.lngLat);
-    const chain=[state.pointA, ...via, state.pointB];
-    for(let i=1;i<chain.length;i++) distKm+=haversineKm(chain[i-1],chain[i]);
-    const maxAltM=Math.min(900000,Math.max(40000,distKm*180));
-    return maxAltM*Math.sin(Math.max(0,Math.min(1,eased))*Math.PI);
-  }catch(e){ return 0; }
+  try{ return arc3dChainAltAt(eased); }catch(e){ return 0; }
+}
+// Vrchol oblouku pro úsek dané délky (km).
+function arc3dMaxAltForKm(km){ return Math.min(900000, Math.max(40000, km * 180)); }
+// Výška oblouku v místě t (0–1 podél řetězu A → zastávky → B, podle vzdálenosti).
+// Mezipřistání: každý úsek má vlastní oblouk s výškou podle své délky a na zastávce
+// přistane — dřív byla celá trasa jeden oblouk a nad Istanbulem se letělo stovky km vysoko.
+function arc3dChainAltAt(t){
+  if(!state.pointA || !state.pointB) return 0;
+  const chain = [state.pointA, ...(state.manualViaPoints || []).map(p => p.lngLat), state.pointB];
+  const legs = []; let tot = 0;
+  for(let i = 1; i < chain.length; i++){ const d = haversineKm(chain[i-1], chain[i]); legs.push(d); tot += d; }
+  if(!(tot > 0)) return 0;
+  let sKm = Math.max(0, Math.min(1, t)) * tot;
+  for(let i = 0; i < legs.length; i++){
+    if(sKm <= legs[i] || i === legs.length - 1){
+      const lt = legs[i] > 0 ? Math.max(0, Math.min(1, sKm / legs[i])) : 0;
+      return arc3dMaxAltForKm(legs[i]) * Math.sin(lt * Math.PI);
+    }
+    sKm -= legs[i];
+  }
+  return 0;
 }
 const plane3dLayer = {
   id:'plane3d-icon', type:'custom', renderingMode:'3d',
@@ -15672,10 +15818,22 @@ const plane3dLayer = {
     let s=c.sizeM;
     try{
       if(c.iconPx){
-        const S0=state.map.project([c.lng,c.lat]);
-        const S1=state.map.project(geoDestinationLngLat([c.lng,c.lat],1,90));
-        const ppk=Math.hypot(S1.x-S0.x,S1.y-S0.y);
+        // px na km měřit přímo v poloze letadla VE VÝŠCE (projekce main×model): měření
+        // na zemi pod ním nevidělo, že je letadlo stovky km blíž ke kameře, a v pohledu
+        // na oblouk narostlo na stovky px. Bere se největší ze tří os (zkrácená osa nevadí).
+        const mm=mat4mul(main, model), W=(state.map.transform.width||state.map.getCanvas().clientWidth), H=(state.map.transform.height||state.map.getCanvas().clientHeight);
+        const pr=(x,y,z)=>{ const w=mm[3]*x+mm[7]*y+mm[11]*z+mm[15]; if(!(w>1e-9)) return null;
+          return [(mm[0]*x+mm[4]*y+mm[8]*z+mm[12])/w*W/2, (mm[1]*x+mm[5]*y+mm[9]*z+mm[13])/w*H/2]; };
+        const p0=pr(0,0,0); let ppk=0;
+        if(p0) for(const a of [[1000,0,0],[0,1000,0],[0,0,1000]]){ const p=pr(a[0],a[1],a[2]); if(p) ppk=Math.max(ppk, Math.hypot(p[0]-p0[0], p[1]-p0[1])); }
+        if(!(ppk>0.001)){
+          const S0=state.map.project([c.lng,c.lat]), S1=state.map.project(geoDestinationLngLat([c.lng,c.lat],1,90)), S2=state.map.project(geoDestinationLngLat([c.lng,c.lat],1,0));
+          ppk=Math.max(Math.hypot(S1.x-S0.x,S1.y-S0.y), Math.hypot(S2.x-S0.x,S2.y-S0.y));
+        }
         if(isFinite(ppk) && ppk>0.001) s=(c.iconPx*1000)/ppk;
+        // pojistka 0,3–3× velikosti bez perspektivy (glóbus: měřítko Mercatoru ve středu výřezu)
+        const ct=state.map.getCenter(), refM=c.iconPx*40075016.686*Math.cos(ct.lat*Math.PI/180)/(512*Math.pow(2, state.map.getZoom()));
+        if(isFinite(refM) && refM>0) s=Math.max(0.3*refM, Math.min(3*refM, s));
       }
     }catch(e){}
     const th=c.headingRad||0, roll=c.rollRad||0, pitch=c.pitchRad||0;
@@ -15760,12 +15918,7 @@ const PLANE3D_BANK_SIGN = 1;
 function arc3dLiftPx(point, eased){
   try{
     if(!isArc3dActive() || !state.pointA || !state.pointB || !state.map) return [0,0];
-    let distKm = 0; const a = state.pointA, b = state.pointB;
-    const via = (state.manualViaPoints || []).map(p => p.lngLat);
-    const chain = [a, ...via, b];
-    for(let i=1;i<chain.length;i++) distKm += haversineKm(chain[i-1], chain[i]);
-    const maxAltM = Math.min(900000, Math.max(40000, distKm * 180));
-    const altM = maxAltM * Math.sin(Math.max(0, Math.min(1, eased)) * Math.PI);
+    const altM = arc3dChainAltAt(eased);   // po úsecích, stejně jako stuha oblouku
     const mapH = state.map.getCanvas()?.clientHeight || 1080;
     if(isGlobeProjectionOn()){
       // Place the icon on the 3D arc by approximating where a point at altitude
@@ -16444,12 +16597,22 @@ function setAnimProgress(progress, opts){
     let sizeM = PLANE3D_BASE_SIZE_M * (iconPx/34);
     try{
       const S0 = state.map.project(point);
+      // px na km měřit ve dvou kolmých směrech a vzít větší: v náklonu nad obzorem
+      // se jeden směr zkrátí skoro na nulu a letadlo pak narostlo na stovky px.
       const S1 = state.map.project(geoDestinationLngLat(point, 1, 90));
-      const pxPerKm = Math.hypot(S1.x - S0.x, S1.y - S0.y);
+      const S2 = state.map.project(geoDestinationLngLat(point, 1, 0));
+      const pxPerKm = Math.max(Math.hypot(S1.x - S0.x, S1.y - S0.y), Math.hypot(S2.x - S0.x, S2.y - S0.y));
       // NOTE: no _exportMarkerScale here — the mesh is sized in METRES, and the export
       // camera's zoomDelta already magnifies metres to the output resolution. Adding the
       // scale again would square it.
       if(isFinite(pxPerKm) && pxPerKm > 0.001) sizeM = (iconPx * 1000) / pxPerKm;
+    }catch(e){}
+    // Pojistka: velikost drží 0,3–3× té, kterou by letadlo mělo bez perspektivy
+    // (glóbus má na povrchu jedno měřítko = měřítko Mercatoru ve středu výřezu).
+    try{
+      const c = state.map.getCenter();
+      const refM = iconPx * 40075016.686 * Math.cos(c.lat * Math.PI/180) / (512 * Math.pow(2, state.map.getZoom()));
+      if(isFinite(refM) && refM > 0) sizeM = Math.max(0.3 * refM, Math.min(3 * refM, sizeM));
     }catch(e){}
     let brg = 0, brg2 = 0;
     try{ brg = routeBearing(state.routeCoords, eased) || 0; }catch(e){}
@@ -16477,9 +16640,13 @@ function setAnimProgress(progress, opts){
     }
     plane3dLayer.cur = { lng:point[0], lat:point[1], altM, sizeM, iconPx, headingRad, rollRad, pitchRad, visible:true };
     removeAnimMarker();
+    // 3D letadlo je ve WebGL vrstvě, HTML značka B ho vždy překryje (na konci byl
+    // vidět jen ocas) → při přistání značku B zprůhlednit.
+    try{ const eb = state.markerB?.getElement?.(); if(eb) eb.style.opacity = eased > 0.97 ? String(Math.max(0.2, (1 - eased) / 0.03)) : ''; }catch(e){}
     state.map.triggerRepaint();
   } else {
     if(plane3dLayer.cur) plane3dLayer.cur.visible = false;
+    try{ const eb = state.markerB?.getElement?.(); if(eb && eb.style.opacity) eb.style.opacity = ''; }catch(e){}
     { const rp = (animDot && point) ? pzRailPose(vp) : null; if(rp) mPoint = rp[0].c; }
     if(animDot && point) ensureAnimMarker(mPoint, finalAngle(vp), arc3dLiftPx(mPoint, eased)); else removeAnimMarker();
     try{ pzUpdateConsist(animDot && point ? vp : null); }catch(e){}
@@ -19399,6 +19566,8 @@ function bindUI(){
     state.pzPresetBase = null;   // podklad vybral grafik, další preset ho nemění zpět
     // nové podklady OpenMapTiles se ukážou ve svém vzhledu; ostatní jako dřív s presetem
     state.pzNativeColors = PZ_NATIVE_BASES.has($('baseStyle').value);
+    // politická mapa = barvení států klikem; pin hledání by stál v cestě
+    if($('baseStyle').value === 'political') clearPlaceSearchMarker();
     reloadStyle();
   });
   updateMapSourceWatermark();
@@ -20635,6 +20804,10 @@ Object.assign(I18N, {
   "Vlastní trasa: body zůstaly, klikáním přidáš další, pravé tlačítko ji ukončí. Smazat = začít znovu.": {cs:"Vlastní trasa: body zůstaly, klikáním přidáš další, pravé tlačítko ji ukončí. Smazat = začít znovu.",sk:"Vlastná trasa: body zostali, klikaním pridáš ďalšie, pravé tlačidlo ju ukončí. Zmazať = začať znova.",bg:"Собствен маршрут: точките остават, с клик добавяш нови, десният бутон го завършва. Изтрий = отначало.",hr:"Vlastita ruta: točke su ostale, klikom dodaješ nove, desna tipka je završava. Obriši = ispočetka.",ro:"Traseu propriu: punctele au rămas, cu click adaugi altele, clic dreapta îl încheie. Șterge = de la capăt.",en:"Custom route: points kept, click to add more, right-click finishes. Clear = start over."},
   "Jen náhled hledání — do exportu se nedostane. Klikni pro vložení ikonky.": {cs:"Jen náhled hledání — do exportu se nedostane. Klikni pro vložení ikonky.",sk:"Len náhľad hľadania — do exportu sa nedostane. Klikni pre vloženie ikonky.",bg:"Само преглед на търсенето — не влиза в експорта. Кликни, за да добавиш икона.",hr:"Samo pregled pretrage — ne ulazi u izvoz. Klikni za umetanje ikone.",ro:"Doar previzualizarea căutării — nu apare în export. Click pentru a insera o pictogramă.",en:"Search preview only — not exported. Click to place an icon."},
   "Přidat ikonku sem": {cs:"Přidat ikonku sem",sk:"Pridať ikonku sem",bg:"Добави икона тук",hr:"Dodaj ikonu ovdje",ro:"Adaugă pictogramă aici",en:"Add icon here"},
+  "Pozor: bod {0} je {1} km od tramvajové trati, přichycen k nejbližší koleji.": {cs:"Pozor: bod {0} je {1} km od tramvajové trati, přichycen k nejbližší koleji.",sk:"Pozor: bod {0} je {1} km od električkovej trate, prichytený k najbližšej koľaji.",bg:"Внимание: точка {0} е на {1} км от трамвайната линия, прикрепена към най-близката релса.",hr:"Pozor: točka {0} je {1} km od tramvajske pruge, prikvačena na najbližu tračnicu.",ro:"Atenție: punctul {0} este la {1} km de linia de tramvai, atașat la cea mai apropiată linie.",en:"Note: point {0} is {1} km from the tram line, snapped to the nearest track."},
+  "Přidat popisek sem": {cs:"Přidat popisek sem",sk:"Pridať popisok sem",bg:"Добави надпис тук",hr:"Dodaj natpis ovdje",ro:"Adaugă etichetă aici",en:"Add label here"},
+  "Popisek vložen na nalezené místo. Dvojklikem přepíšeš text.": {cs:"Popisek vložen na nalezené místo. Dvojklikem přepíšeš text.",sk:"Popisok vložený na nájdené miesto. Dvojklikom prepíšeš text.",bg:"Надписът е поставен на намереното място. С двоен клик промениш текста.",hr:"Natpis umetnut na pronađeno mjesto. Dvoklikom mijenjaš tekst.",ro:"Etichetă inserată la locul găsit. Dublu clic pentru a modifica textul.",en:"Label placed at the found location. Double-click to edit the text."},
+  "Výsledek přesně neodpovídá dotazu — vyber místo ze seznamu.": {cs:"Výsledek přesně neodpovídá dotazu — vyber místo ze seznamu.",sk:"Výsledok presne nezodpovedá dopytu — vyber miesto zo zoznamu.",bg:"Резултатът не съвпада точно със заявката — избери място от списъка.",hr:"Rezultat ne odgovara točno upitu — odaberi mjesto s popisa.",ro:"Rezultatul nu corespunde exact căutării — alege locul din listă.",en:"The result doesn't quite match the query — pick a place from the list."},
   "Ikonka vložena na nalezené místo. Tahem ji posuneš.": {cs:"Ikonka vložena na nalezené místo. Tahem ji posuneš.",sk:"Ikonka vložená na nájdené miesto. Ťahom ju posunieš.",bg:"Иконата е поставена на намереното място. Премести я с плъзгане.",hr:"Ikona umetnuta na pronađeno mjesto. Povuci je za pomicanje.",ro:"Pictogramă inserată la locul găsit. Trage pentru a o muta.",en:"Icon placed at the found location. Drag to move it."},
   "město": {cs:"město",sk:"mesto",bg:"град",hr:"grad",ro:"oraș",en:"city"},
   "obec": {cs:"obec",sk:"obec",bg:"село",hr:"općina",ro:"comună",en:"village"},
