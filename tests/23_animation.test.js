@@ -187,9 +187,11 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   for(const vw of views){ await page.evaluate(vw => window.__tnMap.jumpTo(vw), vw); await page.click('#cameraAddKeyframeBtn'); await page.waitForTimeout(120); }
   // řádek = „místo · čas" (zoom se neukazuje); pro kontrolu pořadí se k němu přidá zoom ze stavu
   const rows = () => page.evaluate(() => { const kfs = window.__pzFns.state.cameraAnim.keyframes;
-    return [...document.querySelectorAll('#cameraKeyframeList .camera-kf-info')].map((x, i) => x.textContent.replace(/^[^·\d][^·]* · /, '') + ' · zoom ' + kfs[i].view.zoom.toFixed(1)); });
+    // řádek = název (· náklon) + pole s časem → „místo · čas s · náklon“
+    const txt = (r => { const [nm, pt] = r.querySelector('.camera-kf-info').textContent.split(' · '); return [/^Záběr \d+$/.test(nm) ? '' : nm, r.querySelector('.camera-kf-time').value + ' s', pt].filter(Boolean).join(' · '); });
+    return [...document.querySelectorAll('#cameraKeyframeList .camera-kf-row')].map((x, i) => txt(x).replace(/^[^·\d][^·]* · /, '') + ' · zoom ' + kfs[i].view.zoom.toFixed(1)); });
   await page.waitForTimeout(3500);   // názvy míst se dohledávají postupně
-  const names = await page.$$eval('#cameraKeyframeList .camera-kf-info', e => e.map(x => x.textContent));
+  const names = await page.$$eval('#cameraKeyframeList .camera-kf-row', e => e.map((r => { const [nm, pt] = r.querySelector('.camera-kf-info').textContent.split(' · '); return [/^Záběr \d+$/.test(nm) ? '' : nm, r.querySelector('.camera-kf-time').value + ' s', pt].filter(Boolean).join(' · '); })));
   check(/^Praha · 0\.0 s$/.test(names[0]) && /^Brno · \d/.test(names[1]) && /^Jihlava · 8\.0 s/.test(names[2]), 'řádky záběrů ukazují místo a čas: ' + names.join(' | '));
   let rw = await rows();
   // zoom záběru je zoom výřezu exportu (šířka 1280 px) — liší se od mapy o stálý posun
@@ -307,7 +309,7 @@ const sameCam = (a, b) => near(a.lng, b.lng, 0.002) && near(a.lat, b.lat, 0.002)
   check(pick(a) === pick(flight.animation), 'načtení projektu vrátí všechna nastavení animace a přeletu');
   const ui = await page.evaluate(() => ({num: document.getElementById('animDurationNum').value, start: document.getElementById('animStartNum').value, smooth: document.getElementById('objSmoothNum').value,
     mode: document.querySelector('.camera-mode2-btn.active')?.dataset.cammode2, rows: document.querySelectorAll('#cameraKeyframeList .camera-kf-row').length,
-    arc: document.getElementById('cameraLift').value === '0', info: document.getElementById('animInfo').textContent, last: document.querySelector('#cameraKeyframeList .camera-kf-row:last-child .camera-kf-info')?.textContent}));
+    arc: document.getElementById('cameraLift').value === '0', info: document.getElementById('animInfo').textContent, last: document.querySelector('#cameraKeyframeList .camera-kf-row:last-child .camera-kf-time')?.value + ' s'}));
   check(ui.num === '14' && ui.start === '2.5' && ui.smooth === '30' && ui.mode === 'keyframes' && ui.rows === 2 && ui.arc === true && / \/ 16\.5 s$/.test(ui.info) && /(^| · )16\.5 s/.test(ui.last),
     'ovládací prvky po načtení odpovídají projektu: ' + JSON.stringify(ui));
   await page.evaluate(snap => { snap.animation = {...snap.animation, ...snap.__follow}; window.__pzFns.applyProjectSnapshot(snap); }, {...flight, __follow: follow}); await page.waitForTimeout(900);
