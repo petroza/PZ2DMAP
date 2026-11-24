@@ -64,13 +64,14 @@ setLayers {vrstva:true/false, …} – zapnout/vypnout vrstvy: buildings, parks,
 setGlobe {on} – glóbus: on true = zapnout, false = vypnout (plochá mapa).
 setShadows {on?, ao?, strength?} – on = stíny budov, ao = ambientní okluze (jiná věc), strength 0-100.
 setTransportMode {mode} – driving, truck, moto, train, metro, tram, boat, foot, cycle, planeDirect, planeArc, planeCustom.
-routeBetween {from, to, mode?} – najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné "via".
+routeBetween {from, to, mode?, kmLabel?} – najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné "via". kmLabel:true = popisek s délkou trasy doprostřed ("trasa s údajem km").
 routeLine {line, from?, to?} – trasa linky MHD Praha (bus, tramvaj, metro, vlak S) mezi zastávkami; bez from/to celá linka.
 setVehicle {type, label?, color?} – vozidlo na trase (label = cedulka, která jede s vozidlem; color = barva vozidla): car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.
 addVehicle {type, reverse?, delay?, crash?, crashAt?, crashLabel?, speed?, label?, color?} – další vozidlo na stejné trase (label = cedulka u vozidla, color = vlastní barva); reverse:true = opačný směr; delay 0-0.9; crashAt = místo srážky ("lat,lng"/název): vozidlo jede proti a obě se zastaví tam, kde se srazí (kdekoli na trase; místo dál než 3 km od trasy vrátí chybu se vzdáleností — pak se grafika zeptej, kde přesně na trase); crash:true bez crashAt = srážka uprostřed; při srážce se v místě rozsvítí záblesk s cedulkou crashLabel (výchozí „SRÁŽKA", "" = bez cedulky); speed = rychlost protijedoucího vůči vozidlu na trase (výchozí 0,7).
 setVehicleColors {preset?, body?, accent?, shadow?} – barvy vozidla: preset auto|light|dark|blue, body, accent, shadow true/false (stín pod vozidlem).
 setCameraFlight {keyframes, lift?, off?} – PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:"lat,lng" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; záběr = co bude ve videu (center = střed výřezu exportu, zoom pro výřez široký 1280 px); lift = výška zdvihu kamery mezi vzdálenými záběry (0 = bez oddálení, 1 = automaticky podle vzdálenosti – výchozí, 1.5–2 = výš, max 2.5); přelet ČR → město je plynulý nájezd, město → město se zvedne nad obě; off:true = statická kamera.
 fitRoute {} – ukáže celou trasu.
+fitScene {} – zarámuje celou scénu (všechna místa, popisky, šipky, kraje) do výřezu s místem pro titulek; volej na konci, když jsi přidal víc míst.
 arcBestView {} – 3D pohled na letecký oblouk.
 playAnimation {action, time?} – play, pause, stop, rewind; seek + time (s) = zastavit na daném okamžiku.
 setTitle {title?, source?, style?, off?} – titulek grafiky ("Název:" ze zadání) vlevo nahoře a zdroj dat ("Zdroj:") vlevo dole, je i v PNG a videu; style navy|red|classic|dark; off:true skryje oba, off:"title"/"source" jen jeden.

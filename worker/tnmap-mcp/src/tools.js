@@ -373,13 +373,14 @@ export const MAP_TOOLS = [
  },
  {
   "name": "routeBetween",
-  "description": "najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné \"via\".",
+  "description": "najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné \"via\". kmLabel:true = popisek s délkou trasy doprostřed (\"trasa s údajem km\").",
   "inputSchema": {
    "type": "object",
    "properties": {
     "from": {},
     "to": {},
-    "mode": {}
+    "mode": {},
+    "kmLabel": {}
    },
    "required": [
     "from",
@@ -475,6 +476,15 @@ export const MAP_TOOLS = [
  {
   "name": "fitRoute",
   "description": "ukáže celou trasu.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "additionalProperties": true
+  }
+ },
+ {
+  "name": "fitScene",
+  "description": "zarámuje celou scénu (všechna místa, popisky, šipky, kraje) do výřezu s místem pro titulek; volej na konci, když jsi přidal víc míst.",
   "inputSchema": {
    "type": "object",
    "properties": {},

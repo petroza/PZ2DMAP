@@ -1114,7 +1114,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           </button>
           <button type="button" class="btn nav-clear" id="clearRouteBtn" data-i18n="Smazat">Smazat</button>
         </div>
-        <div class="nav-summary" id="routeSummary" hidden></div>
+        <div class="nav-summary-row"><div class="nav-summary" id="routeSummary" hidden></div><button type="button" class="btn btn-sm" id="routeKmLabelBtn" hidden data-i18n="Délku do mapy" title="Vloží doprostřed trasy popisek s délkou (jde přetáhnout a přepsat)">Délku do mapy</button></div>
         <details class="compact-details" id="pzLineSection">
           <summary data-i18n="Trasa podle linky MHD">Trasa podle linky MHD</summary>
           <div class="pz-line-row">
@@ -9885,7 +9885,7 @@ function pzKrajeSyncLabels(){
   const have = (state.mapLabels || []).filter(l => l.kraj);
   have.filter(l => !want.has(l.kraj)).forEach(l => { try{ deleteMapLabel(l.id, true); }catch(e){} });
   // všech 14 krajů na celé ČR: menší písmo, ať se názvy nepřekrývají
-  const size = want.size > 6 ? 15 : want.size > 3 ? 17 : 20;
+  const size = want.size > 6 ? 18 : want.size > 3 ? 21 : 26;   // čitelné v 1080p (dřív 15–20 px)
   // automaticky velké popisky (grafik je neměnil) srovnat na novou velikost
   have.filter(l => want.has(l.kraj) && l.krajAuto && l.krajAuto === l.size && l.size !== size).forEach(l => { try{ updateMapLabel(l.id, {size}); l.krajAuto = size; }catch(e){} });
   const haveIds = new Set(have.map(l => l.kraj));
@@ -10496,6 +10496,12 @@ function pzDmLegendLayout(ctx, w, h){
   let y = /^t/.test(corner) ? safe.t : safe.b - L.h;
   // vpravo dole je pilulka „Zdroj mapy" (3,5 % od kraje) — legenda nad ni
   if(corner === 'br' && !isTransparentExportOn()){ const wmTop = h - Math.max(10, 18 * k, 0.035 * h) - (18 * k + 14 * k); y = Math.min(y, wmTop - 12 * k - L.h); }
+  // titulek (vlevo nahoře) a „Zdroj:" (vlevo dole) — legenda se jim vyhne, ať se nepřekrývají
+  if(!s.legend.drag && /l$/.test(corner)){
+    const tb = pzTitleBoxesFor(w, h), g = 14 * k;
+    if(tb?.source && corner === 'bl') y = Math.min(y, tb.source.y - g - L.h);
+    if(tb?.title && corner === 'tl') y = Math.max(y, tb.title.y + tb.title.h + g);
+  }
   if(s.legend.drag){ x = s.legend.drag.x * w - L.w / 2; y = s.legend.drag.y * h - L.h / 2; }
   L.x = Math.round(Math.max(0, Math.min(w - L.w, x))); L.y = Math.round(Math.max(0, Math.min(h - L.h, y)));
   return L;
@@ -13536,7 +13542,8 @@ function applyMapLabelStyle(el, data){
 function pzLabelZoomK(item, zoom){
   if(item?.baseZoom == null || zoom == null) return 1;
   const k = Math.pow(2, (zoom - item.baseZoom) * 0.75);
-  return Math.max(Math.min(1, 14 / Math.max(14, item.size || 28)), Math.min(1, k));
+  // při oddálení se popisek zmenší nejvýš na 70 % — menší už je ve vysílání nečitelný
+  return Math.max(0.7, Math.min(1, k));
 }
 function pzApplyLabelZoom(item, zoom, el){
   const e = el || item?.marker?.getElement?.(); if(!e) return;
@@ -15560,12 +15567,30 @@ function routeSummaryText(){
   const dur = road && state.routeDurationSec > 0 ? ' · ' + fmtRouteDuration(state.routeDurationSec) : '';
   return num + ' km' + dur;
 }
+document.addEventListener('click', e => { if(e.target?.closest?.('#routeKmLabelBtn')) pzAddRouteKmLabel(); });
 function updateRouteSummary(){
   const el = $('routeSummary');
   if(!el) return;
   const txt = routeSummaryText();
   el.textContent = txt;
   el.hidden = !txt;
+  if($('routeKmLabelBtn')) $('routeKmLabelBtn').hidden = !txt;
+}
+// „Trasou auta s údajem 150 km": popisek s délkou doprostřed trasy (běžný popisek —
+// jde přetáhnout, přepsat, je v exportu, v projektu i v kroku zpět).
+function pzRouteKmText(){
+  const km = routeKm(); if(!(km > 0)) return '';
+  return (km >= 20 ? Math.round(km).toLocaleString(currentLang === 'en' ? 'en-US' : 'cs-CZ') : km.toFixed(1).replace('.', currentLang === 'en' ? '.' : ',')) + ' km';
+}
+function pzAddRouteKmLabel(){
+  const rc = state.routeCoords || [], text = pzRouteKmText();
+  if(rc.length < 2 || !text){ setStatus(t('Nejdřív najdi trasu.'), 'error'); return null; }
+  const half = lineLength(rc) / 2; let acc = 0, mid = rc[Math.floor(rc.length / 2)];
+  for(let i = 1; i < rc.length; i++){ const d = haversineKm(rc[i - 1], rc[i]); if(acc + d >= half){ const f = d ? (half - acc) / d : 0; mid = [rc[i - 1][0] + (rc[i][0] - rc[i - 1][0]) * f, rc[i - 1][1] + (rc[i][1] - rc[i - 1][1]) * f]; break; } acc += d; }
+  try{ window.__pzPushUndo?.(); }catch(e){}
+  const item = addMapLabelAt({lng: mid[0], lat: mid[1]}, {text, side:'none', silent:true});
+  setStatus(t('Popisek s délkou trasy je uprostřed trasy — přetáhni ho, kam potřebuješ.'));
+  return item;
 }
 
 function setRouteBusy(on){
@@ -18342,6 +18367,10 @@ function pzFitScene(opts){
   // bezpečná zóna (title-safe) uvnitř rámu
   const safe = r ? Math.round(Math.min(r.width, r.height) * 0.05) : 0;
   const padding = {top: pad.top + safe, right: pad.right + safe, bottom: pad.bottom + safe, left: pad.left + safe};
+  // titulek nahoře a „Zdroj:" dole zabírají kus rámečku — objekty pod ně nepatří
+  try{ const tb = r && pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
+    if(tb?.title) padding.top = Math.max(padding.top, pad.top + tb.title.y + tb.title.h + 12);
+    if(tb?.source) padding.bottom = Math.max(padding.bottom, pad.bottom + (r.height - tb.source.y) + 12); }catch(_e){}
   const single = Math.abs(bb[1][0] - bb[0][0]) < 1e-5 && Math.abs(bb[1][1] - bb[0][1]) < 1e-5;
   state.screenPan = {x:0, y:0};
   const dur = opts.duration ?? 700;
@@ -18541,6 +18570,17 @@ function pzWrapText(ctx, text, maxW){
   }
   if(cur) lines.push(cur);
   return lines;
+}
+// Kde ve výstupu W×H leží titulek a zdroj (bez kreslení do výstupu) — pro legendu apod.
+let _pzTitleProbe = null;
+function pzTitleBoxesFor(W, H){
+  try{
+    const st = pzTitleState();
+    if(!((st.titleOn && pzCleanTitle(st.title)) || (st.sourceOn && pzCleanSource(st.source)))) return null;
+    if(!_pzTitleProbe) _pzTitleProbe = document.createElement('canvas');
+    if(_pzTitleProbe.width !== W || _pzTitleProbe.height !== H){ _pzTitleProbe.width = W; _pzTitleProbe.height = H; }
+    return pzDrawTitleOverlay(_pzTitleProbe.getContext('2d'), W, H);
+  }catch(e){ return null; }
 }
 function pzDrawTitleOverlay(ctx, W, H){
   if(!ctx || !W || !H) return null;
@@ -22621,6 +22661,9 @@ Object.assign(I18N, {
   "Např. ŘSD": {cs:"Např. ŘSD",sk:"Napr. NDS",bg:"Напр. АПИ",hr:"Npr. HAC",ro:"Ex. CNAIR",en:"e.g. Road authority"},
   "Např. potok": {cs:"Např. potok",sk:"Napr. potok",bg:"Напр. река",hr:"Npr. potok",ro:"Ex. pârâu",en:"e.g. creek"},
   "Např. maj": {cs:"Např. maj",sk:"Napr. maj",bg:"Напр. maj",hr:"Npr. maj",ro:"Ex. maj",en:"e.g. maj"},
+  "Délku do mapy": {cs:"Délku do mapy",sk:"Dĺžku do mapy",bg:"Дължина на картата",hr:"Duljinu na kartu",ro:"Lungimea pe hartă",en:"Length on map"},
+  "Nejdřív najdi trasu.": {cs:"Nejdřív najdi trasu.",sk:"Najprv nájdi trasu.",bg:"Първо намери маршрут.",hr:"Prvo pronađi rutu.",ro:"Mai întâi găsește traseul.",en:"Find a route first."},
+  "Popisek s délkou trasy je uprostřed trasy — přetáhni ho, kam potřebuješ.": {cs:"Popisek s délkou trasy je uprostřed trasy — přetáhni ho, kam potřebuješ.",sk:"Popis s dĺžkou trasy je uprostred trasy — presuň ho, kam potrebuješ.",bg:"Надписът с дължината е по средата на маршрута — премести го където трябва.",hr:"Natpis s duljinom rute je na sredini rute — povuci ga gdje trebaš.",ro:"Eticheta cu lungimea este la mijlocul traseului — trage-o unde ai nevoie.",en:"The length label is at the middle of the route — drag it where you need."},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
   "Body zájmu": {cs:"Body zájmu",sk:"Body záujmu",bg:"Обекти",hr:"Točke interesa",ro:"Puncte de interes",en:"Points of interest"},
   "Velikost vlajek": {cs:"Velikost vlajek",sk:"Veľkosť vlajok",bg:"Размер на знамената",hr:"Veličina zastava",ro:"Mărimea steagurilor",en:"Flag size"},
@@ -25092,15 +25135,30 @@ function pzColorFromName(v){
       let ic = null;
       try{
         const m = state.map, b = m.project([ll.lng, ll.lat]);
-        ic = (state.sceneIcons || []).find(x => { const a = m.project(x.marker.getLngLat()); return Math.hypot(a.x - b.x, a.y - b.y) < 12; });
+        // geokodér vrací pro popisek a ikonku stejného místa občas o kus jiný bod (Ostrowiec: 1 km) →
+        // ikonka do ~3 km je „ta samá" a popisek patří nad ni
+        ic = (state.sceneIcons || []).map(x => { const L = x.marker.getLngLat(), a = m.project(L); return {x, d: Math.hypot(a.x - b.x, a.y - b.y), km: haversineKm([L.lng, L.lat], [ll.lng, ll.lat])}; })
+          .filter(o => o.d < 12 || (o.km < 3 && o.d < 220)).sort((p, q) => p.d - q.d)[0]?.x || null;
       }catch(e){}
       const pos = ic ? (a => ({lng:a.lng, lat:a.lat}))(ic.marker.getLngLat()) : ll;
-      const opts = {text: label, size: size, side: side === 'left' ? 'left' : (side === 'none' ? 'none' : undefined)};
+      // nad ikonkou bez červeného bodu — místo už označuje ikonka (dřív dvě značky na jednom místě)
+      const opts = {text: label, size: size, side: side === 'left' ? 'left' : (side === 'none' || (ic && side !== 'right') ? 'none' : undefined)};
       if(st) opts.style = st;
       // Popisek nad ikonkou se při oddálení nezmenšuje — ikonka taky ne, a pár drží tvar.
-      if(ic) opts.baseZoom = null;
+      // popisek z asistenta/konektoru drží velikost (scéna se pak často zarámuje oddálením)
+      opts.baseZoom = null;
       const item = addMapLabelAt(pos, opts);
       if(!item && item !== undefined) return {ok:false, error:'Popisek se nepodařilo přidat.'};
+      // Dvě blízká místa (Narva × Ivangorod): bublina by vlezla přes sousední popisek →
+      // dát ji na druhou stranu bodu. Jen když strana nebyla zadaná výslovně.
+      let flipped = false;
+      if(!ic && side == null && item?.marker){
+        try{
+          const box = it => it.marker.getElement().querySelector('.map-label-bubble')?.getBoundingClientRect();
+          const hit = () => { const me = box(item); return me && (state.mapLabels || []).some(o => { if(o === item || !o.marker) return false; const b = box(o); return b && b.width && me.left < b.right + 4 && me.right > b.left - 4 && me.top < b.bottom + 4 && me.bottom > b.top - 4; }); };
+          if(hit()){ updateMapLabel(item.id, {side:'left'}); flipped = true; if(hit()){ updateMapLabel(item.id, {side:'right'}); flipped = false; } }
+        }catch(e){}
+      }
       if(ic && item?.marker){
         // Kotva popisku je střed celého prvku (čtvereček + bublina) — posun spočítat
         // z vykreslených rozměrů, ať je bublina vystředěná nad ikonkou.
@@ -25120,7 +25178,7 @@ function pzColorFromName(v){
         try{ item.marker.setOffset(off); }catch(e){}
       }
       return {ok:true, place: g.display_name, text: label,
-              center:{lat:+g.lat, lng:+g.lon}, ...(ic ? {aboveIcon:true} : {})};
+              center:{lat:+g.lat, lng:+g.lon}, ...(ic ? {aboveIcon:true} : {}), ...(flipped ? {side:'left', note:'Popisek je vlevo od bodu, aby nezakryl sousední.'} : {})};
     },
 
     // ---- počasí: vrstvy byly z appky odstraněny ------------------------------
@@ -25729,7 +25787,7 @@ function pzColorFromName(v){
       return state.pzLineRoute ? {ok:true, line: state.pzLineRoute.n, type: state.pzLineRoute.t, stops: state.pzLineRoute.stops.length, from: state.pzLineRoute.stops[0], to: state.pzLineRoute.stops[state.pzLineRoute.stops.length - 1]}
                                : {ok:false, error:($('statusBar')?.textContent || '').trim(), stops: names};
     },
-    async routeBetween({from, to, mode} = {}){
+    async routeBetween({from, to, mode, kmLabel} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to.'};
       if(mode){ const r = window.TNMAP.setTransportMode({mode}); if(!r.ok) return r; }
       let a, b;
@@ -25768,6 +25826,7 @@ function pzColorFromName(v){
       try{ const L = routeKm(); if(isFinite(L) && L > 0) km = L >= 10 ? Math.round(L) : Math.round(L * 10) / 10; }catch(e){}
       const res = {ok:true, from: $('startInput')?.value || String(from), to: $('endInput')?.value || String(to), mode: state.currentTransportMode, points:n, framed};
       if(km != null) res.distanceKm = km;
+      if(kmLabel && km != null){ try{ if(pzAddRouteKmLabel()) res.kmLabel = pzRouteKmText(); }catch(e){} }
       if(['train', 'metro', 'tram'].includes(state.currentTransportMode) && state.pzTrainStations) res.stations = state.pzTrainStations;
       if(state.currentTransportMode === 'metro' && state.pzMetroLines?.length) res.lines = state.pzMetroLines;
       // podezřele daleko (překlep → místo na jiném kontinentu): asistent se má zeptat
@@ -26444,6 +26503,7 @@ html[data-ui="light"] .nav-mini-danger{color:#c4232d;border-color:rgba(196,35,45
 .nav-stop-del{font-size:15px}
 .nav-stop-del:hover:not(:disabled){background:rgba(248,81,73,.1);border-color:#f85149;color:#f85149}
 /* délka a doba trasy pod tlačítky */
+.nav-summary-row{display:flex;gap:6px;align-items:stretch}.nav-summary-row .nav-summary{flex:1}.nav-summary-row #routeKmLabelBtn{margin-top:10px;white-space:nowrap}
 .nav-summary{margin-top:10px;padding:6px 10px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--tx1);background:var(--bg0);border:1px solid var(--border);border-radius:var(--radius);font-variant-numeric:tabular-nums}
 .nav-summary[hidden]{display:none}
 /* hledání trasy běží */
@@ -27353,6 +27413,14 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
                            'playAnimation','exportPng','setUiTheme','setLanguage']);
   let undoTaken = false;   // jeden povel = jeden Krok zpět, i když spustí víc nástrojů
   // Spustí jeden nástroj z whitelistu (window.TNMAP). Nikdy nevyhodí — vrací výsledek.
+  function pzAutoFitAfter(calls, results){
+    try{
+      const PLACE = /^(placeIcon|addLabel|drawArrow|placeFlag|measureDistance|drawPerimeter|colorPolitical)$/;
+      const n = calls.filter((c, i) => PLACE.test(c.tool) && results[i]?.result?.ok !== false).length;
+      if(n < 2 || calls.some(c => /^(setCameraFlight|setCamera|gotoPlace|show3D|showRegion|routeBetween|routeLine|fitRoute|fitScene|arcBestView)$/.test(c.tool))) return;
+      window.TNMAP?.fitScene?.();
+    }catch(e){}
+  }
   async function runTool(call, chat){
     const api = window.TNMAP;
     const name = call && call.tool;
@@ -27952,6 +28020,9 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
           addAction((c.label || c.tool), out.ok !== false);
           toolResults.push({tool:c.tool, args:c.args || {}, result:out});
         }
+        // Víc míst v jednom zadání („vyznačit Ostravu, Litvínov, Prahu") → zarámovat všechna,
+        // ať žádné nezůstane u okraje nebo pod titulkem. Ne při přeletu kamery / vlastním výřezu.
+        pzAutoFitAfter(calls, toolResults);
         // Do historie i argumenty a výsledek — jinak model neví, CO obarvil nebo kam
         // dal popisek, a na „dej ho červeně" / „Rusko tam nechci" nemá co navázat.
         const doneTxt = calls.map((c, i) => {
