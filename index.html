@@ -5392,6 +5392,7 @@ function initSectionAccordions(){
     h3.appendChild(toggle);
 
     const storageKey = getAccordionStorageKey(section, idx);
+    section.dataset.accordionKey = storageKey;
     let open = isAccordionDefaultOpen(section, idx);
     try{
       const saved = localStorage.getItem(storageKey);
@@ -5403,7 +5404,15 @@ function initSectionAccordions(){
       if(ev.target.closest('.badge')) return;
       ev.preventDefault();
       const nextOpen = section.classList.contains('collapsed');
+      // Nízký displej (notebook 1366×768): otevřená sekce zavře ostatní ve stejné záložce
+      // a vyroluje se do obrazu — dřív se sekce vršily a ovládání zmizelo pod okrajem.
+      if(nextOpen && window.innerHeight < 900){
+        section.closest('.tab-pane')?.querySelectorAll('.section-collapsible:not(.collapsed)').forEach(o => {
+          if(o !== section) setAccordionOpen(o, false, o.dataset.accordionKey, true);
+        });
+      }
       setAccordionOpen(section, nextOpen, storageKey, true);
+      if(nextOpen && window.innerHeight < 900) requestAnimationFrame(() => { try{ section.scrollIntoView({block:'nearest'}); }catch(_e){} });
     };
 
     h3.addEventListener('click', toggleSection);
@@ -5977,10 +5986,29 @@ function initMap(){
   // plynulost posunu to nestojí nic.
   state.map.on('idle', refreshProjectThumbnail);
   // visualizePitch shows a draggable compass/pitch dial — the orbit handle.
-  state.map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');
+  const pzNav = new maplibregl.NavigationControl({visualizePitch:true});
+  state.map.addControl(pzNav,'top-right');
+  // +/− přibližují kolem středu exportního rámečku, ne plátna — jinak místo
+  // uprostřed rámečku po pár klicích uteklo ven (rámeček je posunutý vedle panelu).
+  try{
+    pzNav._container.addEventListener('click', e => {
+      const btn = e.target.closest?.('.maplibregl-ctrl-zoom-in, .maplibregl-ctrl-zoom-out'); if(!btn) return;
+      e.stopPropagation(); e.preventDefault();
+      const m = state.map, dz = btn.classList.contains('maplibregl-ctrl-zoom-in') ? 1 : -1;
+      const z = Math.max(m.getMinZoom(), Math.min(m.getMaxZoom(), m.getZoom() + dz));
+      let around;
+      try{ const fr = pzExportFrameRect(), cr = m.getCanvas().getBoundingClientRect();
+        if(fr && fr.width > 0) around = m.unproject([fr.left + fr.width / 2 - cr.left, fr.top + fr.height / 2 - cr.top]); }catch(_e){}
+      m.easeTo(around ? {zoom: z, around} : {zoom: z});
+    }, true);
+  }catch(e){}
   try{ state.map.dragRotate.enable(); state.map.touchZoomRotate.enableRotation(); state.map.touchPitch?.enable?.(); }catch(e){}
   try{ state.map.on('render', () => { try{ pzRenderVehicleLive(); }catch(e){} }); }catch(e){}
   try{ state.map.on('zoom', () => { const z = state.map.getZoom(); (state.mapLabels || []).forEach(it => pzApplyLabelZoom(it, z)); }); }catch(e){}
+  // seznam popisků ukazuje skutečnou velikost v záběru — po zoomu ho obnovit, jen když se změnila
+  try{ state.map.on('zoomend', () => { const z = state.map.getZoom(); let ch = false;
+    (state.mapLabels || []).forEach(it => { const px = Math.round((it.size || 28) * pzLabelZoomK(it, z)); if(it._pzListPx !== px){ it._pzListPx = px; ch = true; } });
+    if(ch) renderMapLabelList(); }); }catch(e){}
   state.map.on('load', () => {
     ensureRouteSources();
     rememberOriginalRoadPaints();
@@ -6684,6 +6712,9 @@ function formatScenePerimeterDistance(meters, unit='km'){
 function scenePerimeterLabelText(item){
   return String(item?.labelText || '').trim() || formatScenePerimeterDistance(item.radiusMeters, item.unit || 'km');
 }
+// Štítek perimetru / vzdálenosti se řídí velikostí popisků (výchozích 28 px = 16 px štítku);
+// dřív měl pevných 16 px a u drobných popisků v exportu 9:16 trčel dvakrát větší.
+function pzTagLabelFontPx(){ return Math.max(10, Math.round((Number(state.mapLabelGlobalSize) || 28) * 16 / 28)); }
 function setScenePerimeterLabels(){
   (state.scenePerimeterLabelMarkers || []).forEach(mk => { try{ mk.remove(); }catch(e){} });
   state.scenePerimeterLabelMarkers = [];
@@ -6694,6 +6725,7 @@ function setScenePerimeterLabels(){
     const el = document.createElement('div');
     el.className = 'scene-perimeter-label' + (item.id === state.selectedScenePerimeterId ? ' selected' : '');
     el.style.borderColor = item.color || '#ffd400';
+    el.style.fontSize = pzTagLabelFontPx() + 'px';
     el.textContent = scenePerimeterLabelText(item);
     const mk = new maplibregl.Marker({element: el, anchor:'left', offset:[8,0]}).setLngLat(north).addTo(state.map);
     state.scenePerimeterLabelMarkers.push(mk);
@@ -7427,6 +7459,7 @@ function setSceneDistanceLabels(){
     const el = document.createElement('div');
     el.className = 'scene-distance-label' + (item.id === state.selectedSceneDistanceId ? ' selected' : '');
     el.style.borderColor = item.color || '#ffd400';
+    el.style.fontSize = pzTagLabelFontPx() + 'px';
     el.textContent = sceneDistanceLabelText(item);
     const mk = new maplibregl.Marker({element: el, anchor:'left', offset:[8,0]}).setLngLat(sceneDistanceMidpoint(item)).addTo(state.map);
     state.sceneDistanceLabelMarkers.push(mk);
@@ -12245,7 +12278,7 @@ function renderMapLabelList(){
   }
   state.mapLabels.forEach((item, idx) => {
     list.appendChild(pzSceneRow({key:'l:' + item.id, kind:'label', item}, 'map-label-row', item.id === state.selectedMapLabelId, idx, '',
-      String(item.text || t('Popisek')).replace(/\n/g, ' '), item.size + ' px'));
+      String(item.text || t('Popisek')).replace(/\n/g, ' '), Math.round(item.size * pzLabelZoomK(item, state.map?.getZoom?.())) + ' px'));
   });
   syncMapLabelEditChip();
 }
@@ -12319,10 +12352,16 @@ function applyMapLabelSizeToAll(sizeValue){
   const size = Math.max(12, Math.min(160, parseInt(sizeValue ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
   state.mapLabelGlobalSize = size;
   if($('mapLabelSize')) $('mapLabelSize').value = String(size);
+  // Stejná hodnota = stejná velikost v aktuálním záběru: zmenšení podle zoomu se počítá
+  // od teď (dřív popisky vložené při jiném zoomu vyšly i dvojnásobně rozdílné).
+  const z = state.map?.getZoom?.();
   state.mapLabels.forEach(item => {
     item.size = size;
+    if(item.baseZoom != null && z != null) item.baseZoom = z;
     applyMapLabelStyle(item.marker?.getElement?.(), item);
+    pzApplyLabelZoom(item, z);
   });
+  try{ setScenePerimeterLabels(); setSceneDistanceLabels(); }catch(e){}
   updateReadouts();
   renderMapLabelList();
 }
@@ -12420,7 +12459,7 @@ function addMapLabelAt(lngLatObj, options={}){
       try{ window.__pzPushUndo?.(); }catch(_e){}
       const box = el.querySelector('.map-label-bubble')?.getBoundingClientRect() || el.getBoundingClientRect();
       const cx = box.left + box.width / 2, cy = box.top + box.height / 2;
-      const d0 = Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0 = item.size || 28;
+      const d0 = Math.max(8, Math.hypot(e.clientX - cx, e.clientY - cy)), s0 = (item.size || 28) * pzLabelZoomK(item, state.map?.getZoom?.());   // viditelná velikost (nová platí v tomto záběru)
       state.suppressMapLabelEdit = true;
       try{ rz.setPointerCapture(e.pointerId); }catch(_e){}
       const move = ev => {
@@ -12489,7 +12528,11 @@ function updateMapLabel(id, updates={}){
   const item = getMapLabelById(id);
   if(!item) return;
   if(updates.text != null) item.text = updates.text;
-  if(updates.size != null) item.size = Math.max(12, Math.min(160, parseInt(updates.size, 10) || 28));
+  if(updates.size != null){
+    item.size = Math.max(12, Math.min(160, parseInt(updates.size, 10) || 28));
+    // nová velikost platí v aktuálním záběru (viz applyMapLabelSizeToAll)
+    const z = state.map?.getZoom?.(); if(item.baseZoom != null && z != null){ item.baseZoom = z; pzApplyLabelZoom(item, z); }
+  }
   if(updates.side != null) item.side = pzLabelSide(updates.side);
   if(updates.style != null) item.style = String(updates.style);
   applyMapLabelStyle(item.marker?.getElement?.(), item);
@@ -17026,9 +17069,11 @@ function pzComputeFrameRect(outW, outH){
   const aspect = outW / outH;
   let frameW, frameH;
   if(aspect >= 1){
-    frameW = freeW * 0.78;
+    // malé displeje (notebook): rámeček ~90 % volné šířky, lištu a přehrávač ohlídá pás níže
+    const small = window.innerWidth < 1500;
+    frameW = freeW * (small ? 0.9 : 0.78);
     frameH = frameW / aspect;
-    const maxH = rect.height * 0.72;
+    const maxH = rect.height * (small ? 0.8 : 0.72);
     if(frameH > maxH){ frameH = maxH; frameW = frameH * aspect; }
   } else {
     // na výšku: dole nechat místo pro přehrávač (jinak ho rámeček překrýval)
@@ -20349,7 +20394,14 @@ function bindUI(){
     if(item) updateSceneIcon(item.id, {size: $('sceneIconSize')?.value || item.size});
   }));
   $('addMapLabelBtn')?.addEventListener('click', ()=>{
+    // Zapnutý režim + nový text v poli od zapnutí (či od posledního vložení): grafik chce
+    // vložit další popisek, ne režim vypnout (dřív hlásil „Režim popisků vypnut").
+    const txt = ($('mapLabelText')?.value || '').trim();
+    if(state.addingMapLabel && txt && txt !== state._pzLabelArmedText){
+      state._pzLabelArmedText = txt; setStatus(t('Klikni do mapy, kam popisek vložit.')); return;
+    }
     const next = armSceneAddMode('label');
+    state._pzLabelArmedText = next ? txt : null;
     setStatus(next ? t('Režim popisků: klikáním do mapy vkládáš popisky. Dalším klikem na tlačítko režim vypneš.') : t('Režim popisků vypnut.'));
   });
   $('clearMapLabelsBtn')?.addEventListener('click', clearMapLabels);
@@ -20388,6 +20440,7 @@ function bindUI(){
     syncMapLabelEditChip();
     if(state.editingMapLabelId && !state.addingMapLabel){ try{ window.__pzPushUndo?.(); }catch(err){} applySelectedMapLabelChanges(); return; }
     if(!state.addingMapLabel) armSceneAddMode('label');
+    state._pzLabelArmedText = ($('mapLabelText')?.value || '').trim();
     setStatus(t('Klikni do mapy, kam popisek vložit.'));
   });
   $('mapLabelEditCancel')?.addEventListener('click', () => {
@@ -21825,6 +21878,11 @@ document.addEventListener('visibilitychange', () => {
   syncProjectDBFromServer();
 });
 
+// Po výběru v selectu panelu vrátit klávesnici mapě: jinak Ctrl+Z, Delete i šipky
+// dál mířily do selectu (šipka měnila volbu místo posunu popisku).
+document.addEventListener('change', e => {
+  try{ if(e.target?.matches?.('.sidebar select') && document.activeElement === e.target) setTimeout(() => { if(document.activeElement === e.target) e.target.blur(); }, 0); }catch(_e){}
+});
 // ====== Escape key: close open dropdowns / search results ======
 document.addEventListener('keydown', e => {
   if(e.key !== 'Escape') return;
@@ -23036,7 +23094,8 @@ function pzBuildIconPalette(){
       pzPickBuiltinIcon(kind);
       // Výběr ikony rovnou zapne vkládání — dřív hláška radila „klikni do mapy",
       // ale klik nic neudělal, dokud grafik nezmáčkl ještě „Klikni do mapy".
-      if(!state.addingSceneIcon){ armSceneAddMode('icon'); state._pzIconArmedAt = (state.sceneIcons || []).length; }
+      if(!state.addingSceneIcon) armSceneAddMode('icon');
+      state._pzIconArmedAt = (state.sceneIcons || []).length;   // i v zapnutém režimu: další „Klikni do mapy" ho nevypne
       setStatus(t('Ikona „{0}“ vybraná — klikni do mapy, kam ji dát.', b.textContent.trim() || it.label));
     });
     grid.appendChild(b);
@@ -23126,6 +23185,8 @@ function pzColorFromName(v){
     getCameraStateAtProgress, normalizeCameraAnim, animTiming, applyAnimEasing, pzCamKeyframeTimes, setCameraKeyframeTime, pzFrameToMapView, pzMapToFrameView, pzCamLiftEffect, pzVehLenKm, pzExtraGap, pzKfNameCut});
   // vozidla a srážky (tests/16_vehicles.test.js)
   Object.assign(window.__pzFns, {pzCrashInfo, pzProjectOnRoute, pointAtProgress});
+  // panel Scéna (tests/30_scene_ux.test.js)
+  Object.assign(window.__pzFns, {pzExportFrameRect, pzComputeFrameRect, applyMapLabelSizeToAll, pzLabelZoomK, getMapFreeAreaLeft});
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
     version: 1,
