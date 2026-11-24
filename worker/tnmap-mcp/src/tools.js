@@ -186,7 +186,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "colorPolitical",
-  "description": "obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR NEUMÍ.",
+  "description": "obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR = colorRegion.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -197,6 +197,23 @@ export const MAP_TOOLS = [
    "required": [
     "country"
    ],
+   "additionalProperties": true
+  }
+ },
+ {
+  "name": "colorRegion",
+  "description": "kraje ČR (14 krajů, funguje na každém podkladu): region = jeden nebo víc krajů (\"Praha, Jihočeský a Jihomoravský\", \"MSK\", \"Vysočina\", \"všechny\"); color = výplň; outline = zvýrazněná hranice (true nebo barva, width px, výchozí 4) – \"obkreslit hranicí\" = outline bez color; others = barva všech ostatních krajů (false = zrušit); labels:true = názvy krajů; clear:true s regionem = zrušit jen ty, bez regionu = všechny kraje. Bez color i outline = červená výplň. Víc barev = víc volání.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "region": {},
+    "color": {},
+    "outline": {},
+    "width": {},
+    "others": {},
+    "labels": {},
+    "clear": {}
+   },
    "additionalProperties": true
   }
  },

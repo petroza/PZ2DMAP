@@ -1433,6 +1433,39 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           </details>
         </div>
       </div>
+      <!-- Kraje ČR: výplň a/nebo zvýrazněný obrys po krajích (hranice ČÚZK RÚIAN, CC BY 4.0) -->
+      <div class="section" id="czKrajeSection">
+        <h3 data-i18n="Kraje ČR">Kraje ČR</h3>
+        <div class="pz-country-row">
+          <select id="czKrajSelect" aria-label="Kraj"><option value="" data-i18n="Vyber kraj…">Vyber kraj…</option></select>
+          <input id="czKrajColor" type="color" value="#e63946" title="Barva kraje" aria-label="Barva kraje">
+          <button type="button" class="btn btn-sm btn-primary" id="czKrajPaintBtn" data-i18n="Obarvit">Obarvit</button>
+          <button type="button" class="btn btn-sm" id="czKrajOutlineBtn" data-i18n="Obrys">Obrys</button>
+        </div>
+        <label class="check" style="margin-top:8px"><input id="paintKrajOnClick" type="checkbox"> <span data-i18n="Barvit kraj kliknutím do mapy">Barvit kraj kliknutím do mapy</span></label>
+        <div id="czKrajList" class="wp-list"></div>
+        <div class="pz-kraj-opts">
+          <label class="check"><input id="czKrajOthersOn" type="checkbox"> <span data-i18n="Ostatní kraje">Ostatní kraje</span></label>
+          <input id="czKrajOthersColor" type="color" value="#f4a261" title="Ostatní kraje" aria-label="Ostatní kraje">
+        </div>
+        <label class="check"><input id="czKrajLabelsOn" type="checkbox"> <span data-i18n="Názvy krajů">Názvy krajů</span></label>
+        <div class="btns pz-list-foot" id="czKrajFoot" hidden>
+          <button type="button" class="btn btn-sm" id="czKrajFitBtn" data-i18n="Přiblížit ČR">Přiblížit ČR</button>
+          <button type="button" class="btn btn-sm btn-danger" id="czKrajClearBtn" data-i18n="Smazat kraje">Smazat kraje</button>
+        </div>
+        <details class="compact-details">
+          <summary data-i18n="Další možnosti">Další možnosti</summary>
+          <label class="check"><input id="czKrajBordersOn" type="checkbox" checked> <span data-i18n="Hranice krajů">Hranice krajů</span></label>
+          <div class="row">
+            <div class="color-row"><input id="czKrajBordersColor" type="color" value="#ffffff"><label data-i18n="Barva hranic">Barva</label></div>
+            <div><label><span data-i18n="Krytí výplně">Krytí výplně</span> <span class="val" id="czKrajOpacityVal">85%</span></label><input id="czKrajOpacity" type="range" min="0.2" max="1" step="0.01" value="0.85"></div>
+          </div>
+          <div class="row">
+            <div class="color-row"><input id="czKrajOutlineColor" type="color" value="#e30613"><label data-i18n="Barva obrysu">Barva obrysu</label></div>
+            <div><label><span data-i18n="Tloušťka obrysu">Tloušťka obrysu</span> <span class="val" id="czKrajOutlineWidthVal">4 px</span></label><input id="czKrajOutlineWidth" type="range" min="1" max="12" step="0.5" value="4"></div>
+          </div>
+        </details>
+      </div>
       <div class="section" id="model3dSection">
         <h3>3D model (GLB)</h3>
         <label class="btn btn-sm" style="display:inline-flex;align-items:center;cursor:pointer"><input id="model3dUpload" type="file" accept=".glb,model/gltf-binary" style="display:none"> Nahrát GLB soubor</label>
@@ -4314,7 +4347,13 @@ const MAP_SOURCE_WATERMARKS = {
   esriTerrain:'Zdroj mapy: Esri / USGS / NASA / NGA / CGIAR',
   political:'Zdroj mapy: Eurostat / GISCO / Natural Earth'
 };
+// Kraje ČR v mapě → doplnit zdroj hranic (ČÚZK, licence CC BY 4.0 vyžaduje uvedení).
 function getCurrentMapSourceWatermarkText(){
+  const tx = getBaseMapSourceWatermarkText();
+  try{ if(pzKrajeShown() && !/ČÚZK/.test(tx)) return tx + ' / ČÚZK'; }catch(e){}
+  return tx;
+}
+function getBaseMapSourceWatermarkText(){
   const prefix = t('Zdroj mapy') + ': ';
   const strip = s => String(s).replace(/^Zdroj mapy:\s*/, '');
   const key = $('baseStyle')?.value || 'liberty';
@@ -8639,7 +8678,8 @@ function getOverlaySnapshot(){
     politicalCountryDefaultColor: $('politicalCountryDefaultColor')?.value || '#e7e2d8',
     politicalFillOpacity: $('politicalFillOpacity')?.value || '0.92',
     politicalCountryPaintOnClick: !!$('paintPoliticalCountryOnClick')?.checked,
-    countryColorMap: {...(state.countryColorMap || {})}
+    countryColorMap: {...(state.countryColorMap || {})},
+    czKraje: pzKrajeSnapshot()
   };
 }
 
@@ -8654,8 +8694,9 @@ function applyOverlaySnapshot(snapshot={}){
   if($('politicalCountryDefaultColor') && snapshot.politicalCountryDefaultColor) $('politicalCountryDefaultColor').value = snapshot.politicalCountryDefaultColor;
   if($('politicalFillOpacity') && snapshot.politicalFillOpacity != null) $('politicalFillOpacity').value = String(snapshot.politicalFillOpacity);
   if($('paintPoliticalCountryOnClick')) $('paintPoliticalCountryOnClick').checked = !!snapshot.politicalCountryPaintOnClick;
-  // Pole krajů ČR (czRegion*) ze starých projektů se ignorují — funkce byla zrušena.
+  // Pole krajů ČR (czRegion*) ze starých projektů se ignorují — kraje jsou teď v czKraje.
   state.countryColorMap = {...(snapshot.countryColorMap || {})};
+  try{ pzKrajeRestore(snapshot.czKraje); }catch(e){ console.error(e); }
   ensureGeoDataLoaded().then(() => {
     populateCountrySelects();
     syncCountrySelects(snapshot.politicalCountrySelectedId || snapshot.countryFocusId || '');
@@ -8731,7 +8772,7 @@ function serializeProjectSnapshot(){
     // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
     // as the same .glb is loaded again; within a session it survives undo/redo + project switch).
     model3d: (state.model3d && state.model3d.lngLat) ? (m=>({lngLat:m.lngLat, altitude:m.altitude, scale:m.scale, sizeMeters:m.sizeMeters, rotationDeg:m.rotationDeg, rotX:m.rotX, rotZ:m.rotZ, upAxis:m.upAxis, snapSurface:m.snapSurface, followRoute:m.followRoute, shadowOn:m.shadowOn, shadowBlur:m.shadowBlur, sun:m.sun}))(state.model3d) : null,
-    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, ...(item.offset ? {offset:item.offset} : {}), lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
+    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, ...(item.offset ? {offset:item.offset} : {}), ...(item.kraj ? {kraj:item.kraj} : {}), lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     animation: {
       currentRotMode: state.currentRotMode,
       animIconSize: $('animIconSize')?.value || '34',
@@ -8908,7 +8949,7 @@ function applyBasicProjectSnapshot(snapshot){
       model3dClear();
     }
   }catch(_e){}
-  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null, offset: item.offset}));
+  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null, offset: item.offset, kraj: item.kraj}));
   // Každý popisek si drží vlastní velikost (dřív se všechny srovnaly na poslední).
   // Posuvník jen ukáže velikost posledního, ať další nový popisek navazuje.
   if(state.mapLabels.length){
@@ -9010,6 +9051,7 @@ function snapshotHasContent(snap){
     || (snap.sceneArrows || []).length > 0
     || (snap.mapLabels || []).length > 0
     || Object.keys(snap.overlays?.countryColorMap || {}).length > 0
+    || !!(snap.overlays?.czKraje && (Object.keys(snap.overlays.czKraje.fill || {}).length || Object.keys(snap.overlays.czKraje.outline || {}).length || snap.overlays.czKraje.others))
     || (snap.closures || []).length > 0
     || (snap.countryFlags || []).length > 0
     || (snap.animation?.extraVehicles || []).length > 0
@@ -9379,7 +9421,17 @@ async function applyPoliticalCountryColor(){
     const miss = pzResolveCountry(q)?.missing;
     if(miss){ setStatus(pzCountryMissingError(q), 'error'); return; }
     id = getCountrySearchItems(q)[0]?.id || '';
-    if(!id && /kraj|morav|čech|cech|slezsk|vysočin|vysocin/i.test(q)){ setStatus(t('Kraje ČR barvit nejde — jen celé státy.'), 'error'); return; }
+    // název kraje ČR („Jihomoravský", „MSK") → obarví kraj (Scéna › Kraje ČR)
+    if(!id && pzKrajResolve(q)){
+      const kid = pzKrajResolve(q);
+      if($('politicalCountrySearch')) $('politicalCountrySearch').value = '';
+      closeCountrySuggest();
+      try{ await pzKrajeLoad(); }catch(e){}
+      pzKrajeSet(kid, {fill: $('politicalCountryColor')?.value || '#e63946'});
+      pzKrajeFit(false);
+      setStatus(t('{0} — obarveno.', pzKrajName(kid)));
+      return;
+    }
     if(!id){ setStatus(t('Stát „{0}“ nenalezen — zkus jiný název.', q), 'error'); return; }
   }else{
     id = $('politicalCountrySelect')?.value || '';
@@ -9475,6 +9527,439 @@ function clearPoliticalPainting(){
 
   if(hadCountries) setStatus(t('Všechny barvy států zrušeny.'));
   else setStatus('Není co resetovat.');
+}
+
+// ===== Kraje ČR: výplň, zvýrazněný obrys, „ostatní kraje", názvy =====
+// Hranice: ČÚZK, RÚIAN – vyšší územně samosprávné celky (ags.cuzk.cz, RUIAN/MapServer/17),
+// licence CC BY 4.0 (uvádí se „ČÚZK" ve zdroji mapy). Zjednodušeno mapshaperem
+// (interval 100 m, se zachováním topologie — sousední kraje sdílejí stejnou hranici)
+// → assets/kraje_cz.geojson (~320 kB, stahuje se až při prvním použití krajů).
+// Vrstvy pz-kraje-* žijí ve stylu mapy, takže je export (klon živého stylu) převezme
+// a applyMapTweaks je po přepnutí podkladu i v exportní mapě nastaví znovu.
+const PZ_KRAJE = [
+  // [id = NUTS 3, úplný název, krátký název (popisek v mapě), další názvy a zkratky (bez diakritiky), bod pro popisek
+  //  (uvnitř kraje, posunutý tak, aby se popisky sousedů na celé ČR nepřekrývaly)]
+  ['CZ010', 'Hlavní město Praha', 'Praha', ['praha', 'praze', 'prahu', 'prazsky', 'hlavni mesto', 'hl m praha', 'prague', 'pha'], [14.466, 50.069]],
+  ['CZ020', 'Středočeský kraj', 'Středočeský', ['stredocesky', 'stredocesko', 'stredni cechy', 'stc'], [14.943, 49.903]],
+  ['CZ031', 'Jihočeský kraj', 'Jihočeský', ['jihocesky', 'jizni cechy', 'jck'], [14.432, 49.093]],
+  ['CZ032', 'Plzeňský kraj', 'Plzeňský', ['plzensky', 'plzensko', 'plk'], [13.24, 49.611]],
+  ['CZ041', 'Karlovarský kraj', 'Karlovarský', ['karlovarsky', 'karlovarsko', 'kvk'], [12.753, 50.174]],
+  ['CZ042', 'Ústecký kraj', 'Ústecký', ['ustecky', 'ustecko', 'ulk'], [13.8, 50.6]],
+  ['CZ051', 'Liberecký kraj', 'Liberecký', ['liberecky', 'liberecko', 'lbk'], [15.118, 50.738]],
+  ['CZ052', 'Královéhradecký kraj', 'Královéhradecký', ['kralovehradecky', 'hradecky', 'kralovehradecko', 'hkk', 'khk'], [15.866, 50.386]],
+  ['CZ053', 'Pardubický kraj', 'Pardubický', ['pardubicky', 'pardubicko', 'pak'], [16.38, 49.829]],
+  ['CZ063', 'Kraj Vysočina', 'Vysočina', ['vysocina', 'vysocine', 'vysocinu', 'jihlavsky', 'vys'], [15.673, 49.414]],
+  ['CZ064', 'Jihomoravský kraj', 'Jihomoravský', ['jihomoravsky', 'jizni morava', 'jmk'], [16.641, 49.096]],
+  ['CZ071', 'Olomoucký kraj', 'Olomoucký', ['olomoucky', 'olomoucko', 'olk'], [17.15, 49.5]],
+  ['CZ072', 'Zlínský kraj', 'Zlínský', ['zlinsky', 'zlinsko', 'zlk'], [17.75, 49.21]],
+  ['CZ080', 'Moravskoslezský kraj', 'Moravskoslezský', ['moravskoslezsky', 'moravskoslezsko', 'severni morava', 'slezsko', 'msk'], [18.15, 49.85]]
+];
+const PZ_KRAJ_BY_ID = Object.fromEntries(PZ_KRAJE.map(k => [k[0], k]));
+const PZ_KRAJ_SWATCHES = ['#e63946', '#9d0208', '#f4a261', '#ffd166', '#2a9d8f', '#3a86ff', '#1d3557', '#8338ec', '#adb5bd', '#ffffff'];
+// Výchozí škály pro datovou mapu (od nejnižší po nejvyšší hodnotu).
+const PZ_KRAJ_RAMPS = {
+  red: ['#fde4d6', '#f9a985', '#ef6548', '#c81d25', '#7f0a12'],
+  blue: ['#deebf7', '#9ecae1', '#4f9bd1', '#1f63a8', '#0b2f6b'],
+  green: ['#e5f5e0', '#a1d99b', '#5bb46b', '#238b45', '#00441b'],
+  orange: ['#fff0d4', '#fdc77e', '#f99a3e', '#d95f0e', '#8c3005']
+};
+
+// Klíč názvu: bez diakritiky, bez slova „kraj", koncovky pryč („Jihomoravského kraje" = „jihomoravsk").
+function pzKrajKey(s){
+  const toks = String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(w => w && !/^kraj/.test(w));
+  return toks.map(w => w.length > 4 ? w.replace(/(eho|emu|ymi|ych|ym|em|ou|y|a|e|u|i|o)$/, '') : w).join(' ');
+}
+let _pzKrajIndex = null;
+function pzKrajIndex(){
+  if(_pzKrajIndex) return _pzKrajIndex;
+  _pzKrajIndex = [];
+  PZ_KRAJE.forEach(([id, name, short, alias]) => [id, name, short, ...alias].forEach(a => { const k = pzKrajKey(a); if(k) _pzKrajIndex.push([k, id]); }));
+  return _pzKrajIndex;
+}
+// Jeden kraj podle názvu („Moravskoslezský", „MSK", „Vysočina", „Praha", „jihomoravsky kraj", „CZ064").
+function pzKrajResolve(q){
+  const k = pzKrajKey(q); if(!k) return null;
+  const idx = pzKrajIndex();
+  const hit = idx.find(([a]) => a === k); if(hit) return hit[1];
+  if(k.length < 4) return null;
+  // začátek názvu („jihomor", „kralovehr"); víc různých krajů = nejednoznačné („jiho")
+  const ids = [...new Set(idx.filter(([a]) => a.startsWith(k)).map(x => x[1]))];
+  return ids.length === 1 ? ids[0] : null;
+}
+// Seznam krajů: pole nebo text „Praha, Jihočeský a Jihomoravský"; „všechny" = celá ČR.
+function pzKrajResolveList(input){
+  const parts = Array.isArray(input) ? input.map(String)
+    : String(input == null ? '' : input).split(/\s*(?:[,;+&\n]|\s(?:a|i|plus|and)\s)\s*/i);
+  const ids = [], unknown = [];
+  for(const p of parts.map(x => x.trim()).filter(Boolean)){
+    const k = pzKrajKey(p);
+    if(!k) continue;   // samotné „kraj", „kraje"
+    if(/^(vse|vsechn|vsech|all|cel cr|cr|cesk|cesk republik|ceska republika)$/.test(k)){ PZ_KRAJE.forEach(x => { if(!ids.includes(x[0])) ids.push(x[0]); }); continue; }
+    let got = pzKrajResolve(p) ? [pzKrajResolve(p)] : [];
+    // „Praha Jihočeský" bez čárky: zkusit po slovech (všechna slova musí být kraje)
+    if(!got.length && /\s/.test(p.trim())){ const w = p.trim().split(/\s+/).filter(x => pzKrajKey(x)).map(pzKrajResolve); if(w.length && w.every(Boolean)) got = w; }
+    if(got.length) got.forEach(id => { if(!ids.includes(id)) ids.push(id); }); else unknown.push(p);
+  }
+  return {ids, unknown};
+}
+function pzKrajName(id, short){ const k = PZ_KRAJ_BY_ID[id]; return k ? (short ? k[2] : k[1]) : id; }
+
+function pzKrajeDefaults(){
+  return {fill:{}, outline:{}, others:null, borders:true, bordersColor:null, opacity:0.85, outlineColor:'#e30613', outlineWidth:4, labels:false, data:null};
+}
+function pzKrajeState(){ return state.czKraje || (state.czKraje = pzKrajeDefaults()); }
+// Je na mapě něco z krajů (pro export, zdroj mapy a uložení)?
+function pzKrajeShown(){
+  const s = state.czKraje; if(!s) return false;
+  return !!(Object.keys(s.fill || {}).length || Object.keys(s.outline || {}).length || s.others);
+}
+// Vrstvy jsou vidět i při zapnutém „Barvit kraj kliknutím" — grafik vidí, kam kliká.
+function pzKrajeActive(){ return pzKrajeShown() || !!$('paintKrajOnClick')?.checked; }
+function pzKrajeHighlighted(){ const s = pzKrajeState(); return PZ_KRAJE.map(k => k[0]).filter(id => s.fill[id] || s.outline[id]); }
+
+let _pzKrajeLoading = null;
+function pzKrajeLoad(){
+  if(state.czKrajeGeo) return Promise.resolve(state.czKrajeGeo);
+  if(!_pzKrajeLoading) _pzKrajeLoading = fetch('assets/kraje_cz.geojson').then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))).then(g => {
+    state.czKrajeGeo = {type:'FeatureCollection', features:(g.features || []).filter(f => PZ_KRAJ_BY_ID[f.properties?.id])
+      .map(f => ({type:'Feature', properties:{id:f.properties.id, name:PZ_KRAJ_BY_ID[f.properties.id][1]}, geometry:f.geometry}))};
+    return state.czKrajeGeo;
+  }).catch(e => { _pzKrajeLoading = null; throw e; });
+  return _pzKrajeLoading;
+}
+// Hranice krajů „automaticky": bílé přes barevné plochy a tmavé podklady, jinak šedé (na světlé mapě i Politické by bílé zmizely).
+function pzKrajeBorderColor(){
+  const s = pzKrajeState(); if(s.bordersColor) return s.bordersColor;
+  const base = $('baseStyle')?.value || '';
+  return (s.others || /^(satellite|hybrid|esriTerrain|dark)/.test(base)) ? '#ffffff' : '#5c6370';
+}
+const PZ_KRAJ_LAYERS = ['pz-kraje-fill', 'pz-kraje-borders', 'pz-kraje-outline-case', 'pz-kraje-outline'];
+function pzKrajeEnsureLayers(m){
+  if(!m.getSource('pz-kraje')) m.addSource('pz-kraje', {type:'geojson', data: state.czKrajeGeo});
+  const L = () => m.getStyle()?.layers || [];
+  const overlay = getOverlayBeforeId();
+  // Výplň: nad výplní států (Politická), jinak pod vodu podkladu — řeky a nádrže zůstanou vidět.
+  if(!m.getLayer('pz-kraje-fill')){
+    const ls = L(), pi = ls.findIndex(l => l.id === 'pz-political-fill');
+    const w = ls.find(l => l.type === 'fill' && /^water/i.test(l.id));
+    m.addLayer({id:'pz-kraje-fill', type:'fill', source:'pz-kraje', paint:{'fill-color':'#000000', 'fill-opacity':0}}, pi >= 0 ? ls[pi + 1]?.id : (w ? w.id : overlay));
+  }else{
+    // výplň států přidaná později (data států dorazila po krajích) nesmí kraje překrýt
+    const ls = L(), ki = ls.findIndex(l => l.id === 'pz-kraje-fill'), pi = ls.findIndex(l => l.id === 'pz-political-fill');
+    if(pi > ki){ try{ m.moveLayer('pz-kraje-fill', ls[pi + 1]?.id); }catch(e){} }
+  }
+  const line = (id, paint) => { if(!m.getLayer(id)) m.addLayer({id, type:'line', source:'pz-kraje', layout:{'line-join':'round', 'line-cap':'round'}, paint}, overlay); };
+  line('pz-kraje-borders', {'line-color':'#ffffff', 'line-width':1.2, 'line-opacity':0});
+  line('pz-kraje-outline-case', {'line-color':'#ffffff', 'line-width':6, 'line-opacity':0});
+  line('pz-kraje-outline', {'line-color':'#e30613', 'line-width':4, 'line-opacity':0});
+}
+// Šířka čáry podle zoomu jako pzZoomWidth, ale s výrazem po krajích.
+function pzKrajZoomWidth(expr){ return ['interpolate', ['linear'], ['zoom'], 0, ['*', expr, 0.3], 2, ['*', expr, 0.42], 3.5, ['*', expr, 0.65], 5, expr]; }
+function pzKrajeApply(){
+  const m = state.map; if(!m?.isStyleLoaded?.()) return;
+  if(!pzKrajeActive()){ PZ_KRAJ_LAYERS.forEach(id => { if(m.getLayer(id)) safeSetLayout(id, 'visibility', 'none'); }); return; }
+  if(!state.czKrajeGeo){
+    pzKrajeLoad().then(() => { try{ pzKrajeApply(); pzKrajeRenderList(); }catch(e){} })
+      .catch(() => setStatus(t('Hranice krajů se nepodařilo načíst — zkontroluj připojení.'), 'error'));
+    return;
+  }
+  pzKrajeEnsureLayers(m);
+  const s = pzKrajeState();
+  const fills = Object.entries(s.fill).filter(([id, c]) => PZ_KRAJ_BY_ID[id] && c);
+  const op = Math.max(0, Math.min(1, +s.opacity || 0.85));
+  const matchOf = (entries, def) => entries.length ? ['match', ['get', 'id'], ...entries.flat(), def] : def;
+  safeSetPaint('pz-kraje-fill', 'fill-color', matchOf(fills, s.others || '#000000'));
+  safeSetPaint('pz-kraje-fill', 'fill-opacity', s.others ? op : (fills.length ? ['match', ['get', 'id'], fills.map(e => e[0]), op, 0] : 0));
+  safeSetPaint('pz-kraje-borders', 'line-color', pzKrajeBorderColor());
+  safeSetPaint('pz-kraje-borders', 'line-width', pzZoomWidth(1.4));
+  safeSetPaint('pz-kraje-borders', 'line-opacity', s.borders ? 0.9 : 0);
+  const outl = Object.entries(s.outline).filter(([id, o]) => PZ_KRAJ_BY_ID[id] && o);
+  const ids = outl.map(e => e[0]);
+  const wExpr = matchOf(outl.map(([id, o]) => [id, Math.max(0.5, +o.width || s.outlineWidth || 4)]), s.outlineWidth || 4);
+  safeSetFilter('pz-kraje-outline', ['in', ['get', 'id'], ['literal', ids]]);
+  safeSetFilter('pz-kraje-outline-case', ['in', ['get', 'id'], ['literal', ids]]);
+  safeSetPaint('pz-kraje-outline', 'line-color', matchOf(outl.map(([id, o]) => [id, o.color || s.outlineColor]), s.outlineColor || '#e30613'));
+  safeSetPaint('pz-kraje-outline', 'line-width', pzKrajZoomWidth(wExpr));
+  safeSetPaint('pz-kraje-outline', 'line-opacity', ids.length ? 1 : 0);
+  // tenký světlý lem pod obrysem — obrys je čitelný i přes stejně barevnou výplň a tmavý podklad
+  safeSetPaint('pz-kraje-outline-case', 'line-width', pzKrajZoomWidth(['+', wExpr, 3]));
+  safeSetPaint('pz-kraje-outline-case', 'line-opacity', ids.length ? 0.85 : 0);
+  PZ_KRAJ_LAYERS.forEach(id => safeSetLayout(id, 'visibility', 'visible'));
+}
+// Po každé změně stavu: mapa, panel, popisky a zdroj mapy.
+function pzKrajeChanged(){
+  try{ pzKrajeApply(); }catch(e){ console.error(e); }
+  try{ pzKrajeSyncLabels(); }catch(e){ console.error(e); }
+  try{ pzKrajeSyncUi(); pzKrajeRenderList(); }catch(e){}
+  try{ updateMapSourceWatermark(); }catch(e){}
+}
+
+// ---- Čisté API (UI, asistent, datová mapa s legendou) ------------------------
+// pzKrajeSet(id, {fill, outline}): fill = barva | null (zrušit) | undefined (beze změny);
+// outline = true | barva | {color, width} | false/null (zrušit) | undefined.
+function pzKrajeSet(id, {fill, outline} = {}){
+  const s = pzKrajeState(); if(!PZ_KRAJ_BY_ID[id]) return false;
+  if(fill !== undefined){ if(fill) s.fill[id] = fill; else delete s.fill[id]; }
+  if(outline !== undefined){
+    if(!outline) delete s.outline[id];
+    else{
+      const o = typeof outline === 'object' ? outline : (typeof outline === 'string' ? {color: outline} : {});
+      s.outline[id] = {color: o.color || s.outline[id]?.color || s.outlineColor, width: +o.width || s.outline[id]?.width || s.outlineWidth};
+    }
+  }
+  pzKrajeChanged();
+  return true;
+}
+function pzKrajeReset(){
+  const had = pzKrajeShown();
+  const keep = state.czKraje ? {opacity: state.czKraje.opacity, outlineColor: state.czKraje.outlineColor, outlineWidth: state.czKraje.outlineWidth} : {};
+  state.czKraje = {...pzKrajeDefaults(), ...keep};
+  if($('paintKrajOnClick')) $('paintKrajOnClick').checked = false;
+  pzKrajeChanged();
+  return had;
+}
+// Datová mapa: barva kraje podle hodnoty (kartogram). Pro navazující legendu.
+//   pzKrajeColorByValue({'Praha': 26.6, 'JMK': 43.5, CZ080: 12}, {
+//     classes: 5,                 // počet tříd (bez breaks)
+//     method: 'equal'|'quantile', // rozdělení tříd (výchozí equal = stejně široké intervaly)
+//     breaks: [10, 20, 30],       // vlastní hranice tříd (n hranic = n+1 tříd), přebije classes/method
+//     colors: ['#fee', …] | palette: 'red'|'blue'|'green'|'orange',
+//     others: '#d9d9d9' | null,   // kraje bez hodnoty
+//     replace: true               // smazat dosavadní výplně krajů (výchozí)
+//   }) → {ok, colors:{CZ010:'#…'}, legend:[{from, to, color, ids}], unresolved:['…']}
+// Hodnoty, hranice a barvy zůstanou ve state.czKraje.data (ukládají se s projektem).
+function pzKrajeColorByValue(values, opts = {}){
+  const s = pzKrajeState(), vals = {}, unresolved = [];
+  Object.entries(values || {}).forEach(([k, v]) => {
+    const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\s/g, '').replace(',', '.'));
+    const id = PZ_KRAJ_BY_ID[k] ? k : pzKrajResolve(k);
+    if(id && isFinite(n)) vals[id] = n; else unresolved.push(k);
+  });
+  const nums = Object.values(vals).sort((a, b) => a - b);
+  if(!nums.length) return {ok:false, error:'Žádná hodnota nepatří ke kraji.', unresolved};
+  let breaks = Array.isArray(opts.breaks) && opts.breaks.length ? opts.breaks.map(Number).filter(isFinite).sort((a, b) => a - b) : null;
+  const nCls = breaks ? breaks.length + 1 : Math.max(1, Math.min(opts.colors?.length || +opts.classes || 5, new Set(nums).size));
+  if(!breaks){
+    const lo = nums[0], hi = nums[nums.length - 1];
+    breaks = [];
+    for(let i = 1; i < nCls; i++) breaks.push(opts.method === 'quantile' ? nums[Math.floor(i * nums.length / nCls)] : lo + (hi - lo) * i / nCls);
+  }
+  const ramp = Array.isArray(opts.colors) && opts.colors.length ? opts.colors.map(c => pzColorFromName(c) || c) : (PZ_KRAJ_RAMPS[opts.palette] || PZ_KRAJ_RAMPS.red);
+  const colors = Array.from({length: nCls}, (_, i) => ramp.length === nCls ? ramp[i] : pzKrajRampAt(ramp, nCls === 1 ? 1 : i / (nCls - 1)));
+  const clsOf = v => { let c = 0; while(c < breaks.length && v >= breaks[c]) c++; return c; };
+  if(opts.replace !== false) s.fill = {};
+  const out = {};
+  Object.entries(vals).forEach(([id, v]) => { out[id] = colors[clsOf(v)]; s.fill[id] = out[id]; });
+  if(opts.others !== undefined) s.others = opts.others ? (pzColorFromName(opts.others) || opts.others) : null;
+  const legend = colors.map((color, i) => ({from: i ? breaks[i - 1] : nums[0], to: i < breaks.length ? breaks[i] : nums[nums.length - 1], color,
+    ids: Object.keys(vals).filter(id => clsOf(vals[id]) === i)}));
+  s.data = {values: vals, breaks, colors, method: opts.breaks ? 'breaks' : (opts.method || 'equal')};
+  pzKrajeChanged();
+  return {ok:true, colors: out, legend, unresolved};
+}
+function pzKrajRampAt(ramp, f){
+  const p = Math.max(0, Math.min(1, f)) * (ramp.length - 1), i = Math.min(ramp.length - 2, Math.floor(p)), k = p - i;
+  const a = parseInt(ramp[i].slice(1), 16), b = parseInt(ramp[i + 1].slice(1), 16);
+  return '#' + [16, 8, 0].map(sh => Math.round(((a >> sh) & 255) * (1 - k) + ((b >> sh) & 255) * k).toString(16).padStart(2, '0')).join('');
+}
+function pzKrajeBBox(ids){
+  const set = new Set(ids && ids.length ? ids : PZ_KRAJE.map(k => k[0]));
+  return pzFeaturesBBox((state.czKrajeGeo?.features || []).filter(f => set.has(f.properties.id)));
+}
+// Celá ČR v záběru (zadání „mapu ČR, na ní zvýraznit kraje"); jen když zvýrazněné kraje v záběru nejsou celé.
+function pzKrajeFit(force){
+  const bb = pzKrajeBBox(null); if(!bb || !state.map) return false;
+  if(!force){
+    const hb = pzKrajeBBox(pzKrajeHighlighted()), vb = state.map.getBounds();
+    if(hb && hb[0][0] >= vb.getWest() && hb[1][0] <= vb.getEast() && hb[0][1] >= vb.getSouth() && hb[1][1] <= vb.getNorth() && state.map.getZoom() > 5) return false;
+  }
+  state.screenPan = {x:0, y:0};
+  state.map.fitBounds(bb, {padding: getFitPadding(), bearing:0, pitch:0, duration:800});
+  return true;
+}
+
+// ---- Názvy krajů = běžné popisky scény (styl Nova, jdou posunout, jsou v exportu) ----
+function pzKrajeSyncLabels(){
+  const s = pzKrajeState();
+  const hi = pzKrajeHighlighted();
+  const want = new Set(s.labels ? (hi.length ? hi : PZ_KRAJE.map(k => k[0])) : []);
+  const have = (state.mapLabels || []).filter(l => l.kraj);
+  have.filter(l => !want.has(l.kraj)).forEach(l => { try{ deleteMapLabel(l.id, true); }catch(e){} });
+  // všech 14 krajů na celé ČR: menší písmo, ať se názvy nepřekrývají
+  const size = want.size > 6 ? 15 : want.size > 3 ? 17 : 20;
+  // automaticky velké popisky (grafik je neměnil) srovnat na novou velikost
+  have.filter(l => want.has(l.kraj) && l.krajAuto && l.krajAuto === l.size && l.size !== size).forEach(l => { try{ updateMapLabel(l.id, {size}); l.krajAuto = size; }catch(e){} });
+  const haveIds = new Set(have.map(l => l.kraj));
+  const add = [...want].filter(id => !haveIds.has(id));
+  if(!add.length) return;
+  // Praha je malá — popisek by ji celou zakryl, proto visí nad ní
+  add.forEach(id => { const k = PZ_KRAJ_BY_ID[id]; const it = addMapLabelAt({lng:k[4][0], lat:k[4][1]}, {text:k[2], size, side:'none', silent:true, kraj:id, ...(id === 'CZ010' ? {offset:[0, -Math.round(size * 2.4)]} : {})}); if(it) it.krajAuto = size; });
+  try{ clearMapLabelSelection(); }catch(e){}
+}
+
+// ---- Panel Scéna › Kraje ČR -----------------------------------------------------
+function pzKrajeFillSelect(){
+  const sel = $('czKrajSelect'); if(!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="" data-i18n="Vyber kraj…">' + escapeHtml(t('Vyber kraj…')) + '</option>' + [...PZ_KRAJE].sort((a, b) => a[1].localeCompare(b[1], 'cs'))
+    .map(k => `<option value="${k[0]}">${escapeHtml(k[1])}</option>`).join('');
+  sel.value = cur;
+}
+function pzKrajeSyncUi(){
+  const s = pzKrajeState();
+  if($('czKrajOthersOn')) $('czKrajOthersOn').checked = !!s.others;
+  if($('czKrajOthersColor') && s.others) $('czKrajOthersColor').value = s.others;
+  if($('czKrajLabelsOn')) $('czKrajLabelsOn').checked = !!s.labels;
+  if($('czKrajBordersOn')) $('czKrajBordersOn').checked = s.borders !== false;
+  if($('czKrajBordersColor')) $('czKrajBordersColor').value = pzKrajeBorderColor();
+  if($('czKrajOpacity')) $('czKrajOpacity').value = String(s.opacity ?? 0.85);
+  if($('czKrajOpacityVal')) $('czKrajOpacityVal').textContent = Math.round((s.opacity ?? 0.85) * 100) + '%';
+  if($('czKrajOutlineColor')) $('czKrajOutlineColor').value = s.outlineColor || '#e30613';
+  if($('czKrajOutlineWidth')) $('czKrajOutlineWidth').value = String(s.outlineWidth || 4);
+  if($('czKrajOutlineWidthVal')) $('czKrajOutlineWidthVal').textContent = (s.outlineWidth || 4) + ' px';
+  if($('czKrajFoot')) $('czKrajFoot').hidden = !pzKrajeShown();
+}
+// Seznam zvýrazněných krajů: výplň (barva), obrys (zapnout + barva), křížek.
+function pzKrajeRenderList(){
+  const box = $('czKrajList'); if(!box) return;
+  const s = pzKrajeState(), ids = pzKrajeHighlighted();
+  const sig = JSON.stringify([s.fill, s.outline, typeof currentLang !== 'undefined' ? currentLang : '']);
+  if(sig === box.dataset.sig) return;
+  if(box.contains(document.activeElement) && document.activeElement?.type === 'color' && JSON.stringify(ids) === box.dataset.ids) return;
+  box.dataset.sig = sig; box.dataset.ids = JSON.stringify(ids);
+  box.innerHTML = '';
+  if(!ids.length){ box.innerHTML = '<div class="small" style="opacity:.6;padding:4px 2px">' + escapeHtml(t('Žádný zvýrazněný kraj.')) + '</div>'; return; }
+  ids.forEach(id => {
+    const name = pzKrajName(id), row = document.createElement('div');
+    row.className = 'wp-item'; row.dataset.kraj = id;
+    const fill = document.createElement('input');
+    fill.type = 'color'; fill.value = s.fill[id] || $('czKrajColor')?.value || '#e63946';
+    fill.title = t('Barva kraje'); fill.setAttribute('aria-label', t('Barva kraje') + ': ' + name);
+    if(!s.fill[id]) fill.classList.add('pz-kraj-nofill');
+    fill.addEventListener('click', ev => ev.stopPropagation());
+    fill.addEventListener('input', () => { pzKrajeState().fill[id] = fill.value; fill.classList.remove('pz-kraj-nofill'); pzKrajeApply(); try{ updateMapSourceWatermark(); }catch(e){} });
+    fill.addEventListener('change', () => pzKrajeChanged());
+    const label = document.createElement('span'); label.className = 'pz-cc-name'; label.textContent = name;
+    const ol = document.createElement('button');
+    ol.type = 'button'; ol.className = 'btn btn-sm pz-kraj-ol' + (s.outline[id] ? ' is-on' : ''); ol.textContent = t('Obrys');
+    ol.title = t('Zvýraznit hranici kraje'); ol.setAttribute('aria-pressed', s.outline[id] ? 'true' : 'false');
+    ol.addEventListener('click', ev => { ev.stopPropagation(); pzKrajeSet(id, {outline: s.outline[id] ? false : true}); });
+    row.append(fill, label, ol);
+    if(s.outline[id]){
+      const oc = document.createElement('input');
+      oc.type = 'color'; oc.value = s.outline[id].color || s.outlineColor; oc.title = t('Barva obrysu'); oc.setAttribute('aria-label', t('Barva obrysu') + ': ' + name);
+      oc.addEventListener('click', ev => ev.stopPropagation());
+      oc.addEventListener('input', () => { const o = pzKrajeState().outline[id]; if(o){ o.color = oc.value; pzKrajeApply(); } });
+      oc.addEventListener('change', () => pzKrajeChanged());
+      row.appendChild(oc);
+    }
+    const del = document.createElement('button');
+    del.className = 'btn-remove'; del.type = 'button'; del.textContent = '×'; del.title = t('Smazat');
+    del.setAttribute('aria-label', t('Smazat') + ': ' + name);
+    del.addEventListener('click', ev => { ev.stopPropagation(); pzKrajeSet(id, {fill:null, outline:null}); setStatus(t('{0} — zvýraznění zrušeno.', name)); });
+    row.appendChild(del);
+    row.addEventListener('click', () => { if($('czKrajSelect')) $('czKrajSelect').value = id; });
+    box.appendChild(row);
+  });
+}
+// Klik do kraje (Scéna › Kraje ČR › „Barvit kraj kliknutím do mapy"): paleta u kurzoru.
+function pzKrajClick(e){
+  if(!pzToolOpen('paintKrajOnClick') || isRouteTabActive()) return false;
+  const m = state.map;
+  if(!state.czKrajeGeo || !m.getLayer('pz-kraje-fill')){ pzKrajeApply(); setStatus(t('Kraje se ještě načítají — klikni za chvíli.'), 'error'); return true; }
+  const f = (m.queryRenderedFeatures(e.point, {layers:['pz-kraje-fill']}) || []).find(x => x?.properties?.id);
+  if(!f){ pzCloseCountryPop(); return false; }
+  const id = f.properties.id, name = pzKrajName(id), s = pzKrajeState();
+  pzCloseCountryPop();
+  if($('czKrajSelect')) $('czKrajSelect').value = id;
+  const pop = document.createElement('div'); pop.className = 'pz-country-pop';
+  pop.style.left = e.point.x + 'px'; pop.style.top = e.point.y + 'px';
+  pop.innerHTML = `<b>${escapeHtml(name)}</b><div class="sw">${PZ_KRAJ_SWATCHES.map(c => `<button type="button" data-c="${c}" style="background:${c}" title="${c}" aria-label="${c}"></button>`).join('')}</div>
+    <div class="row"><input type="color" value="${escapeHtml(s.fill[id] || $('czKrajColor')?.value || '#e63946')}" aria-label="${escapeHtml(t('Vlastní barva'))}">
+    <button type="button" class="btn btn-sm${s.outline[id] ? ' is-on' : ''}" data-act="outline">${escapeHtml(t('Obrys'))}</button>
+    <button type="button" class="btn btn-sm" data-act="clear">${escapeHtml(t('Zrušit zvýraznění'))}</button></div>`;
+  const undo = () => { try{ window.__pzPushUndo?.(); }catch(_e){} };
+  const apply = c => { undo(); if($('czKrajColor')) $('czKrajColor').value = c; pzKrajeSet(id, {fill:c}); setStatus(t('{0} — obarveno.', name)); };
+  pop.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const b = ev.target.closest('button'); if(!b) return;
+    if(b.dataset.c) apply(b.dataset.c);
+    else if(b.dataset.act === 'outline'){ undo(); pzKrajeSet(id, {outline: !pzKrajeState().outline[id]}); }
+    else if(b.dataset.act === 'clear'){ undo(); pzKrajeSet(id, {fill:null, outline:null}); setStatus(t('{0} — zvýraznění zrušeno.', name)); }
+    pzCloseCountryPop();
+  });
+  pop.querySelector('input[type=color]').addEventListener('change', ev => { apply(ev.target.value); pzCloseCountryPop(); });
+  ['mousedown', 'pointerdown', 'wheel', 'dblclick'].forEach(t2 => pop.addEventListener(t2, ev => ev.stopPropagation()));
+  m.getContainer().appendChild(pop);
+  try{
+    const cr = m.getContainer().getBoundingClientRect(), pad = 8;
+    if(pop.getBoundingClientRect().top < Math.max(cr.top, 0) + 60) pop.classList.add('below');
+    const pr = pop.getBoundingClientRect(), minL = Math.max(cr.left, 0) + pad, maxR = Math.min(cr.right, window.innerWidth) - pad;
+    const dx = pr.left < minL ? minL - pr.left : pr.right > maxR ? maxR - pr.right : 0;
+    if(dx) pop.style.left = (e.point.x + dx) + 'px';
+  }catch(_e){}
+  m.once('movestart', pzCloseCountryPop);
+  return true;
+}
+// Projekt / krok zpět: jen čistá data (bez geometrie).
+function pzKrajeSnapshot(){
+  const s = state.czKraje; if(!s) return null;
+  return JSON.parse(JSON.stringify(s));
+}
+function pzKrajeRestore(snap){
+  const d = pzKrajeDefaults();
+  if(!snap || typeof snap !== 'object'){ state.czKraje = d; }
+  else{
+    const okId = o => Object.fromEntries(Object.entries(o || {}).filter(([id, v]) => PZ_KRAJ_BY_ID[id] && v));
+    state.czKraje = {...d, ...snap, fill: okId(snap.fill), outline: okId(snap.outline)};
+  }
+  try{ pzKrajeSyncUi(); pzKrajeRenderList(); }catch(e){}
+  try{ pzKrajeApply(); }catch(e){}
+}
+function pzInitKrajeUi(){
+  pzKrajeFillSelect();
+  const s = () => pzKrajeState();
+  const pickId = () => { const id = $('czKrajSelect')?.value || ''; if(!id){ setStatus(t('Vyber kraj v seznamu nebo klikni do mapy.')); $('czKrajSelect')?.focus(); } return id; };
+  $('czKrajPaintBtn')?.addEventListener('click', async () => {
+    const id = pickId(); if(!id) return;
+    try{ await pzKrajeLoad(); }catch(e){}
+    pzKrajeSet(id, {fill: $('czKrajColor')?.value || '#e63946'});
+    pzKrajeFit(false);
+    setStatus(t('{0} — obarveno.', pzKrajName(id)));
+  });
+  $('czKrajOutlineBtn')?.addEventListener('click', async () => {
+    const id = pickId(); if(!id) return;
+    try{ await pzKrajeLoad(); }catch(e){}
+    pzKrajeSet(id, {outline: s().outline[id] ? false : true});
+    pzKrajeFit(false);
+  });
+  $('czKrajClearBtn')?.addEventListener('click', () => { pzKrajeReset(); setStatus(t('Zvýraznění krajů zrušeno.')); });
+  $('czKrajFitBtn')?.addEventListener('click', () => { pzKrajeLoad().then(() => pzKrajeFit(true)).catch(() => {}); });
+  $('czKrajOthersOn')?.addEventListener('change', () => { s().others = $('czKrajOthersOn').checked ? ($('czKrajOthersColor')?.value || '#f4a261') : null; pzKrajeChanged(); if(s().others) pzKrajeFit(false); });
+  $('czKrajOthersColor')?.addEventListener('input', () => { s().others = $('czKrajOthersColor').value; pzKrajeChanged(); });
+  $('czKrajLabelsOn')?.addEventListener('change', () => { s().labels = $('czKrajLabelsOn').checked; pzKrajeLoad().then(pzKrajeChanged).catch(() => {}); });
+  $('czKrajBordersOn')?.addEventListener('change', () => { s().borders = $('czKrajBordersOn').checked; pzKrajeChanged(); });
+  $('czKrajBordersColor')?.addEventListener('input', () => { s().bordersColor = $('czKrajBordersColor').value; pzKrajeApply(); });
+  $('czKrajOpacity')?.addEventListener('input', () => { s().opacity = parseFloat($('czKrajOpacity').value) || 0.85; pzKrajeSyncUi(); pzKrajeApply(); });
+  // barva a tloušťka obrysu platí pro všechny obkreslené kraje (i pro další)
+  $('czKrajOutlineColor')?.addEventListener('input', () => { const c = $('czKrajOutlineColor').value; s().outlineColor = c; Object.values(s().outline).forEach(o => { o.color = c; }); pzKrajeApply(); });
+  $('czKrajOutlineColor')?.addEventListener('change', () => pzKrajeChanged());
+  $('czKrajOutlineWidth')?.addEventListener('input', () => { const w = parseFloat($('czKrajOutlineWidth').value) || 4; s().outlineWidth = w; Object.values(s().outline).forEach(o => { o.width = w; }); pzKrajeSyncUi(); pzKrajeApply(); });
+  $('paintKrajOnClick')?.addEventListener('change', () => {
+    const on = $('paintKrajOnClick').checked;
+    // jeden klik = jedna věc: barvení krajů vypne klikací nástroje států
+    if(on) ['paintPoliticalCountryOnClick', 'pzFlagsOn', 'pzCountryLabelsOn', 'pzClickPaintOn'].forEach(id => { if($(id)) $(id).checked = false; });
+    if(on) pzKrajeLoad().then(() => { pzKrajeApply(); }).catch(() => setStatus(t('Hranice krajů se nepodařilo načíst — zkontroluj připojení.'), 'error'));
+    pzKrajeApply();
+    setStatus(on ? t('Klikni do kraje — otevře se paleta barev.') : t('Barvení krajů kliknutím vypnuto.'));
+  });
+  ['paintPoliticalCountryOnClick', 'pzFlagsOn', 'pzCountryLabelsOn', 'pzClickPaintOn'].forEach(id => $(id)?.addEventListener('change', () => {
+    if($(id).checked && $('paintKrajOnClick')?.checked){ $('paintKrajOnClick').checked = false; pzKrajeApply(); }
+  }));
+  // data krajů stáhnout už při otevření sekce
+  document.addEventListener('click', e => { if(e.target.closest?.('#czKrajeSection > h3')) pzKrajeLoad().catch(() => {}); }, true);
+  pzKrajeSyncUi(); pzKrajeRenderList();
 }
 
 
@@ -10278,7 +10763,7 @@ function pzZoomWidth(w){ return ['interpolate', ['linear'], ['zoom'], 0, w * 0.3
 function applyMapTweaks(){
   if(!state.map?.isStyleLoaded()) return;
   // podklad ve své původní barevnosti (Liberty klasická, Dark Matter, Toner…) — jen řádky Vrstev
-  if(state.pzNativeColors){ try{ pzUpdateLayerRows(); }catch(e){} return; }
+  if(state.pzNativeColors){ try{ pzKrajeApply(); }catch(e){} try{ pzUpdateLayerRows(); }catch(e){} return; }
   const land = $('landColor')?.value || PRESETS.reset.land;
   const water = $('waterColor')?.value || PRESETS.reset.water;
   const building = $('buildingColor')?.value || PRESETS.reset.building;
@@ -10461,6 +10946,7 @@ function applyMapTweaks(){
     safeSetLayout('pz-political-outline', 'visibility', showPoliticalOutline ? 'visible' : 'none');
   }
 
+  try{ pzKrajeApply(); }catch(e){}
   try{ pzUpdateLayerRows(); }catch(e){}
   try{ pzRenderCountryColorList(); }catch(e){}
   updateReadouts();
@@ -11504,6 +11990,7 @@ function onMapClick(e){
     addManualViaPoint([e.lngLat.lng, e.lngLat.lat], `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`);
     return;
   }
+  if(pzKrajClick(e)) return;
   if(handlePoliticalCountryPaintClick(e)) return;
   if(!pzToolOpen('pzFlagsOn') && !isRouteTabActive() && pzFlagAt(e.point)){
     // klik na existující vlajku zapne „Vlajky států" a vybere ji k úpravám
@@ -12644,7 +13131,8 @@ function addMapLabelAt(lngLatObj, options={}){
   // přiblížení, při kterém popisek vznikl: při oddálení se zmenšuje (nejméně na
   // čitelných 14 px), při přiblížení zůstává. Starší popisky (bez údaje) beze změny.
   const baseZoom = options.baseZoom !== undefined ? options.baseZoom : (state.map?.getZoom?.() ?? null);
-  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker, baseZoom, ...(offset ? {offset} : {})};
+  // kraj = název kraje z Scéna › Kraje ČR › Názvy krajů (vypnutí je zase odebere)
+  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker, baseZoom, ...(offset ? {offset} : {}), ...(options.kraj ? {kraj: options.kraj} : {})};
   state.mapLabels.push(item);
   pzApplyLabelZoom(item, state.map?.getZoom?.());
   selectMapLabel(id);
@@ -12681,7 +13169,7 @@ function applySelectedMapLabelChanges(){
   setStatus(t('Popisek upraven.'));
 }
 
-function deleteMapLabel(id){
+function deleteMapLabel(id, silent){
   const idx = state.mapLabels.findIndex(item => item.id === id);
   if(idx < 0) return;
   state.mapLabels[idx].marker?.remove();
@@ -12689,7 +13177,7 @@ function deleteMapLabel(id){
   if(state.selectedMapLabelId === id) state.selectedMapLabelId = null;
   renderMapLabelList();
   syncMapLabelEditChip();
-  setStatus(t('Popisek smazán.'));
+  if(!silent) setStatus(t('Popisek smazán.'));
 }
 
 function clearMapLabels(){
@@ -13201,7 +13689,7 @@ function focusPlaceResult(item){
 function placeSearchPinPassThrough(){
   try{
     if(pzAddModeOn() || (state.measureMode && state.measureMode !== 'off')) return true;
-    if(['pzFlagsOn','pzCountryLabelsOn','paintPoliticalCountryOnClick'].some(id => pzToolOpen(id))) return true;
+    if(['pzFlagsOn','pzCountryLabelsOn','paintPoliticalCountryOnClick','paintKrajOnClick'].some(id => pzToolOpen(id))) return true;
     return ($('baseStyle')?.value || '') === 'political' && pzToolOpen('pzClickPaintOn');
   }catch(e){ return false; }
 }
@@ -17655,7 +18143,7 @@ function pzCreateExportMarkersInner(exportMap){
 }
 // Průhledný export = stejná exportní mapa bez podkladu: zůstane trasa, šipky,
 // perimetry, vzdálenosti, uzavírky, souprava a 3D model. Vrací počet skrytých vrstev.
-const PZ_OVERLAY_LAYER_RE = /^(route-|scene-|pzuz-|pz-souprava|pz-flags$)/;   // vlajky jsou objekty scény
+const PZ_OVERLAY_LAYER_RE = /^(route-|scene-|pzuz-|pz-souprava|pz-flags$|pz-kraje-)/;   // vlajky a zvýrazněné kraje jsou objekty scény
 function pzHideBasemapLayers(map){
   let n = 0;
   try{
@@ -19935,6 +20423,7 @@ function bindUI(){
   })); });
   pzFillSysIconButtons();
   try{ pzInitLineUi(); }catch(e){}
+  try{ pzInitKrajeUi(); }catch(e){ console.error(e); }
   // vlajky a popisky států se navzájem vypínají (jeden klik = jedna věc). Fungují
   // na každém podkladu: klik potřebuje „chytit" stát, tak se zapne neviditelná
   // výplň států (na běžném podkladu kreslí jen obarvené státy).
@@ -21117,7 +21606,25 @@ Object.assign(I18N, {
   "Body zájmu": {cs:"Body zájmu",sk:"Body záujmu",bg:"Обекти",hr:"Točke interesa",ro:"Puncte de interes",en:"Points of interest"},
   "Velikost vlajek": {cs:"Velikost vlajek",sk:"Veľkosť vlajok",bg:"Размер на знамената",hr:"Veličina zastava",ro:"Mărimea steagurilor",en:"Flag size"},
   "Státy se ještě načítají — klikni za chvíli.": {cs:"Státy se ještě načítají — klikni za chvíli.",sk:"Štáty sa ešte načítavajú — klikni o chvíľu.",bg:"Държавите още се зареждат — кликни след малко.",hr:"Države se još učitavaju — klikni za trenutak.",ro:"Țările încă se încarcă — dă clic peste puțin timp.",en:"Countries are still loading — click again in a moment."},
-  "Kraje ČR barvit nejde — jen celé státy.": {cs:"Kraje ČR barvit nejde — jen celé státy.",sk:"Kraje ČR farbiť nejde — len celé štáty.",bg:"Областите в Чехия не могат да се оцветяват — само цели държави.",hr:"Regije Češke ne mogu se bojati — samo cijele države.",ro:"Regiunile Cehiei nu se pot colora — doar țări întregi.",en:"Czech regions cannot be coloured — whole countries only."},
+  "Obrys": {cs:"Obrys",sk:"Obrys",bg:"Контур",hr:"Obrub",ro:"Contur",en:"Outline"},
+  "Barvit kraj kliknutím do mapy": {cs:"Barvit kraj kliknutím do mapy",sk:"Farbiť kraj kliknutím do mapy",bg:"Оцвети областта с клик в картата",hr:"Oboji regiju klikom na kartu",ro:"Colorează regiunea cu clic pe hartă",en:"Colour a region by clicking the map"},
+  "Ostatní kraje": {cs:"Ostatní kraje",sk:"Ostatné kraje",bg:"Останалите области",hr:"Ostale regije",ro:"Celelalte regiuni",en:"Other regions"},
+  "Názvy krajů": {cs:"Názvy krajů",sk:"Názvy krajov",bg:"Имена на областите",hr:"Nazivi regija",ro:"Numele regiunilor",en:"Region names"},
+  "Smazat kraje": {cs:"Smazat kraje",sk:"Zmazať kraje",bg:"Изтрий областите",hr:"Obriši regije",ro:"Șterge regiunile",en:"Clear regions"},
+  "Hranice krajů": {cs:"Hranice krajů",sk:"Hranice krajov",bg:"Граници на областите",hr:"Granice regija",ro:"Granițele regiunilor",en:"Region borders"},
+  "Barva obrysu": {cs:"Barva obrysu",sk:"Farba obrysu",bg:"Цвят на контура",hr:"Boja obruba",ro:"Culoarea conturului",en:"Outline colour"},
+  "Tloušťka obrysu": {cs:"Tloušťka obrysu",sk:"Hrúbka obrysu",bg:"Дебелина на контура",hr:"Debljina obruba",ro:"Grosimea conturului",en:"Outline width"},
+  "Žádný zvýrazněný kraj.": {cs:"Žádný zvýrazněný kraj.",sk:"Žiadny zvýraznený kraj.",bg:"Няма отбелязана област.",hr:"Nema istaknute regije.",ro:"Nicio regiune evidențiată.",en:"No highlighted region."},
+  "Zvýraznit hranici kraje": {cs:"Zvýraznit hranici kraje",sk:"Zvýrazniť hranicu kraja",bg:"Отбележи границата на областта",hr:"Istakni granicu regije",ro:"Evidențiază granița regiunii",en:"Highlight the region border"},
+  "Zrušit zvýraznění": {cs:"Zrušit zvýraznění",sk:"Zrušiť zvýraznenie",bg:"Премахни отбелязването",hr:"Ukloni isticanje",ro:"Anulează evidențierea",en:"Remove highlight"},
+  "{0} — zvýraznění zrušeno.": {cs:"{0} — zvýraznění zrušeno.",sk:"{0} — zvýraznenie zrušené.",bg:"{0} — отбелязването е премахнато.",hr:"{0} — isticanje uklonjeno.",ro:"{0} — evidențiere anulată.",en:"{0} — highlight removed."},
+  "Kraje se ještě načítají — klikni za chvíli.": {cs:"Kraje se ještě načítají — klikni za chvíli.",sk:"Kraje sa ešte načítavajú — klikni o chvíľu.",bg:"Областите още се зареждат — кликни след малко.",hr:"Regije se još učitavaju — klikni malo kasnije.",ro:"Regiunile se încarcă încă — dă clic puțin mai târziu.",en:"Regions are still loading — click again in a moment."},
+  "Hranice krajů se nepodařilo načíst — zkontroluj připojení.": {cs:"Hranice krajů se nepodařilo načíst — zkontroluj připojení.",sk:"Hranice krajov sa nepodarilo načítať — skontroluj pripojenie.",bg:"Границите на областите не се заредиха — провери връзката.",hr:"Granice regija nije moguće učitati — provjeri vezu.",ro:"Granițele regiunilor nu s-au încărcat — verifică conexiunea.",en:"Region borders could not be loaded — check your connection."},
+  "Vyber kraj v seznamu nebo klikni do mapy.": {cs:"Vyber kraj v seznamu nebo klikni do mapy.",sk:"Vyber kraj v zozname alebo klikni do mapy.",bg:"Избери област от списъка или кликни в картата.",hr:"Odaberi regiju s popisa ili klikni na kartu.",ro:"Alege regiunea din listă sau dă clic pe hartă.",en:"Pick a region from the list or click the map."},
+  "Zvýraznění krajů zrušeno.": {cs:"Zvýraznění krajů zrušeno.",sk:"Zvýraznenie krajov zrušené.",bg:"Отбелязването на областите е премахнато.",hr:"Isticanje regija uklonjeno.",ro:"Evidențierea regiunilor a fost anulată.",en:"Region highlights cleared."},
+  "Klikni do kraje — otevře se paleta barev.": {cs:"Klikni do kraje — otevře se paleta barev.",sk:"Klikni do kraja — otvorí sa paleta farieb.",bg:"Кликни в областта — ще се отвори палитра.",hr:"Klikni u regiju — otvorit će se paleta boja.",ro:"Dă clic în regiune — se deschide paleta de culori.",en:"Click a region — a colour palette opens."},
+  "Zvýrazňuji kraje: {0}.": {cs:"Zvýrazňuji kraje: {0}.",sk:"Zvýrazňujem kraje: {0}.",bg:"Отбелязвам областите: {0}.",hr:"Ističem regije: {0}.",ro:"Evidențiez regiunile: {0}.",en:"Highlighting regions: {0}."},
+  "Barvení krajů kliknutím vypnuto.": {cs:"Barvení krajů kliknutím vypnuto.",sk:"Farbenie krajov kliknutím vypnuté.",bg:"Оцветяването на области с клик е изключено.",hr:"Bojanje regija klikom isključeno.",ro:"Colorarea regiunilor cu clic este dezactivată.",en:"Click-to-colour regions turned off."},
   "Klikni do státu — otevře se paleta barev.": {cs:"Klikni do státu — otevře se paleta barev.",sk:"Klikni do štátu — otvorí sa paleta farieb.",bg:"Кликни в държава — ще се отвори палитра.",hr:"Klikni na državu — otvorit će se paleta boja.",ro:"Dă clic pe o țară — se deschide paleta de culori.",en:"Click a country — a colour palette opens."},
   "Změní výchozí vzhled všem v týmu. Pokračovat?": {cs:"Změní výchozí vzhled všem v týmu. Pokračovat?",sk:"Zmení predvolený vzhľad všetkým v tíme. Pokračovať?",bg:"Ще промени външния вид по подразбиране за целия екип. Продължаване?",hr:"Promijenit će zadani izgled svima u timu. Nastaviti?",ro:"Schimbă aspectul implicit pentru toată echipa. Continui?",en:"This changes the default look for the whole team. Continue?"},
   "obrys": {cs:"obrys",sk:"obrys",bg:"контур",hr:"obrub",ro:"contur",en:"outline"},
@@ -22160,10 +22667,11 @@ function pzExportRunning(){ return !!(state._batchRunning || (state._exporting &
     'deleteMapLabelBtn','deleteSceneArrowBtn','deleteSceneDistanceBtn','deleteSceneIconBtn','deleteScenePerimeterBtn',
     'updateMapLabelBtn','updateSceneArrowBtn','updateSceneDistanceBtn','updateSceneIconBtn','updateScenePerimeterBtn',
     'pzClRoadBtn','pzClMetroBtn','pzClClearBtn','placeSearchBtn',
-    'clearPoliticalCountryColorsBtn'
+    'clearPoliticalCountryColorsBtn',
+    'czKrajPaintBtn','czKrajOutlineBtn','czKrajClearBtn'
   ]);
   // Volba druhu dopravy trasu hned přepočítá — snímek musí vzniknout PŘED tím.
-  const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove, #waypointList button, #routeLookSection .endpoint-shape, #pzCountryColorList .btn-remove';
+  const MUTATING_BUTTON_SELECTORS = '.transport-btn, .sys-icon-btn, .preset-card, #pzClosureList .btn-remove, #sceneArrowList .btn-remove, #waypointList button, #routeLookSection .endpoint-shape, #pzCountryColorList .btn-remove, #czKrajList button';
   window.__pzPushUndo = () => pushUndo();
   window.__pzClearRedo = () => { redoStack.length = 0; updateUndoBtn(); };   // načtení projektu: Vpřed by vložil objekty ze staré scény
   window.__pzUndo = () => { const n = undoStack.length; doUndo(); return n > 0; };
@@ -22233,7 +22741,7 @@ function pzExportRunning(){ return !!(state._batchRunning || (state._exporting &
     mapEl.addEventListener('mousedown', (e) => {
       if(e.button !== 0) return; // left-click only
       const routeActive = typeof isRouteTabActive === 'function' && isRouteTabActive();
-      const painting = $('paintPoliticalCountryOnClick')?.checked;
+      const painting = $('paintPoliticalCountryOnClick')?.checked || $('paintKrajOnClick')?.checked;
       const addingIcon = !!state.addingSceneIcon;
       const addingLabel = !!state.addingMapLabel;
       const addingFlight = !!state.addingFlightPoint;
@@ -22685,6 +23193,17 @@ function pzExportRunning(){ return !!(state._batchRunning || (state._exporting &
       colored[n || nameOf('politicalCountrySelect', id)] = c;
     });
     if(Object.keys(colored).length) sc.colored = colored;
+    try{
+      const ks = state.czKraje;
+      if(ks && pzKrajeShown()){
+        const kr = {};
+        if(Object.keys(ks.fill).length) kr.fill = Object.fromEntries(Object.entries(ks.fill).map(([id, c]) => [pzKrajName(id, true), c]));
+        if(Object.keys(ks.outline).length) kr.outline = Object.fromEntries(Object.entries(ks.outline).map(([id, o]) => [pzKrajName(id, true), o.color + ' ' + o.width + ' px']));
+        if(ks.others) kr.others = ks.others;
+        if(ks.labels) kr.labels = true;
+        sc.kraje = kr;
+      }
+    }catch(e){}
     if(state.mapLabels?.length) sc.labels = state.mapLabels.map(l => l.text).slice(0, 10);
     if(state.multiSel?.size) sc.selected = state.multiSel.size;
     if(state.sceneIcons?.length) sc.icons = state.sceneIcons.length;
@@ -23295,7 +23814,9 @@ function pzColorFromName(v){
       hneda:'#8b5a2b', brown:'#8b5a2b',
       fialova:'#8b5cf6', purple:'#8b5cf6',
       ruzova:'#ec4899', pink:'#ec4899',
-      tyrkysova:'#26d0c4', cyan:'#26d0c4', turquoise:'#26d0c4'
+      tyrkysova:'#26d0c4', cyan:'#26d0c4', turquoise:'#26d0c4',
+      // „tmavě rudou, sytě červenou" (zadání datových map krajů)
+      ruda:'#c1121f', bordo:'#7a0019', bordova:'#7a0019', vinova:'#7a0019', okrova:'#d4a017', bezova:'#e8d5b5'
     };
     // „tmavě/světle X" řešíme posunem jasu, ať nemusíme vypisovat všechny kombinace.
     const shade = (hex, f) => {
@@ -23316,6 +23837,8 @@ function pzColorFromName(v){
       Object.keys(NAMES).forEach(k => { if(!STEMS[stem(k)]) STEMS[stem(k)] = NAMES[k]; });
       const look = w => NAMES[w] || STEMS[stem(w)] || null;
       if(look(key)) return look(key);
+      const sy = key.match(/^(syte|syto|jasne|jasno|vyrazne)\s+(.+)$/);   // „sytě červená" = plná barva
+      if(sy && look(sy[2].trim())) return look(sy[2].trim());
       const m = key.match(/^(tmave|tmavo|svetle|svetlo|dark|light)\s*(.+)$/);
       if(m){
         const base = look(m[2].trim());
@@ -23333,7 +23856,21 @@ function pzColorFromName(v){
     pzSetKeyboardInset, pzMobilePanel,
     createSceneArrow, createScenePerimeterAt, createSceneDistance, createSceneIconAt, addMapLabelAt, pzIconDataUrl,   // 21_scene_objects
     buildPreferredMapLabelExpr, applyPreset, setPresetAsDefault, getDefaultPresetToken, getCountryNameById, applyPoliticalCountryColor, pzLngLatsInFrame,   // 31_flags, 28_style_layers
+    pzKrajResolve, pzKrajResolveList, pzKrajeSet, pzKrajeColorByValue, pzKrajeReset, pzKrajeFit,   // 32_kraje
     get state(){ return state; }};
+  // Kraje ČR pro další kód (datová mapa s legendou, asistent): čisté API bez UI.
+  //   pzKraje.list() → [{id:'CZ064', name:'Jihomoravský kraj', short:'Jihomoravský'}, …]
+  //   pzKraje.resolve('MSK') → 'CZ080';  pzKraje.set(id, {fill, outline});  pzKraje.clear()
+  //   pzKraje.colorByValue({Praha: 26.6, JMK: 43.5}, {classes, method, breaks, colors|palette, others})
+  //     → {ok, colors, legend:[{from, to, color, ids}], unresolved}
+  //   pzKraje.state() → kopie stavu {fill, outline, others, labels, opacity, data:{values, breaks, colors}}
+  window.pzKraje = {
+    list: () => PZ_KRAJE.map(([id, name, short, , label]) => ({id, name, short, label})),
+    resolve: pzKrajResolve, resolveList: pzKrajResolveList,
+    set: (id, o) => pzKrajeSet(PZ_KRAJ_BY_ID[id] ? id : pzKrajResolve(id), o || {}),
+    colorByValue: pzKrajeColorByValue, clear: pzKrajeReset, fit: () => pzKrajeLoad().then(() => pzKrajeFit(true)),
+    load: pzKrajeLoad, state: pzKrajeSnapshot, ramps: PZ_KRAJ_RAMPS
+  };
   // animace (tests/23_animation.test.js)
   Object.assign(window.__pzFns, {pauseAnimation, seekAnimationToTime, setCameraUiMode, getCameraUiMode, cameraAnimReady,
     getCameraStateAtProgress, normalizeCameraAnim, animTiming, applyAnimEasing, pzCamKeyframeTimes, setCameraKeyframeTime, pzFrameToMapView, pzMapToFrameView, pzCamLiftEffect, pzVehLenKm, pzExtraGap, pzKfNameCut});
@@ -23558,8 +24095,10 @@ function pzColorFromName(v){
     // Text od redaktora („Německo")
     // páruje s položkami selectu bez ohledu na diakritiku a skloňování.
     async colorPolitical({region, country, color, clear, fit} = {}){
-      // Kraje ČR byly z appky odstraněny — obarvit jdou jen státy.
-      if(region) return {ok:false, error:'Barvení krajů ČR už není k dispozici — obarvit lze jen státy (country).'};
+      // Kraj ČR (region, nebo „country" s názvem kraje) obarví colorRegion.
+      if(region) return window.TNMAP.colorRegion({region, color, clear, fit});
+      if(country && /kraj|^msk$|^jmk$|vysocin/i.test(String(country).normalize('NFD').replace(/[\u0300-\u036f]/g, '')) && pzKrajResolve(country))
+        return window.TNMAP.colorRegion({region: country, color, clear, fit});
       if(!clear){
         // Seznam států se plní z dat, která se stahují až na vyžádání.
         state.geoDataRequested = true;
@@ -23615,6 +24154,7 @@ function pzColorFromName(v){
       if(country){
         const opt = pick('politicalCountrySelect', country);
         if(opt && opt.missing) return {ok:false, error: pzCountryMissingError(country)};
+        if(!opt && pzKrajResolve(country)) return window.TNMAP.colorRegion({region: country, color, fit});   // „Praha", „Vysočina"
         if(!opt) return {ok:false, error:'Stát „' + country + '" jsem v seznamu nenašel. Napiš ho česky v 1. pádu (např. Německo) nebo kódem (DE).'};
         if(!applyColor('politicalCountryColor', color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
         try{ pzPaintCountry(opt.value); }catch(e){ return {ok:false, error:String(e)}; }
@@ -23632,6 +24172,54 @@ function pzColorFromName(v){
           if(bb){ state.screenPan = {x:0, y:0}; state.map.fitBounds(bb, {padding: getFitPadding(), duration: 900}); }
         }catch(e){}
       }
+      return res;
+    },
+
+    // ---- kraje ČR: výplň, zvýrazněná hranice, ostatní kraje, názvy -----------
+    // region: „Praha, Jihočeský a Jihomoravský" | ["MSK", "Vysočina"] | „všechny";
+    // color = výplň; outline = true | barva | {color, width}; width = tloušťka obrysu (px);
+    // others = barva ostatních krajů (false = zrušit); labels = názvy krajů; clear = zrušit
+    // (s regionem jen ty kraje, bez něj vše). Bez color i outline se kraj vyplní červeně.
+    async colorRegion({region, regions, color, outline, width, clear, others, labels, fit} = {}){
+      if(region == null && regions != null) region = regions;
+      try{ await pzKrajeLoad(); }catch(e){ return {ok:false, error:'Hranice krajů se nepodařilo načíst — zkontroluj připojení.'}; }
+      const s = pzKrajeState();
+      const KRAJE_TXT = 'Kraje: ' + PZ_KRAJE.map(k => k[2]).join(', ') + '.';
+      const r = (region != null && region !== '') ? pzKrajResolveList(region) : {ids:[], unknown:[]};
+      if(r.unknown.length && !r.ids.length) return {ok:false, error:'Kraj „' + r.unknown.join('", „') + '" neznám. ' + KRAJE_TXT};
+      const col = v => (v == null || v === true) ? null : pzColorFromName(v);
+      if(color != null && !col(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
+      if(typeof outline === 'string' && !/^(true|ano|yes)$/i.test(outline) && !col(outline)) return {ok:false, error:'Barvu obrysu „' + outline + '" neznám.'};
+      if(typeof others === 'string' && !/^(none|false|ne|zadna|žádná)$/i.test(others) && !col(others)) return {ok:false, error:'Barvu „' + others + '" neznám.'};
+      const res = {ok:true};
+      if(clear){
+        if(r.ids.length){ r.ids.forEach(id => { delete s.fill[id]; delete s.outline[id]; }); res.cleared = r.ids.map(id => pzKrajName(id)); }
+        else{ pzKrajeReset(); return {ok:true, cleared:'all'}; }
+      }else{
+        let ol;
+        if(outline === true || (typeof outline === 'string' && /^(true|ano|yes)$/i.test(outline))) ol = {color: s.outlineColor, width: +width || s.outlineWidth};
+        else if(typeof outline === 'string') ol = {color: col(outline), width: +width || s.outlineWidth};
+        else if(outline && typeof outline === 'object') ol = {color: col(outline.color) || s.outlineColor, width: +outline.width || +width || s.outlineWidth};
+        else if(outline === false) ol = false;
+        else if(width) ol = {color: s.outlineColor, width: +width};
+        const fill = color != null ? col(color) : (ol === undefined && r.ids.length ? '#e63946' : undefined);
+        r.ids.forEach(id => {
+          if(fill !== undefined) s.fill[id] = fill;
+          if(ol === false) delete s.outline[id];
+          else if(ol) s.outline[id] = {...ol};
+        });
+        if(r.ids.length) res.regions = r.ids.map(id => pzKrajName(id));
+      }
+      if(others !== undefined) s.others = (others === false || others === null || /^(none|false|ne|zadna|žádná)$/i.test(String(others))) ? null : col(others);
+      if(labels !== undefined) s.labels = labels === true || /^(true|ano|yes|1)$/i.test(String(labels));
+      if(!r.ids.length && others === undefined && labels === undefined && !clear) return {ok:false, error:'Zadej region (kraj), případně others, labels nebo clear:true. ' + KRAJE_TXT};
+      pzKrajeChanged();
+      if(fit !== false) try{ pzKrajeFit(false); }catch(e){}
+      res.fill = Object.fromEntries(Object.entries(s.fill).map(([id, c]) => [pzKrajName(id, true), c]));
+      res.outline = Object.fromEntries(Object.entries(s.outline).map(([id, o]) => [pzKrajName(id, true), o.color + ' ' + o.width + ' px']));
+      if(s.others) res.others = s.others;
+      if(s.labels) res.labels = true;
+      if(r.unknown.length) res.note = 'Neznám: ' + r.unknown.join(', ') + '. ' + KRAJE_TXT;
       return res;
     },
 
@@ -24099,7 +24687,7 @@ function pzColorFromName(v){
       if(list){
         const done = [], bad = [];
         for(const w of list.filter(x => toolKey(x))){ const r = window.TNMAP.clearScene({what: w}); if(r.ok) done.push(r.cleared); else bad.push(String(w)); }
-        const why = 'what musí být labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles nebo all.';
+        const why = 'what musí být labels, icons, arrows, perimeters, distances, closures, colors, regions, flags, route, vehicles nebo all.';
         if(!done.length) return {ok:false, error: bad.length ? 'Neznám: ' + bad.join(', ') + '. ' + why : 'Chybí what (co smazat).'};
         return bad.length ? {ok:true, cleared:done, ignored:bad, note:'Nesmazal jsem: ' + bad.join(', ') + ' — ' + why} : {ok:true, cleared:done};
       }
@@ -24112,19 +24700,20 @@ function pzColorFromName(v){
         perimeters: () => clearScenePerimeters?.(), perimetry: 'perimeters',
         distances: () => clearSceneDistances?.(), vzdalenosti: 'distances',
         closures: () => { state.pzClosures = []; pzRedrawClosures(); }, uzavirky: 'closures',
-        colors: () => clearPoliticalPainting?.(), barvy: 'colors',
+        colors: () => { clearPoliticalPainting?.(); pzKrajeReset(); }, barvy: 'colors',
+        regions: () => pzKrajeReset(), kraje: 'regions', kraj: 'regions', kraju: 'regions',
         flags: () => { state.pzFlags = []; state.pzFlagSel = null; pzFlagsRefresh(); }, vlajky: 'flags',
         // Linka MHD (stav_mapy ji jinak hlásil i po smazání trasy).
         route: () => { clearRoute?.(); state.pzLineRoute = null; if($('pzLineInput')) $('pzLineInput').value = ''; state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} if($('pzMainVehLabel')) $('pzMainVehLabel').value = ''; }, trasa: 'route', trasu: 'route', linku: 'route',
         vehicles: () => { state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} }, vozidla: 'vehicles',
         // „smaž všechno": celá scéna i trasa; podklad a vzhled mapy zůstávají
-        all: () => { ['labels','icons','arrows','perimeters','distances','closures','colors','flags','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
+        all: () => { ['regions','labels','icons','arrows','perimeters','distances','closures','colors','flags','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
         vse: 'all', vsechno: 'all', scenu: 'all', scena: 'all', 'celou scenu': 'all',
         popisek: 'labels', ikonky: 'icons', ikonku: 'icons', sipku: 'arrows', perimetr: 'perimeters', kruhy: 'perimeters',
         vzdalenost: 'distances', mereni: 'distances', uzavirku: 'closures', staty: 'colors', vlajku: 'flags'
       };
       let fn = Object.prototype.hasOwnProperty.call(map, W) ? map[W] : null; if(typeof fn === 'string') fn = map[fn];
-      if(typeof fn !== 'function') return {ok:false, error:(W ? 'Neznám „' + what + '". ' : 'Chybí what (co smazat). ') + 'what musí být labels, icons, arrows, perimeters, distances, closures, colors, flags, route, vehicles nebo all (česky: popisky, ikony, šipky, perimetry, vzdálenosti, uzavírky, barvy, vlajky, trasa, vozidla, vše).'};
+      if(typeof fn !== 'function') return {ok:false, error:(W ? 'Neznám „' + what + '". ' : 'Chybí what (co smazat). ') + 'what musí být labels, icons, arrows, perimeters, distances, closures, colors, regions, flags, route, vehicles nebo all (česky: popisky, ikony, šipky, perimetry, vzdálenosti, uzavírky, barvy, kraje, vlajky, trasa, vozidla, vše).'};
       try{ fn(); }catch(e){ return {ok:false, error:String(e && e.message || e)}; }
       const canon = Object.keys(map).find(k => typeof map[k] === 'function' && (k === W || map[W] === k)) || W;
       return {ok:true, cleared:canon};
@@ -25405,6 +25994,15 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
 #styleLayersSection .layer-visibility-row{font-size:12px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--tx1)}
 /* Státy: hledání + barva + tlačítko v jednom řádku, pod tím seznam obarvených */
 .pz-country-row{display:flex;gap:6px;align-items:center}
+.pz-country-row #czKrajSelect{flex:1 1 auto;min-width:0}
+.pz-kraj-opts{display:flex;align-items:center;gap:8px;margin-top:6px}
+.pz-kraj-opts .check{flex:1 1 auto;margin:0}
+.pz-kraj-opts input[type=color]{flex:0 0 34px;width:34px;height:24px;padding:1px}
+#czKrajList .wp-item{cursor:pointer;padding:5px 8px;display:flex;align-items:center;gap:6px}
+#czKrajList .wp-item input[type=color]{flex:0 0 26px;width:26px;height:22px;padding:1px;cursor:pointer}
+#czKrajList .wp-item input.pz-kraj-nofill{opacity:.35}
+#czKrajList .pz-cc-name{flex:1 1 auto;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#czKrajList .pz-kraj-ol{padding:2px 7px;font-size:11px}
 .pz-country-row .country-search-wrap{flex:1 1 auto;min-width:0}
 .pz-country-row input[type=text]{width:100%;height:var(--pz-h,30px)}
 .pz-country-row input[type=color]{flex:0 0 36px;width:36px;height:var(--pz-h,30px);padding:2px}
@@ -25797,6 +26395,15 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [/^(?:(?:udelej|nakresli|dej) )?(?:perimetr|okruh|kruh|kruznici)(?: o polomeru)? (\d+(?:[.,]\d+)?) ?(km|kilometru|kilometry|m|metru|metry) (?:kolem|okolo|od|z|v|u) (.+)$/,
       (m, words) => { const v = parseFloat(m[1].replace(',', '.')); const km = /^k/.test(m[2]) ? v : v / 1000; const n = m[3].split(' ').length; const place = words.slice(-n).join(' ');
         return {prepare: () => offPlan([place], ([x]) => ({say: tr('Perimetr {0} km kolem {1}.', String(km).replace('.', ','), x), calls: one('drawPerimeter', {place: x, km}, tr('Perimetr'))}))}; }],
+    // kraje ČR: „obarvi Jihomoravský kraj červeně", „zvýrazni kraje Praha a Jihočeský", „obkresli Vysočinu"
+    [/^(?:obarvi|vybarvi|zvyrazni|vyznac|oznac|obkresli)( .+)$/,
+      (m, words) => { if(!/\b(kraj|kraje|kraju|krajem|msk|jmk|vysocin)/.test(m[1]) || !window.pzKraje) return null;
+        const col = words.map(colorOf).find(Boolean), outline = /^obkresli/.test(m.input) || /\b(hranic|obrys)/.test(m[1]);
+        const r = window.pzKraje.resolveList(words.slice(1).filter(w => !colorOf(w) && !/^(hranic|obrys|kraj)/i.test(stripDia(w))).join(' ').replace(/,/g, ' , '));
+        if(!r.ids.length || r.unknown.length) return null;
+        const names = r.ids.map(id => window.pzKraje.list().find(k => k.id === id).short);
+        const args = {region: names.join(', '), ...(outline ? {outline: col || true} : (col ? {color: col} : {}))};
+        return {say: tr('Zvýrazňuji kraje: {0}.', names.join(', ')), calls: one('colorRegion', args, tr('Kraje ČR'))}; }],
     // obarvi Polsko modře (a Ukrajinu žlutě)
     [/^(?:obarvi|vybarvi|zvyrazni)( .+)$/,
       (m, words) => { if(/\b(kraj|kraje|trasu|trasa|silnic|dalnic|cestu|popisk|budov|reku|vodu|more|jezer|les)/.test(m[1])) return null; const parts = countryColorParts(words.slice(1)); if(!parts.length) return null;
@@ -26082,7 +26689,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   }
   // Chatová cesta smí jen nástroje z promptu workeru (Claude/MCP má vlastní cestu).
   const CHAT_TOOLS = new Set(['gotoPlace','showRegion','show3D','setCamera','setBaseStyle','applyPreset','placeIcon','addLabel','setLabelStyle',
-    'drawArrow','measureDistance','drawPerimeter','colorPolitical','placeFlag','roadClosure','metroClosure','placeModel3d','setColors','setValues',
+    'drawArrow','measureDistance','drawPerimeter','colorPolitical','colorRegion','placeFlag','roadClosure','metroClosure','placeModel3d','setColors','setValues',
     'setLayers','setGlobe','setShadows','setTransportMode','routeBetween','routeLine','setVehicle','addVehicle','setVehicleColors','setCameraFlight',
     'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp']);
 

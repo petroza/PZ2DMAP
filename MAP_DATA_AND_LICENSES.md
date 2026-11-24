@@ -66,3 +66,16 @@ Rebuild: download `way[railway=rail]` tiles with `out geom`, then
 `python3 tools/build_rail.py <tile-dir> assets/rail_cz.json`.
 
 The MIT license for this repository applies only to the application wrapper code unless a file states otherwise. All third-party services, datasets and libraries remain under their own licenses and terms.
+
+## Czech regions (kraje)
+
+| file | contents | source |
+|---|---|---|
+| `assets/kraje_cz.geojson` | boundaries of the 14 Czech regions (kraje, NUTS 3), properties `id` (NUTS code), `kod` (RÚIAN code), `name` | ČÚZK, RÚIAN – vyšší územně samosprávné celky, ArcGIS service `ags.cuzk.cz/arcgis/rest/services/RUIAN/MapServer/17` (downloaded 2026-11-24) |
+
+**© ČÚZK, CC BY 4.0.** Simplified with mapshaper (`-simplify interval=100
+keep-shapes`, topology kept, so neighbouring regions share one border),
+coordinates rounded to 4 decimals (~320 kB). Whenever a region is coloured or
+outlined, the app appends „ČÚZK" to the map-source watermark, which is also
+burnt into PNG and video exports. The file is fetched the first time regions
+are used (Scéna › Kraje ČR or the `colorRegion` assistant tool).

@@ -51,7 +51,8 @@ setLabelStyle {style, text?, all?} – změní styl existujících popisků (all
 drawArrow {from, to, color?, width?} – šipka z místa do místa (postup, migrace). NENÍ to trasa.
 measureDistance {from, to, color?} – vzdušná vzdálenost; číslo vrátí ve výsledku.
 drawPerimeter {place?, km?, meters?, color?} – kružnice/okruh kolem místa, rádius nejvýš 5000 km; bez place střed výřezu. Když redaktor místo nezmínil a ve scéně není jasný střed, zeptej se přes options.
-colorPolitical {country, color?, clear?} – obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR NEUMÍ.
+colorPolitical {country, color?, clear?} – obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR = colorRegion.
+colorRegion {region?, color?, outline?, width?, others?, labels?, clear?} – kraje ČR (14 krajů, funguje na každém podkladu): region = jeden nebo víc krajů ("Praha, Jihočeský a Jihomoravský", "MSK", "Vysočina", "všechny"); color = výplň; outline = zvýrazněná hranice (true nebo barva, width px, výchozí 4) – "obkreslit hranicí" = outline bez color; others = barva všech ostatních krajů (false = zrušit); labels:true = názvy krajů; clear:true s regionem = zrušit jen ty, bez regionu = všechny kraje. Bez color i outline = červená výplň. Víc barev = víc volání.
 placeFlag {country, place?} – vlajka státu na mapu. Víc států = víc volání.
 roadClosure {from, to, via?, detourVia?, label?} – uzavírka silnice/dálnice mezi obcemi (via = obec na úseku, detourVia = objížďka).
 metroClosure {line?, station?, from?, to?, label?} – výluka pražského metra A/B/C: stanice nebo úsek.
@@ -112,7 +113,7 @@ PRAVIDLA:
 - Událost na místě ("nehoda v Humpolci") = placeIcon + addLabel se stejným place.
 - Praha MHD: "metrem/tramvají z A do B" = routeBetween s mode metro/tram; konkrétní číslo linky = routeLine. Vozidlo (autobus, sanitka…) = setVehicle, víc vozidel = addVehicle.
 - Trasa přes místo: routeBetween + openSection waypointSection a v "say" řekni, ať zastávku doklikne.
-- Neumíš: barvit kraje ČR, počasí, export videa, ukládat projekty, nahrávat soubory. Řekni to a případně otevři správnou záložku. PNG umíš (exportPng).
+- Neumíš: okresy a obce (jen celé kraje ČR), počasí, export videa, ukládat projekty, nahrávat soubory. Řekni to a případně otevři správnou záložku. PNG umíš (exportPng).
 - "say" max 2 věty, popisuje jen to, co nástroje opravdu dělají. Na "co umíš" odpověz lidsky bez názvů funkcí. Nesouvisející dotaz: prázdné calls.
 
 PŘÍKLADY:
@@ -122,7 +123,8 @@ PŘÍKLADY:
 "tramvaj 22 z Bílé Hory na Náměstí Míru" -> {"say":"Kreslím trasu tramvaje 22.","calls":[{"tool":"routeLine","args":{"line":"22","from":"Bílá Hora","to":"Náměstí Míru"},"label":"Linka 22"}],"done":true}
 "udělej tam tu nehodu" (na mapě nic, místo nezmíněno) -> {"say":"Kde se nehoda stala?","calls":[],"options":["Nehoda na D1 u Humpolce","Nehoda v Praze","Nehoda v Brně"],"done":true}
 "trasa do Vídně" (odkud nezaznělo) -> {"say":"Odkud a čím má trasa do Vídně vést?","calls":[],"options":["Autem z Prahy do Vídně","Vlakem z Prahy do Vídně","Autem z Brna do Vídně"],"done":true}
-"obarvi Jihomoravský kraj" -> {"say":"Barvení krajů aplikace nemá. Můžu obarvit stát nebo nakreslit perimetr kolem Brna.","calls":[],"done":true}
+"mapu ČR, Olomoucký tmavě rudou, žlutou Prahu a Plzeňský, vše ostatní oranžovou" -> {"say":"Barvím kraje: Olomoucký tmavě rudě, Praha a Plzeňský žlutě, ostatní oranžově.","calls":[{"tool":"colorRegion","args":{"region":"Olomoucký","color":"tmavě rudá"},"label":"Olomoucký"},{"tool":"colorRegion","args":{"region":"Praha, Plzeňský","color":"žlutá","others":"oranžová"},"label":"Praha, Plzeňský"}],"done":true}
+"dva kraje Jihomoravský a Vysočina obkreslit červenou hranicí" -> {"say":"Obkresluji Jihomoravský kraj a Vysočinu červeně.","calls":[{"tool":"colorRegion","args":{"region":"Jihomoravský, Vysočina","outline":"červená"},"label":"Hranice krajů"}],"done":true}
 "kolik je to z Prahy do Vídně" -> {"say":"Měřím.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"Vídeň"},"label":"Vzdálenost"}],"done":false}`;
 }
 __name(systemPrompt, "systemPrompt");
