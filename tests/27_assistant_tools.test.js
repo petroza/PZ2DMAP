@@ -37,7 +37,8 @@ const {check, done, open, status} = require('./lib');
   await sleep(400);
   const geo = await page.evaluate(() => { const ic = document.querySelector('.scene-icon-marker').getBoundingClientRect(), b = document.querySelector('.map-label-marker .map-label-bubble').getBoundingClientRect(),
     s = document.querySelector('.map-label-marker .map-label-square').getBoundingClientRect();
-    return {above: b.bottom <= ic.top, dx: Math.round((Math.min(b.left, s.left) + Math.max(b.right, s.right)) / 2 - (ic.left + ic.width / 2)), style: document.querySelector('.map-label-marker').dataset.lstyle, zoom: window.__tnMap.getZoom()}; });
+    const rs = [b, s].filter(r => r.width > 0);   // nad ikonkou je popisek bez bodu (čtvereček skrytý)
+    return {above: b.bottom <= ic.top, dx: Math.round((Math.min(...rs.map(r => r.left)) + Math.max(...rs.map(r => r.right))) / 2 - (ic.left + ic.width / 2)), style: document.querySelector('.map-label-marker').dataset.lstyle, zoom: window.__tnMap.getZoom()}; });
   check(r.ok && r2.ok && geo.above && Math.abs(geo.dx) <= 3 && geo.style === 'red' && Math.abs(geo.zoom - 12.5) < 0.1, 'ikonka + popisek: přelet na místo, popisek vystředěný nad ikonkou, styl TN červená — ' + JSON.stringify(geo));
   // popisek nad ikonkou drží pixelově i po oddálení a přiblížení (dřív geografický posun uletěl)
   const gap = () => page.evaluate(() => { const ic = document.querySelector('.scene-icon-marker').getBoundingClientRect(), b = document.querySelector('.map-label-marker .map-label-bubble').getBoundingClientRect(); return Math.round(ic.top - b.bottom); });
