@@ -17,7 +17,7 @@ const {check, done, open, routeWrites} = require('./lib');
     await o.ctx.route(/nominatim\.openstreetmap\.org\/search/, r => mode === 'empty' ? r.fulfill({status:200, contentType:'application/json', body:'[]'}) : r.fulfill({status:503, body:'busy'}));
     await o.page.reload({waitUntil:'load'}); await o.page.waitForTimeout(5000);
     const g = await o.page.evaluate(() => window.TNMAP.gotoPlace({query:'Humpolec'}));
-    check(g.ok && /Humpolec/.test(g.found), `Nominatim ${mode}: záloha Photon najde Humpolec`);
+    check(g.ok && /Humpolec/.test(g.found), `Nominatim ${mode}: záloha Photon najde Humpolec ` + JSON.stringify(g).slice(0, 160));
     check(o.errors.length === 0, `Nominatim ${mode}: žádná chyba stránky`);
     await o.close();
   }

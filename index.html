@@ -13060,6 +13060,8 @@ async function searchPlacesPhoton(q, limit=8, near=null){
       addresstype: ZOOMTYPE[pr.osm_value] || ZOOMTYPE[pr.type] || pr.type || '',
       class: pr.osm_key || '', type: pr.osm_value || '',
       address: {city: pr.city, county: pr.county, state: pr.state, country: pr.country, country_code: (pr.countrycode || '').toLowerCase()},
+      // Photon nemá „importance" — odhad podle druhu místa, ať město přebije stejnojmennou osadu
+      importance: ({city:0.7, town:0.6, municipality:0.55, village:0.45, suburb:0.35, hamlet:0.2, locality:0.15, isolated_dwelling:0.1, neighbourhood:0.15})[pr.osm_value] ?? 0.3,
       _source: 'photon'
     };
   }).filter(it => isFinite(+it.lat) && isFinite(+it.lon))
@@ -13153,7 +13155,11 @@ function focusPlaceResult(item){
   if(placeBoundsUsable(bounds, item)){
     state.map.fitBounds(bounds, {padding:getFitPadding(), duration:900, maxZoom:getPlaceFitMaxZoom(item)});
   }else{
-    state.map.flyTo({center:point, zoom:getPlaceZoom(item), duration:900});
+    // místo doprostřed exportního rámečku (ne doprostřed okna — rámeček bývá posunutý panelem)
+    const z = getPlaceZoom(item);
+    let center = point;
+    try{ const g = pzCamFrameGeom(); if(g) center = pzCamShift({center: point, zoom: z, bearing: state.map.getBearing()}, {...g, dz: 0}, 1).center; }catch(e){}
+    state.map.flyTo({center, zoom:z, duration:900});
   }
   clearPlaceSearchMarker();
   // Náhled hledání: dutý kroužek NAD místem (název obce pod ním zůstane čitelný),
@@ -24338,7 +24344,7 @@ function pzColorFromName(v){
     // fire, police, ambulance, plane. Bez trasy se jen předvybere.
     setVehicle({type, label, color} = {}){
       const k = String(type || '').toLowerCase();
-      const alias = {auto:'car', kamion:'truck', nakladni:'lorry', 'nákladní':'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', 'loď':'boat', hasici:'fire', 'hasiči':'fire', policie:'police', sanitka:'ambulance', letadlo:'plane'};
+      const alias = {auto:'car', kamion:'truck', nakladni:'lorry', 'nákladní':'lorry', dodavka:'lorry', 'dodávka':'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', 'loď':'boat', hasici:'fire', 'hasiči':'fire', policie:'police', sanitka:'ambulance', letadlo:'plane'};
       const t = ANIM_SYSTEM_ICONS[k] ? k : alias[k];
       if(!t || !ANIM_SYSTEM_ICONS[t]) return {ok:false, error:'Vozidlo „' + type + '" neznám. Mám: ' + Object.keys(ANIM_SYSTEM_ICONS).join(', ') + '.'};
       // Barvu ověřit před jakoukoli změnou — chyba nesmí nechat přepnutý typ a cedulku.
@@ -24353,7 +24359,7 @@ function pzColorFromName(v){
     async addVehicle({type, reverse, delay, crash, crashAt, crashLabel, speed, label, color} = {}){
       // typ česky i v jiném tvaru (vlaky, vlakem, sanitkou, lodí…)
       const k = String(type || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const alias = {auto:'car', osobak:'car', kamion:'truck', nakladni:'lorry', nakladak:'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', policie:'police', sanitka:'ambulance', metro:'metro', souprava:'train', letadlo:'plane', letoun:'plane'};
+      const alias = {auto:'car', osobak:'car', kamion:'truck', nakladni:'lorry', nakladak:'lorry', dodavka:'lorry', 'dodávka':'lorry', vlak:'train', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', policie:'police', sanitka:'ambulance', metro:'metro', souprava:'train', letadlo:'plane', letoun:'plane'};
       const stem = w => w.replace(/(ami|ech|em|ou|um|y|u|a|e|i|o)$/, '');
       let t = PZ_EXTRA_LABELS[k] ? k : alias[k];
       if(!t){ const st = stem(k); const hit = Object.keys(alias).find(a => st.length >= 3 && stem(a) === st); if(hit) t = alias[hit]; }
@@ -25810,8 +25816,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
           [/tmav/, 'tnLive', 'Noc – TN Live'], [/svetl/, 'tnSvetla', 'Světlá']].find(([re]) => re.test(k));
         return P ? {say: tr('Přepínám preset: {0}.', P[2]), calls: one('applyPreset', {preset: P[1]}, P[2])} : null; }],
     // vozidlo na trase: ať tam jede sanitka / dej tam autobus
-    [/^(?:at (?:tam |po trase )?jede |dej (?:tam |na trasu )?|vozidlo |ikona )(auto|kamion|nakladak|nakladni auto|vlak|metro|tramvaj|autobus|lod|hasici|hasice|policie|policejni auto|sanitka|sanitku|letadlo)$/,
-      m => { const V = {auto:'car', kamion:'truck', nakladak:'lorry', 'nakladni auto':'lorry', vlak:'train', metro:'metro', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', hasice:'fire', policie:'police', 'policejni auto':'police', sanitka:'ambulance', sanitku:'ambulance', letadlo:'plane'};
+    [/^(?:at (?:tam |po trase )?jede |dej (?:tam |na trasu )?|vozidlo |ikona )(auto|kamion|nakladak|nakladni auto|dodavka|dodavku|vlak|metro|tramvaj|autobus|lod|hasici|hasice|policie|policejni auto|sanitka|sanitku|letadlo)$/,
+      m => { const V = {auto:'car', kamion:'truck', nakladak:'lorry', 'nakladni auto':'lorry', dodavka:'lorry', dodavku:'lorry', vlak:'train', metro:'metro', tramvaj:'tram', autobus:'bus', lod:'boat', hasici:'fire', hasice:'fire', policie:'police', 'policejni auto':'police', sanitka:'ambulance', sanitku:'ambulance', letadlo:'plane'};
         return {say: tr('Na trasu dávám: {0}.', m[1]), calls: one('setVehicle', {type: V[m[1]]}, m[1])}; }]
   ];
   // --- pomůcky pro povely bez AI ---
