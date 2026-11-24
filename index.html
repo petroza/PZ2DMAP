@@ -373,6 +373,11 @@ input[type=color]:hover{border-color:var(--accent)}
 .safe-guides.sg-social .sg-third-h1,.safe-guides.sg-social .sg-third-h2{left:6%;right:14%}
 .export-frame-wm{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
 .export-frame-wm[hidden]{display:none}
+/* Titulek a zdroj grafiky: náhled kreslí stejná funkce jako export (pzDrawTitleOverlay) */
+.pz-title-overlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:41;pointer-events:none}
+.pz-title-overlay[hidden]{display:none}
+.pz-fname-preview{margin-top:6px;padding:5px 8px;border:1px dashed var(--border);border-radius:var(--radius);font:600 11.5px/1.3 ui-monospace,Consolas,monospace;color:var(--tx1);word-break:break-all;user-select:all}
+.pz-nick-input{text-transform:lowercase}
 body.pz-frame-wm .map-source-watermark{display:none}
 .safe-guides .sg-center{position:absolute;left:50%;top:50%;width:16px;height:16px;transform:translate(-50%,-50%);background:linear-gradient(rgba(255,255,255,.65),rgba(255,255,255,.65)) center/1px 100% no-repeat,linear-gradient(rgba(255,255,255,.65),rgba(255,255,255,.65)) center/100% 1px no-repeat}
 .safe-guides.on-light .sg-rect{border-color:rgba(0,0,0,.72)}
@@ -1738,6 +1743,41 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           </div>
           <div class="btns"><button type="button" class="btn btn-primary" id="exportBatchBtn" data-i18n="Exportovat vybrané">Exportovat vybrané</button></div>
         </details>
+      </div>
+      <div class="section" id="exportTitleSection" data-default-open="1">
+        <h3 data-i18n="Titulek a zdroj" title="Titulek vlevo nahoře v bezpečné zóně, zdroj vlevo dole vedle zdroje mapy — v PNG i videu stejně jako v rámečku">Titulek a zdroj</h3>
+        <label class="check"><input id="pzTitleOn" type="checkbox"> <span data-i18n="Titulek v grafice">Titulek v grafice</span></label>
+        <input id="pzTitleText" type="text" maxlength="90" placeholder="Např. Uzavírka D1 u Humpolce" aria-label="Titulek">
+        <div class="row" style="margin-top:6px">
+          <div><label for="pzTitleStyle" data-i18n="Styl titulku">Styl titulku</label><select id="pzTitleStyle">
+            <option value="navy" selected data-i18n="Nova modrý">Nova modrý</option>
+            <option value="red" data-i18n="Nova červený">Nova červený</option>
+            <option value="classic" data-i18n="Bílý">Bílý</option>
+            <option value="dark" data-i18n="Černý">Černý</option>
+          </select></div>
+        </div>
+        <label class="check" style="margin-top:8px"><input id="pzSourceOn" type="checkbox"> <span data-i18n="Zdroj dat v grafice">Zdroj dat v grafice</span></label>
+        <input id="pzSourceText" type="text" maxlength="80" placeholder="Např. ŘSD" aria-label="Zdroj">
+      </div>
+      <div class="section" id="exportNameSection" data-default-open="1">
+        <h3 data-i18n="Název souboru">Název souboru</h3>
+        <div class="row">
+          <div><label for="pzNamePopis" data-i18n="Krátký popis">Krátký popis</label><input id="pzNamePopis" type="text" maxlength="40" placeholder="Např. potok"></div>
+          <div><label for="pzNameNick" data-i18n="Nick reportéra">Nick reportéra</label><input id="pzNameNick" class="pz-nick-input" type="text" maxlength="3" placeholder="Např. maj" autocomplete="off" spellcheck="false"></div>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <div><label for="pzNamePorad" data-i18n="Pořad">Pořad</label><select id="pzNamePorad">
+            <option value="" selected>—</option>
+            <option value="tn">TN</option>
+            <option value="ptn">PTN</option>
+            <option value="otn">OTN</option>
+            <option value="nvs">NVS</option>
+            <option value="str">STR</option>
+            <option value="vik">VIK</option>
+          </select></div>
+          <div style="align-self:end"><label class="check"><input id="pzNameOprava" type="checkbox"> <span data-i18n="Oprava">Oprava</span></label></div>
+        </div>
+        <div id="pzNamePreview" class="pz-fname-preview" title="Takhle se bude jmenovat stažený soubor"></div>
       </div>
     </div>
 
@@ -4427,10 +4467,11 @@ function drawRoundRectPath(ctx, x, y, w, h, r){
   ctx.quadraticCurveTo(x, y, x + rr, y);
   ctx.closePath();
 }
-function drawMapSourceWatermark(ctx, w, h){
-  if(!ctx || !w || !h) return;
+// measureOnly: jen spočítat polohu pilulky (zdroj dat vedle ní nesmí kolidovat)
+function drawMapSourceWatermark(ctx, w, h, measureOnly){
+  if(!ctx || !w || !h) return null;
   const text = getCurrentMapSourceWatermarkText();
-  if(!text) return;
+  if(!text) return null;
   const scale = Math.max(0.75, Math.min(4, w / 1920));
   let fontSize = Math.max(10, Math.round(18 * scale));
   const minFont = Math.max(9, Math.round(12 * scale));
@@ -4451,6 +4492,7 @@ function drawMapSourceWatermark(ctx, w, h){
   const boxH = Math.round(fontSize + padY * 2 + 2 * scale);
   const x = Math.round(w - margin - boxW);
   const y = Math.round(h - marginY - boxH);
+  if(measureOnly){ ctx.restore(); return {x, y, w: boxW, h: boxH}; }
   ctx.shadowColor = 'rgba(0,0,0,.35)';
   ctx.shadowBlur = 10 * scale;
   ctx.shadowOffsetY = 2 * scale;
@@ -4466,6 +4508,7 @@ function drawMapSourceWatermark(ctx, w, h){
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x + padX, y + boxH / 2 + 0.5, maxTextW);
   ctx.restore();
+  return {x, y, w: boxW, h: boxH};
 }
 
 const TILE_DB_KEY = 'map69_tiles_v2';
@@ -5268,6 +5311,8 @@ function pzClearWholeScene(){
     rel();
   }, 0);
   try{ window.TNMAP?.clearScene({what:'all'}); }catch(_e){}
+  try{ pzSetTitleState({title:'', source:'', titleOn:false, sourceOn:false}); }catch(_e){}
+  try{ pzApplyNameSnapshot({popis:'', oprava:false}); }catch(_e){}
   try{ state.pzExtraVehicles = []; pzRenderExtraList(); }catch(_e){}
   try{ state.pzLineRoute = null; }catch(_e){}
   try{ if(model3dHasModel()) $('deleteModel3dBtn')?.click(); }catch(_e){}
@@ -8854,7 +8899,11 @@ function serializeProjectSnapshot(){
         ...(state.cameraAnim?.space === 'frame' ? {space: 'frame'} : {})
       }
     },
-    overlays: getOverlaySnapshot()
+    overlays: getOverlaySnapshot(),
+    // titulek a zdroj v grafice (nepovinné; starý projekt = bez titulku)
+    graphicTitle: pzTitleSnapshot(),
+    // název souboru podle redakce (popis, nick, pořad, oprava) — krok zpět ho nevrací
+    exportName: pzNameFields()
   };
 }
 
@@ -9061,6 +9110,8 @@ function applyProjectSnapshot(snapshot, statusMsg){
   state.pzFlagSel = null;
   state.pzFlagScale = isFinite(+snapshot?.countryFlagScale) && +snapshot.countryFlagScale > 0 ? +snapshot.countryFlagScale : PZ_FLAG_SCALE_DEFAULT;
   if($('pzFlagSize')) $('pzFlagSize').value = String(pzFlagScale());
+  try{ const g = snapshot?.graphicTitle; state.pzTitle = (g && typeof g === 'object') ? {title: String(g.title || ''), source: String(g.source || ''), titleOn: !!g.titleOn, sourceOn: !!g.sourceOn, style: g.style} : null; pzSyncTitleUi(); pzUpdateTitlePreview(); }catch(e){}
+  try{ if(snapshot?.exportName) pzApplyNameSnapshot(snapshot.exportName); }catch(e){}
   try{ updateReadouts(); }catch(e){}
   Promise.all(state.pzFlags.map(f => pzLoadFlagImage(f.iso))).then(() => { try{ pzFlagsRefresh(); }catch(e){} });
   const doApply = () => {
@@ -18416,7 +18467,7 @@ function updateExportFrame(){
   if(!frame || !mapEl) return;
   try{ updateExportSummary(); }catch(_e){}
   const visible = $('showExportFrame')?.checked !== false;
-  if(!visible){ frame.classList.add('hidden'); document.body.classList.remove('pz-frame-wm'); return; }
+  if(!visible){ frame.classList.add('hidden'); document.body.classList.remove('pz-frame-wm'); try{ pzUpdateTitlePreview(); }catch(_e){} return; }
   const {w:outW,h:outH}=getExportSize();
   frame.setAttribute('data-label', `${outW}×${outH}` + pzAspectLabel(outW, outH));
   const r = pzComputeFrameRect(outW, outH); if(!r) return;
@@ -18443,6 +18494,7 @@ function pzApplyGlobeMinZoom(){
 }
 // Pilulka „Zdroj mapy" je už v rámečku na stejném místě a ve stejné velikosti jako ve výstupu.
 function pzUpdateFrameWatermark(fw, fh, outW, outH){
+  try{ pzUpdateTitlePreview(); }catch(_e){}   // zdroj dat se řídí šířkou pilulky „Zdroj mapy"
   const frame = $('exportFrame'); if(!frame) return;
   let c = $('exportFrameWatermark');
   if(!c){ c = document.createElement('canvas'); c.id = 'exportFrameWatermark'; c.className = 'export-frame-wm'; c.setAttribute('aria-hidden', 'true'); frame.appendChild(c); }
@@ -18457,6 +18509,221 @@ function pzUpdateFrameWatermark(fw, fh, outW, outH){
   const ctx = c.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, Hh);
   ctx.setTransform(W / outW, 0, 0, Hh / outH, 0, 0);
   drawMapSourceWatermark(ctx, outW, outH);
+}
+
+// ===== TITULEK A ZDROJ GRAFIKY =====
+// Reportéři píšou do zadání „Název: …" a u datových map „Zdroj: …". Titulek sedí
+// vlevo nahoře v title-safe zóně (TV 5 %, sítě 9:16 jako vodítka: 6 % / 14 %),
+// zdroj vlevo dole na řádku se „Zdrojem mapy" a nesmí na něj narazit.
+// Kreslí se v px VÝSTUPU — náhled v rámečku je tentýž obrázek zmenšený.
+const PZ_TITLE_STYLES = {
+  navy:    {bg:'#0D1767', fg:'#ffffff', accent:'#F03B3B'},
+  red:     {bg:'#F03B3B', fg:'#ffffff', accent:'#0D1767'},
+  classic: {bg:'rgba(255,255,255,.98)', fg:'#111111', accent:'#F03B3B'},
+  dark:    {bg:'#000000', fg:'#ffffff', accent:'#F03B3B'}
+};
+function pzTitleState(){
+  const d = state.pzTitle || {};
+  return {title: String(d.title || ''), source: String(d.source || ''), titleOn: !!d.titleOn, sourceOn: !!d.sourceOn,
+    style: PZ_TITLE_STYLES[d.style] ? d.style : 'navy'};
+}
+// „Zdroj: ŘSD" vložené celé ze zadání → jen „ŘSD" (prefix kreslíme sami)
+function pzCleanSource(v){ return String(v ?? '').replace(/^\s*(zdroj|zdroje|source|izvor|sursa|източник)\s*[:;]\s*/i, '').trim(); }
+function pzCleanTitle(v){ return String(v ?? '').replace(/^\s*(název|nazev|nadpis|titulek)\s*[:;]\s*/i, '').trim(); }
+function pzTitleFont(){ try{ return getComputedStyle(document.body).fontFamily || 'sans-serif'; }catch(e){ return 'sans-serif'; } }
+// Řádkový zlom podle šířky; slovo delší než řádek zůstane celé (fillText ho stlačí).
+function pzWrapText(ctx, text, maxW){
+  const words = String(text).split(/\s+/).filter(Boolean), lines = [];
+  let cur = '';
+  for(const w of words){
+    const tryL = cur ? cur + ' ' + w : w;
+    if(cur && ctx.measureText(tryL).width > maxW){ lines.push(cur); cur = w; } else cur = tryL;
+  }
+  if(cur) lines.push(cur);
+  return lines;
+}
+function pzDrawTitleOverlay(ctx, W, H){
+  if(!ctx || !W || !H) return null;
+  const st = pzTitleState();
+  const title = st.titleOn ? pzCleanTitle(st.title) : '', source = st.sourceOn ? pzCleanSource(st.source) : '';
+  if(!title && !source) return null;
+  const k = Math.min(W, H) / 1080, social = W < H, fam = pzTitleFont();
+  const safeL = Math.round(W * (social ? 0.06 : 0.05)), safeT = Math.round(H * (social ? 0.14 : 0.05)), safeR = Math.round(W * (social ? 0.14 : 0.05));
+  const safeW = W - safeL - safeR;
+  const out = {};
+  ctx.save();
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  if(title){
+    const pal = PZ_TITLE_STYLES[st.style];
+    // TV: titulek nanejvýš ~60 % šířky, ať nezakryje mapu; sítě: celá bezpečná šířka
+    const maxBoxW = social ? safeW : safeW * 0.62;
+    let fs = Math.round(52 * k), lines, padX, padY, bar, textMax;
+    for(let i = 0; i < 12; i++){
+      padX = Math.round(fs * 0.5); padY = Math.round(fs * 0.36); bar = Math.max(3, Math.round(fs * 0.2));
+      textMax = maxBoxW - bar - padX * 2;
+      ctx.font = `800 ${fs}px ${fam}`;
+      lines = pzWrapText(ctx, title, textMax);
+      if(lines.length <= 2 && lines.every(l => ctx.measureText(l).width <= textMax)) break;
+      if(fs <= Math.round(34 * k)){ if(lines.length > 3) lines = [lines.slice(0, 2).join(' '), lines.slice(2).join(' ')]; break; }
+      fs = Math.round(fs * 0.93);
+    }
+    const lineH = Math.round(fs * 1.14);
+    const textW = Math.min(textMax, Math.ceil(Math.max(...lines.map(l => ctx.measureText(l).width))));
+    const boxW = bar + padX * 2 + textW, boxH = padY * 2 + lineH * (lines.length - 1) + Math.round(fs * 1.0);
+    const x = safeL, y = safeT, r = Math.max(2, Math.round(3 * k));
+    ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 16 * k; ctx.shadowOffsetY = 3 * k;
+    drawRoundRectPath(ctx, x, y, boxW, boxH, r);
+    ctx.fillStyle = pal.bg; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    // červený (u červeného stylu modrý) pruh vlevo — jako čtvereček u popisků Nova
+    ctx.save(); drawRoundRectPath(ctx, x, y, boxW, boxH, r); ctx.clip();
+    ctx.fillStyle = pal.accent; ctx.fillRect(x, y, bar, boxH); ctx.restore();
+    ctx.fillStyle = pal.fg; ctx.font = `800 ${fs}px ${fam}`;
+    lines.forEach((ln, i) => ctx.fillText(ln, x + bar + padX, y + padY + Math.round(fs * 0.5) + lineH * i + 0.5 * k, textMax));
+    out.title = {x, y, w: boxW, h: boxH, fontSize: fs, lines: lines.length};
+  }
+  if(source){
+    const text = t('Zdroj') + ': ' + source;
+    // řádek se „Zdrojem mapy": stejný spodní okraj; průhledná vrstva pilulku nemá
+    let wm = null;
+    if(!isTransparentExportOn()){ try{ wm = drawMapSourceWatermark(ctx, W, H, true); }catch(e){} }
+    const scale = Math.max(0.75, Math.min(4, W / 1920));
+    const marginY = Math.max(10, Math.round(18 * scale), Math.ceil(0.035 * H));
+    const gap = Math.round(14 * k);
+    let fs = Math.round(24 * k);
+    const minFs = Math.round(18 * k);
+    const avail = () => (wm ? wm.x - gap : W - safeR) - safeL;
+    const box = () => { const px = Math.round(fs * 0.45), py = Math.round(fs * 0.3); ctx.font = `700 ${fs}px ${fam}`; return {px, py, w: Math.ceil(ctx.measureText(text).width) + px * 2, h: Math.round(fs * 1.05) + py * 2}; };
+    let b = box();
+    while(b.w > avail() && fs > minFs){ fs--; b = box(); }
+    let x = safeL, y = (wm ? wm.y + wm.h : H - marginY) - b.h, maxW = Math.max(40, avail());
+    // nevejde se vedle pilulky → o řádek výš nad ni (nikdy přes ni)
+    if(b.w > avail() && wm){ y = wm.y - Math.round(8 * k) - b.h; maxW = safeW; }
+    const bw = Math.min(b.w, maxW);
+    ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10 * k; ctx.shadowOffsetY = 2 * k;
+    drawRoundRectPath(ctx, x, y, bw, b.h, Math.max(3, Math.round(5 * k)));
+    ctx.fillStyle = 'rgba(10,12,18,.78)'; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#ffffff'; ctx.font = `700 ${fs}px ${fam}`;
+    ctx.fillText(text, x + b.px, y + b.h / 2 + 0.5 * k, Math.max(1, bw - b.px * 2));
+    out.source = {x, y, w: bw, h: b.h, fontSize: fs};
+  }
+  ctx.restore();
+  return out;
+}
+// Náhled: plátno přes výřez exportu (i když je rámeček skrytý — export ho stejně použije).
+function pzUpdateTitlePreview(){
+  const wrap = $('map')?.parentElement; if(!wrap) return;
+  let c = $('pzTitleOverlay');
+  const st = pzTitleState();
+  const on = (st.titleOn && pzCleanTitle(st.title)) || (st.sourceOn && pzCleanSource(st.source));
+  if(!c){ if(!on) return; c = document.createElement('canvas'); c.id = 'pzTitleOverlay'; c.className = 'pz-title-overlay'; c.setAttribute('aria-hidden', 'true'); wrap.appendChild(c); }
+  const {w: outW, h: outH} = getExportSize();
+  const r = on ? pzComputeFrameRect(outW, outH) : null;
+  c.hidden = !r;
+  if(!r) return;
+  c.style.width = r.width + 'px'; c.style.height = r.height + 'px'; c.style.left = r.cx + 'px'; c.style.top = r.cy + 'px';
+  const dpr = Math.min(3, window.devicePixelRatio || 1);
+  const W = Math.max(1, Math.round(r.width * dpr)), Hh = Math.max(1, Math.round(r.height * dpr));
+  if(c.width !== W || c.height !== Hh){ c.width = W; c.height = Hh; }
+  const ctx = c.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, Hh);
+  ctx.setTransform(W / outW, 0, 0, Hh / outH, 0, 0);
+  pzDrawTitleOverlay(ctx, outW, outH);
+}
+function pzSyncTitleUi(){
+  const st = pzTitleState();
+  if($('pzTitleOn')) $('pzTitleOn').checked = st.titleOn;
+  if($('pzTitleText') && $('pzTitleText').value !== st.title) $('pzTitleText').value = st.title;
+  if($('pzTitleStyle')) $('pzTitleStyle').value = st.style;
+  if($('pzSourceOn')) $('pzSourceOn').checked = st.sourceOn;
+  if($('pzSourceText') && $('pzSourceText').value !== st.source) $('pzSourceText').value = st.source;
+}
+function pzSetTitleState(patch, sync = true){
+  state.pzTitle = {...pzTitleState(), ...(patch || {})};
+  if(sync) pzSyncTitleUi();
+  try{ pzUpdateTitlePreview(); }catch(e){}
+}
+function pzTitleSnapshot(){ const s = pzTitleState(); return (s.title || s.source || s.titleOn || s.sourceOn) ? s : null; }
+
+// ===== NÁZEV SOUBORU PODLE ZVYKLOSTÍ REDAKCE =====
+// mapa-<popis>-<nick>-gfx[-opr][-<pořad>]-RRMMDD (docs/zadani-map.md, oddíl 5).
+// Nick a pořad si pamatuje prohlížeč; popis a oprava patří ke grafice (projekt).
+const PZ_PORADY = ['tn', 'ptn', 'otn', 'nvs', 'str', 'vik'];
+function pzNameFields(){
+  const popis = ($('pzNamePopis')?.value || '').trim();
+  const nick = ($('pzNameNick')?.value || '').trim().normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 3);
+  const porad = PZ_PORADY.includes($('pzNamePorad')?.value) ? $('pzNamePorad').value : '';
+  return {popis, nick, porad, oprava: !!$('pzNameOprava')?.checked};
+}
+function pzRedakceName(d = new Date()){
+  const f = pzNameFields();
+  if(!f.popis && !f.nick) return '';
+  const z = n => String(n).padStart(2, '0');
+  // bez popisu (jen zapamatovaný nick) poslouží název projektu
+  const src = f.popis || ($('projectName')?.value || '').trim();
+  const slug = src ? pzFileSlug(src).replace(/^mapa(-|$)/, '') : '';
+  return ['mapa', slug, f.nick, 'gfx', f.oprava ? 'opr' : '', f.porad, String(d.getFullYear()).slice(2) + z(d.getMonth() + 1) + z(d.getDate())].filter(Boolean).join('-');
+}
+function pzUpdateNamePreview(){
+  const el = $('pzNamePreview'); if(!el) return;
+  let n = ''; try{ n = pzExportNameWithTag(); }catch(e){}
+  el.textContent = n ? n + (isTransparentExportOn() ? '-alpha' : '') + '.png' : '';
+}
+function pzSaveNamePrefs(){
+  const f = pzNameFields();
+  try{ localStorage.setItem('pzNameNick', f.nick); localStorage.setItem('pzNamePorad', f.porad); }catch(e){}
+}
+function pzLoadNamePrefs(){
+  try{
+    const n = localStorage.getItem('pzNameNick'), p = localStorage.getItem('pzNamePorad');
+    if(n != null && $('pzNameNick')) $('pzNameNick').value = n;
+    if(p != null && $('pzNamePorad') && (p === '' || PZ_PORADY.includes(p))) $('pzNamePorad').value = p;
+  }catch(e){}
+}
+function pzApplyNameSnapshot(n){
+  if(!n || typeof n !== 'object') return;
+  if($('pzNamePopis')) $('pzNamePopis').value = String(n.popis || '');
+  if($('pzNameOprava')) $('pzNameOprava').checked = !!n.oprava;
+  if(n.nick && $('pzNameNick')) $('pzNameNick').value = String(n.nick).slice(0, 3);
+  if(n.porad != null && $('pzNamePorad') && (n.porad === '' || PZ_PORADY.includes(n.porad))) $('pzNamePorad').value = n.porad;
+  pzUpdateNamePreview();
+}
+function pzSetupTitleAndName(){
+  pzSyncTitleUi();
+  pzLoadNamePrefs();
+  const undo = () => { try{ window.__pzPushUndo?.(); }catch(e){} };
+  // krok zpět: snímek PŘED změnou — u textu při vstupu do pole (celé psaní = jeden krok)
+  ['pzTitleText', 'pzSourceText', 'pzTitleStyle'].forEach(id => $(id)?.addEventListener('focusin', undo));
+  ['pzTitleOn', 'pzSourceOn'].forEach(id => $(id)?.addEventListener('pointerdown', undo, true));
+  $('pzTitleOn')?.addEventListener('keydown', e => { if(e.key === ' ') undo(); });
+  $('pzSourceOn')?.addEventListener('keydown', e => { if(e.key === ' ') undo(); });
+  $('pzTitleText')?.addEventListener('input', e => {
+    const v = e.target.value;
+    // psaní titulku ho rovnou zapne (vypnout jde zaškrtávátkem)
+    pzSetTitleState({title: v, ...(v.trim() && !pzTitleState().title.trim() ? {titleOn: true} : {})}, false);
+    if($('pzTitleOn')) $('pzTitleOn').checked = pzTitleState().titleOn;
+  });
+  $('pzSourceText')?.addEventListener('input', e => {
+    const v = e.target.value;
+    pzSetTitleState({source: v, ...(v.trim() && !pzTitleState().source.trim() ? {sourceOn: true} : {})}, false);
+    if($('pzSourceOn')) $('pzSourceOn').checked = pzTitleState().sourceOn;
+  });
+  $('pzTitleText')?.addEventListener('change', e => { const c = pzCleanTitle(e.target.value); if(c !== e.target.value){ e.target.value = c; pzSetTitleState({title: c}, false); } });
+  $('pzSourceText')?.addEventListener('change', e => { const c = pzCleanSource(e.target.value); if(c !== e.target.value){ e.target.value = c; pzSetTitleState({source: c}, false); } });
+  $('pzTitleOn')?.addEventListener('change', e => pzSetTitleState({titleOn: e.target.checked}, false));
+  $('pzSourceOn')?.addEventListener('change', e => pzSetTitleState({sourceOn: e.target.checked}, false));
+  $('pzTitleStyle')?.addEventListener('change', e => pzSetTitleState({style: e.target.value}, false));
+  // název souboru
+  ['pzNamePopis', 'pzNameNick', 'pzNamePorad', 'pzNameOprava'].forEach(id => {
+    $(id)?.addEventListener('input', () => { pzSaveNamePrefs(); pzUpdateNamePreview(); });
+    $(id)?.addEventListener('change', () => { pzSaveNamePrefs(); pzUpdateNamePreview(); });
+  });
+  ['exportResolution', 'exportTransparent', 'projectName'].forEach(id => $(id)?.addEventListener('input', pzUpdateNamePreview));
+  ['exportResolution', 'exportTransparent', 'projectName'].forEach(id => $(id)?.addEventListener('change', pzUpdateNamePreview));
+  $('exportChips')?.addEventListener('click', () => setTimeout(pzUpdateNamePreview, 0));
+  pzUpdateNamePreview();
+  // písmo načtené až po prvním kreslení → překreslit náhled
+  try{ document.fonts?.ready?.then(() => { try{ pzUpdateTitlePreview(); }catch(e){} }); }catch(e){}
 }
 
 function getExportSize(){
@@ -19463,6 +19730,8 @@ async function drawCurrentMapFrame(targetCanvas){
     try{ if(!isTransparentExportOn()) drawMapSourceWatermark(targetCanvas.getContext('2d'), targetCanvas.width, targetCanvas.height); }catch(e){}
     // legenda datové mapy je grafika scény — patří i do průhledné vrstvy
     try{ pzDrawDataLegend(targetCanvas.getContext('2d'), targetCanvas.width, targetCanvas.height); }catch(e){}
+    // titulek a zdroj dat — stejná funkce kreslí náhled v rámečku (pzUpdateTitlePreview)
+    try{ pzDrawTitleOverlay(targetCanvas.getContext('2d'), targetCanvas.width, targetCanvas.height); }catch(e){}
     try{ setExportPreviewFrame(targetCanvas); }catch(e){}
   }
   return ok;
@@ -20009,7 +20278,9 @@ function getExportBaseName(){
   const proj = ($('projectName')?.value || '').trim();
   // Bez názvu projektu: tnmap-RRRRMMDD-HHMM (název presetu typu „Světlá" nic neříkal).
   const d = new Date(), z = n => String(n).padStart(2, '0');
-  let base = proj ? pzFileSlug(proj) : ('tnmap-' + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()));
+  // Vyplněný popis nebo nick (Export → Název souboru): mapa-potok-maj-gfx-tn-261122.
+  const red = pzRedakceName(d);
+  let base = red ? red : proj ? pzFileSlug(proj) : ('tnmap-' + d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()));
   // During a multi-format batch export each output gets the aspect tagged on so the
   // downloaded files don't collide (project-16x9.mp4, project-9x16.mp4, …).
   if(state._exportNameSuffix) base += '-' + state._exportNameSuffix;
@@ -21161,6 +21432,7 @@ function bindUI(){
   $('safeGuidesBtn')?.addEventListener('click', () => setSafeGuides(!safeGuidesVisible()));
   // pilulka „Zdroj mapy" v rámečku: jiný podklad = jiný text, průhledný export ji nemá
   $('exportTransparent')?.addEventListener('change', () => { try{ pzUpdateFrameWatermark(); }catch(_e){} });
+  try{ pzSetupTitleAndName(); }catch(_e){ console.warn('titulek/název souboru', _e); }
   try{ const wm = $('mapSourceWatermark'); if(wm) new MutationObserver(() => { try{ pzUpdateFrameWatermark(); }catch(_e){} }).observe(wm, {childList:true, characterData:true, subtree:true}); }catch(_e){}
   // Settings panel (gear) — move custom sources in, wire language toggles / light mode / stats / selfcheck.
   try{ const cs=$('tileSourcesSection'), dest=$('settingsCustomSources'); if(cs && dest && cs.parentElement!==dest) dest.appendChild(cs); }catch(_e){}
@@ -22330,6 +22602,25 @@ Object.assign(I18N, {
   "Nenalezeno: {0}": {cs:"Nenalezeno: {0}",sk:"Nenájdené: {0}",bg:"Не е намерено: {0}",hr:"Nije pronađeno: {0}",ro:"Negăsit: {0}",en:"Not found: {0}"},
   "Datová mapa: {0} hodnot.": {cs:"Datová mapa: {0} hodnot.",sk:"Dátová mapa: {0} hodnôt.",bg:"Карта с данни: {0} стойности.",hr:"Podatkovna karta: {0} vrijednosti.",ro:"Hartă cu date: {0} valori.",en:"Data map: {0} values."},
   "Bez čísla: {0}": {cs:"Bez čísla: {0}",sk:"Bez čísla: {0}",bg:"Без число: {0}",hr:"Bez broja: {0}",ro:"Fără număr: {0}",en:"No number: {0}"},
+  "Titulek a zdroj": {cs:"Titulek a zdroj",sk:"Titulok a zdroj",bg:"Заглавие и източник",hr:"Naslov i izvor",ro:"Titlu și sursă",en:"Title and source"},
+  "Titulek v grafice": {cs:"Titulek v grafice",sk:"Titulok v grafike",bg:"Заглавие в графиката",hr:"Naslov u grafici",ro:"Titlu în grafică",en:"Title in graphic"},
+  "Titulek vlevo nahoře v bezpečné zóně, zdroj vlevo dole vedle zdroje mapy — v PNG i videu stejně jako v rámečku": {cs:"Titulek vlevo nahoře v bezpečné zóně, zdroj vlevo dole vedle zdroje mapy — v PNG i videu stejně jako v rámečku",sk:"Titulok vľavo hore v bezpečnej zóne, zdroj vľavo dole vedľa zdroja mapy — v PNG aj vo videu rovnako ako v rámčeku",bg:"Заглавие горе вляво в безопасната зона, източник долу вляво до източника на картата — в PNG и видео както в рамката",hr:"Naslov gore lijevo u sigurnoj zoni, izvor dolje lijevo uz izvor karte — u PNG-u i videu kao u okviru",ro:"Titlu stânga sus în zona sigură, sursa stânga jos lângă sursa hărții — în PNG și video ca în cadru",en:"Title top left inside the safe zone, source bottom left next to the map credit — same in PNG and video as in the frame"},
+  "Titulek": {cs:"Titulek",sk:"Titulok",bg:"Заглавие",hr:"Naslov",ro:"Titlu",en:"Title"},
+  "Styl titulku": {cs:"Styl titulku",sk:"Štýl titulku",bg:"Стил на заглавието",hr:"Stil naslova",ro:"Stilul titlului",en:"Title style"},
+  "Nova červený": {cs:"Nova červený",sk:"Nova červený",bg:"Nova червен",hr:"Nova crveni",ro:"Nova roșu",en:"Nova red"},
+  "Bílý": {cs:"Bílý",sk:"Biely",bg:"Бял",hr:"Bijeli",ro:"Alb",en:"White"},
+  "Zdroj dat v grafice": {cs:"Zdroj dat v grafice",sk:"Zdroj dát v grafike",bg:"Източник на данните в графиката",hr:"Izvor podataka u grafici",ro:"Sursa datelor în grafică",en:"Data source in graphic"},
+  "Zdroj": {cs:"Zdroj",sk:"Zdroj",bg:"Източник",hr:"Izvor",ro:"Sursa",en:"Source"},
+  "Název souboru": {cs:"Název souboru",sk:"Názov súboru",bg:"Име на файла",hr:"Naziv datoteke",ro:"Numele fișierului",en:"File name"},
+  "Krátký popis": {cs:"Krátký popis",sk:"Krátky popis",bg:"Кратко описание",hr:"Kratki opis",ro:"Descriere scurtă",en:"Short description"},
+  "Nick reportéra": {cs:"Nick reportéra",sk:"Nick reportéra",bg:"Ник на репортера",hr:"Nadimak reportera",ro:"Inițialele reporterului",en:"Reporter nick"},
+  "Pořad": {cs:"Pořad",sk:"Relácia",bg:"Предаване",hr:"Emisija",ro:"Emisiune",en:"Show"},
+  "Oprava": {cs:"Oprava",sk:"Oprava",bg:"Корекция",hr:"Ispravak",ro:"Corectură",en:"Correction"},
+  "Takhle se bude jmenovat stažený soubor": {cs:"Takhle se bude jmenovat stažený soubor",sk:"Takto sa bude volať stiahnutý súbor",bg:"Така ще се казва изтегленият файл",hr:"Ovako će se zvati preuzeta datoteka",ro:"Așa se va numi fișierul descărcat",en:"This is what the downloaded file will be called"},
+  "Např. Uzavírka D1 u Humpolce": {cs:"Např. Uzavírka D1 u Humpolce",sk:"Napr. Uzávierka D1 pri Humpolci",bg:"Напр. Затворена магистрала",hr:"Npr. Zatvorena autocesta",ro:"Ex. Autostradă închisă",en:"e.g. Motorway closed near Humpolec"},
+  "Např. ŘSD": {cs:"Např. ŘSD",sk:"Napr. NDS",bg:"Напр. АПИ",hr:"Npr. HAC",ro:"Ex. CNAIR",en:"e.g. Road authority"},
+  "Např. potok": {cs:"Např. potok",sk:"Napr. potok",bg:"Напр. река",hr:"Npr. potok",ro:"Ex. pârâu",en:"e.g. creek"},
+  "Např. maj": {cs:"Např. maj",sk:"Napr. maj",bg:"Напр. maj",hr:"Npr. maj",ro:"Ex. maj",en:"e.g. maj"},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
   "Body zájmu": {cs:"Body zájmu",sk:"Body záujmu",bg:"Обекти",hr:"Točke interesa",ro:"Puncte de interes",en:"Points of interest"},
   "Velikost vlajek": {cs:"Velikost vlajek",sk:"Veľkosť vlajok",bg:"Размер на знамената",hr:"Veličina zastava",ro:"Mărimea steagurilor",en:"Flag size"},
@@ -23302,6 +23593,7 @@ function pzExportRunning(){ return !!(state._batchRunning || (state._exporting &
   function snapshotNow(){
     try {
       const s = JSON.parse(JSON.stringify(serializeProjectSnapshot()));
+      delete s.exportName;   // název souboru není krok scény (Ctrl+Z ho nemá přepsat)
       s.__meta = {projectName: $('projectName')?.value || '', loadedProjectId: state.loadedProjectId || null, savedSig: state._pzSavedSig || null};
       return s;
     }
@@ -23905,7 +24197,8 @@ function pzExportRunning(){ return !!(state._batchRunning || (state._exporting &
       playing: !!state.animPlaying,
       vehicle: veh, camera: cam, anim,
       // Co na mapě je — na to se odkazují pokyny „ho", „ten popisek", „Rusko ne".
-      scene: toolSceneSummary()
+      scene: toolSceneSummary(),
+      graphic: (() => { try{ const g = pzTitleState(), o = {}; if(g.titleOn && g.title) o.title = g.title; if(g.sourceOn && g.source) o.source = g.source; o.file = getExportBaseName(); return o; }catch(e){ return null; } })()
     };
   }
   function toolSceneSummary(){
@@ -24620,6 +24913,8 @@ function pzColorFromName(v){
   Object.assign(window.__pzFns, {pzCrashInfo, pzProjectOnRoute, pointAtProgress});
   // panel Scéna (tests/30_scene_ux.test.js)
   Object.assign(window.__pzFns, {pzExportFrameRect, pzComputeFrameRect, applyMapLabelSizeToAll, pzLabelZoomK, getMapFreeAreaLeft});
+  // titulek a zdroj, název souboru (tests/32_titulek_nazev.test.js)
+  Object.assign(window.__pzFns, {pzDrawTitleOverlay, drawMapSourceWatermark, serializeProjectSnapshot, applyProjectSnapshot, pzRedakceName});
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
     version: 1,
@@ -25520,6 +25815,8 @@ function pzColorFromName(v){
         // Linka MHD (stav_mapy ji jinak hlásil i po smazání trasy).
         route: () => { clearRoute?.(); state.pzLineRoute = null; if($('pzLineInput')) $('pzLineInput').value = ''; state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} if($('pzMainVehLabel')) $('pzMainVehLabel').value = ''; }, trasa: 'route', trasu: 'route', linku: 'route',
         vehicles: () => { state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} }, vozidla: 'vehicles',
+        // titulek a zdroj grafiky (do „all" nepatří — „smaž všechno" maže objekty scény)
+        title: () => pzSetTitleState({title:'', source:'', titleOn:false, sourceOn:false}), titulek: 'title', zdroj: 'title',
         // „smaž všechno": celá scéna i trasa; podklad a vzhled mapy zůstávají
         all: () => { ['data','regions','labels','icons','arrows','perimeters','distances','closures','colors','flags','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
         vse: 'all', vsechno: 'all', scenu: 'all', scena: 'all', 'celou scenu': 'all',
@@ -25833,6 +26130,39 @@ function pzColorFromName(v){
       else targets = [labels.find(l => l.id === state.selectedMapLabelId) || labels[labels.length - 1]];
       targets.forEach(l => updateMapLabel(l.id, {style: st}));
       return {ok:true, style:st, changed:targets.length, labels: targets.map(l => l.text).slice(0, 10)};
+    },
+    // Titulek („Název:") a zdroj dat („Zdroj:") v grafice — vlevo nahoře / vlevo dole, i v exportu.
+    // off:true = skrýt oba; off:"title"/"source" = jen ten. Prázdný text daný výslovně = vypnout.
+    setTitle({title, source, style, off} = {}){
+      const offK = off === true ? 'all' : toolKey(off);
+      if(title == null && source == null && !offK && style == null) return {ok:false, error:'Chybí title, source nebo off.'};
+      let st;
+      if(style != null){ st = toolLabelStyle(style); if(!st) return {ok:false, error:'Styl titulku „' + style + '" neznám. Mám: navy (Nova modrý), red (Nova červený), classic (bílý), dark (černý).'}; }
+      try{ window.__pzPushUndo?.(); }catch(e){}
+      const p = {};
+      if(title != null){ p.title = pzCleanTitle(title); p.titleOn = !!p.title; }
+      if(source != null){ p.source = pzCleanSource(source); p.sourceOn = !!p.source; }
+      if(st) p.style = st;
+      if(offK === 'all' || /^(true|vse|oba|all|ano)$/.test(offK)){ p.titleOn = false; p.sourceOn = false; }
+      else if(/^(title|titulek|nazev|nadpis)$/.test(offK)) p.titleOn = false;
+      else if(/^(source|zdroj)$/.test(offK)) p.sourceOn = false;
+      pzSetTitleState(p);
+      const r = pzTitleState();
+      return {ok:true, title: r.titleOn ? r.title : null, source: r.sourceOn ? r.source : null, style: r.style};
+    },
+    // Název exportovaného souboru podle redakce: mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD.
+    setExportName({popis, nick, porad, oprava} = {}){
+      if(popis == null && nick == null && porad == null && oprava == null) return {ok:false, error:'Chybí popis, nick, porad nebo oprava.'};
+      if(popis != null && $('pzNamePopis')) $('pzNamePopis').value = String(popis).trim().slice(0, 40);
+      if(nick != null){ const n = toolKey(nick).replace(/[^a-z0-9]/g, ''); if(nick !== '' && n.length !== 3) return {ok:false, error:'Nick reportéra má 3 písmena (např. maj).'}; if($('pzNameNick')) $('pzNameNick').value = n; }
+      if(porad != null){
+        const k = toolKey(porad).replace(/^(do|pro)\s+/, ''), m = {'':'', zadny:'', none:'', tn:'tn', vecerni:'tn', vecerky:'tn', 'televizni noviny':'tn', ptn:'ptn', poledni:'ptn', otn:'otn', odpoledni:'otn', nvs:'nvs', 'na vasi strane':'nvs', str:'str', strepiny:'str', vik:'vik', vikend:'vik'};
+        if(!(k in m)) return {ok:false, error:'Pořad „' + porad + '" neznám. Mám: tn, ptn, otn, nvs, str (Střepiny), vik (Víkend).'};
+        if($('pzNamePorad')) $('pzNamePorad').value = m[k];
+      }
+      if(oprava != null && $('pzNameOprava')) $('pzNameOprava').checked = !!oprava && oprava !== 'false';
+      pzSaveNamePrefs(); pzUpdateNamePreview();
+      return {ok:true, file: pzExportNameWithTag()};
     },
     // Světlý / tmavý režim APLIKACE (ne mapy).
     setUiTheme({mode} = {}){
@@ -27526,7 +27856,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   const CHAT_TOOLS = new Set(['gotoPlace','showRegion','show3D','setCamera','setBaseStyle','applyPreset','placeIcon','addLabel','setLabelStyle',
     'drawArrow','measureDistance','drawPerimeter','colorPolitical','colorRegion','dataMap','placeFlag','roadClosure','metroClosure','placeModel3d','setColors','setValues',
     'setLayers','setGlobe','setShadows','setTransportMode','routeBetween','routeLine','setVehicle','addVehicle','setVehicleColors','setCameraFlight',
-    'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp']);
+    'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp',
+    'setTitle','setExportName']);
 
   async function ask(userText, isRetry, shown){
     if(busy) return;
