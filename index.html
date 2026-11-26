@@ -1313,10 +1313,34 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
           <div class="color-row"><input id="sceneArrowColor" type="color" value="#e22d2d"><label data-i18n="Barva šipky">Barva šipky</label></div>
           <div><label data-i18n="Tloušťka šipky">Tloušťka <span class="val" id="sceneArrowWidthVal">6 px</span></label><input id="sceneArrowWidth" type="range" min="2" max="16" step="0.5" value="6"></div>
         </div>
+        <div class="row">
+          <div><label for="sceneArrowIcon" data-i18n="Piktogram na šipce">Piktogram na šipce</label><select id="sceneArrowIcon">
+            <option value="" selected data-i18n="Bez piktogramu">Bez piktogramu</option>
+            <option value="lide" data-i18n="Lidé (migrace)">Lidé (migrace)</option>
+            <option value="letadlo" data-i18n="Letadlo">Letadlo</option>
+            <option value="lod" data-i18n="Loď">Loď</option>
+            <option value="kamion" data-i18n="Kamion">Kamion</option>
+            <option value="penize" data-i18n="Peníze">Peníze</option>
+            <option value="raketa" data-i18n="Zbraně / raketa">Zbraně / raketa</option>
+            <option value="balik" data-i18n="Zboží / balík">Zboží / balík</option>
+            <option value="vlak" data-i18n="Vlak">Vlak</option>
+            <option value="zachranka" data-i18n="Záchranka">Záchranka</option>
+            <option value="vybuch" data-i18n="Výbuch">Výbuch</option>
+          </select></div>
+          <div><label data-i18n="Velikost piktogramu">Velikost piktogramu <span class="val" id="sceneArrowIconSizeVal">48 px</span></label><input id="sceneArrowIconSize" type="range" min="24" max="96" step="2" value="48"></div>
+        </div>
+        <label class="check"><input id="sceneArrowCurve" type="checkbox"> <span data-i18n="Oblouk (dlouhé vzdálenosti)">Oblouk (dlouhé vzdálenosti)</span></label>
         <div class="btns">
           <button type="button" class="btn btn-sm" id="addSceneArrowBtn" data-i18n="Klikni do mapy">Klikni do mapy</button>
           <button type="button" class="btn btn-sm btn-danger" id="clearSceneArrowsBtn" data-i18n="Smazat vše">Smazat vše</button>
         </div>
+        <details class="compact-details" id="sceneFlowBox">
+          <summary data-i18n="Víc míst do jednoho cíle">Víc míst do jednoho cíle</summary>
+          <div><label for="sceneFlowFrom" data-i18n="Odkud (místa oddělená čárkou)">Odkud (místa oddělená čárkou)</label><input id="sceneFlowFrom" type="text" data-i18n-placeholder="Např. Německo, Rakousko, Řecko" placeholder="Např. Německo, Rakousko, Řecko"></div>
+          <div style="margin-top:6px"><label for="sceneFlowTo" data-i18n="Kam">Kam</label><input id="sceneFlowTo" type="text" data-i18n-placeholder="Např. Rwanda" placeholder="Např. Rwanda"></div>
+          <label class="check" style="margin-top:6px"><input id="sceneFlowLabels" type="checkbox" checked> <span data-i18n="Popisky míst">Popisky míst</span></label>
+          <div class="btns"><button type="button" class="btn btn-sm btn-primary" id="sceneFlowBtn" data-i18n="Nakreslit šipky">Nakreslit šipky</button></div>
+        </details>
         <div id="sceneArrowList" class="wp-list"></div>
       </div>
       <div class="section" id="pzClosureSection">
@@ -7038,40 +7062,297 @@ function ensureSceneArrowSources(m){
     filter:['==',['get','kind'],'fill'],
     paint:{'fill-color':['coalesce',['get','color'],'#e22d2d'],'fill-opacity':['coalesce',['get','op'],1]}});
   pzEnsureMultiHighlight(m, 'scene-arrows', false);
+  // piktogram na šipce (lidé, letadlo, zboží…) — nad šipkou i nad rámečkem výběru
+  if(!m.getLayer('scene-arrows-icon')) m.addLayer({id:'scene-arrows-icon', type:'symbol', source:'scene-arrows',
+    filter:['==',['get','kind'],'icon'],
+    layout:{'icon-image':['get','img'], 'icon-size':['get','isz'], 'icon-rotate':['get','rot'], 'icon-rotation-alignment':'viewport',
+      'icon-pitch-alignment':'viewport', 'icon-allow-overlap':true, 'icon-ignore-placement':true}});
   try{ pzBindArrowBodyDrag(m); }catch(e){}
 }
 function getSceneArrowById(id){ return state.sceneArrows.find(a => a.id === id) || null; }
 function sceneArrowDefaultColor(){ return $('sceneArrowColor')?.value || '#e22d2d'; }
 function sceneArrowDefaultWidth(){ return Math.max(2, Number($('sceneArrowWidth')?.value || 6)); }
-// Build the arrow outline as a closed ring of lng/lat from a pixel-space arrow shape.
-// `grow` (px) fattens the whole shape for the dark casing underneath.
-function sceneArrowPolygon(tail, head, width, grow, scale){
-  const m = state.map; if(!m || !m.project) return null;
-  scale = scale || 1;
-  const T = m.project(tail), H = m.project(head);
-  const dx = H.x - T.x, dy = H.y - T.y;
-  const len = Math.hypot(dx, dy);
+function sceneArrowDefaultIcon(){ const v = $('sceneArrowIcon')?.value || ''; return pzArrowPictoInit()[v] ? v : ''; }
+function sceneArrowDefaultIconSize(){ return Math.max(24, Math.min(96, Number($('sceneArrowIconSize')?.value || 48))); }
+// Piktogramy na šipkách (toky lidí, zboží, peněz, zbraní): kruh v barvě šipky s bílým
+// okrajem a bílým symbolem — stejný styl jako vestavěné ikonky. Kreslí se z vektoru
+// synchronně do obrázku mapy (symbol vrstva), takže je stejně v náhledu i v exportu.
+// rot: 'dir' = natočit po směru šipky (letadlo, raketa), 'flip' = při cestě doleva
+// zrcadlit (loď, kamion) — nikdy vzhůru nohama; ostatní stojí rovně. BG = barva šipky.
+const PZ_ARROW_PICTO = {
+  lide:    {label:'Lidé', glyph:`<circle cx="19" cy="24" r="5" fill="#fff"/><path fill="#fff" d="M10 46v-8c0-5.5 4-9 9-9s9 3.5 9 9v8z"/><circle cx="45" cy="24" r="5" fill="#fff"/><path fill="#fff" d="M36 46v-8c0-5.5 4-9 9-9s9 3.5 9 9v8z"/><circle cx="32" cy="20.5" r="6.5" fill="#fff" stroke="BG" stroke-width="3"/><path fill="#fff" stroke="BG" stroke-width="3" d="M20.5 50V39c0-6.6 5-11.5 11.5-11.5S43.5 32.4 43.5 39v11z"/>`},
+  letadlo: {label:'Letadlo', rot:'dir', glyph:`<path fill="#fff" d="M30 13.5c0-1.4 1-2.5 2-2.5s2 1.1 2 2.5V27l14 8.5v4l-14-4.3v8.3l4 3v3.5l-6-1.8-6 1.8V46l4-3v-8.3L16 39.5v-4L30 27z"/>`},
+  lod:     {label:'Loď', rot:'flip', glyph:`<path fill="#fff" d="M8 36h49l-7.5 12h-35z"/><path fill="#fff" d="M13 26.5h19V34H13zM16 18.5h10v6.5H16z"/><path fill="#fff" d="M35 28h7v6h-7zM44 28h7v6h-7z"/>`},
+  kamion:  {label:'Kamion', rot:'flip', glyph:`<path fill="#fff" d="M8 21h31v21H8z"/><path fill="#fff" d="M41 27h9.5l6 7.5V42H41z"/><path fill="BG" d="M44 29.5h5.3l3.6 4.6H44z"/><circle cx="16" cy="45" r="4.6" fill="#fff" stroke="BG" stroke-width="2.5"/><circle cx="29" cy="45" r="4.6" fill="#fff" stroke="BG" stroke-width="2.5"/><circle cx="48" cy="45" r="4.6" fill="#fff" stroke="BG" stroke-width="2.5"/>`},
+  penize:  {label:'Peníze', glyph:`<rect x="15" y="17" width="38" height="22" rx="2.5" fill="#fff" stroke="BG" stroke-width="3"/><rect x="10" y="25" width="40" height="23" rx="2.5" fill="#fff" stroke="BG" stroke-width="3"/><circle cx="30" cy="36.5" r="6.5" fill="BG"/><circle cx="16.5" cy="36.5" r="2" fill="BG"/><circle cx="43.5" cy="36.5" r="2" fill="BG"/>`},
+  raketa:  {label:'Zbraně', rot:'dir', glyph:`<path fill="#fff" d="M32 8.5c5 5 7.5 11.5 7.5 19.5v14h-15V28c0-8 2.5-14.5 7.5-19.5z"/><path fill="#fff" d="M24 33.5l-7 9v6.5l7-4zM40 33.5l7 9v6.5l-7-4z"/><path fill="#ffc300" d="M27.5 44.5h9L32 55z"/><circle cx="32" cy="24" r="3.4" fill="BG"/>`},
+  balik:   {label:'Zboží', glyph:`<path fill="#fff" d="M32 11l19 8.5-19 8.5-19-8.5z"/><path fill="#fff" d="M12.5 22.5l17.8 8V53l-17.8-8.3zM51.5 22.5l-17.8 8V53l17.8-8.3z"/><path fill="BG" d="M21 15.2l19 8.6-3 1.4-19-8.6z"/>`},
+};
+// Hodí se i část vestavěných ikonek (badge): výbuch, požár, policie, záchranka, vlak, povodeň.
+// (PZ_ICON_SET je definovaná níž v souboru → doplnit až při prvním použití)
+let _pzArrowPictoReady = false;
+function pzArrowPictoInit(){
+  if(_pzArrowPictoReady) return PZ_ARROW_PICTO;
+  _pzArrowPictoReady = true;
+  ['vybuch','pozar','policie','zachranka','vlak','povoden'].forEach(k => {
+    const it = PZ_ICON_SET[k]; if(!it) return;
+    const fill = (it.svg.match(/<circle[^>]*fill="([^"]+)"/) || [])[1] || '';
+    const glyph = it.svg.replace(/^<svg[^>]*><circle[^>]*\/>/, '').replace(/<\/svg>$/, '').split('"' + fill + '"').join('"BG"');
+    PZ_ARROW_PICTO[k] = {label: it.label, glyph};
+  });
+  return PZ_ARROW_PICTO;
+}
+const PZ_ARROW_PICTO_ALIASES = {lide:'lide', lidi:'lide', clovek:'lide', osoby:'lide', migrace:'lide', migranti:'lide', uprchlici:'lide', people:'lide',
+  letadlo:'letadlo', let:'letadlo', plane:'letadlo', lod:'lod', lode:'lod', ship:'lod', kamion:'kamion', nakladak:'kamion', truck:'kamion', auto:'kamion',
+  penize:'penize', money:'penize', dotace:'penize', finance:'penize', zbrane:'raketa', zbran:'raketa', raketa:'raketa', rakety:'raketa', munice:'raketa', weapons:'raketa',
+  zbozi:'balik', balik:'balik', baliky:'balik', zasilka:'balik', dodavky:'balik', goods:'balik'};
+function pzArrowPictoKind(name){
+  pzArrowPictoInit();
+  if(name == null || name === '' || name === false) return '';
+  const k = String(name).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  if(PZ_ARROW_PICTO[k]) return k;
+  if(PZ_ARROW_PICTO_ALIASES[k]) return PZ_ARROW_PICTO_ALIASES[k];
+  const w = k.split(/[\s_\/,-]+/).find(x => PZ_ARROW_PICTO[x] || PZ_ARROW_PICTO_ALIASES[x]);
+  if(w) return PZ_ARROW_PICTO[w] ? w : PZ_ARROW_PICTO_ALIASES[w];
+  const ik = pzIconKind(k);
+  return ik && PZ_ARROW_PICTO[ik] ? ik : null;
+}
+const PZ_ARROW_PICTO_PX = 144, PZ_ARROW_PICTO_BADGE = 132;   // obrázek 2× (pixelRatio 2), průměr kruhu i s okrajem
+const _pzArrowPictoImg = {};
+function pzArrowPictoImage(kind, color, flip){
+  const key = kind + '|' + color + '|' + (flip ? 1 : 0);
+  if(_pzArrowPictoImg[key]) return _pzArrowPictoImg[key];
+  const P = pzArrowPictoInit()[kind]; if(!P) return null;
+  const c = document.createElement('canvas'); c.width = c.height = PZ_ARROW_PICTO_PX;
+  const x = c.getContext('2d'), off = (PZ_ARROW_PICTO_PX - 128) / 2;
+  x.translate(off, off); x.scale(2, 2);
+  x.save(); x.shadowColor = 'rgba(0,0,0,.45)'; x.shadowBlur = 5;   // stín bez posunu: po natočení zůstane stejný
+  x.beginPath(); x.arc(32, 32, 28.5, 0, Math.PI * 2); x.fillStyle = color; x.fill(); x.restore();
+  x.beginPath(); x.arc(32, 32, 28.5, 0, Math.PI * 2); x.lineWidth = 5; x.strokeStyle = '#fff'; x.stroke();
+  if(flip){ x.translate(64, 0); x.scale(-1, 1); }
+  const doc = new DOMParser().parseFromString('<svg xmlns="http://www.w3.org/2000/svg">' + P.glyph + '</svg>', 'image/svg+xml');
+  const col = v => !v || v === 'none' ? null : (v === 'BG' ? color : v);
+  doc.querySelectorAll('path,circle,rect').forEach(el => {
+    let p;
+    const n = a => parseFloat(el.getAttribute(a)) || 0;
+    if(el.tagName === 'path') p = new Path2D(el.getAttribute('d') || '');
+    else if(el.tagName === 'circle'){ p = new Path2D(); p.arc(n('cx'), n('cy'), n('r'), 0, Math.PI * 2); }
+    else { p = new Path2D(); const r = n('rx'); if(p.roundRect && r) p.roundRect(n('x'), n('y'), n('width'), n('height'), r); else p.rect(n('x'), n('y'), n('width'), n('height')); }
+    const st = col(el.getAttribute('stroke')), fi = el.hasAttribute('fill') ? col(el.getAttribute('fill')) : '#000';
+    if(st){ x.lineWidth = n('stroke-width') || 1; x.lineCap = el.getAttribute('stroke-linecap') || 'butt'; x.lineJoin = 'round'; x.strokeStyle = st; x.stroke(p); }
+    if(fi){ x.fillStyle = fi; x.fill(p); }
+  });
+  return (_pzArrowPictoImg[key] = x.getImageData(0, 0, c.width, c.height));
+}
+// Obrázky piktogramů do mapy (živé i exportní) — jen ty, které šipky používají.
+function pzEnsureArrowPictoImages(m, ids){
+  ids.forEach(id => {
+    if(m.hasImage(id)) return;
+    const [, kind, color, fl] = id.split('|');
+    const im = pzArrowPictoImage(kind, color, fl === '1');
+    if(im) try{ m.addImage(id, im, {pixelRatio: 2}); }catch(e){}
+  });
+}
+// Geometrie šipky v pixelech: kvadratická Bézierova křivka (bend = vyosení řídicího bodu
+// v násobcích délky, 0 = rovná), hrot zastaví `gap` px před cílem (víc šipek do
+// jednoho místa se tak nepřekryje). Obrys = pás kolem křivky + trojúhelníkový hrot,
+// který je vždy znatelně širší než tělo.
+function sceneArrowGeomPx(T, H, width, scale, bend, gap){
+  const dx = H.x - T.x, dy = H.y - T.y, len = Math.hypot(dx, dy);
   if(len < 2) return null;
-  const ux = dx/len, uy = dy/len;       // along tail→head
-  const nx = -uy, ny = ux;              // perpendicular
-  const w = (Math.max(2, Number(width) || 6) + (grow || 0)) * scale;
-  const half = w/2;
-  const headLen = Math.min(len * 0.85, Math.max(w * 2.8, 18*scale + w));   // head length (px)
-  const headHalf = Math.max(w * 1.7, half + 6*scale);                       // head half-width (px) — wider than shaft
-  const bx = H.x - ux*headLen, by = H.y - uy*headLen;                 // head base centre
-  const ptsPx = [
-    [T.x + nx*half,  T.y + ny*half],
-    [bx  + nx*half,  by  + ny*half],
-    [bx  + nx*headHalf, by + ny*headHalf],
-    [H.x, H.y],
-    [bx  - nx*headHalf, by - ny*headHalf],
-    [bx  - nx*half,  by  - ny*half],
-    [T.x - nx*half,  T.y - ny*half],
-  ];
-  const ring = ptsPx.map(p => { const ll = m.unproject(p); return [ll.lng, ll.lat]; });
+  bend = Math.max(-0.7, Math.min(0.7, Number(bend) || 0));
+  const C = {x: (T.x + H.x) / 2 - dy * bend, y: (T.y + H.y) / 2 + dx * bend};
+  const N = bend ? 48 : 1, pts = [], acc = [0];
+  for(let i = 0; i <= N; i++){
+    const s = i / N, a = (1 - s) * (1 - s), b = 2 * (1 - s) * s, c = s * s;
+    pts.push({x: a * T.x + b * C.x + c * H.x, y: a * T.y + b * C.y + c * H.y});
+    if(i) acc.push(acc[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  }
+  const total = acc[N];
+  const at = d => {   // bod ve vzdálenosti d od začátku po křivce
+    d = Math.max(0, Math.min(total, d));
+    let i = 1; while(i < N && acc[i] < d) i++;
+    const f = (d - acc[i - 1]) / Math.max(1e-9, acc[i] - acc[i - 1]);
+    return {x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f, i};
+  };
+  const w = Math.max(2, Number(width) || 6) * scale, half = w / 2;
+  const tipS = Math.max(total * 0.4, total - Math.max(0, Number(gap) || 0) * scale);
+  const headLen = Math.min(tipS * 0.85, Math.max(w * 2.8, 18 * scale + w));
+  const headHalf = Math.max(w * 1.7, half + 6 * scale);
+  const tip = at(tipS), base = at(tipS - headLen);
+  const ul = Math.hypot(tip.x - base.x, tip.y - base.y) || 1, ux = (tip.x - base.x) / ul, uy = (tip.y - base.y) / ul;
+  // středová čára těla: začátek, vnitřní body křivky, základna hrotu
+  const mid = [T]; for(let i = 1; i < base.i; i++) mid.push(pts[i]); mid.push(base);
+  const left = [], right = [];
+  mid.forEach((p, i) => {
+    let tx, ty;
+    if(i === mid.length - 1){ tx = ux; ty = uy; }
+    else { const q = mid[i + 1], o = mid[Math.max(0, i - 1)]; tx = q.x - o.x; ty = q.y - o.y; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l; }
+    left.push([p.x - ty * half, p.y + tx * half]); right.push([p.x + ty * half, p.y - tx * half]);
+  });
+  const nx = -uy, ny = ux;
+  const ring = [...left, [base.x + nx * headHalf, base.y + ny * headHalf], [tip.x, tip.y], [base.x - nx * headHalf, base.y - ny * headHalf], ...right.reverse()];
+  return {ring, at, total: tipS, tip};
+}
+function sceneArrowPolygon(tail, head, width, grow, scale, bend, gap){
+  const m = state.map; if(!m || !m.project) return null;
+  const g = sceneArrowGeomPx(m.project(tail), m.project(head), (Math.max(2, Number(width) || 6) + (grow || 0)), scale || 1, bend, gap);
+  if(!g) return null;
+  const ring = g.ring.map(p => { const ll = m.unproject(p); return [ll.lng, ll.lat]; });
   ring.push(ring[0].slice());
   return ring;
 }
+// Oblouk „jako po zeměkouli": vyboulení k bližšímu pólu (na mapě nahoru na severní polokouli).
+function sceneArrowAutoBend(tail, head, k){
+  const m = state.map; k = k == null ? 0.2 : k;
+  try{
+    const T = m.project(tail), H = m.project(head), dx = H.x - T.x;
+    const north = (tail[1] + head[1]) / 2 >= -5;
+    // řídicí bod = střed + (-dy, dx)·bend → svisle posun dx·bend; nahoru = záporné y
+    const s = (dx >= 0 ? 1 : -1) * (north ? -1 : 1);
+    return +(s * k).toFixed(3);
+  }catch(e){ return k; }
+}
+// Víc šipek do jednoho cíle („mnoho do jednoho"): hroty rozvějířit, aby se nepřekrývaly.
+// Směry příletu se seřadí a rozestoupí aspoň o `step`°, z nich se dopočte zakřivení
+// (bend) každé šipky; hroty zastaví kousek před cílem. Počítá se v pixelech aktuálního
+// pohledu — bend je poměrný, takže drží při každém zoomu.
+function pzFanSceneArrows(list, opts={}){
+  const m = state.map; if(!m || !list.length) return;
+  const wrap = a => { while(a > Math.PI) a -= 2 * Math.PI; while(a <= -Math.PI) a += 2 * Math.PI; return a; };
+  const rows = list.map(a => {
+    const T = m.project(a.tail), H = m.project(a.head);
+    return {a, T, H, c: Math.atan2(H.y - T.y, H.x - T.x), km: haversineKm(a.tail, a.head)};
+  });
+  // oblouk „po zeměkouli": curve true = vždy, 'auto'/nezadáno = jen dlouhé lety (> 2500 km), false = ne.
+  // Celý svazek se prohne na stejnou stranu (k pólu podle průměrného směru) — jinak by se šipky křížily.
+  const k = opts.curve === false ? 0 : (typeof opts.curve === 'number' ? Math.abs(opts.curve) : 0.16);
+  let sx = 0, sy = 0, lat = 0; rows.forEach(r => { sx += r.H.x - r.T.x; sy += r.H.y - r.T.y; lat += (r.a.tail[1] + r.a.head[1]) / 2; });
+  const sign = (sx >= 0 ? 1 : -1) * (lat / rows.length >= -5 ? -1 : 1);
+  rows.forEach(r => {
+    const b0 = k && (opts.curve === true || typeof opts.curve === 'number' || r.km > 2500) ? sign * k : 0;
+    r.want = r.c + Math.atan(-2 * b0);   // příletový směr = tětiva + odchylka atan(-2·bend)
+  });
+  let minSep = Math.PI;
+  if(rows.length > 1){
+    let vx = 0, vy = 0; rows.forEach(r => { vx += Math.cos(r.want); vy += Math.sin(r.want); });
+    const mu = Math.atan2(vy, vx);
+    rows.forEach(r => { r.r = wrap(r.want - mu); });
+    rows.sort((p, q) => p.r - q.r);
+    // vějíř: sousední směry příletu aspoň `step`° od sebe (pořadí podle tětiv → šipky se nekříží)
+    const step = (opts.step || Math.min(22, 90 / (rows.length - 1))) * Math.PI / 180;
+    const orig = rows.map(r => r.r), out = orig.slice();
+    for(let i = 1; i < out.length; i++) out[i] = Math.max(out[i], out[i - 1] + step);
+    const sh = (orig.reduce((s0, v) => s0 + v, 0) - out.reduce((s0, v) => s0 + v, 0)) / out.length;
+    rows.forEach((r, i) => { r.want = mu + out[i] + sh; });
+    for(let i = 1; i < out.length; i++) minSep = Math.min(minSep, out[i] - out[i - 1]);
+  }
+  // hroty leží na kružnici kolem cíle: poloměr, při kterém se sousední hroty u základny
+  // skoro nedotknou (trochu smí — větší mezera by mířila „vedle" cíle)
+  let gap = 0;
+  if(rows.length > 1){
+    const w = Math.max(2, Number(list[0].width) || 6), headLen = Math.max(w * 2.8, 18 + w), headHalf = Math.max(w * 1.7, w / 2 + 6);
+    gap = Math.max(opts.gap ?? 6, Math.min(30, Math.round(1.7 * headHalf / Math.max(0.05, minSep) - headLen)));
+  }
+  const lim = Math.atan(1.4);   // bend nejvýš 0,7 (víc už je smyčka)
+  rows.forEach(r => {
+    const d = Math.max(-lim, Math.min(lim, wrap(r.want - r.c)));
+    r.a.bend = +(-Math.tan(d) / 2).toFixed(3);
+    if(Math.abs(r.a.bend) < 0.01) r.a.bend = 0;
+    r.a.gap = gap || (opts.gap && rows.length > 1 ? opts.gap : 0);
+  });
+}
+// Místo pro šipku: stát → bod uprostřed jeho území (Nominatim dává u států bod
+// kdekoli, u Fidži i přes 180. poledník), jinak hledání místa. {ll:[lng,lat], name}
+async function pzArrowPlace(q){
+  const raw = String(q || '').trim(); if(!raw) return null;
+  const ll = parseLatLng(raw); if(ll) return {ll, name: raw};
+  try{
+    state.geoDataRequested = true; await ensureGeoDataLoaded();
+    const r = pzResolveCountry(raw);
+    if(r?.id){
+      const f = (state.countriesGeojson?.features || []).find(f => f.properties?.__appId === r.id);
+      const p = f && pzFlagAnchor(f, null);
+      if(p && isFinite(p[0]) && isFinite(p[1])) return {ll:[+p[0], +p[1]], name: r.name || raw, country:true};
+    }
+  }catch(e){}
+  // šipky vedou mezi významnými místy: z nalezených to nejvýznamnější (Šanghaj = město
+  // v Číně, ne osada u Havlíčkova Brodu; Teherán ne restaurace v Německu)
+  try{
+    const list = (await searchPlaces(raw, 8) || []).filter(i => i.class !== 'amenity' && i.type !== 'restaurant' && i.type !== 'fast_food');
+    const top = list.reduce((a, b) => (+b.importance || 0) > (+a.importance || 0) + 0.15 ? b : a, list[0]);
+    if(top && (+top.importance || 0) > 0.3){ const p = placePointFromItem(top); if(isFinite(p[0]) && isFinite(p[1])) return {ll:[+p[0], +p[1]], name: String(top.display_name || raw).split(',')[0].trim()}; }
+  }catch(e){}
+  try{ const g = await geocode(raw); return {ll:[+g.lon, +g.lat], name: String(g.display_name || raw).split(',')[0].trim()}; }catch(e){ return null; }
+}
+// Popisky ke svazku šipek. Místa odkud: bez bodu (místo označuje začátek šipky),
+// bublina se hledá kolem začátku šipky tak, aby nezakryla jiný popisek, šipku ani
+// piktogram a zůstala v exportním rámu. Cíl: popisek s bodem, text za hroty.
+function pzFlowLabels(origins, destLL, destText, arrows){
+  const m = state.map; if(!m) return;
+  const cap = s0 => { s0 = String(s0 || '').trim(); return s0.charAt(0).toUpperCase() + s0.slice(1); };
+  const cr = m.getCanvas().getBoundingClientRect();
+  let fr = null;
+  // bezpečná zóna: 5 % od okraje rámu
+  try{ const r = pzExportFrameRect(); if(r && r.width){ const ix = r.width * 0.05, iy = r.height * 0.05; fr = {x0: r.left - cr.left + ix, y0: r.top - cr.top + iy, x1: r.right - cr.left - ix, y1: r.bottom - cr.top - iy}; } }catch(e){}
+  const pts = [];   // středové čáry všech šipek po 6 px (+ piktogramy leží na nich)
+  (state.sceneArrows || []).forEach(a => {
+    const g = sceneArrowGeomPx(m.project(a.tail), m.project(a.head), a.width, 1, a.bend, a.gap); if(!g) return;
+    const pad = Math.max(Number(a.width) || 6, a.icon ? (Number(a.iconSize) || 48) * 0.5 : 0) / 2 + 3;
+    for(let d = 0; d <= g.total; d += 6) pts.push({...g.at(d), pad: a.icon && Math.abs(d - g.total / 2) < g.total * 0.4 ? Math.max(pad, (Number(a.iconSize) || 48) / 2 + 3) : pad});
+  });
+  const boxOf = it => { const b = it?.marker?.getElement?.()?.querySelector('.map-label-bubble')?.getBoundingClientRect(); return b && b.width ? {x0: b.left - cr.left, y0: b.top - cr.top, x1: b.right - cr.left, y1: b.bottom - cr.top} : null; };
+  // rozměry z offsetWidth (getBoundingClientRect ruší animace a právě nastavený posun) — umístěné bubliny si vedeme sami
+  const placed = new Map();
+  const others = skip => (state.mapLabels || []).filter(x => x !== skip).map(x => placed.get(x) || boxOf(x)).filter(Boolean);
+  // začátky šipek (místa) nesmí zakrýt cizí popisek
+  const tails = (state.sceneArrows || []).map(a => m.project(a.tail));
+  const cost = (b, skip, own) => {
+    let c = 0;
+    tails.forEach(q => { if((!own || Math.hypot(q.x - own.x, q.y - own.y) > 2) && q.x > b.x0 - 12 && q.x < b.x1 + 12 && q.y > b.y0 - 12 && q.y < b.y1 + 12) c += 50; });
+    others(skip).forEach(o => { if(b.x0 < o.x1 + 6 && b.x1 > o.x0 - 6 && b.y0 < o.y1 + 6 && b.y1 > o.y0 - 6) c += 100; });
+    pts.forEach(p => { if(p.x > b.x0 - p.pad && p.x < b.x1 + p.pad && p.y > b.y0 - p.pad && p.y < b.y1 + p.pad) c += 3; });
+    if(fr && (b.x0 < fr.x0 || b.y0 < fr.y0 || b.x1 > fr.x1 || b.y1 > fr.y1)) c += 400;
+    // popisek blíž cizímu začátku šipky než vlastnímu = divák ho přiřadí špatně
+    if(own){
+      const dist = q => Math.hypot(Math.max(b.x0 - q.x, 0, q.x - b.x1), Math.max(b.y0 - q.y, 0, q.y - b.y1));
+      const d0 = dist(own);
+      tails.forEach(q => { if(Math.hypot(q.x - own.x, q.y - own.y) > 2 && dist(q) < d0 + 6) c += 60; });
+    }
+    return c;
+  };
+  const size = origins.length > 2 ? 22 : 26;
+  const H = m.project(destLL);
+  // bublina bez bodu (bod kreslí šipka) — kolem bodu P, přednostně ve směru `base`
+  const place = (P, ll, text, sz, base, near) => {
+    const it = addMapLabelAt({lng: ll[0], lat: ll[1]}, {text: cap(text), size: sz, side: 'none', baseZoom: null, silent: true});
+    if(!it) return;
+    const bub = it.marker?.getElement?.()?.querySelector('.map-label-bubble'); if(!bub) return;
+    const w = bub.offsetWidth, h = bub.offsetHeight;
+    let best = null;
+    for(const far of [near, near + 26, near + 56]) for(const dg of [0, 30, -30, 60, -60, 90, -90, 120, -120, 150, -150, 180]){
+      const an = base + dg * Math.PI / 180, ux = Math.cos(an), uy = Math.sin(an);
+      const r = far + Math.abs(ux) * w / 2 + Math.abs(uy) * h / 2;
+      const cx = P.x + ux * r, cy = P.y + uy * r, b = {x0: cx - w / 2, y0: cy - h / 2, x1: cx + w / 2, y1: cy + h / 2};
+      const c = cost(b, it, P) + Math.abs(dg) / 60 + (far - near) / 14;
+      if(!best || c < best.c) best = {c, b, off: [Math.round(ux * r), Math.round(uy * r)]};
+      if(c < 1) break;
+    }
+    it.offset = best.off; placed.set(it, best.b);
+    try{ it.marker.setOffset(best.off); }catch(e){}
+  };
+  // cíl první (je jeden a nejdůležitější): text „za" hroty, ve směru příletu
+  if(destText){
+    let vx = 0, vy = 0; origins.forEach(o => { const T = m.project(o.ll), l = Math.hypot(H.x - T.x, H.y - T.y) || 1; vx += (H.x - T.x) / l; vy += (H.y - T.y) / l; });
+    place(H, destLL, destText, size + 4, Math.atan2(vy, vx), 14);
+  }
+  // místa odkud: text „za" začátek šipky (od cíle)
+  origins.forEach(o => { const P = m.project(o.ll); place(P, o.ll, o.text, size, Math.atan2(P.y - H.y, P.x - H.x), 10); });
+  try{ clearMapLabelSelection(); }catch(e){}
+}
+// Piktogramy: pozice na křivce (t = podíl délky); když by se dva překryly (víc šipek
+// z blízkých míst), posunou se po své šipce, dokud se nerozejdou.
+const PZ_ARROW_ICON_T = [0.5, 0.42, 0.58, 0.34, 0.66, 0.27, 0.73, 0.2];
 // Build features only (no handle markers) — safe to call on every map move and per export frame.
 function setSceneArrowData(){
   const m = state.map;
@@ -7081,18 +7362,56 @@ function setSceneArrowData(){
   // During native export the map renders at the output width while the on-screen map is
   // smaller, so scale arrow px up to keep the same relative size (mirrors _exportMarkerScale).
   const scale = (state._exporting && state._exportMarkerScale) ? state._exportMarkerScale : 1;
-  const feats = [];
+  const feats = [], icons = [], placed = [], imgs = new Set();
+  pzArrowPictoInit();
+  const ll = p => { const q = m.unproject([p.x, p.y]); return [q.lng, q.lat]; };
   (state.sceneArrows || []).forEach(a => {
     if(!Array.isArray(a.tail) || !Array.isArray(a.head)) return;
     const sel = a.id === state.selectedSceneArrowId;
     const w = Math.max(2, Number(a.width) || 6) + (sel ? 1.5 : 0);
-    const fill = sceneArrowPolygon(a.tail, a.head, w, 0, scale);
-    if(fill) feats.push({type:'Feature', properties:{kind:'fill', id:a.id, color:a.color || '#e22d2d', multi:pzIsMulti('a:' + a.id)}, geometry:{type:'Polygon', coordinates:[fill]}});
+    const g = sceneArrowGeomPx(m.project(a.tail), m.project(a.head), w, scale, a.bend, a.gap);
+    if(!g) return;
+    const ring = g.ring.map(p => ll({x:p[0], y:p[1]})); ring.push(ring[0].slice());
+    feats.push({type:'Feature', properties:{kind:'fill', id:a.id, color:a.color || '#e22d2d', multi:pzIsMulti('a:' + a.id)}, geometry:{type:'Polygon', coordinates:[ring]}});
+    // bod na začátku (svazek šipek: místo odkud, popisek je vedle bez vlastního bodu)
+    // a v cíli (hdot) — hroty svazku končí kousek před ním
+    [a.dot && a.tail, a.hdot && a.head].forEach((pt, j) => {
+      if(!pt) return;
+      const T = m.project(pt), r = Math.max(w * (j ? 1.5 : 1.25), j ? 8 : 7) * scale, dot = [];
+      for(let i = 0; i <= 24; i++){ const an = i / 24 * Math.PI * 2; dot.push(ll({x: T.x + Math.cos(an) * r, y: T.y + Math.sin(an) * r})); }
+      feats.push({type:'Feature', properties:{kind:'fill', id:a.id, color:a.color || '#e22d2d'}, geometry:{type:'Polygon', coordinates:[dot]}});
+    });
+    const kind = a.icon && PZ_ARROW_PICTO[a.icon] ? a.icon : '';
+    if(kind) icons.push({a, g, kind});
   });
+  // začátky a cíle šipek (body míst) piktogram nezakryje
+  const ends = (state.sceneArrows || []).flatMap(a => Array.isArray(a.tail) && Array.isArray(a.head) ? [m.project(a.tail), m.project(a.head)] : []);
+  icons.forEach(({a, g, kind}) => {
+    const D = Math.max(24, Math.min(96, Number(a.iconSize) || 48)) * scale;
+    let best = null, bd = 0;
+    for(const t of PZ_ARROW_ICON_T){
+      const d = g.total * t, p = g.at(d);
+      const free = placed.every(q => Math.hypot(q.x - p.x, q.y - p.y) > (q.D + D) / 2 + 3 * scale)
+        && ends.every(q => Math.hypot(q.x - p.x, q.y - p.y) > D / 2 + 14 * scale);
+      if(!best || free){ best = p; bd = d; }
+      if(free) break;
+    }
+    placed.push({x: best.x, y: best.y, D});
+    // tečna v místě piktogramu
+    const q1 = g.at(bd - 4 * scale), q2 = g.at(bd + 4 * scale);
+    const dx = q2.x - q1.x, dy = q2.y - q1.y;
+    const rot = PZ_ARROW_PICTO[kind].rot;
+    const flip = rot === 'flip' && dx < 0;
+    const img = 'pzarr|' + kind + '|' + (a.color || '#e22d2d') + '|' + (flip ? 1 : 0);
+    imgs.add(img);
+    feats.push({type:'Feature', properties:{kind:'icon', id:a.id, img, isz: +(D / (PZ_ARROW_PICTO_BADGE / 2)).toFixed(4),
+      rot: rot === 'dir' ? Math.atan2(dx, -dy) * 180 / Math.PI : 0}, geometry:{type:'Point', coordinates: ll(best)}});
+  });
+  if(imgs.size) pzEnsureArrowPictoImages(m, imgs);
   // Rubber-band preview while placing the second point.
   if(state.addingSceneArrow && state.sceneArrowDraft && state.sceneArrowPreview){
     const w = sceneArrowDefaultWidth();
-    const pf = sceneArrowPolygon(state.sceneArrowDraft, state.sceneArrowPreview, w, 0, scale);
+    const pf = sceneArrowPolygon(state.sceneArrowDraft, state.sceneArrowPreview, w, 0, scale, $('sceneArrowCurve')?.checked ? sceneArrowAutoBend(state.sceneArrowDraft, state.sceneArrowPreview) : 0, 0);
     if(pf) feats.push({type:'Feature', properties:{kind:'fill', id:'__preview', color:sceneArrowDefaultColor(), op:0.55}, geometry:{type:'Polygon', coordinates:[pf]}});
   }
   src.setData({type:'FeatureCollection', features:feats});
@@ -7127,6 +7446,10 @@ function syncSceneArrowInputs(a){
   if($('sceneArrowColor')) $('sceneArrowColor').value = a.color || '#e22d2d';
   if($('sceneArrowWidth')){ $('sceneArrowWidth').value = String(a.width || 6); }
   if($('sceneArrowWidthVal')) $('sceneArrowWidthVal').textContent = (a.width || 6) + ' px';
+  if($('sceneArrowIcon')) $('sceneArrowIcon').value = a.icon || '';
+  if($('sceneArrowIconSize')) $('sceneArrowIconSize').value = String(a.iconSize || 48);
+  if($('sceneArrowIconSizeVal')) $('sceneArrowIconSizeVal').textContent = (a.iconSize || 48) + ' px';
+  if($('sceneArrowCurve')) $('sceneArrowCurve').checked = !!a.bend;
 }
 function renderSceneArrowList(){
   const box = $('sceneArrowList'); if(!box) return;
@@ -7164,6 +7487,15 @@ function createSceneArrow(tail, head, options={}){
     color: options.color || sceneArrowDefaultColor(),
     width: Math.max(2, Number(options.width ?? sceneArrowDefaultWidth()) || 6),
   };
+  // piktogram, zakřivení (bend) a odsazení hrotu (gap) — nepovinné, starý projekt = rovná šipka
+  const ic = options.icon !== undefined ? pzArrowPictoKind(options.icon) : sceneArrowDefaultIcon();
+  if(ic) a.icon = ic;
+  if(ic || options.iconSize) a.iconSize = Math.max(24, Math.min(96, Number(options.iconSize) || sceneArrowDefaultIconSize()));
+  const bend = options.bend !== undefined ? Number(options.bend) || 0 : ($('sceneArrowCurve')?.checked ? sceneArrowAutoBend(a.tail, a.head) : 0);
+  if(bend) a.bend = Math.max(-0.7, Math.min(0.7, bend));
+  if(Number(options.gap) > 0) a.gap = Number(options.gap);
+  if(options.dot) a.dot = true;
+  if(options.hdot) a.hdot = true;
   state.sceneArrows.push(a);
   selectSceneArrow(a.id, false);
   scheduleSceneLayerRedraw('create-arrow');
@@ -7175,6 +7507,11 @@ function updateSelectedSceneArrow(){
   if(!a){ setStatus(t('Nejdřív vyber šipku ze seznamu nebo klikni na ni v mapě.')); return; }
   a.color = sceneArrowDefaultColor();
   a.width = sceneArrowDefaultWidth();
+  const ic = sceneArrowDefaultIcon();
+  if(ic){ a.icon = ic; a.iconSize = sceneArrowDefaultIconSize(); } else { delete a.icon; delete a.iconSize; }
+  // Oblouk: zapnout = automatický oblouk (rozvějířená šipka si svůj tvar nechá), vypnout = rovná
+  const curve = !!$('sceneArrowCurve')?.checked;
+  if(!curve){ delete a.bend; } else if(!a.bend){ a.bend = sceneArrowAutoBend(a.tail, a.head); }
   renderSceneArrowList();
   redrawSceneArrows();
   scheduleSceneLayerRedraw('update-arrow');
@@ -7242,7 +7579,7 @@ function pzBindArrowBodyDrag(m){
     m.once('mouseup', end); m.once('touchend', end);
     window.addEventListener('mouseup', end, {once:true});
   };
-  ['scene-arrows-fill','scene-arrows-casing'].forEach(id => {
+  ['scene-arrows-fill','scene-arrows-casing','scene-arrows-icon'].forEach(id => {
     m.on('mousedown', id, start); m.on('touchstart', id, start);
     m.on('mouseenter', id, () => { if(!pzAddModeOn() && !drag) m.getCanvas().style.cursor = 'grab'; });
     m.on('mouseleave', id, () => { if(!drag) m.getCanvas().style.cursor = ''; });
@@ -7253,7 +7590,7 @@ function pickSceneArrowFeatureAt(point){
   const m = state.map; if(!m || !m.getLayer('scene-arrows-fill')) return null;
   try{
     const pad = 8, box = [[point.x - pad, point.y - pad],[point.x + pad, point.y + pad]];
-    const hits = m.queryRenderedFeatures(box, {layers:['scene-arrows-fill','scene-arrows-casing']});
+    const hits = m.queryRenderedFeatures(box, {layers:['scene-arrows-fill','scene-arrows-casing','scene-arrows-icon'].filter(id => m.getLayer(id))});
     const hit = (hits || []).find(f => f.properties && f.properties.id && f.properties.id !== '__preview');
     return hit || null;
   }catch(e){ return null; }
@@ -8857,7 +9194,8 @@ function serializeProjectSnapshot(){
     sceneIcons: state.sceneIcons.map(item => ({id:item.id, data:item.data, size:item.size, lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     scenePerimeters: state.scenePerimeters.map(item => ({id:item.id, lngLat:item.lngLat, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, labelText:item.labelText || undefined, labelHidden:item.labelHidden || undefined})),
     sceneDistances: state.sceneDistances.map(item => ({id:item.id, a:item.a, b:item.b, unit:item.unit, color:item.color, width:item.width, labelText:item.labelText || undefined, labelHidden:item.labelHidden || undefined})),
-    sceneArrows: state.sceneArrows.map(item => ({id:item.id, tail:item.tail, head:item.head, color:item.color, width:item.width})),
+    sceneArrows: state.sceneArrows.map(item => ({id:item.id, tail:item.tail, head:item.head, color:item.color, width:item.width,
+      ...(item.icon ? {icon:item.icon, iconSize:item.iconSize} : {}), ...(item.bend ? {bend:item.bend} : {}), ...(item.gap ? {gap:item.gap} : {}), ...(item.dot ? {dot:true} : {}), ...(item.hdot ? {hdot:true} : {})})),
     closures: JSON.parse(JSON.stringify(state.pzClosures || [])),
     // 3D model: persist all transform/shadow scalars (the GLB binary itself is too big for
     // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
@@ -9023,7 +9361,8 @@ function applyBasicProjectSnapshot(snapshot){
   (snapshot.sceneIcons || []).forEach(item => createSceneIconAt(item.lngLat, {data:item.data, size:item.size, silent:true}));
   (snapshot.scenePerimeters || []).forEach(item => createScenePerimeterAt(item.lngLat, {id:item.id, radiusMeters:item.radiusMeters, unit:item.unit, color:item.color, opacity:item.opacity, labelText:item.labelText, labelHidden:item.labelHidden, select:true, silent:true}));
   (snapshot.sceneDistances || []).forEach(item => createSceneDistance(item.a, item.b, {id:item.id, unit:item.unit, color:item.color, width:item.width, labelText:item.labelText, labelHidden:item.labelHidden, silent:true}));
-  (snapshot.sceneArrows || []).forEach(item => createSceneArrow(item.tail, item.head, {id:item.id, color:item.color, width:item.width, silent:true}));
+  (snapshot.sceneArrows || []).forEach(item => createSceneArrow(item.tail, item.head, {id:item.id, color:item.color, width:item.width,
+    icon:item.icon || '', iconSize:item.iconSize, bend:item.bend || 0, gap:item.gap, dot:item.dot, hdot:item.hdot, silent:true}));
   // Obnovené objekty nemají zůstat vybrané (createSceneIconAt nově vloženou ikonku
   // vybírá): po kroku zpět jinak Backspace/Delete smazal neviditelně vybranou ikonku
   // místo posledního bodu trasy.
@@ -13959,7 +14298,7 @@ function pzObjDescribe(x){
   const it = x.item, pts = pzObjPts(x);
   if(x.kind === 'icon') return {kind:'icon', data:it.data, size:it.size, pts};
   if(x.kind === 'label') return {kind:'label', text:it.text, size:it.size, side:it.side, style:it.style, pts};
-  if(x.kind === 'arrow') return {kind:'arrow', color:it.color, width:it.width, pts};
+  if(x.kind === 'arrow') return {kind:'arrow', color:it.color, width:it.width, icon:it.icon || '', iconSize:it.iconSize, bend:it.bend || 0, gap:it.gap, dot:!!it.dot, hdot:!!it.hdot, pts};
   if(x.kind === 'perimeter') return {kind:'perimeter', radiusMeters:it.radiusMeters, unit:it.unit, color:it.color, opacity:it.opacity, labelText:it.labelText, labelHidden:it.labelHidden, pts};
   return {kind:'distance', unit:it.unit, color:it.color, width:it.width, labelText:it.labelText, labelHidden:it.labelHidden, pts};
 }
@@ -13968,7 +14307,7 @@ function pzObjCreate(d, dx, dy){
   let item = null, pre = '';
   if(d.kind === 'icon'){ pre = 'i:'; item = createSceneIconAt(p[0], {data:d.data, size:d.size, silent:true}); }
   else if(d.kind === 'label'){ pre = 'l:'; item = addMapLabelAt(p[0], {text:d.text, size:d.size, side:d.side, style:d.style, silent:true, baseZoom:d.baseZoom ?? null}); }
-  else if(d.kind === 'arrow'){ pre = 'a:'; item = createSceneArrow(p[0], p[1], {color:d.color, width:d.width, silent:true}); }
+  else if(d.kind === 'arrow'){ pre = 'a:'; item = createSceneArrow(p[0], p[1], {color:d.color, width:d.width, icon:d.icon || '', iconSize:d.iconSize, bend:d.bend || 0, gap:d.gap, dot:d.dot, hdot:d.hdot, silent:true}); }
   else if(d.kind === 'perimeter'){ pre = 'p:'; item = createScenePerimeterAt(p[0], {radiusMeters:d.radiusMeters, unit:d.unit, color:d.color, opacity:d.opacity, labelText:d.labelText, labelHidden:d.labelHidden, silent:true}); }
   else if(d.kind === 'distance'){ pre = 'd:'; item = createSceneDistance(p[0], p[1], {unit:d.unit, color:d.color, width:d.width, labelText:d.labelText, labelHidden:d.labelHidden, silent:true}); }
   return item ? pre + item.id : null;
@@ -21960,6 +22299,30 @@ function bindUI(){
     if(getSceneArrowById(state.selectedSceneArrowId)) updateSelectedSceneArrow();
   });
   $('sceneArrowColor')?.addEventListener('input', ()=>{ if(getSceneArrowById(state.selectedSceneArrowId)) updateSelectedSceneArrow(); });
+  ['sceneArrowIcon','sceneArrowCurve'].forEach(id => $(id)?.addEventListener('change', ()=>{
+    if(!getSceneArrowById(state.selectedSceneArrowId)) return;
+    try{ window.__pzPushUndo?.(); }catch(e){}
+    updateSelectedSceneArrow();
+  }));
+  $('sceneArrowIconSize')?.addEventListener('input', ()=>{
+    if($('sceneArrowIconSizeVal')) $('sceneArrowIconSizeVal').textContent = ($('sceneArrowIconSize').value || '48') + ' px';
+    const a = getSceneArrowById(state.selectedSceneArrowId);
+    if(a && a.icon){ a.iconSize = sceneArrowDefaultIconSize(); setSceneArrowData(); }
+  });
+  // Víc míst do jednoho cíle: stejný nástroj jako asistent (flowArrows)
+  $('sceneFlowBtn')?.addEventListener('click', async ()=>{
+    const raw = $('sceneFlowFrom')?.value || '', to = ($('sceneFlowTo')?.value || '').trim();
+    // se středníkem / po řádcích jde zadat i „Praha, Česko" nebo souřadnice
+    const from = raw.split(/[;\n]/.test(raw) ? /\s*[;\n]\s*/ : /\s*,\s*/).filter(Boolean);
+    if(!from.length || !to){ setStatus(t('Vyplň, odkud a kam šipky vedou.')); return; }
+    const b = $('sceneFlowBtn'); b.disabled = true;
+    setStatus(t('Hledám místa…'));
+    try{
+      const r = await window.TNMAP.flowArrows({from, to, icon: sceneArrowDefaultIcon(), color: sceneArrowDefaultColor(),
+        width: sceneArrowDefaultWidth(), iconSize: sceneArrowDefaultIconSize(), labels: !!$('sceneFlowLabels')?.checked});
+      setStatus(r.ok ? t('Šipky nakresleny: {0}.', r.arrows) + (r.notFound?.length ? ' ' + t('Nenašel jsem: {0}', r.notFound.join(', ')) : '') : r.error, r.ok ? undefined : 'error');
+    } finally { b.disabled = false; }
+  });
   $('addSceneArrowBtn')?.addEventListener('click', ()=>{
     const on = armSceneAddMode('arrow');
     state.sceneArrowDraft = null;
@@ -22664,6 +23027,27 @@ Object.assign(I18N, {
   "Délku do mapy": {cs:"Délku do mapy",sk:"Dĺžku do mapy",bg:"Дължина на картата",hr:"Duljinu na kartu",ro:"Lungimea pe hartă",en:"Length on map"},
   "Nejdřív najdi trasu.": {cs:"Nejdřív najdi trasu.",sk:"Najprv nájdi trasu.",bg:"Първо намери маршрут.",hr:"Prvo pronađi rutu.",ro:"Mai întâi găsește traseul.",en:"Find a route first."},
   "Popisek s délkou trasy je uprostřed trasy — přetáhni ho, kam potřebuješ.": {cs:"Popisek s délkou trasy je uprostřed trasy — přetáhni ho, kam potřebuješ.",sk:"Popis s dĺžkou trasy je uprostred trasy — presuň ho, kam potrebuješ.",bg:"Надписът с дължината е по средата на маршрута — премести го където трябва.",hr:"Natpis s duljinom rute je na sredini rute — povuci ga gdje trebaš.",ro:"Eticheta cu lungimea este la mijlocul traseului — trage-o unde ai nevoie.",en:"The length label is at the middle of the route — drag it where you need."},
+  "Piktogram na šipce": {cs:"Piktogram na šipce",sk:"Piktogram na šípke",bg:"Пиктограма на стрелката",hr:"Piktogram na strelici",ro:"Pictogramă pe săgeată",en:"Arrow pictogram"},
+  "Bez piktogramu": {cs:"Bez piktogramu",sk:"Bez piktogramu",bg:"Без пиктограма",hr:"Bez piktograma",ro:"Fără pictogramă",en:"No pictogram"},
+  "Lidé (migrace)": {cs:"Lidé (migrace)",sk:"Ľudia (migrácia)",bg:"Хора (миграция)",hr:"Ljudi (migracija)",ro:"Oameni (migrație)",en:"People (migration)"},
+  "Kamion": {cs:"Kamion",sk:"Kamión",bg:"Камион",hr:"Kamion",ro:"Camion",en:"Truck"},
+  "Peníze": {cs:"Peníze",sk:"Peniaze",bg:"Пари",hr:"Novac",ro:"Bani",en:"Money"},
+  "Zbraně / raketa": {cs:"Zbraně / raketa",sk:"Zbrane / raketa",bg:"Оръжия / ракета",hr:"Oružje / raketa",ro:"Arme / rachetă",en:"Weapons / missile"},
+  "Zboží / balík": {cs:"Zboží / balík",sk:"Tovar / balík",bg:"Стоки / пакет",hr:"Roba / paket",ro:"Mărfuri / colet",en:"Goods / parcel"},
+  "Vlak": {cs:"Vlak",sk:"Vlak",bg:"Влак",hr:"Vlak",ro:"Tren",en:"Train"},
+  "Velikost piktogramu": {cs:"Velikost piktogramu",sk:"Veľkosť piktogramu",bg:"Размер на пиктограмата",hr:"Veličina piktograma",ro:"Mărimea pictogramei",en:"Pictogram size"},
+  "Oblouk (dlouhé vzdálenosti)": {cs:"Oblouk (dlouhé vzdálenosti)",sk:"Oblúk (dlhé vzdialenosti)",bg:"Дъга (дълги разстояния)",hr:"Luk (velike udaljenosti)",ro:"Arc (distanțe lungi)",en:"Arc (long distances)"},
+  "Víc míst do jednoho cíle": {cs:"Víc míst do jednoho cíle",sk:"Viac miest do jedného cieľa",bg:"Много места към една цел",hr:"Više mjesta u jedan cilj",ro:"Mai multe locuri spre o destinație",en:"Many places to one target"},
+  "Odkud (místa oddělená čárkou)": {cs:"Odkud (místa oddělená čárkou)",sk:"Odkiaľ (miesta oddelené čiarkou)",bg:"Откъде (места, разделени със запетая)",hr:"Odakle (mjesta odvojena zarezom)",ro:"De unde (locuri separate prin virgulă)",en:"From (places separated by commas)"},
+  "Kam": {cs:"Kam",sk:"Kam",bg:"Накъде",hr:"Kamo",ro:"Unde",en:"To"},
+  "Např. Německo, Rakousko, Řecko": {cs:"Např. Německo, Rakousko, Řecko",sk:"Napr. Nemecko, Rakúsko, Grécko",bg:"Напр. Германия, Австрия, Гърция",hr:"Npr. Njemačka, Austrija, Grčka",ro:"Ex. Germania, Austria, Grecia",en:"e.g. Germany, Austria, Greece"},
+  "Např. Rwanda": {cs:"Např. Rwanda",sk:"Napr. Rwanda",bg:"Напр. Руанда",hr:"Npr. Ruanda",ro:"Ex. Rwanda",en:"e.g. Rwanda"},
+  "Popisky míst": {cs:"Popisky míst",sk:"Popisy miest",bg:"Надписи на местата",hr:"Oznake mjesta",ro:"Etichete locuri",en:"Place labels"},
+  "Nakreslit šipky": {cs:"Nakreslit šipky",sk:"Nakresliť šípky",bg:"Начертай стрелки",hr:"Nacrtaj strelice",ro:"Desenează săgeți",en:"Draw arrows"},
+  "Vyplň, odkud a kam šipky vedou.": {cs:"Vyplň, odkud a kam šipky vedou.",sk:"Vyplň, odkiaľ a kam šípky vedú.",bg:"Попълни откъде и накъде водят стрелките.",hr:"Upiši odakle i kamo vode strelice.",ro:"Completează de unde și unde duc săgețile.",en:"Fill in where the arrows go from and to."},
+  "Hledám místa…": {cs:"Hledám místa…",sk:"Hľadám miesta…",bg:"Търся места…",hr:"Tražim mjesta…",ro:"Caut locuri…",en:"Looking up places…"},
+  "Šipky nakresleny: {0}.": {cs:"Šipky nakresleny: {0}.",sk:"Šípky nakreslené: {0}.",bg:"Начертани стрелки: {0}.",hr:"Nacrtane strelice: {0}.",ro:"Săgeți desenate: {0}.",en:"Arrows drawn: {0}."},
+  "Nenašel jsem: {0}": {cs:"Nenašel jsem: {0}",sk:"Nenašiel som: {0}",bg:"Не намерих: {0}",hr:"Nisam pronašao: {0}",ro:"Nu am găsit: {0}",en:"Not found: {0}"},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
   "Body zájmu": {cs:"Body zájmu",sk:"Body záujmu",bg:"Обекти",hr:"Točke interesa",ro:"Puncte de interes",en:"Points of interest"},
   "Velikost vlajek": {cs:"Velikost vlajek",sk:"Veľkosť vlajok",bg:"Размер на знамената",hr:"Veličina zastava",ro:"Mărimea steagurilor",en:"Flag size"},
@@ -25499,15 +25883,17 @@ function pzColorFromName(v){
     // ---- šipka mezi dvěma místy ---------------------------------------------
     // Základ zpravodajské grafiky (postup vojsk, migrace, směr úderu). Bez nástroje
     // model „šipku z A do B" nahrazoval trasou, což je něco úplně jiného.
-    async drawArrow({from, to, color, width, fit} = {}){
+    async drawArrow({from, to, color, width, icon, iconSize, curve, fit} = {}){
       if(!from || !to) return {ok:false, error:'Chybí from/to (odkud a kam šipka míří).'};
       if(color != null && !pzColorFromName(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
-      let a, b;
-      try{ a = await geocode(String(from)); }catch(e){ return {ok:false, error:'Místo „' + from + '" jsem nenašel.'}; }
-      try{ b = await geocode(String(to));   }catch(e){ return {ok:false, error:'Místo „' + to + '" jsem nenašel.'}; }
-      const tail = {lng:+a.lon, lat:+a.lat}, head = {lng:+b.lon, lat:+b.lat};
-      if(haversineKm([tail.lng, tail.lat], [head.lng, head.lat]) < 0.05) return {ok:false, error:'Šipka potřebuje dvě různá místa.'};
-      const item = createSceneArrow(tail, head, {color: pzColorFromName(color) || undefined, width: width});
+      const ic = icon ? pzArrowPictoKind(icon) : '';
+      if(icon && !ic) return {ok:false, error:'Piktogram „' + icon + '" neznám. Mám: ' + Object.keys(pzArrowPictoInit()).join(', ') + '.'};
+      const a = await pzArrowPlace(from); if(!a) return {ok:false, error:'Místo „' + from + '" jsem nenašel.'};
+      const b = await pzArrowPlace(to);   if(!b) return {ok:false, error:'Místo „' + to + '" jsem nenašel.'};
+      const tail = {lng:a.ll[0], lat:a.ll[1]}, head = {lng:b.ll[0], lat:b.ll[1]};
+      if(haversineKm(a.ll, b.ll) < 0.05) return {ok:false, error:'Šipka potřebuje dvě různá místa.'};
+      try{ window.__pzPushUndo?.(); }catch(e){}
+      const item = createSceneArrow(tail, head, {color: pzColorFromName(color) || undefined, width: width, icon: ic, iconSize, bend: 0});
       if(!item) return {ok:false, error:'Šipku se nepodařilo vytvořit.'};
       // Rámujeme všechny šipky ve scéně, ne jen poslední — při „postup na
       // Charkov a na Kupjansk" jinak první šipka vyjela z exportního rámečku.
@@ -25516,8 +25902,48 @@ function pzColorFromName(v){
         const bb = pzFeaturesBBox([{geometry:{coordinates: pts.length ? pts : [[tail.lng, tail.lat], [head.lng, head.lat]]}}]);
         if(bb) window.TNMAP._fitTwo(bb[0], bb[1]);
       }
-      return {ok:true, from:a.display_name, to:b.display_name,
+      // oblouk: true = automaticky k pólu (dlouhé lety), číslo = vlastní zakřivení (−0,7…0,7)
+      if(curve){ item.bend = typeof curve === 'number' ? Math.max(-0.7, Math.min(0.7, curve)) : sceneArrowAutoBend(item.tail, item.head); redrawSceneArrows(); }
+      return {ok:true, from:a.name, to:b.name, ...(ic ? {icon: ic} : {}), ...(item.bend ? {curve: item.bend} : {}),
               tail:{lat:tail.lat, lng:tail.lng}, head:{lat:head.lat, lng:head.lng}};
+    },
+    // ---- víc šipek do jednoho cíle („z Německa, Rakouska… do Rwandy") ---------
+    // Jedním voláním: šipky z každého místa do cíle, mírně zakřivené a rozvějířené,
+    // aby se hroty v cíli nepřekrývaly; volitelně piktogram a popisky míst.
+    async flowArrows({from, to, icon, color, width, iconSize, labels, toLabel, curve, fit} = {}){
+      const fs0 = String(from || ''), list = (Array.isArray(from) ? from : fs0.split(/[;\n]/.test(fs0) ? /\s*[;\n]\s*/ : /\s*,\s*/)).map(x => String(x || '').trim()).filter(Boolean);
+      if(!list.length || !to) return {ok:false, error:'Chybí from (seznam míst) nebo to (cíl).'};
+      if(list.length > 15) return {ok:false, error:'Nejvýš 15 míst najednou.'};
+      if(color != null && color !== '' && !pzColorFromName(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
+      const ic = icon ? pzArrowPictoKind(icon) : '';
+      if(icon && !ic) return {ok:false, error:'Piktogram „' + icon + '" neznám. Mám: ' + Object.keys(pzArrowPictoInit()).join(', ') + '.'};
+      const dest = await pzArrowPlace(to); if(!dest) return {ok:false, error:'Cíl „' + to + '" jsem nenašel.'};
+      const origins = [], notFound = [];
+      for(const q of list){
+        const p = await pzArrowPlace(q);
+        if(!p) notFound.push(q); else if(haversineKm(p.ll, dest.ll) >= 0.05) origins.push({q, p});
+      }
+      if(!origins.length) return {ok:false, error:'Žádné z míst jsem nenašel: ' + notFound.join(', ') + '.', notFound};
+      try{ window.__pzPushUndo?.(); }catch(e){}
+      const col = (color != null && color !== '' && pzColorFromName(color)) || undefined;
+      const items = origins.map(o => createSceneArrow(o.p.ll, dest.ll, {color: col, width, icon: ic, iconSize, bend: 0, dot: true, silent: true})).filter(Boolean);
+      if(fit !== false){
+        const pts = (state.sceneArrows || []).flatMap(x => [x.tail, x.head]);
+        const bb = pzFeaturesBBox([{geometry:{coordinates: pts}}]);
+        const lab0 = labels !== false && labels != null && labels !== 0, p0 = getFitPadding();
+        // s popisky víc místa po stranách (bubliny leží vedle bodů)
+        const pad = lab0 ? {top: p0.top + 40, bottom: p0.bottom + 40, left: p0.left + 70, right: p0.right + 70} : p0;
+        if(bb){ try{ state.screenPan = {x:0, y:0}; state.map.fitBounds(bb, {padding: pad, duration: 0}); }catch(e){} }
+      }
+      const lab = labels !== false && labels != null && labels !== 0;
+      items.forEach(a => { a.hdot = true; });
+      pzFanSceneArrows(items, {curve, gap: 14});
+      redrawSceneArrows();
+      try{ clearSceneArrowSelection(); }catch(e){}
+      if(lab) pzFlowLabels(origins.map((o, i) => ({ll: o.p.ll, text: Array.isArray(labels) && labels[i] ? String(labels[i]) : o.q})), dest.ll,
+        toLabel === false ? null : (typeof toLabel === 'string' && toLabel.trim() ? toLabel.trim() : String(to)), items);
+      scheduleSceneLayerRedraw('flow-arrows');
+      return {ok:true, arrows: items.length, to: dest.name, from: origins.map(o => o.p.name), ...(ic ? {icon: ic} : {}), ...(notFound.length ? {notFound} : {})};
     },
 
     // ---- měřená vzdálenost mezi dvěma místy ---------------------------------
@@ -27443,7 +27869,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   // Spustí jeden nástroj z whitelistu (window.TNMAP). Nikdy nevyhodí — vrací výsledek.
   function pzAutoFitAfter(calls, results){
     try{
-      const PLACE = /^(placeIcon|addLabel|drawArrow|placeFlag|measureDistance|drawPerimeter|colorPolitical)$/;
+      const PLACE = /^(placeIcon|addLabel|drawArrow|flowArrows|placeFlag|measureDistance|drawPerimeter|colorPolitical)$/;
       const n = calls.filter((c, i) => PLACE.test(c.tool) && results[i]?.result?.ok !== false).length;
       if(n < 2 || calls.some(c => /^(setCameraFlight|setCamera|gotoPlace|show3D|showRegion|routeBetween|routeLine|fitRoute|fitScene|arcBestView)$/.test(c.tool))) return;
       window.TNMAP?.fitScene?.();
@@ -27950,7 +28376,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   }
   // Chatová cesta smí jen nástroje z promptu workeru (Claude/MCP má vlastní cestu).
   const CHAT_TOOLS = new Set(['gotoPlace','showRegion','show3D','setCamera','setBaseStyle','applyPreset','placeIcon','addLabel','setLabelStyle',
-    'drawArrow','measureDistance','drawPerimeter','colorPolitical','colorRegion','dataMap','placeFlag','roadClosure','metroClosure','placeModel3d','setColors','setValues',
+    'drawArrow','flowArrows','measureDistance','drawPerimeter','colorPolitical','colorRegion','dataMap','placeFlag','roadClosure','metroClosure','placeModel3d','setColors','setValues',
     'setLayers','setGlobe','setShadows','setTransportMode','routeBetween','routeLine','setVehicle','addVehicle','setVehicleColors','setCameraFlight',
     'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp',
     'setTitle','setExportName']);
