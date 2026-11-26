@@ -274,6 +274,25 @@ export const MAP_TOOLS = [
   }
  },
  {
+  "name": "roadSections",
+  "description": "liniové úseky dálnice / tratě / ulice podle stavu, jedním voláním všechny: sections = [{\"from\":\"Opatovice nad Labem\",\"to\":\"Ostrov\",\"status\":\"hotový\"}, {\"from\":\"Ostrov\",\"to\":\"Litomyšl\",\"status\":\"ve výstavbě\",\"label\":\"2026\"}, …]; status hotový (šedomodrá) | ve výstavbě (oranžová čárkovaná) | plánovaný (světlá čárkovaná) | zvýrazněný (červená, úseky \"o kterých budeme mluvit\"); label = datum/termín u úseku (\"2027\", \"otevřeno 2025\"); via = obec na úseku, když trasa vede jinudy; mode \"rail\" = po železnici (tratě), jinak po silnici (i ulice ve městě). Nahradí dosavadní úseky (append:true = přidá); legend = roh bl|tl|tr|br nebo false (legenda stavů je sama, když jsou aspoň dva stavy); legendTitle = nadpis legendy; names:false = bez názvů míst na koncích; clear:true = smazat. Uzavírka s objížďkou = roadClosure.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "sections": {},
+    "legend": {},
+    "legendTitle": {},
+    "names": {},
+    "append": {},
+    "clear": {}
+   },
+   "required": [
+    "sections"
+   ],
+   "additionalProperties": true
+  }
+ },
+ {
   "name": "metroClosure",
   "description": "výluka pražského metra A/B/C: stanice nebo úsek.",
   "inputSchema": {
@@ -614,7 +633,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "openSection",
-  "description": "POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, exportTitleSection, exportNameSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.",
+  "description": "POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, pzSectionsSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, exportTitleSection, exportNameSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.",
   "inputSchema": {
    "type": "object",
    "properties": {
