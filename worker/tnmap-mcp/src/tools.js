@@ -265,6 +265,25 @@ export const MAP_TOOLS = [
   }
  },
  {
+  "name": "barChart",
+  "description": "sloupcový graf u místa (mapa + graf): place = kraj ČR, stát nebo město (1. pád); bars = 1–4 sloupce [{\"label\":\"2024\",\"value\":1250},{\"label\":\"2025\",\"value\":1480}] (jde i text \"2024: 1 250 Kč; 2025: 1 480 Kč\"); unit \"Kč\", \"%\"…; title = krátký nadpis grafu; colors = barvy sloupců; panel:false = bez bílého panelu; ve videu sloupce vyskočí z nuly během první sekundy (grow:false = ne), PNG má konečnou výšku. Víc míst = víc volání (každé místo svůj graf, stejná jednotka = společné měřítko). Stejné place = úprava grafu. fromDataMap:true = sloupec u každého místa datové mapy. clear:true (s place jen ten graf). Zvýraznění kraje/státu zvlášť (colorRegion / colorPolitical).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "place": {},
+    "bars": {},
+    "unit": {},
+    "colors": {},
+    "title": {},
+    "panel": {},
+    "grow": {},
+    "fromDataMap": {},
+    "clear": {}
+   },
+   "additionalProperties": true
+  }
+ },
+ {
   "name": "placeFlag",
   "description": "vlajka státu na mapu. Víc států = víc volání.",
   "inputSchema": {
