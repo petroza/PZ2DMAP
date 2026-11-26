@@ -1701,6 +1701,36 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         </div>
       </div>
 
+      <div class="section" id="pzJingleSection">
+        <h3 data-i18n="Nájezd na místa">Nájezd na místa</h3>
+        <label for="pzJingPlaces" data-i18n="Místa (každé na nový řádek)">Místa (každé na nový řádek)</label>
+        <textarea id="pzJingPlaces" rows="4" spellcheck="false" title="Jedno video na každé místo. Vlastní popisek: Místo | Popisek" data-i18n-placeholder="Např. Valašské Meziříčí&#10;Zlín&#10;Kroměříž" placeholder="Např. Valašské Meziříčí&#10;Zlín&#10;Kroměříž"></textarea>
+        <div class="row" style="margin-top:8px">
+          <div><label for="pzJingFrom" data-i18n="Začátek">Začátek</label><select id="pzJingFrom">
+            <option value="cz" selected data-i18n="Česko">Česko</option>
+            <option value="eu" data-i18n="Evropa">Evropa</option>
+            <option value="world" data-i18n="Svět">Svět</option>
+            <option value="current" data-i18n="Současný pohled">Současný pohled</option>
+          </select></div>
+          <div><label for="pzJingZoom" data-i18n="Přiblížit na">Přiblížit na</label><select id="pzJingZoom">
+            <option value="city" selected data-i18n="Město">Město</option>
+            <option value="district" data-i18n="Čtvrť">Čtvrť</option>
+            <option value="building" data-i18n="Budova (3D náklon)">Budova (3D náklon)</option>
+          </select></div>
+        </div>
+        <div class="row">
+          <div><label for="pzJingDur" data-i18n="Délka nájezdu (s)">Délka nájezdu (s)</label><input id="pzJingDur" type="number" min="1" max="60" step="0.5" value="6"></div>
+          <div><label for="pzJingHold" data-i18n="Pauza na konci (s)">Pauza na konci (s)</label><input id="pzJingHold" type="number" min="0" max="10" step="0.5" value="2"></div>
+        </div>
+        <label class="check"><input id="pzJingPin" type="checkbox" checked> <span data-i18n="Špendlík v cíli">Špendlík v cíli</span></label>
+        <label class="check"><input id="pzJingLabel" type="checkbox" checked> <span data-i18n="Název místa v cíli">Název místa v cíli</span></label>
+        <div class="btns">
+          <button type="button" class="btn btn-sm" id="pzJingOneBtn" title="Nastaví přelet kamery na místo pod kurzorem (nebo první) — doladíš ho a vyexportuješ sám" data-i18n="Nájezd na místo">Nájezd na místo</button>
+          <button type="button" class="btn btn-sm btn-primary" id="pzJingBatchBtn" title="Jedno video na každé místo, postupně; Zrušit zastaví celou dávku" data-i18n="Exportovat video">Exportovat video</button>
+        </div>
+        <div class="small hint pz-fname-preview" id="pzJingInfo"></div>
+      </div>
+
       <div class="section">
         <h3 data-i18n="Přehrávač">Přehrávač</h3>
         <div class="player-controls">
@@ -6254,6 +6284,7 @@ function initMap(){
   // Arrows are drawn in screen space, so keep them a constant on-screen size by
   // recomputing on every map move/zoom; show a rubber-band preview while placing.
   state.map.on('move', () => { if((state.sceneArrows||[]).length || state.sceneArrowDraft) setSceneArrowDataThrottled(); });
+  state.map.on('move', () => { if(state.pzFlyIn && !state._exporting) pzFlyInPreview(); });
   state.map.on('mousemove', (e) => {
     if(state.addingSceneArrow && state.sceneArrowDraft){ state.sceneArrowPreview = [e.lngLat.lng, e.lngLat.lat]; setSceneArrowDataThrottled(); }
   });
@@ -9272,6 +9303,8 @@ function serializeProjectSnapshot(){
     overlays: getOverlaySnapshot(),
     // titulek a zdroj v grafice (nepovinné; starý projekt = bez titulku)
     graphicTitle: pzTitleSnapshot(),
+    // cíl nájezdu (Animace › Nájezd na místa) — špendlík + název na konci přeletu
+    flyIn: pzFlyInSnapshot(),
     // název souboru podle redakce (popis, nick, pořad, oprava) — krok zpět ho nevrací
     exportName: pzNameFields()
   };
@@ -9484,6 +9517,7 @@ function applyProjectSnapshot(snapshot, statusMsg){
   if($('pzFlagSize')) $('pzFlagSize').value = String(pzFlagScale());
   try{ const g = snapshot?.graphicTitle; state.pzTitle = (g && typeof g === 'object') ? {title: String(g.title || ''), source: String(g.source || ''), titleOn: !!g.titleOn, sourceOn: !!g.sourceOn, style: g.style} : null; pzSyncTitleUi(); pzUpdateTitlePreview(); }catch(e){}
   try{ if(snapshot?.exportName) pzApplyNameSnapshot(snapshot.exportName); }catch(e){}
+  try{ pzFlyInApplySnapshot(snapshot?.flyIn); }catch(e){}
   try{ updateReadouts(); }catch(e){}
   Promise.all(state.pzFlags.map(f => pzLoadFlagImage(f.iso))).then(() => { try{ pzFlagsRefresh(); }catch(e){} });
   const doApply = () => {
@@ -18332,6 +18366,7 @@ function setAnimProgress(progress, opts){
   // Camera animation runs independently — it works even without a route (news flyover/zoom).
   // opts.camera === false: jen objekt na trase, kamera zůstane, kde ji grafik nechal.
   const cameraDriven = opts?.camera === false ? cameraAnimReady() : applyCameraAnimProgress(progress);
+  if(state.pzFlyIn && !state._exporting){ try{ pzFlyInPreview(); }catch(e){} }   // cíl nájezdu naskočí na konci
   if(!state.routeCoords.length){ updateAnimReadout(); return; }
   // The object's distance along the route is eased; the camera timeline above stays linear.
   const vp = pzVehicleProgress(pzCrashRaw(applyAnimEasing(progress)));   // příď (u vozidel z obrázků až za cíl)
@@ -18872,7 +18907,7 @@ function updateExportFrame(){
   if(!frame || !mapEl) return;
   try{ updateExportSummary(); }catch(_e){}
   const visible = $('showExportFrame')?.checked !== false;
-  if(!visible){ frame.classList.add('hidden'); document.body.classList.remove('pz-frame-wm'); try{ pzUpdateTitlePreview(); }catch(_e){} return; }
+  if(!visible){ frame.classList.add('hidden'); document.body.classList.remove('pz-frame-wm'); try{ pzUpdateTitlePreview(); pzFlyInPreview(); }catch(_e){} return; }
   const {w:outW,h:outH}=getExportSize();
   frame.setAttribute('data-label', `${outW}×${outH}` + pzAspectLabel(outW, outH));
   const r = pzComputeFrameRect(outW, outH); if(!r) return;
@@ -18885,6 +18920,7 @@ function updateExportFrame(){
   $('exportSafeGuides')?.classList.toggle('sg-social', outW < outH);
   try{ pzUpdateFrameWatermark(r.width, r.height, outW, outH); }catch(_e){}
   try{ pzUpdateFrameLegend(); }catch(_e){}
+  try{ pzFlyInPreview(); }catch(_e){}
   try{ pzApplyGlobeMinZoom(); }catch(_e){}
 }
 // Glóbus: oddálení se zastaví, když je celá zeměkoule v rámečku (dřív šlo až na zoom −5 = tečka).
@@ -19061,6 +19097,243 @@ function pzSetTitleState(patch, sync = true){
 }
 function pzTitleSnapshot(){ const s = pzTitleState(); return (s.title || s.source || s.titleOn || s.sourceOn) ? s : null; }
 
+// ===== NÁJEZD NA MÍSTA (zadání typu G, „jingle") =====
+// „Mapu ČR a nájezd na Valašské Meziříčí", „ke každému městu zvlášť mapu, kde bude nájezd… jako jingle".
+// Přelet kamery = dva záběry ve výřezu exportu (space:'frame'); cíl = špendlík + název, které naskočí
+// na konci nájezdu. Kreslí je jedna funkce do náhledu (plátno nad rámečkem) i do PNG/videa.
+const PZ_FLYIN_FROM = {cz: [[12.09, 48.55], [18.86, 51.06]], eu: [[-10, 35.5], [34, 63]], world: [[-170, -50], [175, 72]]};
+const PZ_FLYIN_ZOOM = {city: {zoom: 12.2, pitch: 0, bearing: 0}, district: {zoom: 14.6, pitch: 25, bearing: 0}, building: {zoom: 16.8, pitch: 55, bearing: -20}};
+// Záběr (ve výřezu 1280 px), do kterého se vejde obdélník [[západ, jih], [východ, sever]] — podle poměru stran exportu.
+function pzFlyInFitView(bb){
+  const {w, h} = getExportSize(), W = 1280, H = 1280 * h / Math.max(1, w);
+  const a = maplibregl.MercatorCoordinate.fromLngLat({lng: bb[0][0], lat: bb[0][1]}), b = maplibregl.MercatorCoordinate.fromLngLat({lng: bb[1][0], lat: bb[1][1]});
+  const dx = Math.max(1e-6, Math.abs(b.x - a.x) * 512), dy = Math.max(1e-6, Math.abs(b.y - a.y) * 512);
+  const c = new maplibregl.MercatorCoordinate((a.x + b.x) / 2, (a.y + b.y) / 2).toLngLat();
+  return {center: [c.lng, c.lat], zoom: Math.max(0.5, Math.min(18, Math.log2(Math.min(W * 0.88 / dx, H * 0.84 / dy)))), pitch: 0, bearing: 0};
+}
+function pzFlyInEndView(ll, zoom){
+  const z = PZ_FLYIN_ZOOM[zoom] || (isFinite(+zoom) ? {zoom: Math.max(3, Math.min(19, +zoom)), pitch: 0, bearing: 0} : PZ_FLYIN_ZOOM.city);
+  return {center: [+ll[0], +ll[1]], zoom: z.zoom, pitch: z.pitch, bearing: z.bearing};
+}
+// Úvodní záběr: cz / eu / world (cíl mimo území → obdélník se roztáhne i na cíl), current = co je teď v rámečku,
+// nebo hotový záběr {center, zoom} / obdélník [[z, j], [v, s]].
+function pzFlyInStartView(from, ll){
+  if(from && from.center && isFinite(from.zoom)) return {center: [+from.center[0], +from.center[1]], zoom: +from.zoom, pitch: +from.pitch || 0, bearing: +from.bearing || 0};
+  if(from === 'current'){ const v = pzMapToFrameView(captureCameraView()); return {center: v.center, zoom: v.zoom, pitch: v.pitch || 0, bearing: v.bearing || 0}; }
+  let bb = Array.isArray(from) ? from : (PZ_FLYIN_FROM[from] || PZ_FLYIN_FROM.cz);
+  bb = [[Math.min(bb[0][0], ll[0] - 0.4), Math.min(bb[0][1], ll[1] - 0.25)], [Math.max(bb[1][0], ll[0] + 0.4), Math.max(bb[1][1], ll[1] + 0.25)]];
+  return pzFlyInFitView(bb);
+}
+// „Valašské Meziříčí, Zlínský kraj" → popisek „Valašské Meziříčí"; „Náměstí Míru | Vinohrady" → vlastní popisek.
+function pzFlyInParseLine(line){
+  const s = String(line || '').trim(); if(!s) return null;
+  const [q, lab] = s.split('|').map(x => x.trim());
+  return q ? {query: q, text: (lab != null && lab !== '' ? lab : q.split(',')[0].trim()).slice(0, 48)} : null;
+}
+function pzFlyInSetTiming(dur, hold){
+  const set = (rid, nid, v) => { if($(rid)) $(rid).value = String(v); if($(nid)) $(nid).value = String(v); };
+  if(dur != null && isFinite(+dur)) set('animDuration', 'animDurationNum', Math.max(1, Math.min(180, Math.round(+dur * 2) / 2)));
+  if(hold != null && isFinite(+hold)) set('animEndHold', 'animEndHoldNum', Math.max(0, Math.min(10, Math.round(+hold * 2) / 2)));
+  set('animStart', 'animStartNum', 0);
+  try{ retimeAnimation(); }catch(e){}
+}
+// Nastaví nájezd: kamera (2 záběry), časování a cíl. o = {ll, text, from, zoom, duration, hold, pin, label, noUndo}
+function pzFlyInSetup(o){
+  const ll = [+o.ll[0], +o.ll[1]];
+  const start = pzFlyInStartView(o.from || 'cz', ll), end = pzFlyInEndView(ll, o.zoom || 'city');
+  if(!o.noUndo){ try{ window.__pzPushUndo?.(); }catch(e){} }
+  if(state.animPlaying) pauseAnimation();
+  const fromName = {cz: t('Česko'), eu: t('Evropa'), world: t('Svět')}[o.from] || '';
+  state.cameraAnim.keyframes = [{t: 0, view: start, ...(fromName ? {name: fromName} : {})}, {t: 1, view: end, ...(o.text ? {name: String(o.text).slice(0, 40)} : {})}];
+  state.cameraAnim.space = 'frame';
+  state.cameraAnim.lift = 1; state.cameraAnim.arc = true;
+  pzSyncCamLiftUi();
+  redistributeKeyframeTimes();
+  setCameraUiMode('keyframes');
+  state.cameraAnim.keyframes.forEach(kf => pzNameKeyframe(kf));
+  renderCameraKeyframeList();
+  pzFlyInSetTiming(o.duration, o.hold);
+  state.pzFlyIn = {ll, text: String(o.text || '').slice(0, 48), pin: o.pin !== false, label: o.label !== false && !!o.text};
+  state.animElapsed = 0;
+  try{ applyCameraAnimProgress(0); }catch(e){}
+  pzFlyInPreview();
+  try{ updatePlayerUi(); updateAnimReadout(); }catch(e){}
+  return {start, end};
+}
+// Kolik sekund je cíl vidět (Infinity = celý). V klidu na začátku (náhled, PNG) je vidět celý —
+// stejně jako celá trasa; při přehrávání a ve videu naskočí na konci nájezdu.
+function pzFlyInAge(){
+  if(!cameraAnimReady()) return Infinity;
+  const el = state.animElapsed || 0;
+  if(el <= 0.0001 && !state.animPlaying && !state._exportKeepSession) return Infinity;
+  const tm = animTiming();
+  const tA = Math.max(0, Math.min(tm.delay + tm.dur - 0.3, tm.total - 0.9));
+  return el - tA;
+}
+// Poloha cíle v px výstupu W×H (přes živou mapu a výřez exportu — export kamera z něj vychází).
+function pzFlyInProject(W, H){
+  const f = state.pzFlyIn, m = window.__tnMap || state.map; if(!f || !m) return null;
+  const fr = pzExportFrameRect(), mr = m.getCanvas().getBoundingClientRect(); if(!fr || !(fr.width > 0)) return null;
+  const p = m.project(f.ll);
+  return [(p.x - (fr.left - mr.left)) / fr.width * W, (p.y - (fr.top - mr.top)) / fr.height * H];
+}
+const _pzEaseBack = x => { const c = 1.9; x = Math.max(0, Math.min(1, x)) - 1; return 1 + (c + 1) * x * x * x + c * x * x; };
+const _pzEaseOut = x => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
+function pzDrawFlyIn(ctx, W, H, xy){
+  const f = state.pzFlyIn; if(!ctx || !f || !W || !H || !(f.pin || f.label)) return null;
+  xy = xy || pzFlyInProject(W, H); if(!xy || !isFinite(xy[0]) || !isFinite(xy[1])) return null;
+  const age = pzFlyInAge(); if(!(age > 0)) return null;
+  const [x, y] = xy, k = Math.min(W, H) / 1080, pal = PZ_TITLE_STYLES[pzTitleState().style] || PZ_TITLE_STYLES.navy;
+  if(x < -W * 0.5 || x > W * 1.5 || y < -H * 0.5 || y > H * 1.5) return null;
+  const red = pal === PZ_TITLE_STYLES.red ? '#0D1767' : '#F03B3B';
+  const R = 22 * k, headY = y - 50 * k;
+  ctx.save();
+  if(f.pin){
+    const p = Math.min(1, age / 0.45), s = _pzEaseBack(p);
+    // kruh, který se z místa rozbíhá (opakuje se během pauzy na konci)
+    if(age > 0.35){
+      const ph = ((age - 0.35) % 1.6) / 1.6, rr = (12 + ph * 64) * k;
+      ctx.globalAlpha = (1 - ph) * 0.7; ctx.strokeStyle = red; ctx.lineWidth = 4 * k;
+      ctx.beginPath(); ctx.ellipse(x, y, rr, rr * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = Math.min(1, p * 3);
+    ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.beginPath(); ctx.ellipse(x, y, 13 * k * s, 4.5 * k * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.translate(x, y); ctx.scale(s, s); ctx.translate(-x, -y);
+    ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10 * k; ctx.shadowOffsetY = 3 * k;
+    const a = Math.asin(R / (y - headY));
+    ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.arc(x, headY, R, Math.PI / 2 + a, Math.PI / 2 - a + Math.PI * 2, false);
+    ctx.closePath(); ctx.fillStyle = red; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.lineWidth = 3 * k; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, headY, 8 * k, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+  }
+  ctx.restore();
+  let out = {x, y};
+  if(f.label && f.text){
+    const q = Math.max(0, Math.min(1, (age - (f.pin ? 0.22 : 0)) / 0.45)); if(q <= 0) return out;
+    ctx.save();
+    const fam = pzTitleFont(), fs = Math.round(44 * k), padX = Math.round(fs * 0.45), padY = Math.round(fs * 0.3), bar = Math.max(3, Math.round(fs * 0.18));
+    ctx.font = `800 ${fs}px ${fam}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    const maxText = W * 0.55, tw = Math.min(maxText, Math.ceil(ctx.measureText(f.text).width));
+    const bw = bar + padX * 2 + tw, bh = Math.round(fs * 1.02) + padY * 2;
+    const cy = f.pin ? headY - 12 * k : y - bh / 2 - 10 * k, safeR = W * 0.95, safeL = W * 0.05;   // nad názvem obce v podkladu
+    let bx = f.pin ? x + 34 * k : x - bw / 2;
+    if(f.pin && bx + bw > safeR) bx = x - 34 * k - bw;   // u pravého okraje doleva od špendlíku
+    bx = Math.max(safeL, Math.min(safeR - bw, bx));
+    const by = Math.round(cy - bh / 2), r = Math.max(2, Math.round(3 * k));
+    const e = _pzEaseOut(q), shift = (1 - e) * 24 * k * (bx < x ? 1 : -1);
+    ctx.globalAlpha = Math.min(1, q * 1.6);
+    ctx.beginPath(); ctx.rect(bx - 2, by - 20 * k, bw * e + 4, bh + 40 * k); ctx.clip();   // odkrývá se zleva doprava
+    ctx.translate(shift, 0);
+    ctx.shadowColor = 'rgba(0,0,0,.3)'; ctx.shadowBlur = 16 * k; ctx.shadowOffsetY = 3 * k;
+    drawRoundRectPath(ctx, bx, by, bw, bh, r); ctx.fillStyle = pal.bg; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.save(); drawRoundRectPath(ctx, bx, by, bw, bh, r); ctx.clip(); ctx.fillStyle = pal.accent; ctx.fillRect(bx, by, bar, bh); ctx.restore();
+    ctx.fillStyle = pal.fg; ctx.font = `800 ${fs}px ${fam}`;
+    ctx.fillText(f.text, bx + bar + padX, by + bh / 2 + 0.5 * k, maxText);
+    ctx.restore();
+    out.label = {x: bx, y: by, w: bw, h: bh};
+  }
+  return out;
+}
+// Náhled: plátno přes výřez exportu (jako titulek), překresluje se při pohybu mapy a při přehrávání.
+function pzFlyInPreview(){
+  const wrap = $('map')?.parentElement; if(!wrap) return;
+  let c = $('pzFlyInOverlay');
+  const on = !!state.pzFlyIn;
+  if(!c){ if(!on) return; c = document.createElement('canvas'); c.id = 'pzFlyInOverlay'; c.className = 'pz-title-overlay'; c.setAttribute('aria-hidden', 'true');
+    const tt = $('pzTitleOverlay'); if(tt) wrap.insertBefore(c, tt); else wrap.appendChild(c); }
+  const {w: outW, h: outH} = getExportSize();
+  const r = on ? pzComputeFrameRect(outW, outH) : null;
+  c.hidden = !r; if(!r) return;
+  c.style.width = r.width + 'px'; c.style.height = r.height + 'px'; c.style.left = r.cx + 'px'; c.style.top = r.cy + 'px';
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = Math.max(1, Math.round(r.width * dpr)), Hh = Math.max(1, Math.round(r.height * dpr));
+  if(c.width !== W || c.height !== Hh){ c.width = W; c.height = Hh; }
+  const ctx = c.getContext('2d'); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, Hh);
+  ctx.setTransform(W / outW, 0, 0, Hh / outH, 0, 0);
+  try{ pzDrawFlyIn(ctx, outW, outH); }catch(e){}
+}
+function pzFlyInClear(){ state.pzFlyIn = null; pzFlyInPreview(); }
+function pzFlyInSnapshot(){ const f = state.pzFlyIn; return f ? {ll: f.ll.slice(), text: f.text, pin: !!f.pin, label: !!f.label} : null; }
+function pzFlyInApplySnapshot(s){
+  state.pzFlyIn = (s && Array.isArray(s.ll) && isFinite(+s.ll[0]) && isFinite(+s.ll[1])) ? {ll: [+s.ll[0], +s.ll[1]], text: String(s.text || '').slice(0, 48), pin: s.pin !== false, label: !!s.label} : null;
+  pzFlyInPreview();
+}
+// Nastavení z panelu Animace › Nájezd na místa
+function pzFlyInFormOpts(){
+  return {from: $('pzJingFrom')?.value || 'cz', zoom: $('pzJingZoom')?.value || 'city',
+    duration: parseFloat($('pzJingDur')?.value) || 6, hold: Math.max(0, parseFloat($('pzJingHold')?.value) || 0),
+    pin: $('pzJingPin')?.checked !== false, label: $('pzJingLabel')?.checked !== false};
+}
+function pzFlyInLines(text){
+  return String(text || '').split(/\r?\n|;/).map(pzFlyInParseLine).filter(Boolean).slice(0, 30);
+}
+// Název souboru pro místo (popis + místo, nick, pořad z Export › Název souboru).
+function pzFlyInFileName(text){
+  const prev = state._pzNamePlace; state._pzNamePlace = pzFileSlug(text);
+  try{ return pzExportNameWithTag(); } finally { state._pzNamePlace = prev; }
+}
+function pzFlyInUpdateInfo(){
+  const el = $('pzJingInfo'); if(!el) return;
+  const L = pzFlyInLines($('pzJingPlaces')?.value), o = pzFlyInFormOpts();
+  const b = $('pzJingBatchBtn'); if(b) b.textContent = L.length > 1 ? t('Exportovat videa ({0})', L.length) : t('Exportovat video');
+  if(!L.length){ el.textContent = ''; return; }
+  const ext = ($('exportVideoFormat')?.value || 'mp4') === 'webm' ? '.webm' : '.mp4';
+  el.textContent = t('Každé video {0} s', String(o.duration + o.hold).replace('.', ',')) + ' · ' + pzFlyInFileName(L[0].text) + ext;
+}
+// Dávka: jedno video na každé místo. Postupně přes běžný export videa (průběh, Zrušit);
+// na konci se vrátí kamera, časování a cíl, jak je grafik měl.
+async function pzFlyInBatch(lines, o){
+  if(state._exporting || state._batchRunning){ setStatus(t('Export už běží — počkej na dokončení.'), 'error'); return {ok:false, error:'busy'}; }
+  if(!lines.length){ setStatus(t('Napiš místa, každé na nový řádek.'), 'error'); return {ok:false, error:'empty'}; }
+  const cam = state.cameraAnim, saved = {kfs: JSON.parse(JSON.stringify(cam.keyframes || [])), space: cam.space, lift: cam.lift, arc: cam.arc, mode: getCameraUiMode(),
+    dur: $('animDuration')?.value, hold: $('animEndHold')?.value, start: $('animStart')?.value, fly: pzFlyInSnapshot(), view: state.map ? captureCameraView() : null};
+  // „Současný pohled" se bere jednou na začátku — mezi videi se mapa hýbe
+  const from = o.from === 'current' ? pzMapToFrameView(captureCameraView()) : o.from;
+  let done = 0, cancelled = false, files = [];
+  const missing = [];
+  const onCancel = () => { cancelled = true; };
+  state._batchRunning = true;
+  setExportButtonsDisabled(true);
+  $('exportCancelBtn')?.addEventListener('click', onCancel);
+  try{
+    const items = [];
+    for(let i = 0; i < lines.length && !cancelled; i++){
+      setStatus(t('Hledám místa…') + ' ' + (i + 1) + '/' + lines.length);
+      try{ const g = await geocode(lines[i].query); items.push({...lines[i], ll: [+g.lon, +g.lat]}); }catch(e){ missing.push(lines[i].query); }
+    }
+    for(let i = 0; i < items.length && !cancelled; i++){
+      const it = items[i];
+      pzFlyInSetup({...o, from, ll: it.ll, text: it.text, label: o.label !== false, noUndo: true});
+      state._pzNamePlace = pzFileSlug(it.text);
+      setStatus(t('Nájezd {0}/{1}: {2}…', i + 1, items.length, it.text));
+      let produced = null;
+      try{ produced = await exportSelectedVideo(); }catch(e){ console.warn('flyIn batch item failed', it, e); }
+      state._pzNamePlace = null;
+      if(produced){ done++; files.push(produced); }
+      else if(cancelled) break;
+      await new Promise(r => setTimeout(r, 60));
+    }
+  } finally {
+    state._pzNamePlace = null;
+    $('exportCancelBtn')?.removeEventListener('click', onCancel);
+    Object.assign(state.cameraAnim, {keyframes: saved.kfs, space: saved.space, lift: saved.lift, arc: saved.arc});
+    try{ pzSyncCamLiftUi(); redistributeKeyframeTimes(); setCameraUiMode(saved.mode); renderCameraKeyframeList(); }catch(e){}
+    if($('animDuration')){ $('animDuration').value = saved.dur; $('animEndHold').value = saved.hold; $('animStart').value = saved.start; try{ syncSliderNumbers(); retimeAnimation(); }catch(e){} }
+    pzFlyInApplySnapshot(saved.fly);
+    state.animElapsed = 0;
+    try{ if(saved.view) state.map.jumpTo(saved.view); updatePlayerUi(); updateAnimReadout(); }catch(e){}
+    state._batchRunning = false;
+    setExportButtonsDisabled(false);
+  }
+  const miss = missing.length ? ' ' + t('Nenašel jsem: {0}', missing.join(', ')) : '';
+  if(cancelled) setStatus(t('Export zrušen — staženo {0} z {1} videí.', done, lines.length) + miss, 'error');
+  else setStatus(t('Hotovo — staženo {0} z {1} videí.', done, lines.length) + miss, missing.length ? 'error' : undefined);
+  return {ok: true, done, files, missing, cancelled};
+}
+
 // ===== NÁZEV SOUBORU PODLE ZVYKLOSTÍ REDAKCE =====
 // mapa-<popis>-<nick>-gfx[-opr][-<pořad>]-RRMMDD (docs/zadani-map.md, oddíl 5).
 // Nick a pořad si pamatuje prohlížeč; popis a oprava patří ke grafice (projekt).
@@ -19073,10 +19346,12 @@ function pzNameFields(){
 }
 function pzRedakceName(d = new Date()){
   const f = pzNameFields();
-  if(!f.popis && !f.nick) return '';
+  // dávka nájezdů: místo se přidá za popis (mapa-zlin-maj-gfx-tn-261126)
+  const place = state._pzNamePlace || '';
+  if(!f.popis && !f.nick && !place) return '';
   const z = n => String(n).padStart(2, '0');
   // bez popisu (jen zapamatovaný nick) poslouží název projektu
-  const src = f.popis || ($('projectName')?.value || '').trim();
+  const src = [f.popis, place].filter(Boolean).join(' ') || ($('projectName')?.value || '').trim();
   const slug = src ? pzFileSlug(src).replace(/^mapa(-|$)/, '') : '';
   return ['mapa', slug, f.nick, 'gfx', f.oprava ? 'opr' : '', f.porad, String(d.getFullYear()).slice(2) + z(d.getMonth() + 1) + z(d.getDate())].filter(Boolean).join('-');
 }
@@ -20147,6 +20422,8 @@ async function drawCurrentMapFrame(targetCanvas){
     // legenda datové mapy je grafika scény — patří i do průhledné vrstvy
     try{ const L = pzDrawDataLegend(targetCanvas.getContext('2d'), targetCanvas.width, targetCanvas.height);
       pzDrawSectionLegend(targetCanvas.getContext('2d'), targetCanvas.width, targetCanvas.height, L); }catch(e){}
+    // cíl nájezdu (špendlík + název) — stejná funkce kreslí náhled (pzFlyInPreview)
+    try{ pzDrawFlyIn(targetCanvas.getContext('2d'), targetCanvas.width, targetCanvas.height); }catch(e){}
     // titulek a zdroj dat — stejná funkce kreslí náhled v rámečku (pzUpdateTitlePreview)
     try{ pzDrawTitleOverlay(targetCanvas.getContext('2d'), targetCanvas.width, targetCanvas.height); }catch(e){}
     try{ setExportPreviewFrame(targetCanvas); }catch(e){}
@@ -20563,7 +20840,7 @@ function isExportCancelled(){ return !!state.exportCancelRequested; }
 function setExportButtonsDisabled(disabled){
   // během exportu více formátů zůstávají tlačítka zakázaná i mezi jednotlivými videi
   const off = !!(disabled || state._batchRunning);
-  ['exportVideoBtn','exportPngBtn','exportPngSeqBtn','exportBatchBtn'].forEach(id => { const b = $(id); if(b) b.disabled = off; });
+  ['exportVideoBtn','exportPngBtn','exportPngSeqBtn','exportBatchBtn','pzJingBatchBtn','pzJingOneBtn'].forEach(id => { const b = $(id); if(b) b.disabled = off; });
   $$('#exportChips .exp-chip').forEach(b => { b.disabled = off; });
   // Během renderu zamknout panel i lištu nad mapou — změna barvy trasy v půlce videa
   // dřív dala video napůl modré a napůl zelené. Zrušit (v překryvu průběhu) zůstává aktivní.
@@ -22348,6 +22625,29 @@ function bindUI(){
     const a = getSceneArrowById(state.selectedSceneArrowId);
     if(a && a.icon){ a.iconSize = sceneArrowDefaultIconSize(); setSceneArrowData(); }
   });
+  // Nájezd na místa: jedno místo = nastavit přelet (doladit a exportovat ručně), dávka = video na každé místo
+  ['pzJingPlaces','pzJingFrom','pzJingZoom','pzJingDur','pzJingHold'].forEach(id => $(id)?.addEventListener(id === 'pzJingPlaces' || /Dur|Hold/.test(id) ? 'input' : 'change', pzFlyInUpdateInfo));
+  ['pzNamePopis','pzNameNick','pzNamePorad','exportVideoFormat'].forEach(id => $(id)?.addEventListener('change', pzFlyInUpdateInfo));
+  $('pzJingOneBtn')?.addEventListener('click', async ()=>{
+    const ta = $('pzJingPlaces'), L = pzFlyInLines(ta?.value);
+    if(!L.length){ setStatus(t('Napiš místa, každé na nový řádek.'), 'error'); ta?.focus(); return; }
+    // místo na řádku s kurzorem (jinak první)
+    let pick = L[0];
+    try{ const row = (ta.value.slice(0, ta.selectionStart).match(/\n/g) || []).length, cur = pzFlyInParseLine(ta.value.split(/\r?\n/)[row]); if(cur) pick = cur; }catch(e){}
+    const b = $('pzJingOneBtn'); b.disabled = true;
+    try{
+      let g; try{ g = await geocode(pick.query); }catch(e){ setStatus(t('Nenašel jsem: {0}', pick.query), 'error'); return; }
+      pzFlyInSetup({...pzFlyInFormOpts(), ll: [+g.lon, +g.lat], text: pick.text});
+      seekAnimationToTime(animTiming().total);   // ukázat konečný záběr se špendlíkem; Přehrát jede od začátku
+      setStatus(t('Nájezd na {0} je připravený. Přehraj animaci, dolaď záběry a vyexportuj video.', pick.text));
+    } finally { b.disabled = false; }
+  });
+  $('pzJingBatchBtn')?.addEventListener('click', ()=>{
+    const L = pzFlyInLines($('pzJingPlaces')?.value);
+    if(!L.length){ setStatus(t('Napiš místa, každé na nový řádek.'), 'error'); $('pzJingPlaces')?.focus(); return; }
+    pzFlyInBatch(L, pzFlyInFormOpts());
+  });
+  pzFlyInUpdateInfo();
   // Víc míst do jednoho cíle: stejný nástroj jako asistent (flowArrows)
   $('sceneFlowBtn')?.addEventListener('click', async ()=>{
     const raw = $('sceneFlowFrom')?.value || '', to = ($('sceneFlowTo')?.value || '').trim();
@@ -23088,6 +23388,31 @@ Object.assign(I18N, {
   "Hledám místa…": {cs:"Hledám místa…",sk:"Hľadám miesta…",bg:"Търся места…",hr:"Tražim mjesta…",ro:"Caut locuri…",en:"Looking up places…"},
   "Šipky nakresleny: {0}.": {cs:"Šipky nakresleny: {0}.",sk:"Šípky nakreslené: {0}.",bg:"Начертани стрелки: {0}.",hr:"Nacrtane strelice: {0}.",ro:"Săgeți desenate: {0}.",en:"Arrows drawn: {0}."},
   "Nenašel jsem: {0}": {cs:"Nenašel jsem: {0}",sk:"Nenašiel som: {0}",bg:"Не намерих: {0}",hr:"Nisam pronašao: {0}",ro:"Nu am găsit: {0}",en:"Not found: {0}"},
+  "Nájezd na místa": {cs:"Nájezd na místa",sk:"Nájazd na miesta",bg:"Приближаване към места",hr:"Zumiranje na mjesta",ro:"Zoom pe locuri",en:"Zoom to places"},
+  "Místa (každé na nový řádek)": {cs:"Místa (každé na nový řádek)",sk:"Miesta (každé na nový riadok)",bg:"Места (всяко на нов ред)",hr:"Mjesta (svako u novi red)",ro:"Locuri (fiecare pe rând nou)",en:"Places (one per line)"},
+  "Jedno video na každé místo. Vlastní popisek: Místo | Popisek": {cs:"Jedno video na každé místo. Vlastní popisek: Místo | Popisek",sk:"Jedno video na každé miesto. Vlastný popis: Miesto | Popis",bg:"Едно видео за всяко място. Собствен надпис: Място | Надпис",hr:"Jedan video za svako mjesto. Vlastita oznaka: Mjesto | Oznaka",ro:"Un video pentru fiecare loc. Etichetă proprie: Loc | Etichetă",en:"One video per place. Custom label: Place | Label"},
+  "Např. Valašské Meziříčí\nZlín\nKroměříž": {cs:"Např. Valašské Meziříčí\nZlín\nKroměříž",sk:"Napr. Valašské Meziříčí\nZlín\nKroměříž",bg:"Напр. Валашске Межиржичи\nЗлин\nКромержиж",hr:"Npr. Valašské Meziříčí\nZlín\nKroměříž",ro:"Ex. Valašské Meziříčí\nZlín\nKroměříž",en:"e.g. Valašské Meziříčí\nZlín\nKroměříž"},
+  "Začátek": {cs:"Začátek",sk:"Začiatok",bg:"Начало",hr:"Početak",ro:"Început",en:"Start"},
+  "Současný pohled": {cs:"Současný pohled",sk:"Súčasný pohľad",bg:"Текущ изглед",hr:"Trenutni prikaz",ro:"Vederea curentă",en:"Current view"},
+  "Přiblížit na": {cs:"Přiblížit na",sk:"Priblížiť na",bg:"Приближи до",hr:"Približi na",ro:"Apropie la",en:"Zoom to"},
+  "Město": {cs:"Město",sk:"Mesto",bg:"Град",hr:"Grad",ro:"Oraș",en:"City"},
+  "Čtvrť": {cs:"Čtvrť",sk:"Štvrť",bg:"Квартал",hr:"Četvrt",ro:"Cartier",en:"District"},
+  "Budova (3D náklon)": {cs:"Budova (3D náklon)",sk:"Budova (3D náklon)",bg:"Сграда (3D наклон)",hr:"Zgrada (3D nagib)",ro:"Clădire (înclinare 3D)",en:"Building (3D tilt)"},
+  "Délka nájezdu (s)": {cs:"Délka nájezdu (s)",sk:"Dĺžka nájazdu (s)",bg:"Продължителност на приближаването (s)",hr:"Trajanje zumiranja (s)",ro:"Durata zoomului (s)",en:"Zoom duration (s)"},
+  "Pauza na konci (s)": {cs:"Pauza na konci (s)",sk:"Pauza na konci (s)",bg:"Пауза в края (s)",hr:"Pauza na kraju (s)",ro:"Pauză la final (s)",en:"Hold at end (s)"},
+  "Špendlík v cíli": {cs:"Špendlík v cíli",sk:"Špendlík v cieli",bg:"Карфица в целта",hr:"Pribadača na cilju",ro:"Pin la destinație",en:"Pin at target"},
+  "Název místa v cíli": {cs:"Název místa v cíli",sk:"Názov miesta v cieli",bg:"Име на мястото в целта",hr:"Naziv mjesta na cilju",ro:"Numele locului la destinație",en:"Place name at target"},
+  "Nájezd na místo": {cs:"Nájezd na místo",sk:"Nájazd na miesto",bg:"Приближаване към място",hr:"Zumiranje na mjesto",ro:"Zoom pe loc",en:"Zoom to place"},
+  "Nastaví přelet kamery na místo pod kurzorem (nebo první) — doladíš ho a vyexportuješ sám": {cs:"Nastaví přelet kamery na místo pod kurzorem (nebo první) — doladíš ho a vyexportuješ sám",sk:"Nastaví prelet kamery na miesto pod kurzorom (alebo prvé) — doladíš ho a vyexportuješ sám",bg:"Настройва прелитане на камерата към мястото под курсора (или първото) — донастройваш и експортираш сам",hr:"Postavlja prelet kamere na mjesto pod kursorom (ili prvo) — doradiš ga i izvezeš sam",ro:"Setează zborul camerei spre locul de sub cursor (sau primul) — îl ajustezi și îl exporți singur",en:"Sets up the camera flight to the place under the cursor (or the first one) — fine-tune and export it yourself"},
+  "Exportovat video": {cs:"Exportovat video",sk:"Exportovať video",bg:"Експортирай видео",hr:"Izvezi video",ro:"Exportă video",en:"Export video"},
+  "Exportovat videa ({0})": {cs:"Exportovat videa ({0})",sk:"Exportovať videá ({0})",bg:"Експортирай видеа ({0})",hr:"Izvezi videa ({0})",ro:"Exportă videoclipuri ({0})",en:"Export videos ({0})"},
+  "Jedno video na každé místo, postupně; Zrušit zastaví celou dávku": {cs:"Jedno video na každé místo, postupně; Zrušit zastaví celou dávku",sk:"Jedno video na každé miesto, postupne; Zrušiť zastaví celú dávku",bg:"Едно видео за всяко място, едно след друго; Отказ спира цялата партида",hr:"Jedan video za svako mjesto, redom; Otkaži zaustavlja cijelu seriju",ro:"Un video pentru fiecare loc, pe rând; Anulează oprește tot lotul",en:"One video per place, one after another; Cancel stops the whole batch"},
+  "Každé video {0} s": {cs:"Každé video {0} s",sk:"Každé video {0} s",bg:"Всяко видео {0} s",hr:"Svaki video {0} s",ro:"Fiecare video {0} s",en:"Each video {0} s"},
+  "Napiš místa, každé na nový řádek.": {cs:"Napiš místa, každé na nový řádek.",sk:"Napíš miesta, každé na nový riadok.",bg:"Напиши местата, всяко на нов ред.",hr:"Upiši mjesta, svako u novi red.",ro:"Scrie locurile, fiecare pe rând nou.",en:"Type the places, one per line."},
+  "Nájezd {0}/{1}: {2}…": {cs:"Nájezd {0}/{1}: {2}…",sk:"Nájazd {0}/{1}: {2}…",bg:"Приближаване {0}/{1}: {2}…",hr:"Zumiranje {0}/{1}: {2}…",ro:"Zoom {0}/{1}: {2}…",en:"Zoom {0}/{1}: {2}…"},
+  "Export zrušen — staženo {0} z {1} videí.": {cs:"Export zrušen — staženo {0} z {1} videí.",sk:"Export zrušený — stiahnuté {0} z {1} videí.",bg:"Експортът е отказан — изтеглени {0} от {1} видеа.",hr:"Izvoz otkazan — preuzeto {0} od {1} videa.",ro:"Export anulat — descărcate {0} din {1} videoclipuri.",en:"Export cancelled — downloaded {0} of {1} videos."},
+  "Hotovo — staženo {0} z {1} videí.": {cs:"Hotovo — staženo {0} z {1} videí.",sk:"Hotovo — stiahnuté {0} z {1} videí.",bg:"Готово — изтеглени {0} от {1} видеа.",hr:"Gotovo — preuzeto {0} od {1} videa.",ro:"Gata — descărcate {0} din {1} videoclipuri.",en:"Done — downloaded {0} of {1} videos."},
+  "Nájezd na {0} je připravený. Přehraj animaci, dolaď záběry a vyexportuj video.": {cs:"Nájezd na {0} je připravený. Přehraj animaci, dolaď záběry a vyexportuj video.",sk:"Nájazd na {0} je pripravený. Prehraj animáciu, dolaď zábery a vyexportuj video.",bg:"Приближаването към {0} е готово. Пусни анимацията, донастрой кадрите и експортирай видеото.",hr:"Zumiranje na {0} je spremno. Pokreni animaciju, doradi kadrove i izvezi video.",ro:"Zoomul pe {0} este pregătit. Redă animația, ajustează cadrele și exportă videoclipul.",en:"Zoom to {0} is ready. Play the animation, fine-tune the shots and export the video."},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
   "Body zájmu": {cs:"Body zájmu",sk:"Body záujmu",bg:"Обекти",hr:"Točke interesa",ro:"Puncte de interes",en:"Points of interest"},
   "Velikost vlajek": {cs:"Velikost vlajek",sk:"Veľkosť vlajok",bg:"Размер на знамената",hr:"Veličina zastava",ro:"Mărimea steagurilor",en:"Flag size"},
@@ -24734,6 +25059,7 @@ function pzExportRunning(){ return !!(state._batchRunning || (state._exporting &
     if(state.sceneDistances?.length) sc.distances = state.sceneDistances.length;
     if((state.pzClosures || []).length) sc.closures = state.pzClosures.map(c => c.title || c.label).slice(0, 6);
     if(state.pzSections?.items?.length) sc.sections = state.pzSections.items.map(it => pzSecTitle(it) + ' · ' + PZ_SEC_STATUS[it.status]?.name + (it.label ? ' · ' + it.label : '')).slice(0, 12);
+    if(state.pzFlyIn) sc.flyIn = {place: state.pzFlyIn.text || null, pin: !!state.pzFlyIn.pin, label: !!state.pzFlyIn.label};
     return sc;
   }
 
@@ -25840,7 +26166,7 @@ function pzColorFromName(v){
   // panel Scéna (tests/30_scene_ux.test.js)
   Object.assign(window.__pzFns, {pzExportFrameRect, pzComputeFrameRect, applyMapLabelSizeToAll, pzLabelZoomK, getMapFreeAreaLeft});
   // titulek a zdroj, název souboru (tests/32_titulek_nazev.test.js)
-  Object.assign(window.__pzFns, {pzDrawTitleOverlay, drawMapSourceWatermark, serializeProjectSnapshot, applyProjectSnapshot, pzRedakceName});
+  Object.assign(window.__pzFns, {pzDrawTitleOverlay, drawMapSourceWatermark, serializeProjectSnapshot, applyProjectSnapshot, pzRedakceName, pzFlyInAge, getCameraStateAtProgress});
   window.TNMAP = {
     // ---- meta -------------------------------------------------------------
     version: 1,
@@ -26841,8 +27167,10 @@ function pzColorFromName(v){
         vehicles: () => { state.pzExtraVehicles = []; try{ pzRenderExtraList(); pzExtraChanged(); }catch(e){} }, vozidla: 'vehicles',
         // titulek a zdroj grafiky (do „all" nepatří — „smaž všechno" maže objekty scény)
         title: () => pzSetTitleState({title:'', source:'', titleOn:false, sourceOn:false}), titulek: 'title', zdroj: 'title',
+        // cíl nájezdu (špendlík + název z Nájezdu na místa); přelet kamery zůstává
+        flyin: () => pzFlyInClear(), najezd: 'flyin', 'cil najezdu': 'flyin', spendlik: 'flyin',
         // „smaž všechno": celá scéna i trasa; podklad a vzhled mapy zůstávají
-        all: () => { ['data','regions','labels','icons','arrows','perimeters','distances','closures','sections','colors','flags','route'].forEach(k => { try{ map[k](); }catch(e){} }); },
+        all: () => { ['data','regions','labels','icons','arrows','perimeters','distances','closures','sections','colors','flags','route','flyin'].forEach(k => { try{ map[k](); }catch(e){} }); },
         vse: 'all', vsechno: 'all', scenu: 'all', scena: 'all', 'celou scenu': 'all',
         popisek: 'labels', ikonky: 'icons', ikonku: 'icons', sipku: 'arrows', perimetr: 'perimeters', kruhy: 'perimeters',
         vzdalenost: 'distances', mereni: 'distances', uzavirku: 'closures', staty: 'colors', vlajku: 'flags'
@@ -27080,6 +27408,67 @@ function pzColorFromName(v){
       renderCameraKeyframeList();
       try{ state.map.jumpTo(pzFrameToMapView(views[0])); }catch(e){}
       return {ok:true, camera:'keyframes', count: views.length};
+    },
+    // Nájezd na místo (jingle): přelet z ČR / Evropy / světa / současného pohledu na místo + špendlík a název na konci.
+    async _flyInOpts({from, zoom, duration, hold, label, pin} = {}){
+      const fk = toolKey(from);
+      let f = 'cz';
+      if(from != null && fk !== ''){
+        if(/^(cz|cr|cesko|ceska republika|czechia|cechy)$/.test(fk)) f = 'cz';
+        else if(/^(eu|evropa|evropu|europe)$/.test(fk)) f = 'eu';
+        else if(/^(svet|world|cely svet|zeme|zemekoule)$/.test(fk)) f = 'world';
+        else if(/^(current|aktualni|soucasny|soucasny pohled|ted|tady|vyrez)/.test(fk)) f = 'current';
+        else {
+          const rk = TOOL_REGION_ALIASES[fk] || (TOOL_REGIONS[from] ? from : null), r = rk && TOOL_REGIONS[rk];
+          if(Array.isArray(r)) f = r;
+          else {
+            let g; try{ g = await geocode(String(from)); }catch(e){ return {error:'Začátek „' + from + '" jsem nenašel. Mám: cz, eu, world, current nebo název státu / oblasti.'}; }
+            const bb = Array.isArray(g.boundingbox) && g.boundingbox.length === 4 ? g.boundingbox.map(Number) : null;
+            if(!bb || !bb.every(isFinite) || bb[1] - bb[0] < 0.05) return {error:'Začátek „' + from + '" není území — zadej stát nebo oblast (Polsko, Pobaltí), cz, eu, world nebo current.'};
+            f = [[bb[2], bb[0]], [bb[3], bb[1]]];
+          }
+        }
+      }
+      const zk = toolKey(zoom);
+      let z = 'city';
+      if(zoom != null && zk !== ''){
+        if(/^(city|mesto|obec)/.test(zk)) z = 'city';
+        else if(/^(district|ctvrt|ulice|namesti|street)/.test(zk)) z = 'district';
+        else if(/^(building|budova|dum|3d)/.test(zk)) z = 'building';
+        else if(toolNum(zoom) != null) z = Math.max(3, Math.min(19, toolNum(zoom)));
+        else return {error:'zoom musí být city (město), district (čtvrť), building (budova) nebo číslo 3–19.'};
+      }
+      if(duration != null && toolNum(duration) == null) return {error:'duration musí být číslo (s).'};
+      if(hold != null && toolNum(hold) == null) return {error:'hold musí být číslo (s).'};
+      return {from: f, zoom: z, duration: duration != null ? Math.max(1, Math.min(60, toolNum(duration))) : 6, hold: hold != null ? Math.max(0, Math.min(10, toolNum(hold))) : 2,
+        pin: pin == null ? true : toolBool(pin) !== false, label: label === false || toolBool(label) === false ? false : true,
+        text: typeof label === 'string' && toolBool(label) == null ? label.trim().slice(0, 48) : null};
+    },
+    async flyInTo({place, from, zoom, duration, hold, label, pin} = {}){
+      if(place == null || String(place).trim() === '') return {ok:false, error:'Chybí place (místo, na které se najíždí).'};
+      if(toolBareNumber(place)) return {ok:false, error:'Zadej místo nebo "lat,lng".'};
+      const o = await window.TNMAP._flyInOpts({from, zoom, duration, hold, label, pin}); if(o.error) return {ok:false, error:o.error};
+      const ln = pzFlyInParseLine(String(place));
+      let g; try{ g = await geocode(ln.query); }catch(e){ return {ok:false, error:'Místo „' + place + '" jsem nenašel.'}; }
+      const text = o.label ? (o.text || ln.text) : '';
+      pzFlyInSetup({...o, ll: [+g.lon, +g.lat], text, label: o.label});
+      return {ok:true, place: String(g.display_name || place).split(',').slice(0, 2).join(','), center:{lat:+g.lat, lng:+g.lon},
+        from: Array.isArray(o.from) ? String(from) : o.from, zoom: o.zoom, seconds: animTiming().total, label: text || null, pin: o.pin,
+        note:'Přelet je nastavený; přehraj (playAnimation) nebo vyexportuj video. Špendlík a název naskočí na konci nájezdu.'};
+    },
+    // Dávka: jedno video na každé místo (běží v pozadí přes běžný export videa, Zrušit zastaví dávku).
+    flyInBatch({places, from, zoom, duration, hold, label, pin} = {}){
+      const list = (Array.isArray(places) ? places : String(places || '').split(/\r?\n|;/)).map(p => pzFlyInParseLine(String(p ?? ''))).filter(Boolean).slice(0, 30);
+      if(!list.length) return {ok:false, error:'Chybí places (seznam míst, jedno video na každé).'};
+      if(state._exporting || state._batchRunning || $('exportVideoBtn')?.disabled) return {ok:false, error:'Právě běží jiný export — počkej, až doběhne.'};
+      return window.TNMAP._flyInOpts({from, zoom, duration, hold, label: label === false || toolBool(label) === false ? false : true, pin}).then(o => {
+        if(o.error) return {ok:false, error:o.error};
+        if($('pzJingPlaces')) $('pzJingPlaces').value = list.map(x => x.query + (x.text !== x.query.split(',')[0].trim() ? ' | ' + x.text : '')).join('\n');
+        pzFlyInBatch(list, o);   // nečekat — dávka trvá minuty, průběh ukazuje appka
+        const ext = ($('exportVideoFormat')?.value || 'mp4') === 'webm' ? '.webm' : '.mp4';
+        return {ok:true, started:true, count: list.length, seconds: o.duration + o.hold, files: list.map(x => pzFlyInFileName(x.text) + ext),
+          note:'Videa se renderují postupně v prohlížeči a ukládají do stažených souborů; průběh je vidět v appce.'};
+      });
     },
     // Ikona objektu na trase: car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat,
     // fire, police, ambulance, plane. Bez trasy se jen předvybere.
@@ -28201,6 +28590,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
 #czKrajList .pz-cc-name{flex:1 1 auto;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #czKrajList .pz-kraj-ol{padding:2px 7px;font-size:11px}
 /* Datová mapa: škály jako proužky, řádky hodnot, pásma legendy, táhlo legendy v rámečku */
+#pzJingPlaces{width:100%;min-height:76px;resize:vertical;font-family:var(--font);font-size:12.5px;line-height:1.4}
+#pzJingInfo:empty{display:none}
 #dmRows{width:100%;min-height:84px;resize:vertical;font-family:var(--font);font-size:12.5px;line-height:1.4}
 .pz-dm-scales{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 8px}
 .pz-dm-scale{width:52px;height:20px;padding:0;border:2px solid transparent;border-radius:3px;cursor:pointer;outline-offset:1px}
@@ -28926,7 +29317,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     'drawArrow','flowArrows','measureDistance','drawPerimeter','colorPolitical','colorRegion','dataMap','placeFlag','roadClosure','roadSections','metroClosure','placeModel3d','setColors','setValues',
     'setLayers','setGlobe','setShadows','setTransportMode','routeBetween','routeLine','setVehicle','addVehicle','setVehicleColors','setCameraFlight',
     'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp',
-    'setTitle','setExportName']);
+    'setTitle','setExportName','flyInTo']);
 
   async function ask(userText, isRetry, shown){
     if(busy) return;

@@ -518,6 +518,46 @@ export const MAP_TOOLS = [
   }
  },
  {
+  "name": "flyInTo",
+  "description": "NÁJEZD NA MÍSTO jedním voláním („mapu ČR a nájezd na Valašské Meziříčí\"): přelet kamery z celku na místo + špendlík a název, které naskočí na konci; from = cz (výchozí), eu, world, current (současný výřez) nebo stát/oblast (Polsko, Pobaltí); zoom = city (výchozí), district (čtvrť, náměstí), building (budova, 3D náklon) nebo číslo; duration = délka nájezdu v s (výchozí 6), hold = pauza na konci (2); label = vlastní text popisku nebo false; pin:false = bez špendlíku.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "place": {},
+    "from": {},
+    "zoom": {},
+    "duration": {},
+    "hold": {},
+    "label": {},
+    "pin": {}
+   },
+   "required": [
+    "place"
+   ],
+   "additionalProperties": true
+  }
+ },
+ {
+  "name": "flyInBatch",
+  "description": "DÁVKA VIDEÍ „ke každému městu zvlášť nájezd jako jingle\": places = seznam míst, jedno video na každé (název souboru s místem); běží v pozadí a vrátí hned počet. Jen konektor Claude (export videa) – asistent v chatu ho nevolá.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "places": {},
+    "from": {},
+    "zoom": {},
+    "duration": {},
+    "hold": {},
+    "label": {},
+    "pin": {}
+   },
+   "required": [
+    "places"
+   ],
+   "additionalProperties": true
+  }
+ },
+ {
   "name": "fitRoute",
   "description": "ukáže celou trasu.",
   "inputSchema": {
