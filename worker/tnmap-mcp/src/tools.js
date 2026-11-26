@@ -16,7 +16,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "showRegion",
-  "description": "výřez: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania.",
+  "description": "výřez: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania, baltics (Pobaltí), balkans, scandinavia, middleEast (Blízký východ), nearEast (Izrael a okolí), mediterranean, westernEurope, easternEurope, africa, asia, northAmerica, southAmerica, nebo název libovolného státu česky (\"Polsko\").",
   "inputSchema": {
    "type": "object",
    "properties": {

@@ -40,7 +40,7 @@ var json = /* @__PURE__ */ __name((obj, status, origin) => new Response(JSON.str
 }), "json");
 var TOOLS = `
 gotoPlace {query} – přelet na místo (město, ulice, "lat,lng").
-showRegion {region} – výřez: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania.
+showRegion {region} – výřez: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania, baltics (Pobaltí), balkans, scandinavia, middleEast (Blízký východ), nearEast (Izrael a okolí), mediterranean, westernEurope, easternEurope, africa, asia, northAmerica, southAmerica, nebo název libovolného státu česky ("Polsko").
 show3D {query?, pitch?, zoom?} – místo ve 3D (Liberty + náklon).
 setCamera {zoom?, zoomBy?, pitch?, bearing?} – kamera, hodnoty jen čísla; zoom 0-22; zoomBy +1 přiblížit / -1 oddálit; pitch 0-85; bearing 0=sever.
 setBaseStyle {style} – podklad: positron (světlý, výchozí), liberty (3D budovy), bright, basic, terrain (reliéf), omt3d, satellite, hybrid, osmStandard, openTopo (turistická), cyclOsm, esriTerrain, political (politická).

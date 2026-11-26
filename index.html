@@ -26000,6 +26000,18 @@ function pzColorFromName(v){
     europe:  [[-11, 35], [40, 66]],
     centralEurope: [[5.5, 45.5], [24.5, 55]],
     czechia: [[12.00, 48.55], [18.95, 51.10]],
+    baltics: [[20.8, 53.8], [28.3, 59.8]],
+    balkans: [[13.3, 39.5], [29.8, 47.0]],
+    scandinavia: [[4.5, 54.5], [31.5, 71.2]],
+    middleEast: [[25.5, 12.0], [63.5, 42.0]],
+    nearEast: [[32.0, 29.0], [38.0, 34.2]],
+    mediterranean: [[-6.0, 30.0], [36.5, 46.5]],
+    westernEurope: [[-10.5, 41.5], [16.5, 59.0]],
+    easternEurope: [[14.0, 43.5], [41.0, 60.5]],
+    africa: [[-18.5, -35.5], [52.0, 37.8]],
+    asia: [[25.0, -10.0], [150.0, 60.0]],
+    northAmerica: [[-168.0, 7.0], [-52.0, 72.0]],
+    southAmerica: [[-82.0, -56.0], [-34.0, 13.0]],
     slovakia:[[16.83, 47.73], [22.57, 49.62]],
     bulgaria:[[22.35, 41.23], [28.61, 44.22]],
     croatia: [[13.49, 42.38], [19.45, 46.56]],
@@ -26009,7 +26021,12 @@ function pzColorFromName(v){
     'stredni evropa':'centralEurope', 'stredni evropu':'centralEurope', centraleurope:'centralEurope',
     cesko:'czechia', cr:'czechia', cechy:'czechia', 'ceska republika':'czechia', 'ceskou republiku':'czechia', czechia:'czechia',
     slovensko:'slovakia', slovakia:'slovakia', bulharsko:'bulgaria', bulgaria:'bulgaria',
-    chorvatsko:'croatia', croatia:'croatia', rumunsko:'romania', romania:'romania'};
+    chorvatsko:'croatia', croatia:'croatia', rumunsko:'romania', romania:'romania',
+    pobalti:'baltics', 'pobaltske staty':'baltics', pobaltsko:'baltics', baltics:'baltics', balkan:'balkans', balkany:'balkans', balkans:'balkans',
+    skandinavie:'scandinavia', skandinavii:'scandinavia', scandinavia:'scandinavia', 'blizky vychod':'middleEast', 'stredni vychod':'middleEast', middleeast:'middleEast',
+    'izrael a gaza':'nearEast', 'svata zeme':'nearEast', stredomori:'mediterranean', 'zapadni evropa':'westernEurope', 'zapadni evropu':'westernEurope',
+    'vychodni evropa':'easternEurope', 'vychodni evropu':'easternEurope', afrika:'africa', afriku:'africa', asie:'asia', asii:'asia',
+    'severni amerika':'northAmerica', 'severni ameriku':'northAmerica', 'jizni amerika':'southAmerica', 'jizni ameriku':'southAmerica'};
   const TOOL_LANGS = {cs:'cs', cesky:'cs', cestina:'cs', cestinu:'cs', czech:'cs', sk:'sk', slovensky:'sk', slovenstina:'sk', slovenstinu:'sk', slovak:'sk',
     bg:'bg', bulharsky:'bg', bulharstina:'bg', bulharstinu:'bg', bulgarian:'bg', hr:'hr', chorvatsky:'hr', chorvatstina:'hr', chorvatstinu:'hr', croatian:'hr',
     ro:'ro', rumunsky:'ro', rumunstina:'ro', rumunstinu:'ro', romanian:'ro', en:'en', anglicky:'en', anglictina:'en', anglictinu:'en', english:'en'};
@@ -26243,10 +26260,21 @@ function pzColorFromName(v){
       return {ok:true, lang:code};
     },
     // Celý svět, Evropa, Česko… bez hledání místa.
-    showRegion({region} = {}){
+    async showRegion({region} = {}){
       const m = state.map; if(!m) return {ok:false, error:'Mapa není načtená.'};
       const k = TOOL_REGION_ALIASES[toolKey(region)] || (TOOL_REGIONS[region] ? region : null);
-      if(!k) return {ok:false, error:'Výřez „' + (region || '') + '" neznám. Mám: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania. Jiná místa hledej přes gotoPlace.'};
+      if(!k){
+        // jiný stát / oblast („Polsko", „poland", „Pobaltí", „Blízký východ") → celé území podle hledání
+        if(!region) return {ok:false, error:'Chybí region.'};
+        let g; try{ g = await geocode(String(region)); }catch(e){ return {ok:false, error:'Výřez „' + region + '" jsem nenašel. Mám: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania, nebo název státu.'}; }
+        const bb = Array.isArray(g.boundingbox) && g.boundingbox.length === 4 ? g.boundingbox.map(Number) : null;   // [jih, sever, západ, východ]
+        try{
+          state.screenPan = {x:0, y:0};
+          if(bb && bb.every(isFinite) && (bb[1] - bb[0]) > 0.05) m.fitBounds([[bb[2], bb[0]], [bb[3], bb[1]]], {padding:getFitPadding(), bearing:0, pitch:0, duration:900, maxZoom:9});
+          else m.easeTo({center:[+g.lon, +g.lat], zoom:6, bearing:0, pitch:0, duration:900});
+        }catch(e){ return {ok:false, error:String(e)}; }
+        return {ok:true, region: String(g.display_name || region).split(',')[0]};
+      }
       const r = TOOL_REGIONS[k];
       try{
         state.screenPan = {x:0, y:0};
