@@ -137,14 +137,39 @@ export const MAP_TOOLS = [
  },
  {
   "name": "drawArrow",
-  "description": "šipka z místa do místa (postup, migrace). NENÍ to trasa.",
+  "description": "šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), balik (zboží), vlak; curve:true = oblouk pro dlouhé vzdálenosti.",
   "inputSchema": {
    "type": "object",
    "properties": {
     "from": {},
     "to": {},
     "color": {},
-    "width": {}
+    "width": {},
+    "icon": {},
+    "iconSize": {},
+    "curve": {}
+   },
+   "required": [
+    "from",
+    "to"
+   ],
+   "additionalProperties": true
+  }
+ },
+ {
+  "name": "flowArrows",
+  "description": "víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:\"lide\", labels:true). Nevolej drawArrow pro každé místo zvlášť.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "from": {},
+    "to": {},
+    "icon": {},
+    "color": {},
+    "width": {},
+    "labels": {},
+    "toLabel": {},
+    "curve": {}
    },
    "required": [
     "from",
