@@ -6205,6 +6205,7 @@ function initMap(){
   });
   window.__tnMap = state.map; // debug/diagnostic handle (read-only use)
   makeStyleCheckLenient(state.map);
+  pzBindArrowPictoMissing(state.map);
   unlockVerticalWorldPan();
   initInteractivePixelRatio();
   showMapLoading();
@@ -6365,6 +6366,25 @@ function applyScreenPan(){
     bottom:Math.max(0, -2 * o.y)
   };
   try{ m.jumpTo({padding: pad}); }catch(e){}
+}
+// Glóbus: zarámovat místa [lng,lat] — střed pohledu = těžiště míst na kouli, zoom co
+// nejbližší, aby se viditelná místa vešla do rámečku exportu (pad px od jeho kraje).
+// fitBounds na glóbu bral obdélník délek/šířek (Fidži–Česko přes 160°) a místa nechal
+// za obzorem. Trvalý padding nepoužíváme — přelet kamery a export s ním nepočítají.
+// Vrátí místa, která zůstala na odvrácené straně zeměkoule (najednou je ukázat nejde).
+function pzGlobeFitPoints(pts, pad){
+  const m = state.map; if(!m || !pts?.length) return [];
+  const D = Math.PI / 180, vec = ([lng, lat]) => [Math.cos(lat * D) * Math.cos(lng * D), Math.cos(lat * D) * Math.sin(lng * D), Math.sin(lat * D)];
+  const s = pts.map(vec).reduce((a, v) => [a[0] + v[0], a[1] + v[1], a[2] + v[2]], [0, 0, 0]);
+  const center = Math.hypot(s[0], s[1], s[2]) < 1e-6 ? pts[0] : [Math.atan2(s[1], s[0]) / D, Math.atan2(s[2], Math.hypot(s[0], s[1])) / D];
+  const fr = pzExportFrameRect(), mr = m.getCanvas().getBoundingClientRect();
+  const box = fr?.width ? {x0: fr.left - mr.left + pad, y0: fr.top - mr.top + pad, x1: fr.right - mr.left - pad, y1: fr.bottom - mr.top - pad} : null;
+  const hid = p => { try{ return !!m.transform?.isLocationOccluded?.({lng: p[0], lat: p[1]}); }catch(e){ return false; } };
+  for(let z = 6; z >= 0.3; z -= 0.1){
+    try{ m.jumpTo({center, zoom: z, bearing: 0, pitch: 0}); }catch(e){ break; }
+    if(!box || pts.filter(p => !hid(p)).every(p => { const q = m.project(p); return q.x >= box.x0 && q.x <= box.x1 && q.y >= box.y0 && q.y <= box.y1; })) break;
+  }
+  return pts.filter(hid);
 }
 function resetScreenPan(){
   state.screenPan = {x:0, y:0};
@@ -7227,6 +7247,13 @@ function pzArrowPictoImage(kind, color, flip){
   });
   return (_pzArrowPictoImg[key] = x.getImageData(0, 0, c.width, c.height));
 }
+// Exportní mapa (a živá po změně podkladu) dostane styl s vrstvou piktogramů dřív,
+// než šipky doplní obrázky — místo varování v konzoli je dokreslit hned na požádání.
+function pzBindArrowPictoMissing(m){
+  if(!m || m.__pzArrowPictoMissing) return;
+  m.__pzArrowPictoMissing = true;
+  try{ m.on('styleimagemissing', e => { if(/^pzarr\|/.test(e?.id || '')) pzEnsureArrowPictoImages(m, [e.id]); }); }catch(e){}
+}
 // Obrázky piktogramů do mapy (živé i exportní) — jen ty, které šipky používají.
 function pzEnsureArrowPictoImages(m, ids){
   ids.forEach(id => {
@@ -7371,13 +7398,18 @@ async function pzArrowPlace(q){
 // Popisky ke svazku šipek. Místa odkud: bez bodu (místo označuje začátek šipky),
 // bublina se hledá kolem začátku šipky tak, aby nezakryla jiný popisek, šipku ani
 // piktogram a zůstala v exportním rámu. Cíl: popisek s bodem, text za hroty.
-function pzFlowLabels(origins, destLL, destText, arrows){
+// redo = popisky svazku, které se mají jen znovu rozmístit (titulek přidaný až po nich)
+function pzFlowLabels(origins, destLL, destText, arrows, redo){
   const m = state.map; if(!m) return;
   const cap = s0 => { s0 = String(s0 || '').trim(); return s0.charAt(0).toUpperCase() + s0.slice(1); };
   const cr = m.getCanvas().getBoundingClientRect();
   let fr = null;
   // bezpečná zóna: 5 % od okraje rámu
   try{ const r = pzExportFrameRect(); if(r && r.width){ const ix = r.width * 0.05, iy = r.height * 0.05; fr = {x0: r.left - cr.left + ix, y0: r.top - cr.top + iy, x1: r.right - cr.left - ix, y1: r.bottom - cr.top - iy}; } }catch(e){}
+  // titulek a „Zdroj:" v rámečku — popisek pod nimi by v exportu nebyl vidět
+  const tbx = [];
+  try{ const r = pzExportFrameRect(), tb = r?.width && pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
+    [tb?.title, tb?.source].forEach(b => { if(b) tbx.push({x0: r.left - cr.left + b.x, y0: r.top - cr.top + b.y, x1: r.left - cr.left + b.x + b.w, y1: r.top - cr.top + b.y + b.h}); }); }catch(e){}
   const pts = [];   // středové čáry všech šipek po 6 px (+ piktogramy leží na nich)
   (state.sceneArrows || []).forEach(a => {
     const g = sceneArrowGeomPx(m.project(a.tail), m.project(a.head), a.width, 1, a.bend, a.gap); if(!g) return;
@@ -7390,12 +7422,18 @@ function pzFlowLabels(origins, destLL, destText, arrows){
   const others = skip => (state.mapLabels || []).filter(x => x !== skip).map(x => placed.get(x) || boxOf(x)).filter(Boolean);
   // začátky šipek (místa) nesmí zakrýt cizí popisek
   const tails = (state.sceneArrows || []).map(a => m.project(a.tail));
+  // piktogramy na šipkách — popisek přes ně by je schoval
+  let picts = [];
+  try{ picts = (m.getSource('scene-arrows')?.serialize?.().data?.features || []).filter(f => f.properties?.kind === 'icon')
+    .map(f => { const q = m.project(f.geometry.coordinates); return {x: q.x, y: q.y, r: (Number(f.properties.isz) || 0.7) * PZ_ARROW_PICTO_BADGE / 4 + 4}; }); }catch(e){}
   const cost = (b, skip, own) => {
     let c = 0;
     tails.forEach(q => { if((!own || Math.hypot(q.x - own.x, q.y - own.y) > 2) && q.x > b.x0 - 12 && q.x < b.x1 + 12 && q.y > b.y0 - 12 && q.y < b.y1 + 12) c += 50; });
     others(skip).forEach(o => { if(b.x0 < o.x1 + 6 && b.x1 > o.x0 - 6 && b.y0 < o.y1 + 6 && b.y1 > o.y0 - 6) c += 100; });
     pts.forEach(p => { if(p.x > b.x0 - p.pad && p.x < b.x1 + p.pad && p.y > b.y0 - p.pad && p.y < b.y1 + p.pad) c += 3; });
+    picts.forEach(p => { if(p.x > b.x0 - p.r && p.x < b.x1 + p.r && p.y > b.y0 - p.r && p.y < b.y1 + p.r) c += 120; });
     if(fr && (b.x0 < fr.x0 || b.y0 < fr.y0 || b.x1 > fr.x1 || b.y1 > fr.y1)) c += 400;
+    tbx.forEach(o => { if(b.x0 < o.x1 + 8 && b.x1 > o.x0 - 8 && b.y0 < o.y1 + 8 && b.y1 > o.y0 - 8) c += 300; });
     // popisek blíž cizímu začátku šipky než vlastnímu = divák ho přiřadí špatně
     if(own){
       const dist = q => Math.hypot(Math.max(b.x0 - q.x, 0, q.x - b.x1), Math.max(b.y0 - q.y, 0, q.y - b.y1));
@@ -7404,12 +7442,11 @@ function pzFlowLabels(origins, destLL, destText, arrows){
     }
     return c;
   };
-  const size = origins.length > 2 ? 22 : 26;
-  const H = m.project(destLL);
   // bublina bez bodu (bod kreslí šipka) — kolem bodu P, přednostně ve směru `base`
-  const place = (P, ll, text, sz, base, near) => {
-    const it = addMapLabelAt({lng: ll[0], lat: ll[1]}, {text: cap(text), size: sz, side: 'none', baseZoom: null, silent: true});
+  const place = (P, ll, text, sz, base, near, it0) => {
+    const it = it0 || addMapLabelAt({lng: ll[0], lat: ll[1]}, {text: cap(text), size: sz, side: 'none', baseZoom: null, silent: true});
     if(!it) return;
+    it.pzFlow = {base, near};
     const bub = it.marker?.getElement?.()?.querySelector('.map-label-bubble'); if(!bub) return;
     const w = bub.offsetWidth, h = bub.offsetHeight;
     let best = null;
@@ -7424,6 +7461,12 @@ function pzFlowLabels(origins, destLL, destText, arrows){
     it.offset = best.off; placed.set(it, best.b);
     try{ it.marker.setOffset(best.off); }catch(e){}
   };
+  if(redo){
+    redo.forEach(it => { try{ const q = it.marker.getLngLat(); place(m.project(q), [q.lng, q.lat], '', 0, it.pzFlow.base, it.pzFlow.near, it); }catch(e){} });
+    return;
+  }
+  const size = origins.length > 2 ? 22 : 26;
+  const H = m.project(destLL);
   // cíl první (je jeden a nejdůležitější): text „za" hroty, ve směru příletu
   if(destText){
     let vx = 0, vy = 0; origins.forEach(o => { const T = m.project(o.ll), l = Math.hypot(H.x - T.x, H.y - T.y) || 1; vx += (H.x - T.x) / l; vy += (H.y - T.y) / l; });
@@ -7432,6 +7475,40 @@ function pzFlowLabels(origins, destLL, destText, arrows){
   // místa odkud: text „za" začátek šipky (od cíle)
   origins.forEach(o => { const P = m.project(o.ll); place(P, o.ll, o.text, size, Math.atan2(P.y - H.y, P.x - H.x), 10); });
   try{ clearMapLabelSelection(); }catch(e){}
+}
+// Záběr na všechny šipky ve scéně (svazek): pod titulek a nad „Zdroj:", s místem na popisky
+// (lab); na glóbu přes těžiště na kouli. Vrátí místa za obzorem glóbu.
+function pzFlowFit(lab0){
+  let farSide = [];
+  const pts = (state.sceneArrows || []).flatMap(x => [x.tail, x.head]);
+  const bb = pzFeaturesBBox([{geometry:{coordinates: pts}}]);
+  const p0 = getFitPadding();
+  // s popisky víc místa po stranách (bubliny leží vedle bodů)
+  const pad = lab0 ? {top: p0.top + 40, bottom: p0.bottom + 40, left: p0.left + 70, right: p0.right + 70} : {...p0};
+  // titulek nahoře a „Zdroj:" dole — šipky ani popisky pod ně nepatří
+  try{ const r = pzExportFrameRect(), mr = state.map.getCanvas().getBoundingClientRect(), tb = r && pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
+    if(tb?.title) pad.top = Math.max(pad.top, Math.round(r.top - mr.top) + tb.title.y + tb.title.h + (lab0 ? 50 : 12));
+    if(tb?.source) pad.bottom = Math.max(pad.bottom, Math.round(mr.bottom - r.bottom) + (r.height - tb.source.y) + (lab0 ? 50 : 12)); }catch(e){}
+  // glóbus: rámovat na kouli (fitBounds na glóbu nechá místa za obzorem)
+  if(isGlobeProjectionOn()){ try{ resetScreenPan(); farSide = pzGlobeFitPoints(pts, lab0 ? 70 : 30); }catch(e){} }
+  else if(bb){ try{ state.screenPan = {x:0, y:0}; state.map.fitBounds(bb, {padding: pad, duration: 0}); }catch(e){} }
+  return farSide;
+}
+// Titulek / zdroj přidaný až po svazku šipek: popisky svazku, které by ležely pod ním,
+// znovu rozmístit (ostatní zůstanou, kde jsou). Vrátí počet přesunutých.
+// refit = nejdřív znovu zarámovat svazek pod titulek a rozmístit všechny jeho popisky
+// (nástroj setTitle); bez něj (psaní titulku v panelu) se kamera nehýbe.
+function pzFlowLabelsAvoidTitle(refit){
+  const m = state.map; if(!m) return 0;
+  let bx = [];
+  try{ const fr = pzExportFrameRect(), tb = fr?.width && pzTitleBoxesFor(Math.round(fr.width), Math.round(fr.height));
+    bx = [tb?.title, tb?.source].filter(Boolean).map(b => ({x0: fr.left + b.x - 8, y0: fr.top + b.y - 8, x1: fr.left + b.x + b.w + 8, y1: fr.top + b.y + b.h + 8})); }catch(e){}
+  if(!bx.length) return 0;
+  const hit = (state.mapLabels || []).filter(l => l.pzFlow && l.marker).filter(l => { const q = l.marker.getElement()?.querySelector('.map-label-bubble')?.getBoundingClientRect();
+    return q?.width && bx.some(o => q.left < o.x1 && q.right > o.x0 && q.top < o.y1 && q.bottom > o.y0); });
+  if(hit.length && refit){ pzFlowFit(true); pzFlowLabels(null, null, null, null, (state.mapLabels || []).filter(l => l.pzFlow && l.marker)); }
+  else if(hit.length) pzFlowLabels(null, null, null, null, hit);
+  return hit.length;
 }
 // Piktogramy: pozice na křivce (t = podíl délky); když by se dva překryly (víc šipek
 // z blízkých míst), posunou se po své šipce, dokud se nerozejdou.
@@ -7448,8 +7525,12 @@ function setSceneArrowData(){
   const feats = [], icons = [], placed = [], imgs = new Set();
   pzArrowPictoInit();
   const ll = p => { const q = m.unproject([p.x, p.y]); return [q.lng, q.lat]; };
+  // glóbus: konec šipky za obzorem se promítne na nesmyslné místo přivrácené strany
+  // (šipka „z Fidži" začínala v Himálaji) — takovou šipku nekreslit
+  const globe = isGlobeProjectionOn(), occl = p => { try{ return globe && !!m.transform?.isLocationOccluded?.({lng: p[0], lat: p[1]}); }catch(e){ return false; } };
   (state.sceneArrows || []).forEach(a => {
     if(!Array.isArray(a.tail) || !Array.isArray(a.head)) return;
+    if(occl(a.tail) || occl(a.head)) return;
     const sel = a.id === state.selectedSceneArrowId;
     const w = Math.max(2, Number(a.width) || 6) + (sel ? 1.5 : 0);
     const g = sceneArrowGeomPx(m.project(a.tail), m.project(a.head), w, scale, a.bend, a.gap);
@@ -10749,7 +10830,8 @@ function pzDmFit(){
   });
   // Rusko, Francie se zámořím: rámovat jen evropskou/hlavní část (body popisků), ne celý stát
   let bb = pzFeaturesBBox(feats.filter(f => f.geometry.type === 'Point' || !['RU', 'FR', 'US', 'NO', 'PT', 'ES'].includes(f.properties?.__appId)));
-  const pts = ok.filter(i => i.lngLat).map(i => i.lngLat);
+  // šipky ve scéně (svazek „z Německa, Rakouska… do Rwandy") — cíl nesmí vypadnout ze záběru
+  const pts = ok.filter(i => i.lngLat).map(i => i.lngLat).concat((state.sceneArrows || []).flatMap(a => [a.tail, a.head]).filter(p => Array.isArray(p)));
   pts.forEach(p => { if(!bb){ bb = [[p[0], p[1]], [p[0], p[1]]]; return; } bb[0][0] = Math.min(bb[0][0], p[0]); bb[0][1] = Math.min(bb[0][1], p[1]); bb[1][0] = Math.max(bb[1][0], p[0]); bb[1][1] = Math.max(bb[1][1], p[1]); });
   if(!bb) return;
   if(bb[1][0] - bb[0][0] < 0.05 && bb[1][1] - bb[0][1] < 0.05){ bb = [[bb[0][0] - 0.3, bb[0][1] - 0.2], [bb[1][0] + 0.3, bb[1][1] + 0.2]]; }
@@ -10854,6 +10936,9 @@ function pzDmPlaceLabels(){
   try{ const {w:outW, h:outH} = getExportSize(), Lg = fr && pzDmLegendLayout(document.createElement('canvas').getContext('2d'), outW, outH);
     if(Lg){ const kx = (fr.x1 - fr.x0) / outW, ky = (fr.y1 - fr.y0) / outH; leg = {x0:fr.x0 + Lg.x * kx, y0:fr.y0 + Lg.y * ky, x1:fr.x0 + (Lg.x + Lg.w) * kx, y1:fr.y0 + (Lg.y + Lg.h) * ky}; } }catch(e){}
   const ov = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  // ostatní popisky (názvy míst u šipek, ruční popisky) — číslo je nesmí zakrýt
+  const fixedLabs = (state.mapLabels || []).filter(l => !l.dm).map(l => { const b = l.marker?.getElement?.()?.querySelector('.map-label-bubble')?.getBoundingClientRect();
+    return b?.width ? {x0:b.left - mr.left - 3, y0:b.top - mr.top - 3, x1:b.right - mr.left + 3, y1:b.bottom - mr.top + 3} : null; }).filter(Boolean);
   // popisky k rozmístění (ne ty, které grafik přetáhl) s kandidátními polohami
   const work = [];
   its.forEach(i => {
@@ -10865,12 +10950,15 @@ function pzDmPlaceLabels(){
     if(city) [r + 3, r + 3 + h * 0.9].forEach(g => { const d = g * 0.75;
       cs.push([0, -(h / 2 + g)], [w / 2 + g, 0], [-(w / 2 + g), 0], [0, h / 2 + g], [w / 2 + d, -(h / 2 + d)], [-(w / 2 + d), -(h / 2 + d)], [w / 2 + d, h / 2 + d], [-(w / 2 + d), h / 2 + d]); });
     // stát / kraj: střed území, jinak kousek vedle
-    else [[0, 0], [0, -0.75], [0, 0.75], [-0.4, 0], [0.4, 0], [-0.4, -0.75], [0.4, -0.75], [-0.4, 0.75], [0.4, 0.75], [0, -1.5], [0, 1.5]].forEach(([a, b]) => cs.push([a * w, b * h]));
+    else [[0, 0], [0, -0.75], [0, 0.75], [-0.4, 0], [0.4, 0], [-0.4, -0.75], [0.4, -0.75], [-0.4, 0.75], [0.4, 0.75], [0, -1.5], [0, 1.5]]
+      // dál od středu jen jako záloha, když střed zabírá jiný popisek (název místa u šipky)
+      .concat(fixedLabs.length ? [[-1.1, 0], [1.1, 0], [0, -2.3], [0, 2.3], [-1.1, -1.5], [1.1, -1.5], [-1.1, 1.5], [1.1, 1.5]] : []).forEach(([a, b]) => cs.push([a * w, b * h]));
     const cands = cs.map((c, k) => {
       const b = {x0:p.x + c[0] - w / 2, y0:p.y + c[1] - h / 2, x1:p.x + c[0] + w / 2, y1:p.y + c[1] + h / 2};
       // pevná cena: pořadí = přednost, tečky, legenda, rámeček, kus popisku mimo území
       let sc = k * 0.5 + dots.reduce((a, o) => a + ov(b, o) * 25, 0);
       if(leg) sc += ov(b, leg) * 5;
+      sc += fixedLabs.reduce((a, o) => a + ov(b, o) * 25, 0);
       if(fr) sc += (w * h - ov(b, fr)) * 3;   // mimo rámeček exportu
       if(geom){ const pts = [[0.5, 0.5], [0.15, 0.2], [0.85, 0.2], [0.15, 0.8], [0.85, 0.8]];
         const out = pts.filter(([fx, fy]) => !pzPointInGeom(m.unproject([b.x0 + (b.x1 - b.x0) * fx, b.y0 + (b.y1 - b.y0) * fy]).toArray(), geom)).length;
@@ -19475,6 +19563,7 @@ function pzSetTitleState(patch, sync = true){
   state.pzTitle = {...pzTitleState(), ...(patch || {})};
   if(sync) pzSyncTitleUi();
   try{ pzUpdateTitlePreview(); }catch(e){}
+  try{ pzFlowLabelsAvoidTitle(); }catch(e){}
 }
 function pzTitleSnapshot(){ const s = pzTitleState(); return (s.title || s.source || s.titleOn || s.sourceOn) ? s : null; }
 
@@ -20369,6 +20458,7 @@ async function drawNativeMapFrameChunked(targetCanvas, camera, capturedGhost, ca
     });
     try{ exportMap.setPixelRatio?.(1); }catch(e){}
     makeStyleCheckLenient(exportMap);
+    pzBindArrowPictoMissing(exportMap);
 
     state.map = exportMap;
     state.originalRoadWidthPaints = {};
@@ -20625,6 +20715,7 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
       });
       try{ exportMap.setPixelRatio?.(camera.pixelRatio); }catch(e){}
       makeStyleCheckLenient(exportMap);
+      pzBindArrowPictoMissing(exportMap);
       try{ exportMap.on('style.load', () => applyGlobeProjection(exportMap)); if(exportMap.isStyleLoaded?.()) applyGlobeProjection(exportMap); }catch(e){}
       freshlyCreated = true;
       setStatus(t('Načítám nativní detail exportu…'));
@@ -24222,6 +24313,7 @@ Object.assign(I18N, {
   "Vybráno {0} — Delete smaže, tažením posuneš všechny, Esc zruší výběr.": {cs:"Vybráno {0} — Delete smaže, tažením posuneš všechny, Esc zruší výběr.",sk:"Vybraté {0} — Delete zmaže, ťahaním posunieš všetky, Esc zruší výber.",bg:"Избрани {0} — Delete изтрива, с влачене местиш всички, Esc отменя избора.",hr:"Odabrano {0} — Delete briše, povlačenjem pomičeš sve, Esc poništava odabir.",ro:"Selectate {0} — Delete șterge, prin tragere le muți pe toate, Esc anulează selecția.",en:"{0} selected — Delete removes them, drag to move them all, Esc clears the selection."},
   "Výběr zrušen.": {cs:"Výběr zrušen.",sk:"Výber zrušený.",bg:"Изборът е отменен.",hr:"Odabir poništen.",ro:"Selecție anulată.",en:"Selection cleared."},
   "Smazáno {0} položek.": {cs:"Smazáno {0} položek.",sk:"Zmazaných {0} položiek.",bg:"Изтрити {0} елемента.",hr:"Obrisano stavki: {0}.",ro:"Șterse {0} elemente.",en:"Deleted {0} items."},
+  "Na glóbu jsou místa na odvrácené straně Země: {0}. Vypni glóbus.": {cs:"Na glóbu jsou místa na odvrácené straně Země: {0}. Vypni glóbus.",sk:"Na glóbuse sú miesta na odvrátenej strane Zeme: {0}. Vypni glóbus.",bg:"На глобуса има места от обратната страна на Земята: {0}. Изключи глобуса.",hr:"Na globusu su mjesta na suprotnoj strani Zemlje: {0}. Isključi globus.",ro:"Pe glob există locuri pe partea opusă a Pământului: {0}. Dezactivează globul.",en:"Some places are on the far side of the globe: {0}. Turn the globe off."},
   "Posunuto {0} položek.": {cs:"Posunuto {0} položek.",sk:"Posunutých {0} položiek.",bg:"Преместени {0} елемента.",hr:"Pomaknuto stavki: {0}.",ro:"Mutate {0} elemente.",en:"Moved {0} items."},
   "Barva ikonky": {cs:"Barva ikonky",sk:"Farba ikonky",bg:"Цвят на иконата",hr:"Boja ikone",ro:"Culoarea pictogramei",en:"Icon colour"},
   "Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).": {cs:"Barva platí pro vestavěné ikony (auto, kamion, vlak, loď, letadlo).",sk:"Farba platí pre vstavané ikony (auto, kamión, vlak, loď, lietadlo).",bg:"Цветът важи за вградените икони (кола, камион, влак, кораб, самолет).",hr:"Boja vrijedi za ugrađene ikone (auto, kamion, vlak, brod, avion).",ro:"Culoarea se aplică pictogramelor integrate (mașină, camion, tren, vapor, avion).",en:"The colour applies to built-in icons (car, truck, train, boat, plane)."},
@@ -27248,23 +27340,24 @@ function pzColorFromName(v){
       try{ window.__pzPushUndo?.(); }catch(e){}
       const col = (color != null && color !== '' && pzColorFromName(color)) || undefined;
       const items = origins.map(o => createSceneArrow(o.p.ll, dest.ll, {color: col, width, icon: ic, iconSize, bend: 0, dot: true, silent: true})).filter(Boolean);
-      if(fit !== false){
-        const pts = (state.sceneArrows || []).flatMap(x => [x.tail, x.head]);
-        const bb = pzFeaturesBBox([{geometry:{coordinates: pts}}]);
-        const lab0 = labels !== false && labels != null && labels !== 0, p0 = getFitPadding();
-        // s popisky víc místa po stranách (bubliny leží vedle bodů)
-        const pad = lab0 ? {top: p0.top + 40, bottom: p0.bottom + 40, left: p0.left + 70, right: p0.right + 70} : p0;
-        if(bb){ try{ state.screenPan = {x:0, y:0}; state.map.fitBounds(bb, {padding: pad, duration: 0}); }catch(e){} }
-      }
+      let farSide = [];
+      if(fit !== false) farSide = pzFlowFit(labels !== false && labels != null && labels !== 0);
       const lab = labels !== false && labels != null && labels !== 0;
       items.forEach(a => { a.hdot = true; });
       pzFanSceneArrows(items, {curve, gap: 14});
       redrawSceneArrows();
       try{ clearSceneArrowSelection(); }catch(e){}
-      if(lab) pzFlowLabels(origins.map((o, i) => ({ll: o.p.ll, text: Array.isArray(labels) && labels[i] ? String(labels[i]) : o.q})), dest.ll,
+      // místa za obzorem glóbu bez popisku (ležel by na úplně jiném místě zeměkoule)
+      const onFar = ll => farSide.some(p => p[0] === ll[0] && p[1] === ll[1]);
+      if(lab) pzFlowLabels(origins.map((o, i) => ({ll: o.p.ll, text: Array.isArray(labels) && labels[i] ? String(labels[i]) : o.q})).filter(o => !onFar(o.ll)), dest.ll,
         toLabel === false ? null : (typeof toLabel === 'string' && toLabel.trim() ? toLabel.trim() : String(to)), items);
       scheduleSceneLayerRedraw('flow-arrows');
-      return {ok:true, arrows: items.length, to: dest.name, from: origins.map(o => o.p.name), ...(ic ? {icon: ic} : {}), ...(notFound.length ? {notFound} : {})};
+      // Na glóbu nejde ukázat místa na opačných stranách Země (Fidži a Česko) — šipka
+      // by končila na obzoru a popisek by ležel jinde. Grafik se to musí dozvědět.
+      const far = farSide.length ? origins.filter(o => farSide.some(p => p[0] === o.p.ll[0] && p[1] === o.p.ll[1])).map(o => o.q) : [];
+      if(farSide.length) setStatus(t('Na glóbu jsou místa na odvrácené straně Země: {0}. Vypni glóbus.', far.join(', ') || String(to)), 'error');
+      return {ok:true, arrows: items.length, to: dest.name, from: origins.map(o => o.p.name), ...(ic ? {icon: ic} : {}), ...(notFound.length ? {notFound} : {}),
+        ...(farSide.length ? {farSide: far.length ? far : [String(to)], warning: 'Na glóbu jsou na odvrácené straně Země: ' + (far.join(', ') || to) + ' — šipky z nich nejsou vidět. Vypni glóbus (setGlobe on:false) a zavolej flowArrows znovu, nebo místa rozděl.'} : {})};
     },
 
     // ---- měřená vzdálenost mezi dvěma místy ---------------------------------
@@ -28035,8 +28128,16 @@ function pzColorFromName(v){
       else if(/^(title|titulek|nazev|nadpis)$/.test(offK)) p.titleOn = false;
       else if(/^(source|zdroj)$/.test(offK)) p.sourceOn = false;
       pzSetTitleState(p);
+      try{ pzFlowLabelsAvoidTitle(true); }catch(e){}
       const r = pzTitleState();
-      return {ok:true, title: r.titleOn ? r.title : null, source: r.sourceOn ? r.source : null, style: r.style};
+      // titulek přidaný až po popiscích (svazek šipek, místa) je může zakrýt — říct to
+      const under = [];
+      try{ const fr = pzExportFrameRect(), tb = fr?.width && pzTitleBoxesFor(Math.round(fr.width), Math.round(fr.height));
+        const bx = [tb?.title, tb?.source].filter(Boolean).map(b => ({x0: fr.left + b.x, y0: fr.top + b.y, x1: fr.left + b.x + b.w, y1: fr.top + b.y + b.h}));
+        (state.mapLabels || []).forEach(l => { const q = l.marker?.getElement?.()?.querySelector('.map-label-bubble')?.getBoundingClientRect();
+          if(q?.width && bx.some(o => q.left < o.x1 && q.right > o.x0 && q.top < o.y1 && q.bottom > o.y0)) under.push(String(l.text || '').trim()); }); }catch(e){}
+      return {ok:true, title: r.titleOn ? r.title : null, source: r.sourceOn ? r.source : null, style: r.style,
+        ...(under.length ? {warning: 'Pod titulkem / zdrojem leží popisky: ' + under.join(', ') + ' — zavolej fitScene (zarámuje scénu pod titulek) nebo popisky posuň.'} : {})};
     },
     // Název exportovaného souboru podle redakce: mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD.
     setExportName({popis, nick, porad, oprava} = {}){
