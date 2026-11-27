@@ -361,6 +361,7 @@ input[type=color]:hover{border-color:var(--accent)}
 .safe-guides .sg-rect{position:absolute;border:1px solid rgba(255,255,255,.72)}
 .safe-guides .sg-action{top:3.5%;left:3.5%;right:3.5%;bottom:3.5%}
 .safe-guides .sg-title{top:5%;left:5%;right:5%;bottom:5%;border-style:dashed;border-color:rgba(255,214,0,.92)}
+.safe-guides .sg-logo{position:absolute;border:1px solid rgba(240,59,59,.9);background:repeating-linear-gradient(45deg,rgba(240,59,59,.38) 0 6px,transparent 6px 12px)}
 .safe-guides .sg-third{position:absolute;background:rgba(255,255,255,.2)}
 .safe-guides .sg-third-v1{left:33.33%;top:5%;bottom:5%;width:1px}
 .safe-guides .sg-third-v2{left:66.66%;top:5%;bottom:5%;width:1px}
@@ -4597,7 +4598,7 @@ function drawMapSourceWatermark(ctx, w, h, measureOnly){
   const boxW = textW + padX * 2;
   const boxH = Math.round(fontSize + padY * 2 + 2 * scale);
   const x = Math.round(w - margin - boxW);
-  const y = Math.round(h - marginY - boxH);
+  const y = Math.round(pzAvoidLogos({x, y: h - marginY - boxH, w: boxW, h: boxH}, w, h, Math.round(10 * scale)).y);
   if(measureOnly){ ctx.restore(); return {x, y, w: boxW, h: boxH}; }
   ctx.shadowColor = 'rgba(0,0,0,.35)';
   ctx.shadowBlur = 10 * scale;
@@ -7408,12 +7409,12 @@ function pzFlowLabels(origins, destLL, destText, arrows, redo){
   const cap = s0 => { s0 = String(s0 || '').trim(); return s0.charAt(0).toUpperCase() + s0.slice(1); };
   const cr = m.getCanvas().getBoundingClientRect();
   let fr = null;
-  // bezpečná zóna: 5 % od okraje rámu
-  try{ const r = pzExportFrameRect(); if(r && r.width){ const ix = r.width * 0.05, iy = r.height * 0.05; fr = {x0: r.left - cr.left + ix, y0: r.top - cr.top + iy, x1: r.right - cr.left - ix, y1: r.bottom - cr.top - iy}; } }catch(e){}
+  // bezpečná zóna titulků (TV 5 % od okraje rámu, na výšku zóny sítí)
+  try{ const r = pzExportFrameRect(); if(r && r.width){ const z = pzDmSafeRect(r.width, r.height); fr = {x0: r.left - cr.left + z.l, y0: r.top - cr.top + z.t, x1: r.left - cr.left + z.r, y1: r.top - cr.top + z.b}; } }catch(e){}
   // titulek a „Zdroj:" v rámečku — popisek pod nimi by v exportu nebyl vidět
   const tbx = [];
-  try{ const r = pzExportFrameRect(), tb = r?.width && pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
-    [tb?.title, tb?.source].forEach(b => { if(b) tbx.push({x0: r.left - cr.left + b.x, y0: r.top - cr.top + b.y, x1: r.left - cr.left + b.x + b.w, y1: r.top - cr.top + b.y + b.h}); }); }catch(e){}
+  // (i legendy, grafy a zóny log — všechno, co se kreslí přes mapu)
+  try{ pzOverlayRectsPage().forEach(b => tbx.push({x0: b.x0 - cr.left, y0: b.y0 - cr.top, x1: b.x1 - cr.left, y1: b.y1 - cr.top})); }catch(e){}
   const pts = [];   // středové čáry všech šipek po 6 px (+ piktogramy leží na nich)
   (state.sceneArrows || []).forEach(a => {
     const g = sceneArrowGeomPx(m.project(a.tail), m.project(a.head), a.width, 1, a.bend, a.gap); if(!g) return;
@@ -7450,7 +7451,10 @@ function pzFlowLabels(origins, destLL, destText, arrows, redo){
   const place = (P, ll, text, sz, base, near, it0) => {
     const it = it0 || addMapLabelAt({lng: ll[0], lat: ll[1]}, {text: cap(text), size: sz, side: 'none', baseZoom: null, silent: true});
     if(!it) return;
-    it.pzFlow = {base, near};
+    it.pzFlow = {base, near, size: it0?.pzFlow?.size || sz};
+    // velikost v poměru k výřezu (9:16 je na obrazovce úzký — stejné px by v exportu byla 2–3× větší)
+    const sz1 = Math.max(10, Math.round(it.pzFlow.size * pzDmLabelScale()));
+    if(it.pzFlow.size && it.size !== sz1){ it.size = sz1; try{ applyMapLabelStyle(it.marker.getElement(), it); }catch(e){} }
     const bub = it.marker?.getElement?.()?.querySelector('.map-label-bubble'); if(!bub) return;
     const w = bub.offsetWidth, h = bub.offsetHeight;
     let best = null;
@@ -10901,7 +10905,10 @@ function pzDmSyncLabels(){
   const have = (state.mapLabels || []).filter(l => l.dm);
   have.filter(l => !want.has(l.dm)).forEach(l => { try{ deleteMapLabel(l.id, true); }catch(e){} });
   const n = items.length, cities = items.some(i => i.kind === 'city');
-  const size = Math.max(12, Math.round((cities ? (n > 20 ? 14 : n > 10 ? 16 : n > 5 ? 18 : 20) : (n > 20 ? 15 : n > 10 ? 17 : n > 5 ? 19 : 22)) * pzDmLabelScale()));
+  // fitK: zmenšení, když se čísla nevešla bez překryvu (pzDmPlaceLabels); nový záběr i jiný
+  // formát výstupu (zpět na 16:9) začne znovu od 1
+  try{ const {w: ow, h: oh} = getExportSize(), key = ow + 'x' + oh; if(s && s.fitKey !== key){ s.fitKey = key; s.fitK = 1; } }catch(e){}
+  const size = Math.max(8, Math.round((cities ? (n > 20 ? 14 : n > 10 ? 16 : n > 5 ? 18 : 20) : (n > 20 ? 15 : n > 10 ? 17 : n > 5 ? 19 : 22)) * pzDmLabelScale() * (state.dataMap?.fitK || 1)));
   const haveBy = new Map(have.filter(l => want.has(l.dm)).map(l => [l.dm, l]));
   // automaticky velká čísla (grafik je neměnil) srovnat na velikost pro současný výřez
   haveBy.forEach(l => { if(l.dmAuto && l.dmAuto === l.size && l.size !== size){ try{ updateMapLabel(l.id, {size}); l.dmAuto = size; }catch(e){} } });
@@ -10963,6 +10970,7 @@ function pzDmPlaceLabels(){
   try{ const {w:outW, h:outH} = getExportSize(), Lg = fr && pzDmLegendLayout(document.createElement('canvas').getContext('2d'), outW, outH);
     if(Lg){ const kx = (fr.x1 - fr.x0) / outW, ky = (fr.y1 - fr.y0) / outH; leg = {x0:fr.x0 + Lg.x * kx, y0:fr.y0 + Lg.y * ky, x1:fr.x0 + (Lg.x + Lg.w) * kx, y1:fr.y0 + (Lg.y + Lg.h) * ky}; } }catch(e){}
   const ov = (a, b) => Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
+  let over = []; try{ over = pzOverlayRectsPage().map(o => ({x0:o.x0 - mr.left, y0:o.y0 - mr.top, x1:o.x1 - mr.left, y1:o.y1 - mr.top})); }catch(e){}
   // ostatní popisky (názvy míst u šipek, ruční popisky) — číslo je nesmí zakrýt
   const fixedLabs = (state.mapLabels || []).filter(l => !l.dm).map(l => { const b = l.marker?.getElement?.()?.querySelector('.map-label-bubble')?.getBoundingClientRect();
     return b?.width ? {x0:b.left - mr.left - 3, y0:b.top - mr.top - 3, x1:b.right - mr.left + 3, y1:b.bottom - mr.top + 3} : null; }).filter(Boolean);
@@ -10985,6 +10993,7 @@ function pzDmPlaceLabels(){
       // pevná cena: pořadí = přednost, tečky, legenda, rámeček, kus popisku mimo území
       let sc = k * 0.5 + dots.reduce((a, o) => a + ov(b, o) * 25, 0);
       if(leg) sc += ov(b, leg) * 5;
+      over.forEach(o => { sc += ov(b, o) * 5; });   // titulek, zdroj, graf, zóny log
       sc += fixedLabs.reduce((a, o) => a + ov(b, o) * 25, 0);
       if(fr) sc += (w * h - ov(b, fr)) * 3;   // mimo rámeček exportu
       if(geom){ const pts = [[0.5, 0.5], [0.15, 0.2], [0.85, 0.2], [0.15, 0.8], [0.85, 0.8]];
@@ -11005,16 +11014,43 @@ function pzDmPlaceLabels(){
   const r1 = solve([...work].sort((x, y) => (x.a - y.a) || byVal(x, y)));
   const big = x => x.a < 0 ? -Infinity : -x.a;   // města napřed, pak území od největšího
   const r2 = solve([...work].sort((x, y) => (big(x) - big(y)) || byVal(x, y)));
-  (r2.tot < r1.tot ? r2 : r1).pick.forEach((best, x) => {
+  const win = r2.tot < r1.tot ? r2 : r1;
+  win.pick.forEach((best, x) => {
     const off = [Math.round(best.c[0]), Math.round(best.c[1])], l = x.l;
     if(!l.offset || l.offset[0] !== off[0] || l.offset[1] !== off[1]){ l.offset = off; try{ l.marker.setOffset(off); }catch(e){} }
   });
+  // čísla se ani tak nevešla (kraje ČR v úzkém 9:16) → všechna automatická o kus menší a znovu
+  const bs = [...win.pick.values()].map(p => p.b);
+  const clash = bs.some((a, i) => bs.some((b, j) => j > i && ov(a, b) > 4));
+  if(clash && (s.fitK || 1) > 0.52 && !state._exporting){ s.fitK = Math.max(0.5, (s.fitK || 1) * 0.88); setTimeout(() => { try{ pzDmSyncLabels(); }catch(e){} }, 0); }
 }
 
 // ---- legenda --------------------------------------------------------------------------
 // Bezpečná zóna titulků: TV 5 % od kraje; na výšku (sítě) jako vodítka v rámečku.
 function pzDmSafeRect(w, h){
   return w < h ? {l:0.06 * w, r:w - 0.14 * w, t:0.14 * h, b:h - 0.22 * h} : {l:0.05 * w, r:w - 0.05 * w, t:0.05 * h, b:h - 0.05 * h};
+}
+// ---- Vyhrazené zóny log (logo stanice „Nova" a logo „TN") ----------------------------
+// ZDE SE ZADÁVAJÍ: obdélníky ve zlomcích výstupu {x, y, w, h} (0–1, od levého horního rohu),
+// zvlášť pro 16:9 (TV) a 9:16 (sítě). Výchozí PRÁZDNÉ — rozměry pošle šéf grafiky.
+// Příklad: '16:9': [{x:0.82, y:0.04, w:0.14, h:0.11}]  (logo vpravo nahoře)
+// Neprázdné: v náhledu bezpečných zón šrafované (do exportu nikdy), titulek, zdroj, legendy,
+// grafy, popisky, Zarámovat scénu i pzLayoutAudit je berou jako zakázané místo.
+const PZ_LOGO_ZONES = {'16:9': [], '9:16': []};
+// Zóny pro daný výstup v px (na výšku = sada 9:16, jinak 16:9).
+function pzLogoRects(w, h){
+  const Z = state.logoZones || PZ_LOGO_ZONES, list = (w < h ? Z['9:16'] : Z['16:9']) || [];
+  return list.filter(r => r && r.w > 0 && r.h > 0).map(r => ({x: r.x * w, y: r.y * h, w: r.w * w, h: r.h * h}));
+}
+const pzRectHit = (a, b, g = 0) => !!a && !!b && a.x < b.x + b.w + g && b.x < a.x + a.w + g && a.y < b.y + b.h + g && b.y < a.y + a.h + g;
+// Box (px výstupu) mimo logo: nahoře se posune pod zónu, dole nad ni (vodorovně se nehýbe).
+function pzAvoidLogos(b, w, h, g = 0){
+  if(!b) return b;
+  for(let i = 0; i < 4; i++){
+    const z = pzLogoRects(w, h).find(z => pzRectHit(b, z, g)); if(!z) break;
+    b.y = (b.y + b.h / 2 < h / 2) ? z.y + z.h + g : z.y - g - b.h;
+  }
+  return b;
 }
 // Rozměry a poloha legendy ve výstupu (px výstupu). drag = {x, y} střed při tažení.
 function pzDmLegendLayout(ctx, w, h){
@@ -11047,6 +11083,7 @@ function pzDmLegendLayout(ctx, w, h){
     if(tb?.source && corner === 'bl') y = Math.min(y, tb.source.y - g - L.h);
     if(tb?.title && corner === 'tl') y = Math.max(y, tb.title.y + tb.title.h + g);
   }
+  if(!s.legend.drag) y = pzAvoidLogos({x, y, w:L.w, h:L.h}, w, h, 14 * k).y;   // logo stanice v rohu
   if(s.legend.drag){ x = s.legend.drag.x * w - L.w / 2; y = s.legend.drag.y * h - L.h / 2; }
   L.x = Math.round(Math.max(0, Math.min(w - L.w, x))); L.y = Math.round(Math.max(0, Math.min(h - L.h, y)));
   return L;
@@ -11399,19 +11436,20 @@ function pzBarLayouts(ctx, w, h){
 // místo v bezpečné zóně (vedle, nad, pod); k místu pak vede tenká čára. Ručně posunuté
 // grafy zůstávají, kde je grafik nechal.
 function pzBarAvoidOverlaps(Ls, w, h){
-  if(Ls.length < 2) return;
+  if(Ls.length < 2 && !pzLogoRects(w, h).length) return;
   const safe = pzDmSafeRect(w, h), placed = [];
   const hit = (a, b, g) => a.x < b.x + b.w + g && b.x < a.x + a.w + g && a.y < b.y + b.h + g && b.y < a.y + a.h + g;
   const move = (L, x, y) => { const dx = x - L.x, dy = y - L.y; L.x = x; L.y = y; L.baseY += dy; L.cols.forEach(c => { c.x += dx; c.cx += dx; }); };
   const order = Ls.map((L, i) => ({L, i, fixed: Array.isArray(L.c.off) && (L.c.off[0] || L.c.off[1])})).sort((a, b) => (b.fixed - a.fixed) || ((a.L.anchor?.[0] ?? 0) - (b.L.anchor?.[0] ?? 0)));
   // místa ostatních grafů (tečka, kam vede čára) panel taky nesmí zakrýt
   const dots = Ls.filter(L => L.anchor).map(L => { const r = 9 * L.k; return {L, x:L.anchor[0] - r, y:L.anchor[1] - r, w:2 * r, h:2 * r}; });
-  const blocked = (L, b, g) => placed.some(P => hit(b, P, g)) || dots.some(d => d.L !== L && hit(b, d, 0));
+  const logos = pzLogoRects(w, h);
+  const blocked = (L, b, g) => placed.some(P => hit(b, P, g)) || dots.some(d => d.L !== L && hit(b, d, 0)) || logos.some(z => hit(b, z, g));
   order.forEach(({L, fixed}) => {
     const g = Math.round(10 * L.k);
     if(!fixed && blocked(L, L, g)){
       const cand = [];
-      [...placed, ...dots.filter(d => d.L !== L)].forEach(P => { cand.push([P.x + P.w + g, L.y], [P.x - L.w - g, L.y], [L.x, P.y - L.h - g], [L.x, P.y + P.h + g]); });
+      [...placed, ...logos, ...dots.filter(d => d.L !== L)].forEach(P => { cand.push([P.x + P.w + g, L.y], [P.x - L.w - g, L.y], [L.x, P.y - L.h - g], [L.x, P.y + P.h + g]); });
       const ok = ([x, y]) => x >= safe.l - 0.5 && y >= Math.min(L.y, safe.t) - 0.5 && x + L.w <= safe.r + 0.5 && y + L.h <= safe.b + 0.5 && !blocked(L, {x, y, w:L.w, h:L.h}, g - 1);
       const best = cand.filter(ok).sort((a, b) => Math.hypot(a[0] - L.x, a[1] - L.y) - Math.hypot(b[0] - L.x, b[1] - L.y))[0];
       if(best) move(L, Math.round(best[0]), Math.round(best[1]));
@@ -13153,6 +13191,14 @@ function runBrowserSelfcheck(){
 }
 
 // ===== SAFE ZONES (title/action-safe guides) — PREVIEW ONLY, never exported =====
+// Vyhrazené zóny log (PZ_LOGO_ZONES) jako šrafované obdélníky — jen náhled, do exportu nejdou.
+function pzRenderLogoGuides(){
+  const g = $('exportSafeGuides'); if(!g) return;
+  g.querySelectorAll('.sg-logo').forEach(x => x.remove());
+  const {w, h} = getExportSize();
+  pzLogoRects(w, h).forEach(z => { const d = document.createElement('div'); d.className = 'sg-logo'; d.title = t('Vyhrazeno pro logo');
+    Object.assign(d.style, {left: z.x / w * 100 + '%', top: z.y / h * 100 + '%', width: z.w / w * 100 + '%', height: z.h / h * 100 + '%'}); g.appendChild(d); });
+}
 function safeGuidesVisible(){ const g = $('exportSafeGuides'); return !!(g && g.style.display === 'block'); }
 function setSafeGuides(on){
   const g = $('exportSafeGuides'); if(!g) return;
@@ -14498,7 +14544,7 @@ function applyMapLabelStyle(el, data){
   if(!el || !data) return;
   const bubble = el.querySelector('.map-label-bubble');
   if(bubble) bubble.textContent = data.text || 'Popisek';
-  const size = Math.max(12, parseInt(data.size || 28, 10));
+  const size = Math.max(8, parseInt(data.size || 28, 10));
   const side = pzLabelSide(data.side);
   el.dataset.side = side;
   el.dataset.lstyle = ['navy','red','dark'].includes(data.style) ? data.style : 'classic';
@@ -14752,7 +14798,7 @@ function startMapLabelInlineEdit(id){
 
 function addMapLabelAt(lngLatObj, options={}){
   const textVal = (options.text != null ? String(options.text) : ($('mapLabelText')?.value || '')).trim() || 'Popisek';
-  const sizeVal = Math.max(12, Math.min(160, parseInt(options.size ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
+  const sizeVal = Math.max(8, Math.min(160, parseInt(options.size ?? state.mapLabelGlobalSize ?? $('mapLabelSize')?.value ?? '28', 10) || 28));
   const sideVal = pzLabelSide(options.side ?? $('mapLabelSide')?.value);
   const styleVal = String(options.style ?? $('mapLabelStyle')?.value ?? 'classic');
   const ll = normalizeLngLatInput(lngLatObj);
@@ -14848,11 +14894,12 @@ function updateMapLabel(id, updates={}){
   if(!item) return;
   if(updates.text != null) item.text = updates.text;
   if(updates.size != null){
-    item.size = Math.max(12, Math.min(160, parseInt(updates.size, 10) || 28));
+    item.size = Math.max(8, Math.min(160, parseInt(updates.size, 10) || 28));
     // nová velikost platí v aktuálním záběru (viz applyMapLabelSizeToAll)
     const z = state.map?.getZoom?.(); if(item.baseZoom != null && z != null){ item.baseZoom = z; pzApplyLabelZoom(item, z); }
   }
   if(updates.side != null) item.side = pzLabelSide(updates.side);
+  if(updates.side != null || updates.size != null) item.pzAuto = null;   // ruční volba grafika platí, rozestupování začne od ní
   if(updates.style != null) item.style = String(updates.style);
   applyMapLabelStyle(item.marker?.getElement?.(), item);
   renderMapLabelList();
@@ -19414,6 +19461,8 @@ function pzFitScene(opts){
   if(!m || !pts.length){ setStatus(t('Ve scéně není co zarámovat.'), 'error'); return false; }
   const bb = pzFeaturesBBox([{geometry:{coordinates: pts}}]); if(!bb) return false;
   const pad = getFitPadding(), r = pzExportFrameRect();
+  // nový záběr: čísla datové mapy zkusit znovu v plné velikosti (zmenší se, jen když se nevejdou)
+  if(state.dataMap?.fitK && state.dataMap.fitK < 1){ state.dataMap.fitK = 1; try{ pzDmLabelsResizeSoon(); }catch(_e){} }
   // bezpečná zóna (title-safe) uvnitř rámu
   const safe = r ? Math.round(Math.min(r.width, r.height) * 0.05) : 0;
   const padding = pzFitOverlayPadding({top: pad.top + safe, right: pad.right + safe, bottom: pad.bottom + safe, left: pad.left + safe}, bb);
@@ -19431,12 +19480,16 @@ function pzFitScene(opts){
     return Math.max(0, ...pzBarLayouts(document.createElement('canvas').getContext('2d'), w, h).map(L => L.need || 0)) * fr.width / w; }catch(_e){ return 0; } };
   const check = () => {
     if(state.map !== m) return;
+    try{ if(state.pzSections?.items?.length) pzRedrawSections(); }catch(_e){}   // termíny úseků pro nový záběr
+    try{ pzDeclutterLabels(); }catch(_e){}   // popisky blízkých míst napřed rozestoupit (strana, velikost)
+    try{ const fl = (state.mapLabels || []).filter(l => l.pzFlow && l.marker); if(fl.length) pzFlowLabels(null, null, null, null, fl); }catch(_e){}   // popisky svazku šipek pro nový záběr
     const out = pzObjectsOutsideFrame(), fr = pzExportFrameRect(), need = fr ? barNeed(fr) : 0;
     // legenda (úseky, datová mapa) v rohu nesmí zakrýt úsek ani bod scény — odsadit stranu,
     // kde stačí menší posun (u D1 s legendou vlevo nahoře ležel začátek úseku pod legendou)
-    // + popisky/ikonky schované pod titulkem nebo zdrojem (jedna strana = největší přesah)
-    const under = fr && !single ? pzSceneUnderLegends(fr).concat(pzSecLabelsOutside(fr), pzMaxPerSide(pzObjectsUnderTitle(fr))) : [];
-    if((!out.length && !need && !under.length) || ++tries > 3 || single || !fr){ pzMarkOutsideObjects(); return; }
+    // + popisky/ikonky pod titulkem nebo zdrojem (jedna strana = největší přesah); mimo title-safe až když nic
+    // nepřesahuje rámeček (jinak by se přesah započítal dvakrát a záběr zbytečně oddálil)
+    const under = fr && !single ? pzSceneUnderLegends(fr).concat(pzSecLabelsOutside(fr), pzMaxPerSide(pzObjectsUnderTitle(fr)), out.length ? [] : pzObjectsOutsideSafe(fr), pzMapTextsUnderOverlays(fr)) : [];
+    if((!out.length && !need && !under.length) || ++tries > 3 || single || !fr){ try{ pzDeclutterLabels(); }catch(_e){} pzMarkOutsideObjects(); return; }
     // o kousek víc, než chybí — fitBounds zároveň oddálí, takže přesně „need" nestačí
     padding.top += need ? need * 1.15 + 6 : 0;
     under.forEach(u => { padding[u.side] += u.px; });
@@ -19487,7 +19540,7 @@ function pzSceneUnderLegends(fr){
   try{
     const ctx = document.createElement('canvas').getContext('2d');
     const Ld = pzDmLegendLayout(ctx, outW, outH), Ls = pzSecLegendLayout(ctx, outW, outH, Ld);
-    boxes = [Ld, Ls].filter(L => L && L.w > 0 && L.h > 0);
+    boxes = [Ld, Ls].filter(L => L && L.w > 0 && L.h > 0).concat(pzLogoRects(outW, outH));   // ani pod logem stanice
   }catch(_e){ return []; }
   if(!boxes.length) return [];
   const c = m.getCanvas().getBoundingClientRect(), g = 10;
@@ -19507,18 +19560,22 @@ function pzSceneUnderLegends(fr){
 // „Opatovice nad Labem" uříznutý na kraji. Odhad rámečku textu podle první kotvy
 // (tak ho MapLibre bez kolize položí) → o kolik px odsadit kterou stranu.
 function pzSecLabelsOutside(fr){
-  const m = state.map; if(!m || !fr?.width || !state.pzSections?.items?.length) return [];
+  if(!fr?.width) return [];
+  const g = 6, need = {left:0, right:0, top:0, bottom:0};
+  pzSecLabelBoxes().forEach(({l, t, w, h}) => {
+    need.left = Math.max(need.left, fr.left + g - l); need.right = Math.max(need.right, l + w - (fr.right - g));
+    need.top = Math.max(need.top, fr.top + g - t); need.bottom = Math.max(need.bottom, t + h - (fr.bottom - g));
+  });
+  return Object.entries(need).filter(([, v]) => v > 0.5).map(([side, v]) => ({side, px: Math.ceil(v)}));
+}
+// Odhad rámečků textů úseků (názvy míst, termíny) v px stránky — i pro pzLayoutAudit.
+function pzSecLabelBoxes(){
+  const m = state.map; if(!m || !state.pzSections?.items?.length) return [];
   let feats = [];
   try{ feats = pzSecFeatures().features.filter(f => f.properties.kind === 'misto' || f.properties.kind === 'popis'); }catch(_e){ return []; }
   if(!feats.length) return [];
-  const c = m.getCanvas().getBoundingClientRect(), ctx = document.createElement('canvas').getContext('2d'), g = 6;
-  const need = {left:0, right:0, top:0, bottom:0};
-  // titulek a „Zdroj:" v rámečku — termín „otevřeno 27. 11. 2026" u D11 ležel celý pod titulkem
-  let T = null, S = null;
-  try{ const tb = pzTitleBoxesFor(Math.round(fr.width), Math.round(fr.height));
-    const box = b => b && b.w > 0 && b.h > 0 ? {l: fr.left + b.x, t: fr.top + b.y, r: fr.left + b.x + b.w, b: fr.top + b.y + b.h} : null;
-    T = box(tb?.title); S = box(tb?.source); }catch(_e){}
-  feats.forEach(f => {
+  const c = m.getCanvas().getBoundingClientRect(), ctx = document.createElement('canvas').getContext('2d');
+  return feats.map(f => {
     const P = f.properties, size = P.kind === 'misto' ? 17 : 22, maxW = size * 10;   // text-max-width 10 em
     ctx.font = `700 ${size}px "Noto Sans", Arial, sans-serif`;
     const tw = ctx.measureText(String(P.text || '')).width, n = Math.max(1, Math.ceil(tw / maxW)), w = tw / n * 1.08, h = size * 1.2 * n;   // MapLibre láme řádky vyváženě
@@ -19527,13 +19584,143 @@ function pzSecLabelsOutside(fr){
     let l = x - w / 2, t = y - h / 2;
     if(anchor === 'bottom') t = y - off - h; else if(anchor === 'top') t = y + off;
     else if(anchor === 'left') l = x + off; else if(anchor === 'right') l = x - off - w;
-    need.left = Math.max(need.left, fr.left + g - l); need.right = Math.max(need.right, l + w - (fr.right - g));
-    need.top = Math.max(need.top, fr.top + g - t); need.bottom = Math.max(need.bottom, t + h - (fr.bottom - g));
-    const hit = q => q && l < q.r && l + w > q.l && t < q.b && t + h > q.t;
-    if(hit(T)) need.top = Math.max(need.top, T.b + g - t);
-    else if(hit(S)) need.bottom = Math.max(need.bottom, t + h - (S.t - g));
+    return {l, t, w, h, text: String(P.text || ''), kind: P.kind};
   });
-  return Object.entries(need).filter(([, v]) => v > 0.5).map(([side, v]) => ({side, px: Math.ceil(v)}));
+}
+// ---- Kontrola rozvržení grafiky („ať se tam všechno vejde, nic se nepřekrývá") --------
+// Všechny prvky, které se kreslí do exportu, v px výstupu w×h: titulek, zdroj, „Zdroj mapy",
+// legendy, grafy, popisky, ikonky, piktogramy šipek, vozidla, délka trasy, texty úseků.
+// Rozměry počítají tytéž funkce, které prvky kreslí (náhled = export); prvky stránky
+// (popisky, ikonky) se přepočtou z rámečku výřezu. Vrátí {items, overlaps, outside, safe, logos}.
+function pzLayoutAudit(w, h){
+  if(!w || !h){ const s = getExportSize(); w = s.w; h = s.h; }
+  const ctx = document.createElement('canvas').getContext('2d'), items = [];
+  const add = (kind, id, b, more) => { if(b && b.w > 0.5 && b.h > 0.5) items.push({kind, id: String(id ?? kind), x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.w), h: Math.round(b.h), ...(more || {})}); };
+  let tb = null; try{ tb = pzTitleBoxesFor(w, h); }catch(_e){}
+  // „Zdroj:" stojí v jednom řádku se „Zdrojem mapy" na okraji action-safe (jako pilulka)
+  add('title', 'title', tb?.title); add('source', 'source', tb?.source, {actionSafe: true});
+  try{ if(!isTransparentExportOn()) add('mapsource', 'mapsource', drawMapSourceWatermark(ctx, w, h, true), {actionSafe: true}); }catch(_e){}
+  let Ld = null; try{ Ld = pzDmLegendLayout(ctx, w, h); add('dmLegend', 'dmLegend', Ld); }catch(_e){}
+  try{ add('secLegend', 'secLegend', pzSecLegendLayout(ctx, w, h, Ld)); }catch(_e){}
+  try{ pzBarLayouts(ctx, w, h).forEach(L => add('bar', L.c.id, L, {place: L.c.place})); }catch(_e){}
+  // prvky v mapě: z px stránky do px výstupu přes rámeček výřezu
+  const m = state.map, fr = (() => { try{ return pzExportFrameRect(); }catch(_e){ return null; } })();
+  if(m && fr?.width){
+    const sx = w / fr.width, sy = h / fr.height, cr = m.getCanvas().getBoundingClientRect();
+    const fromPage = (b, kind, id, at, more) => add(kind, id, {x: (b.left - fr.left) * sx, y: (b.top - fr.top) * sy, w: b.width * sx, h: b.height * sy}, {at, ...(more || {})});
+    const atOf = mk => { try{ const q = m.project(mk.getLngLat()); return [Math.round((q.x + cr.left - fr.left) * sx), Math.round((q.y + cr.top - fr.top) * sy)]; }catch(_e){ return null; } };
+    const shown = el => el && el.isConnected && el.closest('.maplibregl-marker')?.style.display !== 'none' && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).opacity !== '0';
+    (state.mapLabels || []).forEach(it => { const el = it.marker?.getElement?.(), c = el?.querySelector('.map-label-content') || el;
+      if(shown(c)) fromPage(c.getBoundingClientRect(), it.dm ? 'dmValue' : 'label', it.id, atOf(it.marker), {text: (el.querySelector('.map-label-bubble')?.textContent || '').trim()}); });
+    (state.sceneIcons || []).forEach((it, i) => { const mk = it?.marker || it, el = mk?.getElement?.(); if(shown(el)) fromPage(el.getBoundingClientRect(), 'icon', it.id ?? i, atOf(mk)); });
+    [[state.markerA, 'pin', 'A'], [state.markerB, 'pin', 'B'], [state.animatedMarker, 'vehicle', 'vehicle']].forEach(([mk, kind, id]) => { const el = mk?.getElement?.(); if(shown(el)) fromPage(el.getBoundingClientRect(), kind, id, atOf(mk)); });
+    document.querySelectorAll('#map .scene-distance-label, #map .scene-perimeter-label').forEach((el, i) => { if(shown(el)) fromPage(el.getBoundingClientRect(), el.classList.contains('scene-distance-label') ? 'km' : 'perimeter', i); });
+    try{ pzSecLabelBoxes().forEach((b, i) => add('secText', i, {x: (b.l - fr.left) * sx, y: (b.t - fr.top) * sy, w: b.w * sx, h: b.h * sy}, {text: b.text})); }catch(_e){}
+    try{ (m.getSource('scene-arrows')?.serialize?.().data?.features || []).filter(f => f.properties?.kind === 'icon').forEach((f, i) => {
+      const q = m.project(f.geometry.coordinates), r = (Number(f.properties.isz) || 0.7) * PZ_ARROW_PICTO_BADGE / 4;
+      add('picto', i, {x: (q.x + cr.left - fr.left - r) * sx, y: (q.y + cr.top - fr.top - r) * sy, w: 2 * r * sx, h: 2 * r * sy}); }); }catch(_e){}
+  }
+  const sr = pzDmSafeRect(w, h), safe = {x: sr.l, y: sr.t, w: sr.r - sr.l, h: sr.b - sr.t}, logos = pzLogoRects(w, h);
+  // body na mapě (špendlík, vozidlo, piktogram) jsou geografie — stačí, že jsou ve výřezu
+  const GEO = /^(pin|vehicle|picto)$/;
+  const overlaps = [];
+  items.forEach((a, i) => items.forEach((b, j) => {
+    if(j <= i || !pzRectHit(a, b, -2)) return;
+    // záměrné dvojice: popisek a jeho vlastní špendlík / ikonka na stejném místě
+    if(a.at && b.at && Math.hypot(a.at[0] - b.at[0], a.at[1] - b.at[1]) < 3) return;
+    // špendlík a vozidlo na sobě jsou v pořádku; piktogramy přes sebe ne (posouvají se po šipce)
+    if(GEO.test(a.kind) && GEO.test(b.kind) && !(a.kind === 'picto' && b.kind === 'picto')) return;
+    overlaps.push({a: a.kind + ':' + a.id, b: b.kind + ':' + b.id, ...(a.text || b.text ? {text: [a.text, b.text].filter(Boolean).join(' × ')} : {})});
+  }));
+  const asr = {x: Math.min(w, h) * 0.035, y: Math.min(w, h) * 0.035}, act = {x: asr.x - 1, y: asr.y - 1, w: w - 2 * asr.x + 2, h: h - 2 * asr.y + 2};
+  const inside = (b, r) => b.x >= r.x - 1 && b.y >= r.y - 1 && b.x + b.w <= r.x + r.w + 1 && b.y + b.h <= r.y + r.h + 1;
+  const outside = [];
+  items.forEach(b => {
+    const id = b.kind + ':' + b.id;
+    if(GEO.test(b.kind)){ if(!inside(b, {x: 0, y: 0, w, h})) outside.push({id, why: 'frame'}); }
+    else if(!inside(b, b.actionSafe ? act : safe)) outside.push({id, why: 'safe'});
+    if(logos.some(z => pzRectHit(b, z, -1))) outside.push({id, why: 'logo'});
+  });
+  return {w, h, items, overlaps, outside, safe, logos};
+}
+// Grafika přes mapu (titulek, zdroj, „Zdroj mapy", legendy, grafy, zóny log) v px stránky
+// {x0, y0, x1, y1} — překážky pro rozmisťování popisků v mapě.
+function pzOverlayRectsPage(){
+  const fr = pzExportFrameRect(); if(!fr?.width) return [];
+  const {w, h} = getExportSize(), sc = fr.width / w, A = pzLayoutAudit(w, h);
+  return A.items.filter(b => /^(title|source|mapsource|dmLegend|secLegend|bar)$/.test(b.kind)).concat(A.logos)
+    .map(b => ({x0: fr.left + b.x * sc, y0: fr.top + b.y * sc, x1: fr.left + (b.x + b.w) * sc, y1: fr.top + (b.y + b.h) * sc}));
+}
+// Texty v mapě, které se nehýbou samy (názvy míst a termíny úseků, ikonky, délka trasy),
+// pod titulkem, legendou nebo logem → o kolik px stránky odsadit kterou stranu záběru.
+function pzMapTextsUnderOverlays(fr){
+  if(!fr?.width) return [];
+  const {w, h} = getExportSize(), sc = fr.width / w, A = pzLayoutAudit(w, h), res = [];
+  const over = A.items.filter(b => /^(title|source|dmLegend|secLegend)$/.test(b.kind)).concat(A.logos);
+  A.items.filter(b => /^(secText|icon|km|perimeter)$/.test(b.kind)).forEach(b => over.forEach(o => {
+    if(!pzRectHit(b, o, 6)) return;
+    const left = o.x + o.w / 2 < w / 2, top = o.y + o.h / 2 < h / 2;
+    const dx = left ? o.x + o.w - b.x : b.x + b.w - o.x, dy = top ? o.y + o.h - b.y : b.y + b.h - o.y;
+    const u = dx <= dy ? {side: left ? 'left' : 'right', px: Math.ceil((dx + 8) * sc)} : {side: top ? 'top' : 'bottom', px: Math.ceil((dy + 8) * sc)};
+    const e = res.find(r => r.side === u.side); if(e) e.px = Math.max(e.px, u.px); else res.push(u);   // na každou stranu jen největší
+  }));
+  return res;
+}
+// Ruční popisky u blízkých míst (addLabel, Scéna › Popisky): když bublina zakryje jiný
+// popisek, ikonku, text úseku nebo grafiku přes mapu (titulek, zdroj, legendy, graf, logo)
+// nebo vyjede z bezpečné zóny, zkusí se opačná strana a pak menší písmo pro všechny (nejvýš na polovinu).
+// Čtvereček zůstává na místě, geografie se nehýbe. Popisky šipek a čísla datové mapy
+// mají vlastní rozmisťování. Vrátí počet upravených popisků.
+function pzDeclutterLabels(){
+  const m = state.map; if(!m || m !== window.__tnMap || state._exporting) return 0;
+  let fr = null; try{ fr = pzExportFrameRect(); }catch(_e){} if(!fr?.width) return 0;
+  const labs = (state.mapLabels || []).filter(it => !it.dm && !it.pzFlow && it.marker && pzLabelSide(it.side) !== 'none');
+  if(!labs.length) return 0;
+  const {w, h} = getExportSize(), sc = fr.width / w, A = pzLayoutAudit(w, h), ids = new Set(labs.map(it => String(it.id)));
+  const pg = b => ({x: fr.left + b.x * sc, y: fr.top + b.y * sc, w: b.w * sc, h: b.h * sc, at: b.at && [fr.left + b.at[0] * sc, fr.top + b.at[1] * sc]});
+  const fixed = A.items.filter(b => !(b.kind === 'label' && ids.has(b.id)) && b.kind !== 'mapsource').map(pg).concat(A.logos.map(pg));
+  const safe = pg(A.safe), cr = m.getCanvas().getBoundingClientRect();
+  const area = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  const out = b => b.w * b.h - area(b, safe);
+  const placed = []; let n = 0;
+  // zleva doprava — sousední popisky se střídají stranami
+  const rows = labs.map(it => { const q = m.project(it.marker.getLngLat()); return {it, at: [q.x + cr.left, q.y + cr.top]}; }).sort((a, b) => a.at[0] - b.at[0]);
+  // všechny popisky stejně velké (nesourodé velikosti v grafice ruší): napřed strany v plné
+  // velikosti, když to nestačí, všechny o stupeň menší
+  const try1 = (it, el, c, side, size) => { it.side = side; it.size = size; applyMapLabelStyle(el, it); const r = c.getBoundingClientRect(); return {x: r.left, y: r.top, w: r.width, h: r.height}; };
+  let picks = [];
+  for(const f of [1, 0.88, 0.76, 0.64, 0.52]){
+    const placed = []; let total = 0; picks = [];
+    rows.forEach(({it, at}) => {
+      const el = it.marker.getElement(), c = el?.querySelector('.map-label-content'); if(!c) return;
+      it.pzAuto = it.pzAuto || {side: pzLabelSide(it.side), size: it.size || 28};
+      const s0 = it.pzAuto.side, size = Math.max(14, Math.round(it.pzAuto.size * f));
+      let best = null;
+      for(const side of [s0, s0 === 'left' ? 'right' : 'left']){
+        const b = try1(it, el, c, side, size);
+        let cost = out(b) * 2 + placed.reduce((a, p) => a + area(b, p), 0) * 3 + (side !== s0 ? 1 : 0);
+        fixed.forEach(o => { if(!(o.at && Math.hypot(o.at[0] - at[0], o.at[1] - at[1]) < 3)) cost += area(b, o) * 2; });   // vlastní ikonka na stejném místě nevadí
+        if(!best || cost < best.cost - 0.5) best = {cost, side, size, b};
+      }
+      placed.push(best.b); picks.push({it, el, c, ...best}); total += Math.max(0, best.cost - 1);
+    });
+    if(total < 1) break;
+  }
+  picks.forEach(p => { try1(p.it, p.el, p.c, p.side, p.size); if(p.side !== p.it.pzAuto.side || p.size !== p.it.pzAuto.size) n++; });
+  try{ renderMapLabelList(); }catch(_e){}
+  return n;
+}
+// Popisky a ikonky mimo title-safe (TV 5 %, sítě 6/14/14/22 %) → o kolik px stránky odsadit
+// kterou stranu záběru (Zarámovat scénu). Prvky v logu se odsadí od nejbližšího okraje.
+function pzObjectsOutsideSafe(fr){
+  if(!fr?.width) return [];
+  const {w, h} = getExportSize(), sc = fr.width / w, A = pzLayoutAudit(w, h), sf = A.safe, need = {left:0, right:0, top:0, bottom:0};
+  A.items.filter(b => /^(label|dmValue|icon|km|perimeter|secText)$/.test(b.kind)).forEach(b => {
+    need.left = Math.max(need.left, sf.x - b.x); need.right = Math.max(need.right, b.x + b.w - (sf.x + sf.w));
+    need.top = Math.max(need.top, sf.y - b.y); need.bottom = Math.max(need.bottom, b.y + b.h - (sf.y + sf.h));
+    A.logos.filter(z => pzRectHit(b, z)).forEach(z => { const side = z.y + z.h / 2 < h / 2 ? 'top' : 'bottom'; need[side] = Math.max(need[side], side === 'top' ? z.y + z.h - b.y : b.y + b.h - z.y); });
+  });
+  return Object.entries(need).filter(([, v]) => v > 0.5).map(([side, v]) => ({side, px: Math.ceil(v * sc) + 2}));
 }
 function pzLngLatsInFrameMask(pts){
   const m = state.map, r = pzExportFrameRect(); if(!m || !r) return pts.map(() => false);
@@ -19675,6 +19862,7 @@ function updateExportFrame(){
   frame.classList.remove('hidden');
   // na výšku (sítě) jiné bezpečné zóny než u TV
   $('exportSafeGuides')?.classList.toggle('sg-social', outW < outH);
+  try{ pzRenderLogoGuides(); }catch(_e){}
   try{ pzUpdateFrameWatermark(r.width, r.height, outW, outH); }catch(_e){}
   try{ pzUpdateFrameLegend(); }catch(_e){}
   try{ pzDmLabelsResizeSoon(); }catch(_e){}   // jiný poměr výřezu → čísla datové mapy v poměru k výstupu
@@ -19797,7 +19985,7 @@ function pzDrawTitleOverlay(ctx, W, H){
     const lineH = Math.round(fs * 1.14);
     const textW = Math.min(textMax, Math.ceil(Math.max(...lines.map(l => ctx.measureText(l).width))));
     const boxW = bar + padX * 2 + textW, boxH = padY * 2 + lineH * (lines.length - 1) + Math.round(fs * 1.0);
-    const x = safeL, y = safeT, r = Math.max(2, Math.round(3 * k));
+    const x = safeL, y = pzAvoidLogos({x: safeL, y: safeT, w: boxW, h: boxH}, W, H, Math.round(14 * k)).y, r = Math.max(2, Math.round(3 * k));
     ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 16 * k; ctx.shadowOffsetY = 3 * k;
     drawRoundRectPath(ctx, x, y, boxW, boxH, r);
     ctx.fillStyle = pal.bg; ctx.fill();
@@ -19827,6 +20015,7 @@ function pzDrawTitleOverlay(ctx, W, H){
     // nevejde se vedle pilulky → o řádek výš nad ni (nikdy přes ni)
     if(b.w > avail() && wm){ y = wm.y - Math.round(8 * k) - b.h; maxW = safeW; }
     const bw = Math.min(b.w, maxW);
+    y = pzAvoidLogos({x, y, w: bw, h: b.h}, W, H, Math.round(14 * k)).y;   // logo stanice dole
     ctx.shadowColor = 'rgba(0,0,0,.35)'; ctx.shadowBlur = 10 * k; ctx.shadowOffsetY = 2 * k;
     drawRoundRectPath(ctx, x, y, bw, b.h, Math.max(3, Math.round(5 * k)));
     ctx.fillStyle = 'rgba(10,12,18,.78)'; ctx.fill();
@@ -24124,6 +24313,7 @@ Object.assign(I18N, {
   "Graf jde v rámečku přetáhnout, dvojklik ho vrátí k místu. Víc grafů se stejnou jednotkou má společné měřítko.": {cs:"Graf jde v rámečku přetáhnout, dvojklik ho vrátí k místu. Víc grafů se stejnou jednotkou má společné měřítko.",sk:"Graf sa dá v rámčeku pretiahnuť, dvojklik ho vráti k miestu. Viac grafov s rovnakou jednotkou má spoločnú mierku.",bg:"Диаграмата може да се плъзга в рамката, двоен клик я връща към мястото. Диаграмите с една и съща единица имат обща скала.",hr:"Grafikon se može povući u okviru, dvoklik ga vraća na mjesto. Više grafikona s istom jedinicom ima zajedničko mjerilo.",ro:"Graficul se poate trage în cadru, dublu clic îl readuce la loc. Graficele cu aceeași unitate au scară comună.",en:"Drag the chart inside the frame, double-click returns it to the place. Charts with the same unit share one scale."},
   "Táhni graf jinam (dvojklik = zpět k místu)": {cs:"Táhni graf jinam (dvojklik = zpět k místu)",sk:"Potiahni graf inam (dvojklik = späť k miestu)",bg:"Плъзни диаграмата (двоен клик = обратно към мястото)",hr:"Povuci grafikon drugdje (dvoklik = natrag na mjesto)",ro:"Trage graficul (dublu clic = înapoi la loc)",en:"Drag the chart (double-click = back to the place)"},
   "Smazat graf": {cs:"Smazat graf",sk:"Zmazať graf",bg:"Изтрий диаграмата",hr:"Obriši grafikon",ro:"Șterge graficul",en:"Delete chart"},
+  "Vyhrazeno pro logo": {cs:"Vyhrazeno pro logo",sk:"Vyhradené pre logo",bg:"Запазено за лого",hr:"Rezervirano za logo",ro:"Rezervat pentru logo",en:"Reserved for logo"},
   "Místo „{0}\" jsem nenašel.": {cs:"Místo „{0}\" jsem nenašel.",sk:"Miesto „{0}\" som nenašiel.",bg:"Мястото „{0}\" не е намерено.",hr:"Mjesto „{0}\" nisam pronašao.",ro:"Locul „{0}\" nu a fost găsit.",en:"Place \"{0}\" not found."},
   "Napiš místo (kraj, stát nebo město).": {cs:"Napiš místo (kraj, stát nebo město).",sk:"Napíš miesto (kraj, štát alebo mesto).",bg:"Напиши място (област, държава или град).",hr:"Upiši mjesto (regiju, državu ili grad).",ro:"Scrie locul (regiune, stat sau oraș).",en:"Type a place (region, country or city)."},
   "Vlož sloupce: řádek Popisek: hodnota.": {cs:"Vlož sloupce: řádek Popisek: hodnota.",sk:"Vlož stĺpce: riadok Popis: hodnota.",bg:"Въведи стълбовете: ред Надпис: стойност.",hr:"Unesi stupce: redak Oznaka: vrijednost.",ro:"Introdu barele: rând Etichetă: valoare.",en:"Enter bars: one line Label: value."},
@@ -26452,6 +26642,23 @@ function pzSecFeatures(){
     const vert = Math.abs(dy) > Math.abs(dx) * 1.2;
     pt(mid, {kind:'popis', text, tc: it.color ? pzDarkHex(it.color) : st.text, anchor: vert ? 'left' : 'bottom', offset: vert ? [0.95, 0] : [0, -0.95]});
   });
+  // termíny krátkých sousedních úseků (oddálený záběr, 9:16) by se psaly přes sebe — druhý
+  // na opačnou stranu čáry (pod ni / vlevo od ní)
+  try{ const m = state.map, ctx = document.createElement('canvas').getContext('2d'), put = [];
+    ctx.font = '700 22px "Noto Sans", Arial, sans-serif';
+    const box = (P, x, y) => { const w = ctx.measureText(P.text).width * 1.06, h = 27, o = 21;
+      return P.anchor === 'bottom' ? {x: x - w / 2, y: y - o - h, w, h} : P.anchor === 'top' ? {x: x - w / 2, y: y + o, w, h} : P.anchor === 'left' ? {x: x + o, y: y - h / 2, w, h} : {x: x - o - w, y: y - h / 2, w, h}; };
+    // názvy míst (první kotva, jako odhad v pzSecLabelBoxes) jsou překážka taky
+    if(m) F.filter(f => f.properties.kind === 'misto').forEach(f => { const P = f.properties, q = m.project(f.geometry.coordinates), a = Array.isArray(P.vao) ? P.vao[0] : 'center';
+      ctx.font = '700 17px "Noto Sans", Arial, sans-serif'; const w = ctx.measureText(String(P.text || '')).width * 1.08, h = 20.4, o = 14.5;
+      put.push({x: a === 'left' ? q.x + o : a === 'right' ? q.x - o - w : q.x - w / 2, y: a === 'bottom' ? q.y - o - h : a === 'top' ? q.y + o : q.y - h / 2, w, h}); });
+    ctx.font = '700 22px "Noto Sans", Arial, sans-serif';
+    if(m) F.filter(f => f.properties.kind === 'popis').forEach(f => { const P = f.properties, q = m.project(f.geometry.coordinates);
+      let b = box(P, q.x, q.y);
+      if(put.some(o => pzRectHit(b, o, 4))){ const flip = {bottom:'top', top:'bottom', left:'right', right:'left'}[P.anchor];
+        const b2 = box({...P, anchor: flip}, q.x, q.y);
+        if(!put.some(o => pzRectHit(b2, o, 4))){ P.anchor = flip; P.offset = P.offset.map(v => -v); b = b2; } }
+      put.push(b); }); }catch(e){}
   return {type:'FeatureCollection', features:F};
 }
 // Konce úseků: bod, název a směry čar, které z něj vedou (kam název nepsat).
@@ -26609,6 +26816,7 @@ function pzSecLegendLayout(ctx, w, h, avoid){
   // legenda datové mapy ve stejném rohu: nad ni (dole), pod ni (nahoře)
   if(avoid && avoid.x < x + L.w && x < avoid.x + avoid.w && avoid.y < y + L.h && y < avoid.y + avoid.h)
     y = /^t/.test(corner) ? avoid.y + avoid.h + 14 * k : avoid.y - 14 * k - L.h;
+  y = pzAvoidLogos({x, y, w:L.w, h:L.h}, w, h, 14 * k).y;   // logo stanice v rohu
   L.x = Math.round(Math.max(0, Math.min(w - L.w, x))); L.y = Math.round(Math.max(0, Math.min(h - L.h, y)));
   return L;
 }
@@ -27067,6 +27275,11 @@ function pzColorFromName(v){
     getCameraStateAtProgress, normalizeCameraAnim, animTiming, applyAnimEasing, pzCamKeyframeTimes, setCameraKeyframeTime, pzFrameToMapView, pzMapToFrameView, pzCamLiftEffect, pzVehLenKm, pzExtraGap, pzKfNameCut});
   // vozidla a srážky (tests/16_vehicles.test.js)
   Object.assign(window.__pzFns, {pzCrashInfo, pzProjectOnRoute, pointAtProgress});
+  // kontrola rozvržení grafiky + vyhrazené zóny log (testy, šéf grafiky v konzoli)
+  window.pzLayoutAudit = (w, h) => pzLayoutAudit(w, h);
+  Object.assign(window.__pzFns, {pzDeclutterLabels, pzLogoRects});
+  window.pzSetLogoZones = obj => { state.logoZones = obj ? {'16:9': [...(obj['16:9'] || [])], '9:16': [...(obj['9:16'] || [])]} : null;
+    try{ pzRenderLogoGuides(); pzUpdateTitlePreview(); pzUpdateFrameLegend(); pzBarsPreview(); updateExportFrame(); }catch(_e){} const {w, h} = getExportSize(); return pzLogoRects(w, h); };
   // panel Scéna (tests/30_scene_ux.test.js)
   Object.assign(window.__pzFns, {pzExportFrameRect, pzComputeFrameRect, applyMapLabelSizeToAll, pzLabelZoomK, getMapFreeAreaLeft});
   // titulek a zdroj, název souboru (tests/32_titulek_nazev.test.js)
