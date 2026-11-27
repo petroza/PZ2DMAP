@@ -80,7 +80,7 @@ fitScene {} – zarámuje celou scénu (všechna místa, popisky, šipky, kraje)
 arcBestView {} – 3D pohled na letecký oblouk.
 playAnimation {action, time?} – play, pause, stop, rewind; seek + time (s) = zastavit na daném okamžiku.
 setTitle {title?, source?, style?, off?} – titulek grafiky ("Název:" ze zadání) vlevo nahoře a zdroj dat ("Zdroj:") vlevo dole, je i v PNG a videu; style navy|red|classic|dark; off:true skryje oba, off:"title"/"source" jen jeden.
-setExportName {popis?, nick?, porad?, oprava?} – název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra, porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).
+setExportName {popis?, nick?, porad?, oprava?} – název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra (delší podpis jako "jnovak" nehádej — nick vynech a zeptej se na zkratku), porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).
 exportPng {} – uloží snímek PNG.
 selectObjects {action} – all, none, delete (objekty scény: popisky, ikonky, šipky, perimetry, vzdálenosti).
 clearScene {what} – smaže: labels, icons, arrows, perimeters, distances, closures, colors, regions, data (datová mapa), flags, route, vehicles (další vozidla), title (titulek a zdroj), all; víc druhů = pole ["labels","icons"].

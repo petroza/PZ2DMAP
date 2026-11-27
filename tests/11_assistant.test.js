@@ -63,6 +63,8 @@ const PLANS = {
   const dl = page.waitForEvent('download', {timeout: 60000}).catch(() => null);
   m = await ask('export png'); check(n === 0 && !!(await dl), '„export png" stáhne snímek');
   m = await ask('ulož projekt'); check(n === 0 && /ulož|Ulož/.test(m), '„ulož projekt" uloží bez modelu — ' + m);
+  const camQ = await page.evaluate(() => ['zvětši', 'zmenši', 'Zarámovat', 'zarámuj', 'zarámovat scénu'].map(q => { const p = window.__tnchat.quick(q); return p && (p.calls[0]?.args?.zoomBy ?? (p.local ? 'fit' : null)); }));
+  check(JSON.stringify(camQ) === JSON.stringify([1, -1, 'fit', 'fit', 'fit']), 'rychlé povely „zvětši/zmenši/Zarámovat" bez modelu — ' + JSON.stringify(camQ));
   const recog = await page.evaluate(() => ['hybrid', 'prepni podklad na satelit', 'politická mapa', 'smaž uzavírky', 'zruš barvy států', 'vymaž trasu', 'ukaž celou trasu', 'pauza', 'screenshot', 'celý svět', 'dej požár do Ostravy', 'otevři trasu', 'slovensky', 'co umíš'].filter(q => !window.__tnchat.quick(q)));
   check(recog.length === 0, 'rozpoznání dalších povelů bez modelu' + (recog.length ? ' — nepoznal: ' + recog.join(', ') : ''));
   const notQuick = await page.evaluate(() => ['trasa z Prahy do Brna', 'udělej z toho volební mapu', 'nehoda na D1 u Humpolce směr Brno', 'ukaž Brno'].filter(q => { const p = window.__tnchat.quick(q); return p && !p.prepare; }));

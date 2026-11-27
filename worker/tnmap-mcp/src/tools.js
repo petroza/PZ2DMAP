@@ -635,7 +635,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setExportName",
-  "description": "název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra, porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).",
+  "description": "název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra (delší podpis jako \"jnovak\" nehádej — nick vynech a zeptej se na zkratku), porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).",
   "inputSchema": {
    "type": "object",
    "properties": {

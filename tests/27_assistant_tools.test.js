@@ -16,6 +16,11 @@ const {check, done, open, status} = require('./lib');
   const names = [...toolsTxt.matchAll(/^([a-zA-Z][a-zA-Z0-9]*) \{/gm)].map(m => m[1]);
   const have = await page.evaluate(() => Object.keys(window.TNMAP).filter(k => typeof window.TNMAP[k] === 'function'));
   const missing = names.filter(n => !have.includes(n));
+  // každý nástroj z promptu chatu smí chat opravdu spustit (dřív fitScene: „asistent v chatu nepoužívá")
+  const chatSrc = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const chatSet = (/const CHAT_TOOLS = new Set\(\[([\s\S]*?)\]\)/.exec(chatSrc) || [])[1] || '';
+  const notChat = names.filter(n => n !== 'flyInBatch' && !chatSet.includes("'" + n + "'"));
+  check(chatSet && notChat.length === 0, 'chat smí všechny nástroje z promptu workeru' + (notChat.length ? ' — chybí v CHAT_TOOLS: ' + notChat.join(', ') : ''));
   check(names.length >= 30 && missing.length === 0, `všech ${names.length} nástrojů z workeru v appce existuje` + (missing.length ? ' — chybí ' + missing.join(', ') : ''));
   const ids = [...new Set([...toolsTxt.slice(toolsTxt.indexOf('POVOLENÁ ID')).matchAll(/\b([a-zA-Z0-9]+Section)\b/g)].map(m => m[1]))];
   const noSec = await page.evaluate(ids => ids.filter(id => !document.getElementById(id)), ids);

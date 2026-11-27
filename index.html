@@ -15269,8 +15269,11 @@ async function geocode(q, near){
   if(!data || !data.length) throw new Error('Nenalezeno');
   const ref = near || placeSearchRefPoint(), k0 = placeNameKey(data[0]), imp = it => +it.importance || 0;
   if(!ref || !k0 || /,/.test(String(q))) return data[0];   // upřesnění za čárkou = věřit pořadí
-  const same = data.filter(it => placeNameKey(it) === k0 && imp(data[0]) - imp(it) < 0.12);
-  return same.reduce((a, b) => haversineKm(ref, placePointFromItem(b)) < haversineKm(ref, placePointFromItem(a)) ? b : a, data[0]);
+  let same = data.filter(it => placeNameKey(it) === k0 && imp(data[0]) - imp(it) < 0.12);
+  // Název napsaný s diakritikou rozhoduje: „Vyškov" není „Výškov" (Lounsko), i když je blíž výřezu.
+  const ql = String(q).trim().toLocaleLowerCase('cs'), exact = it => String(it?.name || it?.namedetails?.name || normalizePlaceLabel(it).split(',')[0] || '').trim().toLocaleLowerCase('cs') === ql;
+  if(same.some(exact) && same.some(it => !exact(it))) same = same.filter(exact);
+  return same.reduce((a, b) => haversineKm(ref, placePointFromItem(b)) < haversineKm(ref, placePointFromItem(a)) ? b : a, same[0] || data[0]);
 }
 
 async function reverseGeocode(lngLat, zoom=10){
@@ -27771,7 +27774,6 @@ function pzColorFromName(v){
       scheduleSceneLayerRedraw('flow-arrows');
       return {ok:true, arrows: items.length, from: s0.name, to: dests.map(d => d.p.name), ...(ic ? {icon: ic} : {}), ...(notFound.length ? {notFound} : {})};
     },
-
     // ---- měřená vzdálenost mezi dvěma místy ---------------------------------
     // Vzdušná linka s labelem přímo v mapě — na to se redakce ptá pořád.
     async measureDistance({from, to, color, unit, fit} = {}){
@@ -28567,13 +28569,18 @@ function pzColorFromName(v){
     // Název exportovaného souboru podle redakce: mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD.
     setExportName({popis, nick, porad, oprava} = {}){
       if(popis == null && nick == null && porad == null && oprava == null) return {ok:false, error:'Chybí popis, nick, porad nebo oprava.'};
-      if(popis != null && $('pzNamePopis')) $('pzNamePopis').value = String(popis).trim().slice(0, 40);
-      if(nick != null){ const n = toolKey(nick).replace(/[^a-z0-9]/g, ''); if(nick !== '' && n.length !== 3) return {ok:false, error:'Nick reportéra má 3 písmena (např. maj).'}; if($('pzNameNick')) $('pzNameNick').value = n; }
+      // Nejdřív vše ověřit, pak teprve zapsat — chybný nick („jnovak") dřív nechal popis zapsaný a pořad nenastavený.
+      const n = nick != null ? toolKey(nick).replace(/[^a-z0-9]/g, '') : null;
+      if(nick != null && nick !== '' && n.length !== 3) return {ok:false, error:'Nick „' + nick + '" nemá 3 písmena — nic jsem nezměnil. Zeptej se reportéra na zkratku (např. maj, nebo nov pro jnovak).'};
+      let pk = null;
       if(porad != null){
         const k = toolKey(porad).replace(/^(do|pro)\s+/, ''), m = {'':'', zadny:'', none:'', tn:'tn', vecerni:'tn', vecerky:'tn', 'televizni noviny':'tn', ptn:'ptn', poledni:'ptn', otn:'otn', odpoledni:'otn', nvs:'nvs', 'na vasi strane':'nvs', str:'str', strepiny:'str', vik:'vik', vikend:'vik'};
         if(!(k in m)) return {ok:false, error:'Pořad „' + porad + '" neznám. Mám: tn, ptn, otn, nvs, str (Střepiny), vik (Víkend).'};
-        if($('pzNamePorad')) $('pzNamePorad').value = m[k];
+        pk = m[k];
       }
+      if(popis != null && $('pzNamePopis')) $('pzNamePopis').value = String(popis).trim().slice(0, 40);
+      if(n != null && $('pzNameNick')) $('pzNameNick').value = n;
+      if(pk != null && $('pzNamePorad')) $('pzNamePorad').value = pk;
       if(oprava != null && $('pzNameOprava')) $('pzNameOprava').checked = !!oprava && oprava !== 'false';
       pzSaveNamePrefs(); pzUpdateNamePreview();
       return {ok:true, file: pzExportNameWithTag()};
@@ -29975,13 +29982,13 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [/^(klavesove )?zkratky$|^klavesy$/, () => ({say: tr('Klávesové zkratky'), local: () => { const p = $q('shortcutsPanel'); if(p && p.hidden) $q('shortcutsBtn')?.click(); return true; }, label: tr('Klávesové zkratky')})],
     [/^(co( vsechno)? umis|napoveda|pomoc|help|priklady)$/, () => ({local: () => { append(chipRow(EXAMPLES)); return true; }})],
     // --- výřez a přiblížení
-    [/^(ukaz |zobraz )?(celou scenu|vsechno|vse)$|^cela scena$|^(zaramuj|doramuj|vejdi|vejit) (vse|vsechno|celou scenu|scenu)$/, () => ({say: tr('Ukazuji celou scénu.'), local: () => pzFitScene(), label: tr('Celá scéna')})],
+    [/^(ukaz |zobraz )?(celou scenu|vsechno|vse)$|^cela scena$|^(zaramuj|zaramovat|doramuj|doramovat|vejdi|vejit)( (vse|vsechno|celou scenu|scenu))?$|^vejit scenu$/, () => ({say: tr('Ukazuji celou scénu.'), local: () => pzFitScene(), label: tr('Celá scéna')})],
     [/^(ukaz )?celou trasu$|^doramuj trasu$/, () => ({say: tr('Ukazuji celou trasu.'), calls: one('fitRoute', {}, tr('Celá trasa'))})],
     [new RegExp('^' + V + '(?:cel(?:e|a|y|ou) )?(cesko|cr|ceskou republiku|ceska republika|slovensko|evropu|evropa|stredni evropu|stredni evropa|svet)$'),
       m => { const r = /^(cesk|cr)/.test(m[1]) ? ['czechia', 'Česko'] : /^slov/.test(m[1]) ? ['slovakia', 'Slovensko'] : /^stredni/.test(m[1]) ? ['centralEurope', 'Střední Evropa'] : /^evrop/.test(m[1]) ? ['europe', 'Evropa'] : ['world', 'Svět'];
              return {say: tr('Ukazuji: {0}.', tr(r[1])), calls: one('showRegion', {region: r[0]}, tr(r[1]))}; }],
-    [/^(pribliz|priblizit|zoom in|bliz|blize)( to| mapu| se)?( (jeste|trochu|vic|hodne))?$/, m => ({say: tr('Přibližuji.'), calls: one('setCamera', {zoomBy: /vic|hodne/.test(m[3] || '') ? 2 : 1}, tr('Přiblížit'))})],
-    [/^(oddal|oddalit|zoom out)( to| mapu| se)?( (jeste|trochu|vic|hodne))?$/, m => ({say: tr('Oddaluji.'), calls: one('setCamera', {zoomBy: /vic|hodne/.test(m[3] || '') ? -2 : -1}, tr('Oddálit'))})],
+    [/^(pribliz|priblizit|zoom in|bliz|blize|zvets|zvetsi|zvetsit)( to| mapu| se)?( (jeste|trochu|vic|hodne))?$/, m => ({say: tr('Přibližuji.'), calls: one('setCamera', {zoomBy: /vic|hodne/.test(m[3] || '') ? 2 : 1}, tr('Přiblížit'))})],
+    [/^(oddal|oddalit|zoom out|zmensi|zmensit)( to| mapu| se)?( (jeste|trochu|vic|hodne))?$/, m => ({say: tr('Oddaluji.'), calls: one('setCamera', {zoomBy: /vic|hodne/.test(m[3] || '') ? -2 : -1}, tr('Oddálit'))})],
     [/^(reset|resetuj|na zacatek|domu)$/, () => ({say: tr('Vracím aplikaci na začátek.'), calls: one('resetApp', {}, tr('Na začátek'))})],
     // --- mazání (jde vrátit: snímek pro Krok zpět se dělá před prvním nástrojem)
     [new RegExp('^(?:' + DEL + '(?: to)? (vsechno|vse|vsecko|celou scenu|scenu|celou mapu)|vycisti(?:t)? (mapu|scenu))$'), () => clearPlan('all', 'všechno', (s, st) =>
@@ -30310,7 +30317,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     'drawArrow','flowArrows','measureDistance','drawPerimeter','colorPolitical','colorRegion','dataMap','barChart','placeFlag','roadClosure','roadSections','metroClosure','placeModel3d','setColors','setValues',
     'setLayers','setGlobe','setShadows','setTransportMode','routeBetween','routeLine','setVehicle','addVehicle','setVehicleColors','setCameraFlight',
     'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp',
-    'setTitle','setExportName','flyInTo']);
+    'setTitle','setExportName','flyInTo','fitScene']);
 
   async function ask(userText, isRetry, shown){
     if(busy) return;
@@ -30400,6 +30407,10 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
             }
             moved = true;
           }
+          // Výřez, který model zvolil výslovně („mapa Pobaltí" = showRegion), šipka nebo měření
+          // v témže plánu nepřebije svým přiblížením na dva body (dřív dron z Ruska do Lotyšska zahodil Pobaltí).
+          if(/^(drawArrow|flowArrows|measureDistance)$/.test(c.tool) && (c.args || {}).fit == null
+             && calls.some(x => x !== c && /^(showRegion|gotoPlace|setCamera|setCameraFlight)$/.test(x.tool))) c.args = {...(c.args || {}), fit: false};
           const out = await runTool(c, true);
           if(me.stop) throw CANCEL;
           addAction((c.label || c.tool), out.ok !== false);
