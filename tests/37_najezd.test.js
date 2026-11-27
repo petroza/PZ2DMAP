@@ -57,14 +57,6 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
   // --- krok zpět, projekt, clearScene
   const snap = await page.evaluate(() => JSON.stringify(window.__pzFns.serializeProjectSnapshot().flyIn));
   check(/Valašské Meziříčí/.test(snap) && /"pin":true/.test(snap), 'projekt ukládá cíl nájezdu ' + snap);
-  // --- Liberec v úvodním záběru ČR leží těsně pod titulkem: název cíle nesmí vjet pod titulek
-  await T('flyInTo', {place: '50.7534,15.0483', label: 'Svijanská aréna', zoom: 'budova', duration: 3, hold: 1});
-  await T('setTitle', {title: 'Svijanská aréna zavírá kvůli střeše'});
-  await page.waitForTimeout(800);
-  const ov = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 1920; c.height = 1080; const o = window.__pzFns.pzDrawFlyIn(c.getContext('2d'), 1920, 1080), tb = window.__pzFns.pzTitleBoxesFor(1920, 1080)?.title;
-    const L = o?.label; return {L, tb, hit: !!(L && tb && L.x < tb.x + tb.w && L.x + L.w > tb.x && L.y < tb.y + tb.h && L.y + L.h > tb.y)}; });
-  check(ov.L && ov.tb && !ov.hit, 'název cíle nejede pod titulek grafiky ' + JSON.stringify(ov));
-  await T('setTitle', {off: true});
   r = await T('flyInTo', {place: '49.2265,17.6707', label: 'Zlín', zoom: 'budova', from: 'evropa'});
   st = await S();
   check(r.ok && r.from === 'eu' && st.kfs[0].zoom < 5 && st.kfs[1].zoom > 16 && st.kfs[1].pitch > 40, 'z Evropy na budovu (náklon 3D) ' + JSON.stringify(st.kfs.map(v => [v.zoom.toFixed(1), v.pitch])));
@@ -130,6 +122,14 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
   await page.waitForTimeout(800);
   check(files.length === 0 && /zrušen/i.test(await page.$eval('#statusBar', e => e.textContent)), 'Zrušit zastaví dávku (' + files.length + ' videí)');
 
+  // --- Liberec v úvodním záběru ČR leží těsně pod titulkem: název cíle nesmí vjet pod titulek
+  await T('flyInTo', {place: '50.7534,15.0483', label: 'Svijanská aréna', zoom: 'budova', duration: 3, hold: 1});
+  await T('setTitle', {title: 'Svijanská aréna zavírá kvůli střeše'});
+  await page.waitForTimeout(800);
+  const ov = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 1920; c.height = 1080; const o = window.__pzFns.pzDrawFlyIn(c.getContext('2d'), 1920, 1080), tb = window.__pzFns.pzTitleBoxesFor(1920, 1080)?.title;
+    const L = o?.label; return {L, tb, hit: !!(L && tb && L.x < tb.x + tb.w && L.x + L.w > tb.x && L.y < tb.y + tb.h && L.y + L.h > tb.y)}; });
+  check(ov.L && ov.tb && !ov.hit, 'název cíle nejede pod titulek grafiky ' + JSON.stringify(ov));
+  await T('setTitle', {off: true});
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.slice(0, 3).join(' | ') : ''));
   await close(); done();
 })();
