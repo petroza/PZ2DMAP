@@ -137,7 +137,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "drawArrow",
-  "description": "šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), balik (zboží), vlak; curve:true = oblouk pro dlouhé vzdálenosti.",
+  "description": "šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), dron, balik (zboží), vlak; curve:true = oblouk pro dlouhé vzdálenosti.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -158,7 +158,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "flowArrows",
-  "description": "víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:\"lide\", labels:true). Nevolej drawArrow pro každé místo zvlášť.",
+  "description": "víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:\"lide\", labels:true). Opačně z jednoho místa do víc cílů (útoky, dodávky: „Ukrajina zasáhla rafinerie v Rjazani, Saratově…“) = from jedno místo a to = pole cílů; toLabel pak popisuje to jedno místo. Nevolej drawArrow pro každé místo zvlášť.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -634,7 +634,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "setExportName",
-  "description": "název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra, porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).",
+  "description": "název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra (delší podpis jako \"jnovak\" nehádej — nick vynech a zeptej se na zkratku), porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).",
   "inputSchema": {
    "type": "object",
    "properties": {

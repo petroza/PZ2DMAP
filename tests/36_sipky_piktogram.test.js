@@ -97,6 +97,13 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
   check(r.ok && kam && kam.rot === 0 && /\|1$/.test(kam.img), 'kamion jedoucí doleva je zrcadlený, ne vzhůru nohama');
   check((await T('drawArrow', {from: '50,14', to: '51,15', icon: 'jednorožec'})).ok === false, 'neznámý piktogram vrátí chybu');
   check((await T('flowArrows', {from: [], to: '50,14'})).ok === false, 'flowArrows bez míst vrátí chybu');
+  // z jednoho místa do víc cílů (útoky na rafinerie): šipky ze zdroje, hroty u cílů; víc→víc je chyba
+  await T('clearScene', {what: 'all'});
+  r = await T('flowArrows', {from: '49.0,31.4', to: ['54.6,39.7', '51.5,46.0', '48.7,44.5', '44.1,39.1'], icon: 'dron', labels: ['Rjazaň', 'Saratov', 'Volgograd', 'Tuapse'], toLabel: 'Ukrajina'});
+  const fo = await page.evaluate(() => (window.TNMAP.getState().scene || {}));
+  check(r.ok && r.arrows === 4 && r.icon === 'dron' && (fo.labels || []).length === 5, 'flowArrows z jednoho místa do 4 cílů s piktogramem dronu ' + JSON.stringify(r) + ' ' + JSON.stringify(fo.labels));
+  check((await T('flowArrows', {from: ['50,14', '51,15'], to: ['52,16', '53,17']})).ok === false, 'flowArrows víc míst do víc cílů vrátí srozumitelnou chybu');
+  check((await feats()).some(f => f.kind === 'icon' && f.img.startsWith('pzarr|dron|')), 'piktogram dronu je na šipce');
 
   // --- panel Šipky: piktogram a oblouk u vybrané šipky, Víc míst do jednoho cíle
   await T('clearScene', {what: 'all'});

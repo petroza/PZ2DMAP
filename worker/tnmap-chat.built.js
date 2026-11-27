@@ -48,8 +48,8 @@ applyPreset {preset, force?} – barevné schéma (jen tyto jsou v appce vidět)
 placeIcon {place, kind?, size?, zoom?} – ikona na místo (size 16-96 px, bez size výchozí); kind: pin, vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani.
 addLabel {place, text?, size?, side?, style?} – popisek; bez text = název místa; side right|left|none (none = bez červeného bodu, např. název státu); style classic|navy|red|dark.
 setLabelStyle {style, text?, all?} – změní styl existujících popisků (all:true = všech).
-drawArrow {from, to, color?, width?, icon?, iconSize?, curve?} – šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), balik (zboží), vlak; curve:true = oblouk pro dlouhé vzdálenosti.
-flowArrows {from, to, icon?, color?, width?, labels?, toLabel?, curve?} – víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:"lide", labels:true). Nevolej drawArrow pro každé místo zvlášť.
+drawArrow {from, to, color?, width?, icon?, iconSize?, curve?} – šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), dron, balik (zboží), vlak; curve:true = oblouk pro dlouhé vzdálenosti.
+flowArrows {from, to, icon?, color?, width?, labels?, toLabel?, curve?} – víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:"lide", labels:true). Opačně z jednoho místa do víc cílů (útoky, dodávky: „Ukrajina zasáhla rafinerie v Rjazani, Saratově…“) = from jedno místo a to = pole cílů; toLabel pak popisuje to jedno místo. Nevolej drawArrow pro každé místo zvlášť.
 measureDistance {from, to, color?} – vzdušná vzdálenost; číslo vrátí ve výsledku.
 drawPerimeter {place?, km?, meters?, color?} – kružnice/okruh kolem místa, rádius nejvýš 5000 km; bez place střed výřezu. Když redaktor místo nezmínil a ve scéně není jasný střed, zeptej se přes options.
 colorPolitical {country, color?, clear?} – obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR = colorRegion.
@@ -80,7 +80,7 @@ fitScene {} – zarámuje celou scénu (všechna místa, popisky, šipky, kraje)
 arcBestView {} – 3D pohled na letecký oblouk.
 playAnimation {action, time?} – play, pause, stop, rewind; seek + time (s) = zastavit na daném okamžiku.
 setTitle {title?, source?, style?, off?} – titulek grafiky ("Název:" ze zadání) vlevo nahoře a zdroj dat ("Zdroj:") vlevo dole, je i v PNG a videu; style navy|red|classic|dark; off:true skryje oba, off:"title"/"source" jen jeden.
-setExportName {popis?, nick?, porad?, oprava?} – název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra, porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).
+setExportName {popis?, nick?, porad?, oprava?} – název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra (delší podpis jako "jnovak" nehádej — nick vynech a zeptej se na zkratku), porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).
 exportPng {} – uloží snímek PNG.
 selectObjects {action} – all, none, delete (objekty scény: popisky, ikonky, šipky, perimetry, vzdálenosti).
 clearScene {what} – smaže: labels, icons, arrows, perimeters, distances, closures, colors, regions, data (datová mapa), flags, route, vehicles (další vozidla), title (titulek a zdroj), all; víc druhů = pole ["labels","icons"].

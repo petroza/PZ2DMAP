@@ -138,6 +138,9 @@ const path = require('path'), fs = require('fs');
   r = await page.evaluate(() => window.TNMAP.setExportName({popis: 'Vietnam', nick: 'cze', porad: 'Střepiny', oprava: false}));
   check(r.ok && r.file === `mapa-vietnam-cze-gfx-str-${YMD}-9x16`, 'setExportName: ' + JSON.stringify(r));
   check((await page.evaluate(() => window.TNMAP.setExportName({nick: 'abcd'}))).ok === false, 'setExportName: nick musí mít 3 písmena');
+  // chybný nick nesmí nechat půlku změn (popis zapsaný, pořad ne) — dřív „jnovak" z mailu přepsal popis
+  r = await page.evaluate(() => window.TNMAP.setExportName({popis: 'snih', nick: 'jnovak', porad: 'tn'}));
+  check(r.ok === false && /jnovak/.test(r.error) && await page.evaluate(() => document.getElementById('pzNamePopis').value) === 'Vietnam', 'setExportName se špatným nickem nic nezmění: ' + JSON.stringify(r));
   check((await page.evaluate(() => window.TNMAP.setExportName({porad: 'Ulice'}))).ok === false, 'setExportName: neznámý pořad vrátí chybu');
   // jen nick (popis prázdný) → popis z názvu projektu
   await page.fill('#pzNamePopis', ''); await page.evaluate(() => { document.getElementById('projectName').value = 'Kanál Labe'; });
