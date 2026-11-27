@@ -138,6 +138,46 @@ const fs = require('fs'), path = require('path');
     check(dist(px.pts[sw.length], hex(czColor)) < 12, 'Ukrajina má v exportu barvu svého pásma ' + JSON.stringify(px.pts[sw.length]) + ' ~ ' + czColor);
   }
 
+  // --- QA: Francie / Španělsko v datech nesmí „Zarámovat scénu" oddálit na celý svět (zámoří)
+  await page.evaluate(() => window.TNMAP.dataMap({rows:'Česko: 2,6 / Francie: 1,8 / Španělsko: 2,9 / Portugalsko: 2,4 / Polsko: 4,9', unit:'%'})); await page.waitForTimeout(2500);
+  const mb = await page.evaluate(() => { const F = window.__pzFns, fr = F.state.countriesGeojson.features.find(f => f.properties.__appId === 'FR');
+    const b = F.pzFeaturesBBox([F.pzMainlandFeature(fr)]), es = F.pzFeaturesBBox([F.pzMainlandFeature(F.state.countriesGeojson.features.find(f => f.properties.__appId === 'ES'))]);
+    const s = F.pzFeaturesBBox([{geometry:{coordinates: F.pzSceneLngLats({countries:true})}}]); return {fr:b, es, scene:s}; });
+  check(mb.fr[0][0] > -6 && mb.fr[0][1] > 40 && mb.es[0][1] > 35 && mb.scene[1][0] - mb.scene[0][0] < 40, 'pevninská Francie a Španělsko (bez Guyany a Kanár) → záběr na Evropu ' + JSON.stringify(mb.scene));
+  // --- QA: smazání datové mapy jde vrátit krokem zpět
+  await page.evaluate(() => window.TNMAP.dataMap({clear:true})); await page.waitForTimeout(300);
+  await page.evaluate(() => window.__pzUndo()); await page.waitForTimeout(1500);
+  check((await dm()).items.filter(i => i.kind).length === 5, 'Ctrl+Z po dataMap clear vrátí datovou mapu');
+  // --- QA: kartogram krajů s titulkem a legendou — záběr se legendě a titulku vyhne (16:9),
+  // čísla v 9:16 nejsou v exportu 2–3× větší než v 16:9
+  await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1920x1080'; r.dispatchEvent(new Event('change', {bubbles:true})); });
+  await page.evaluate(() => window.TNMAP.setTitle({title:'Chudoba seniorů podle krajů', source:'ČSÚ'}));
+  await page.evaluate(() => window.TNMAP.dataMap({rows:'Praha: 12,4\nStředočeský: 15,1\nJihočeský: 17,8\nPlzeňský: 16,2\nKarlovarský: 22,5\nÚstecký: 24,9\nLiberecký: 18,3\nKrálovéhradecký: 16,9\nPardubický: 15,7\nVysočina: 14,2\nJihomoravský: 16,5\nOlomoucký: 19,4\nZlínský: 15,9\nMoravskoslezský: 23,1', unit:'%', legend:'bl'}));
+  await page.waitForTimeout(2500);
+  const geo = () => page.evaluate(() => { const F = window.__pzFns, m = window.__tnMap, f = document.getElementById('exportFrame').getBoundingClientRect(), mr = document.getElementById('map').getBoundingClientRect();
+    const c = document.createElement('canvas'), W = +document.getElementById('exportResolution').value.split('x')[0] || 1920, H = +document.getElementById('exportResolution').value.split('x')[1] || 1080;
+    const feats = F.state.czKrajeGeo.features; const pts = []; feats.forEach(ft => { const walk = a => typeof a[0] === 'number' ? pts.push(a) : a.forEach(walk); walk(ft.geometry.coordinates); });
+    const px = pts.filter((_, i) => i % 7 === 0).map(p => { const q = m.project(p); return [(q.x + mr.left - f.left) / f.width * W, (q.y + mr.top - f.top) / f.height * H]; });
+    const tb = F.pzDrawTitleOverlay(c.getContext('2d'), (c.width = W, W), (c.height = H, H));
+    return {W, H, px, tb, sizes: [...new Set(F.state.mapLabels.filter(l => l.dm).map(l => l.size))], fw: f.width}; });
+  let G = await geo();
+  const legendBox = await page.evaluate(() => { const c = document.getElementById('dmLegendGrip').getBoundingClientRect(), f = document.getElementById('exportFrame').getBoundingClientRect(); return {x:(c.left - f.left) / f.width * 1920, y:(c.top - f.top) / f.height * 1080, w:c.width / f.width * 1920, h:c.height / f.height * 1080}; });
+  const inBox = (p, b, m = 0) => p[0] > b.x + m && p[0] < b.x + b.w - m && p[1] > b.y + m && p[1] < b.y + b.h - m;
+  const underLeg = G.px.filter(p => inBox(p, legendBox, 4)).length, underTitle = G.px.filter(p => inBox(p, G.tb.title, 2)).length, outside = G.px.filter(p => p[0] < 0 || p[1] < 0 || p[0] > 1920 || p[1] > 1080).length;
+  check(underLeg === 0 && underTitle === 0 && outside === 0, `16:9: hranice krajů nejsou pod legendou (${underLeg}) ani titulkem (${underTitle}), celá ČR v záběru (${outside})`);
+  const size169 = G.sizes[0];
+  await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1080x1920'; r.dispatchEvent(new Event('change', {bubbles:true})); });
+  await page.waitForTimeout(800); await page.evaluate(() => window.TNMAP.fitScene()); await page.waitForTimeout(2500);
+  // Zarámovat scénu se dolaďuje (přesahující čísla) — počkat na klidný záběr
+  for(let i = 0, prev = ''; i < 20; i++){ const z = await page.evaluate(() => { const m = window.__tnMap, c = m.getCenter(); return [m.getZoom(), c.lng, c.lat].map(v => v.toFixed(4)).join(); }); if(z === prev) break; prev = z; await page.waitForTimeout(500); }
+  G = await geo();
+  const rel916 = G.sizes[0] / G.fw * 1080;   // velikost čísla v px exportu 9:16
+  check(G.sizes.length === 1 && G.sizes[0] < size169 && G.px.every(p => p[0] >= 0 && p[0] <= 1080 && p[1] >= 0 && p[1] <= 1920), `9:16: celá ČR v záběru po Zarámovat scénu (mimo: ${G.px.filter(p => p[0] < 0 || p[0] > 1080 || p[1] < 0 || p[1] > 1920).length}), čísla menší v náhledu (${size169} → ${G.sizes[0]} px, ve výstupu ~${Math.round(rel916)} px)`);
+  await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1920x1080'; r.dispatchEvent(new Event('change', {bubbles:true})); });
+  let back = '';
+  for(let i = 0; i < 30 && back !== String(size169); i++){ await page.waitForTimeout(250); back = (await page.evaluate(() => [...new Set(window.__pzFns.state.mapLabels.filter(l => l.dm).map(l => l.size))])).join(); }
+  check(back === String(size169), 'zpět na 16:9: čísla mají zase původní velikost ' + back);
+
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close(); done();
 })();

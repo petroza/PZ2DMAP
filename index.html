@@ -9287,7 +9287,7 @@ function serializeProjectSnapshot(){
     // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
     // as the same .glb is loaded again; within a session it survives undo/redo + project switch).
     model3d: (state.model3d && state.model3d.lngLat) ? (m=>({lngLat:m.lngLat, altitude:m.altitude, scale:m.scale, sizeMeters:m.sizeMeters, rotationDeg:m.rotationDeg, rotX:m.rotX, rotZ:m.rotZ, upAxis:m.upAxis, snapSurface:m.snapSurface, followRoute:m.followRoute, shadowOn:m.shadowOn, shadowBlur:m.shadowBlur, sun:m.sun}))(state.model3d) : null,
-    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, ...(item.offset ? {offset:item.offset} : {}), ...(item.kraj ? {kraj:item.kraj} : {}), ...(item.dm ? {dm:item.dm} : {}), lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
+    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, ...(item.offset ? {offset:item.offset} : {}), ...(item.kraj ? {kraj:item.kraj} : {}), ...(item.dm ? {dm:item.dm} : {}), ...(item.dmAuto ? {dmAuto:item.dmAuto} : {}), lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     animation: {
       currentRotMode: state.currentRotMode,
       animIconSize: $('animIconSize')?.value || '34',
@@ -9473,6 +9473,8 @@ function applyBasicProjectSnapshot(snapshot){
     }
   }catch(_e){}
   (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null, offset: item.offset, kraj: item.kraj, dm: item.dm}));
+  // čísla datové mapy s automatickou velikostí (po načtení dál následují výřez)
+  (snapshot.mapLabels || []).forEach(item => { const l = item.dmAuto && state.mapLabels.find(x => x.dm === item.dm); if(l) l.dmAuto = item.dmAuto; });
   // Každý popisek si drží vlastní velikost (dřív se všechny srovnaly na poslední).
   // Posuvník jen ukáže velikost posledního, ať další nový popisek navazuje.
   if(state.mapLabels.length){
@@ -10303,7 +10305,7 @@ function pzKrajeFit(force){
     if(hb && hb[0][0] >= vb.getWest() && hb[1][0] <= vb.getEast() && hb[0][1] >= vb.getSouth() && hb[1][1] <= vb.getNorth() && state.map.getZoom() > 5) return false;
   }
   state.screenPan = {x:0, y:0};
-  state.map.fitBounds(bb, {padding: getFitPadding(), bearing:0, pitch:0, duration:800});
+  state.map.fitBounds(bb, {padding: pzFitOverlayPadding(getFitPadding(), bb), bearing:0, pitch:0, duration:800});
   return true;
 }
 
@@ -10740,7 +10742,6 @@ function pzDataMapClear(silent){
 // Záběr: kraje = celá ČR, jinak všechna místa s hodnotou.
 function pzDmFit(){
   const s = pzDmState(), ok = s.items.filter(i => i.kind); if(!ok.length || !state.map) return;
-  if(ok.every(i => i.kind === 'kraj')){ pzKrajeFit(true); return; }
   const feats = [];
   ok.forEach(i => {
     if(i.kind === 'country'){ const f = (state.countriesGeojson?.features || []).find(x => x.properties?.__appId === i.id); if(f) feats.push(f); }
@@ -10753,13 +10754,11 @@ function pzDmFit(){
   pts.forEach(p => { if(!bb){ bb = [[p[0], p[1]], [p[0], p[1]]]; return; } bb[0][0] = Math.min(bb[0][0], p[0]); bb[0][1] = Math.min(bb[0][1], p[1]); bb[1][0] = Math.max(bb[1][0], p[0]); bb[1][1] = Math.max(bb[1][1], p[1]); });
   if(!bb) return;
   if(bb[1][0] - bb[0][0] < 0.05 && bb[1][1] - bb[0][1] < 0.05){ bb = [[bb[0][0] - 0.3, bb[0][1] - 0.2], [bb[1][0] + 0.3, bb[1][1] + 0.2]]; }
+  // kartogram krajů = celá ČR (jako colorRegion)
+  if(ok.every(i => i.kind === 'kraj')) bb = pzKrajeBBox(null) || bb;
   state.screenPan = {x:0, y:0};
-  // legenda zabírá roh — mapu od ní odsadit
-  const pad = getFitPadding(), p = typeof pad === 'number' ? {top:pad, bottom:pad, left:pad, right:pad} : {...pad};
-  try{
-    const fr = pzExportFrameRect(), {w:outW, h:outH} = getExportSize(), L = s.legend?.on ? pzDmLegendLayout(document.createElement('canvas').getContext('2d'), outW, outH) : null;
-    if(L && fr?.width){ const side = /l$/.test(s.legend.corner || 'bl') ? 'left' : 'right'; p[side] = (p[side] || 0) + Math.round(L.w * fr.width / outW * 0.8); }
-  }catch(e){}
+  // legenda v rohu, titulek a zdroj — mapu od nich odsadit (dřív legenda zakryla kraj)
+  const pad = getFitPadding(), p = pzFitOverlayPadding(typeof pad === 'number' ? {top:pad, bottom:pad, left:pad, right:pad} : {...pad}, bb);
   state.map.fitBounds(bb, {padding:p, bearing:0, pitch:0, duration:800, maxZoom:9});
 }
 
@@ -10813,8 +10812,10 @@ function pzDmSyncLabels(){
   const have = (state.mapLabels || []).filter(l => l.dm);
   have.filter(l => !want.has(l.dm)).forEach(l => { try{ deleteMapLabel(l.id, true); }catch(e){} });
   const n = items.length, cities = items.some(i => i.kind === 'city');
-  const size = cities ? (n > 20 ? 14 : n > 10 ? 16 : n > 5 ? 18 : 20) : (n > 20 ? 15 : n > 10 ? 17 : n > 5 ? 19 : 22);
+  const size = Math.max(12, Math.round((cities ? (n > 20 ? 14 : n > 10 ? 16 : n > 5 ? 18 : 20) : (n > 20 ? 15 : n > 10 ? 17 : n > 5 ? 19 : 22)) * pzDmLabelScale()));
   const haveBy = new Map(have.filter(l => want.has(l.dm)).map(l => [l.dm, l]));
+  // automaticky velká čísla (grafik je neměnil) srovnat na velikost pro současný výřez
+  haveBy.forEach(l => { if(l.dmAuto && l.dmAuto === l.size && l.size !== size){ try{ updateMapLabel(l.id, {size}); l.dmAuto = size; }catch(e){} } });
   let added = 0;
   items.forEach(i => {
     const text = pzDmLabelText(i), l = haveBy.get(i.key);
@@ -10822,7 +10823,7 @@ function pzDmSyncLabels(){
     // město: číslo nad tečkou; stát/kraj: ve středu území
     const off = i.kind === 'city' ? [0, -Math.round(size * 0.9 + pzDmDotR(n) + 5)] : null;
     const it = addMapLabelAt({lng:i.lngLat[0], lat:i.lngLat[1]}, {text, size, side:'none', silent:true, baseZoom:null, dm:i.key, ...(off ? {offset:off} : {})});
-    if(it) added++;
+    if(it){ added++; it.dmAuto = it.size; }
   });
   if(added) try{ clearMapLabelSelection(); }catch(e){}
   if(items.length){
@@ -10831,6 +10832,25 @@ function pzDmSyncLabels(){
     if(!state._pzDmMoveHook && state.map){ const m = state.map; let tm = null; state._pzDmMoveHook = true;
       m.on('moveend', () => { clearTimeout(tm); tm = setTimeout(() => { if(!state._exporting && state.map === m) try{ pzDmPlaceLabels(); }catch(e){} }, 120); }); }
   }
+}
+// Popisky mají px náhledu. Výřez 9:16 je na obrazovce úzký (~400 px), takže stejné px
+// by v exportu byla 2–3× větší čísla přes sebe. Na výšku proto měřítko podle toho, jak
+// široký by byl výřez 16:9 na stejném místě (na šířku beze změny).
+function pzDmLabelScale(){
+  try{
+    const f = pzExportFrameRect(); if(!f?.width || !f.height || f.width >= f.height) return 1;
+    const mapEl = $('map'), vis = mapEl ? mapEl.clientWidth - (getMapFreeAreaLeft() || 0) : f.width;
+    const ref = Math.min(f.height * 16 / 9, Math.max(f.width, vis * 0.9));
+    return Math.max(0.5, Math.min(1, f.width / ref));
+  }catch(e){}
+  return 1;
+}
+let _pzDmResizeT = null;
+function pzDmLabelsResizeSoon(){
+  if(!pzDmActive()) return;
+  // výřez se překresluje při každém pohybu mapy — neodkládat donekonečna, jen sloučit
+  if(_pzDmResizeT) return;
+  _pzDmResizeT = setTimeout(() => { _pzDmResizeT = null; if(!state._exporting) try{ pzDmSyncLabels(); }catch(e){} }, 150);
 }
 function pzDmDotR(n){ return n > 30 ? 6 : n > 12 ? 7.5 : 9; }
 // Čísla u měst bez překryvů: pro každé (od nejvyšší hodnoty) první volné místo kolem
@@ -11235,12 +11255,32 @@ function pzBarLayout(ctx, w, h, c, scaleMax){
   let a = pzBarAnchorPx(c, w, h);
   const off = Array.isArray(c.off) ? c.off : [0, 0];
   const safe = pzDmSafeRect(w, h);
-  // nad krajem není místo (kraj u horního okraje) → zpět na střed kraje
-  if(a && a[1] - L.ptrH - L.h + off[1] * h < safe.t){ const a2 = pzBarAnchorPx(c, w, h, true); if(a2) a = a2; }
+  // titulek, „Zdroj:" a legenda datové mapy jsou v grafice taky — panel přes ně nepatří
+  // (dřív v 9:16 graf přejel titulek). Nad titulkem panel nikdy nezačne.
+  let tb = null, lg = null;
+  try{ tb = pzTitleBoxesFor(w, h); }catch(e){}
+  try{ lg = pzDmLegendLayout(ctx, w, h); }catch(e){}
+  const gap = Math.round(12 * k);
+  const overX = (b, x) => !!b && x < b.x + b.w && b.x < x + L.w;
+  const topAt = x => overX(tb?.title, x) ? Math.max(safe.t, tb.title.y + tb.title.h + gap) : safe.t;
+  const botAt = x => overX(tb?.source, x) ? Math.min(safe.b, tb.source.y - gap) : safe.b;
+  const clampX = x => Math.max(safe.l, Math.min(safe.r - L.w, x));
+  // nad krajem není místo (kraj u horního okraje) → zpět na střed kraje; L.need = kolik px
+  // nahoře chybí (Zarámovat scénu o ně záběr posune, ať graf stojí nad krajem)
+  L.need = 0;
+  if(a){ const x = clampX(a[0] - L.w / 2 + off[0] * w), y = a[1] - L.ptrH - L.h + off[1] * h, lim = topAt(x);
+    if(y < lim){ if(!off[0] && !off[1]) L.need = Math.ceil(lim - y); const a2 = pzBarAnchorPx(c, w, h, true); if(a2) a = a2; } }
   L.anchor = a;
   let x = (a ? a[0] : w / 2) - L.w / 2 + off[0] * w, y = (a ? a[1] : h / 2) - L.ptrH - L.h + off[1] * h;
-  L.x = Math.round(Math.max(safe.l, Math.min(safe.r - L.w, x)));
-  L.y = Math.round(Math.max(safe.t, Math.min(safe.b - L.h, y)));
+  L.x = Math.round(clampX(x));
+  const t0 = topAt(L.x), b0 = botAt(L.x);
+  y = Math.max(t0, Math.min(b0 - L.h, y));
+  // legenda v rohu: posunout nad ni / pod ni, kam se panel vejde
+  if(lg && overX(lg, L.x) && y < lg.y + lg.h && lg.y < y + L.h){
+    const up = lg.y - gap - L.h, down = lg.y + lg.h + gap;
+    if(up >= t0) y = up; else if(down + L.h <= b0) y = down;
+  }
+  L.y = Math.round(Math.max(0, Math.min(h - L.h, y)));
   L.baseY = L.y + L.h - L.pad * 0.8 - L.capH;
   let cx = L.x + L.pad + (L.w - L.pad * 2 - inner) / 2;
   L.cols.forEach(col => { col.x = cx; col.cx = cx + col.w / 2; cx += col.w + L.gap; });
@@ -11255,7 +11295,34 @@ function pzBarScaleMax(items){
 function pzBarLayouts(ctx, w, h){
   const items = state.barCharts?.items || []; if(!items.length) return [];
   const sm = pzBarScaleMax(items);
-  return items.map(c => pzBarLayout(ctx, w, h, c, sm[String(c.unit || '').trim()])).filter(Boolean);
+  const Ls = items.map(c => pzBarLayout(ctx, w, h, c, sm[String(c.unit || '').trim()])).filter(Boolean);
+  pzBarAvoidOverlaps(Ls, w, h);
+  return Ls;
+}
+// Grafy u sousedních států (Česko, Slovensko, Polsko…) se dřív kreslily přes sebe a
+// vidět byl jen poslední. Panel, který překrývá už umístěný, posuneme na nejbližší volné
+// místo v bezpečné zóně (vedle, nad, pod); k místu pak vede tenká čára. Ručně posunuté
+// grafy zůstávají, kde je grafik nechal.
+function pzBarAvoidOverlaps(Ls, w, h){
+  if(Ls.length < 2) return;
+  const safe = pzDmSafeRect(w, h), placed = [];
+  const hit = (a, b, g) => a.x < b.x + b.w + g && b.x < a.x + a.w + g && a.y < b.y + b.h + g && b.y < a.y + a.h + g;
+  const move = (L, x, y) => { const dx = x - L.x, dy = y - L.y; L.x = x; L.y = y; L.baseY += dy; L.cols.forEach(c => { c.x += dx; c.cx += dx; }); };
+  const order = Ls.map((L, i) => ({L, i, fixed: Array.isArray(L.c.off) && (L.c.off[0] || L.c.off[1])})).sort((a, b) => (b.fixed - a.fixed) || ((a.L.anchor?.[0] ?? 0) - (b.L.anchor?.[0] ?? 0)));
+  // místa ostatních grafů (tečka, kam vede čára) panel taky nesmí zakrýt
+  const dots = Ls.filter(L => L.anchor).map(L => { const r = 9 * L.k; return {L, x:L.anchor[0] - r, y:L.anchor[1] - r, w:2 * r, h:2 * r}; });
+  const blocked = (L, b, g) => placed.some(P => hit(b, P, g)) || dots.some(d => d.L !== L && hit(b, d, 0));
+  order.forEach(({L, fixed}) => {
+    const g = Math.round(10 * L.k);
+    if(!fixed && blocked(L, L, g)){
+      const cand = [];
+      [...placed, ...dots.filter(d => d.L !== L)].forEach(P => { cand.push([P.x + P.w + g, L.y], [P.x - L.w - g, L.y], [L.x, P.y - L.h - g], [L.x, P.y + P.h + g]); });
+      const ok = ([x, y]) => x >= safe.l - 0.5 && y >= Math.min(L.y, safe.t) - 0.5 && x + L.w <= safe.r + 0.5 && y + L.h <= safe.b + 0.5 && !blocked(L, {x, y, w:L.w, h:L.h}, g - 1);
+      const best = cand.filter(ok).sort((a, b) => Math.hypot(a[0] - L.x, a[1] - L.y) - Math.hypot(b[0] - L.x, b[1] - L.y))[0];
+      if(best) move(L, Math.round(best[0]), Math.round(best[1]));
+    }
+    placed.push(L);
+  });
 }
 // Kreslení všech grafů (náhled i export). clock = null → konečná výška.
 function pzDrawBarCharts(ctx, w, h, clock){
@@ -11263,7 +11330,7 @@ function pzDrawBarCharts(ctx, w, h, clock){
   const Ls = pzBarLayouts(ctx, w, h), n = Ls.length;
   // grafy po sobě s malým odstupem, sloupce v grafu taky — vše hotové zhruba do 1,1 s
   const stepC = n > 1 ? Math.min(0.15, 0.35 / (n - 1)) : 0;
-  Ls.forEach((L, ci) => {
+  [0, 1].forEach(pass => Ls.forEach((L, ci) => {
     const {k, F, c} = L;
     const t0 = ci * stepC;
     const nb = L.cols.length, stepB = nb > 1 ? Math.min(0.16, 0.3 / (nb - 1)) : 0;
@@ -11278,8 +11345,9 @@ function pzDrawBarCharts(ctx, w, h, clock){
     const bx = Math.max(L.x + L.r + L.ptrW / 2, Math.min(L.x + L.w - L.r - L.ptrW / 2, a ? a[0] : 0)), by = L.y + L.h;
     const tipNear = inFrame && a[1] >= by && a[1] - by <= L.ptrH * 1.6 && Math.abs(a[0] - bx) <= L.ptrW;
     ctx.shadowColor = 'rgba(0,0,0,.28)'; ctx.shadowBlur = 16 * k; ctx.shadowOffsetY = 3 * k;
-    if(inFrame && !tipNear){
-      // graf odtažený od místa: tenká čára a tečka na místě
+    if(inFrame && !tipNear && pass === 0){
+      // graf odtažený od místa: tenká čára a tečka na místě (v prvním průchodu — čáry
+      // pod panely, ať čára jednoho grafu nepřeškrtne sousední panel)
       const ex = Math.max(L.x, Math.min(L.x + L.w, a[0])), ey = a[1] > by ? by : (a[1] < L.y ? L.y : Math.max(L.y, Math.min(by, a[1])));
       const sx = a[1] > by || a[1] < L.y ? ex : (a[0] < L.x ? L.x : L.x + L.w);
       ctx.strokeStyle = panel ? '#ffffff' : '#0D1767'; ctx.lineWidth = 3 * k;
@@ -11287,6 +11355,7 @@ function pzDrawBarCharts(ctx, w, h, clock){
       ctx.beginPath(); ctx.arc(a[0], a[1], 7 * k, 0, Math.PI * 2); ctx.fillStyle = '#0D1767'; ctx.fill();
       ctx.lineWidth = 2.5 * k; ctx.strokeStyle = '#ffffff'; ctx.stroke();
     }
+    if(pass === 0){ ctx.restore(); return; }
     if(panel){
       ctx.fillStyle = 'rgba(255,255,255,.97)';
       drawRoundRectPath(ctx, L.x, L.y, L.w, L.h, L.r); ctx.fill();
@@ -11321,7 +11390,7 @@ function pzDrawBarCharts(ctx, w, h, clock){
       if(col.b.label){ ctx.font = `700 ${L.capF}px ${F}`; ctx.fillStyle = '#2b2f3a'; text(col.b.label, col.cx, L.baseY + 8 * k + L.capF * 0.95, col.w + L.gap * 0.8); }
     });
     ctx.restore();
-  });
+  }));
   return Ls;
 }
 // Náhled: plátno přes výřez exportu (i se skrytým rámečkem) + neviditelná táhla grafů.
@@ -11363,7 +11432,12 @@ function pzBarInitGrip(g){
     e.preventDefault(); e.stopPropagation();
     try{ window.__pzPushUndo?.(); }catch(_e){}
     pzBarState().sel = c.id; pzBarRenderUi();
-    const fr = pzExportFrameRect(), x0 = e.clientX, y0 = e.clientY, o0 = Array.isArray(c.off) ? c.off.slice() : [0, 0];
+    const fr = pzExportFrameRect(), x0 = e.clientX, y0 = e.clientY;
+    let o0 = Array.isArray(c.off) ? c.off.slice() : [0, 0];
+    // graf odsunutý od sousedního (pzBarAvoidOverlaps) táhnout z místa, kde je vidět — ne skokem
+    if(!o0[0] && !o0[1]) try{ const {w, h} = getExportSize(), cv = document.createElement('canvas').getContext('2d'), sm = pzBarScaleMax(state.barCharts.items);
+      const L0 = pzBarLayout(cv, w, h, c, sm[String(c.unit || '').trim()]), Lv = pzBarLayouts(cv, w, h).find(L => L.c === c);
+      if(L0 && Lv && (Lv.x !== L0.x || Lv.y !== L0.y)) o0 = [(Lv.x - L0.x) / w, (Lv.y - L0.y) / h]; }catch(_e){}
     g.classList.add('drag');
     try{ g.setPointerCapture(e.pointerId); }catch(_e){}
     const move = ev => { c.off = [o0[0] + (ev.clientX - x0) / fr.width, o0[1] + (ev.clientY - y0) / fr.height]; pzBarsPreview(); };
@@ -11407,12 +11481,21 @@ function pzBarClear(){ const had = pzBarActive(); state.barCharts = {items:[], s
 // Z datové mapy: jeden sloupec u každého místa s hodnotou (čísla datové mapy pak nejsou potřeba).
 function pzBarFromDataMap(){
   const d = state.dataMap; if(!d || !pzDmActive()) return 0;
-  const its = d.items.filter(i => i.kind && i.lngLat).slice(0, 12);
+  // „čísla jen u ČR a Německa" → sloupce taky jen u vybraných; jinak nejvýš 12 míst
+  const all = d.items.filter(i => i.kind && i.lngLat);
+  const chosen = d.labels === 'chosen' ? all.filter(i => (d.chosen || []).includes(i.key)) : [];
+  const its = (chosen.length ? chosen : all).slice(0, 12);
   const s = pzBarState(); s.items = [];
   its.forEach(i => s.items.push({id: ++s.seq, key: i.kind + ':' + i.id, place: i.name, kind: i.kind, lngLat: i.lngLat.slice(), off:[0, 0], panel:true, grow:true,
     bars:[{label: its.length > 1 ? '' : i.name, value: i.value, dec: i.dec}], unit: d.unit || '', title: its.length > 1 ? i.name : '', colors:null}));
-  if(its.length && d.labels !== 'none'){ d.labels = 'none'; try{ pzDmSyncLabels(); pzDmRenderUi(); }catch(e){} }
+  if(its.length){
+    // číslo zůstane jen u míst bez sloupce (dřív se při víc než 12 místech čísla ztratila úplně)
+    const rest = chosen.length ? [] : all.slice(12).map(i => i.key);
+    if(rest.length){ d.labels = 'chosen'; d.chosen = rest; } else d.labels = 'none';
+    try{ pzDmSyncLabels(); pzDmRenderUi(); }catch(e){}
+  }
   pzBarsChanged();
+  pzBarFromDataMap.skipped = chosen.length ? 0 : Math.max(0, all.length - its.length);
   return its.length;
 }
 // ---- panel -------------------------------------------------------------------------
@@ -11459,7 +11542,8 @@ function pzInitBarChartUi(){
     setStatus(t('Graf u místa {0} (sloupců: {1}).', r.chart.place, r.chart.bars.length));
   });
   $('bcRows')?.addEventListener('keydown', e => { if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){ e.preventDefault(); $('bcAddBtn')?.click(); } });
-  $('bcFromDmBtn')?.addEventListener('click', () => { undo(); const n = pzBarFromDataMap(); setStatus(n ? t('Sloupce z datové mapy: {0}.', n) : t('Datová mapa je prázdná.'), n ? undefined : 'error'); });
+  $('bcFromDmBtn')?.addEventListener('click', () => { undo(); const n = pzBarFromDataMap(), k = pzBarFromDataMap.skipped || 0;
+    setStatus(!n ? t('Datová mapa je prázdná.') : k ? t('Sloupce z datové mapy: {0} (nejvýš 12 — dalších {1} míst má dál číslo).', n, k) : t('Sloupce z datové mapy: {0}.', n), n ? undefined : 'error'); });
   $('bcClearBtn')?.addEventListener('click', () => { undo(); pzBarClear(); setStatus(t('Grafy smazány.')); });
   // vzhled vybraného grafu se mění hned
   [['bcPanel', 'panel'], ['bcGrow', 'grow']].forEach(([id, k]) => $(id)?.addEventListener('change', () => { const c = sel(); if(!c) return; undo(); c[k] = $(id).checked; pzBarsChanged(); }));
@@ -19096,8 +19180,15 @@ function pzSceneLngLats(opts){
   (state.pzSections?.items || []).forEach(it => (it?.coords || []).forEach(add));
   if(opts.countries){
     const ids = new Set(Object.entries(state.countryColorMap || {}).filter(([id, c]) => id && c).map(([id]) => id));
-    const bb = ids.size ? pzFeaturesBBox((state.countriesGeojson?.features || []).filter(f => ids.has(f.properties?.__appId))) : null;
+    // jen hlavní území státu: Francie s Guyanou a Réunionem, Portugalsko s Azorami
+    // dřív „Zarámovat scénu" u datové mapy EU oddálilo na celý svět
+    const bb = ids.size ? pzFeaturesBBox((state.countriesGeojson?.features || []).filter(f => ids.has(f.properties?.__appId)).map(pzMainlandFeature)) : null;
     if(bb){ add(bb[0]); add(bb[1]); add([bb[0][0], bb[1][1]]); add([bb[1][0], bb[0][1]]); }
+    // Kraje ČR (zvýrazněné / kartogram) = celá ČR jako u colorRegion; místa datové mapy
+    // a sloupcových grafů — dřív „Zarámovat scénu" kraj ani graf neznalo a 9:16 je ořízlo.
+    try{ if(pzKrajeHighlighted().length){ const kb = pzKrajeBBox(null); if(kb){ add(kb[0]); add(kb[1]); } } }catch(_e){}
+    (state.dataMap?.items || []).forEach(i => { if(i?.kind && i.lngLat) add(i.lngLat); });
+    (state.barCharts?.items || []).forEach(c => add(c?.lngLat));
   }
   // Bubliny popisků mají pevnou velikost v px — jejich rohy převést na mapu (při současném záběru).
   if(opts.bubbles !== false && state.map === window.__tnMap){
@@ -19156,11 +19247,7 @@ function pzFitScene(opts){
   const pad = getFitPadding(), r = pzExportFrameRect();
   // bezpečná zóna (title-safe) uvnitř rámu
   const safe = r ? Math.round(Math.min(r.width, r.height) * 0.05) : 0;
-  const padding = {top: pad.top + safe, right: pad.right + safe, bottom: pad.bottom + safe, left: pad.left + safe};
-  // titulek nahoře a „Zdroj:" dole zabírají kus rámečku — objekty pod ně nepatří
-  try{ const tb = r && pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
-    if(tb?.title) padding.top = Math.max(padding.top, pad.top + tb.title.y + tb.title.h + 12);
-    if(tb?.source) padding.bottom = Math.max(padding.bottom, pad.bottom + (r.height - tb.source.y) + 12); }catch(_e){}
+  const padding = pzFitOverlayPadding({top: pad.top + safe, right: pad.right + safe, bottom: pad.bottom + safe, left: pad.left + safe}, bb);
   const single = Math.abs(bb[1][0] - bb[0][0]) < 1e-5 && Math.abs(bb[1][1] - bb[0][1]) < 1e-5;
   state.screenPan = {x:0, y:0};
   const dur = opts.duration ?? 700;
@@ -19169,11 +19256,15 @@ function pzFitScene(opts){
     else m.fitBounds(bb, {padding, duration: dur, maxZoom: 16, bearing: m.getBearing(), pitch: m.getPitch()});
   }catch(_e){ try{ m.fitBounds(bb, {padding, duration: dur}); }catch(_e2){} }
   // Přesah bublin/ikonek (px) přičíst k odsazení na dané straně a zarámovat znovu.
+  // Sloupcový graf stojí nad krajem/místem — když se nahoru nevejde, záběr o chybějící kus níž.
   let tries = 0;
+  const barNeed = fr => { try{ const {w, h} = getExportSize();
+    return Math.max(0, ...pzBarLayouts(document.createElement('canvas').getContext('2d'), w, h).map(L => L.need || 0)) * fr.width / w; }catch(_e){ return 0; } };
   const check = () => {
     if(state.map !== m) return;
-    const out = pzObjectsOutsideFrame(), fr = pzExportFrameRect();
-    if(!out.length || ++tries > 3 || single || !fr){ pzMarkOutsideObjects(); return; }
+    const out = pzObjectsOutsideFrame(), fr = pzExportFrameRect(), need = fr ? barNeed(fr) : 0;
+    if((!out.length && !need) || ++tries > 3 || single || !fr){ pzMarkOutsideObjects(); return; }
+    padding.top += need;
     out.forEach(({el}) => { const b = el.getBoundingClientRect();
       padding.left += Math.max(0, fr.left - b.left); padding.right += Math.max(0, b.right - fr.right);
       padding.top += Math.max(0, fr.top - b.top); padding.bottom += Math.max(0, b.bottom - fr.bottom); });
@@ -19183,6 +19274,34 @@ function pzFitScene(opts){
   m.once('moveend', () => setTimeout(check, 30));
   if(!opts.quiet) setStatus(t('Celá scéna je v rámečku.'));
   return true;
+}
+// Grafika přes mapu (titulek nahoře, „Zdroj:" dole, legenda datové mapy v rohu) — záběr od ní
+// odsadit. pad = odsazení v px mapy, bb = [[z, j], [v, s]] rámované scény. Legendu obejde
+// zboku, nebo shora/zdola — podle toho, co záběr zmenší méně (9:16 obvykle zdola).
+function pzFitOverlayPadding(pad, bb){
+  const p = {...pad}, m = state.map, mapEl = $('map');
+  let r = null; try{ r = pzExportFrameRect(); }catch(_e){}
+  if(!m || !mapEl || !r?.width) return p;
+  const mr = mapEl.getBoundingClientRect();
+  const off = {top: r.top - mr.top, bottom: mr.bottom - r.bottom, left: r.left - mr.left, right: mr.right - r.right};
+  const g = Math.round(Math.min(r.width, r.height) * 0.02) + 6;
+  try{ const tb = pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
+    if(tb?.title) p.top = Math.max(p.top, off.top + tb.title.y + tb.title.h + g);
+    if(tb?.source) p.bottom = Math.max(p.bottom, off.bottom + (r.height - tb.source.y) + g); }catch(_e){}
+  try{
+    const {w:W, h:H} = getExportSize(), sc = r.width / W;
+    const L = pzDmLegendLayout(document.createElement('canvas').getContext('2d'), W, H);
+    if(L){
+      const hor = {...p}, ver = {...p};
+      if(L.x + L.w / 2 < W / 2) hor.left = Math.max(p.left, off.left + (L.x + L.w) * sc + g); else hor.right = Math.max(p.right, off.right + (W - L.x) * sc + g);
+      if(L.y + L.h / 2 < H / 2) ver.top = Math.max(p.top, off.top + (L.y + L.h) * sc + g); else ver.bottom = Math.max(p.bottom, off.bottom + (H - L.y) * sc + g);
+      let bw = r.width, bh = r.height;
+      if(bb){ const a = m.project(bb[0]), b = m.project(bb[1]); bw = Math.max(1, Math.abs(b.x - a.x)); bh = Math.max(1, Math.abs(b.y - a.y)); }
+      const room = q => Math.min((mr.width - q.left - q.right) / bw, (mr.height - q.top - q.bottom) / bh);
+      Object.assign(p, room(hor) >= room(ver) ? hor : ver);
+    }
+  }catch(_e){}
+  return p;
 }
 function pzLngLatsInFrameMask(pts){
   const m = state.map, r = pzExportFrameRect(); if(!m || !r) return pts.map(() => false);
@@ -19301,6 +19420,7 @@ function updateExportFrame(){
   $('exportSafeGuides')?.classList.toggle('sg-social', outW < outH);
   try{ pzUpdateFrameWatermark(r.width, r.height, outW, outH); }catch(_e){}
   try{ pzUpdateFrameLegend(); }catch(_e){}
+  try{ pzDmLabelsResizeSoon(); }catch(_e){}   // jiný poměr výřezu → čísla datové mapy v poměru k výstupu
   try{ pzFlyInPreview(); }catch(_e){}
   try{ pzApplyGlobeMinZoom(); }catch(_e){}
 }
@@ -21740,7 +21860,7 @@ async function exportBatchFormats(){
   const origPan = state.screenPan ? {...state.screenPan} : null;
   const origSize = getExportSize();
   const origAspect = origSize.w / Math.max(1, origSize.h);
-  const fitPts = pzSceneLngLats();   // trasa i objekty scény (statická mapa trasu mít nemusí)
+  const fitPts = pzSceneLngLats({countries:true});   // trasa i objekty scény, obarvené státy a kraje, datová mapa, grafy
   const canRefit = m && fitPts.length > 1 && !cameraAnimReady() && !$('followCamera')?.checked;
   const waitIdle = () => new Promise(res => { let ok = false; const fin = () => { if(!ok){ ok = true; res(); } }; m.once('idle', fin); setTimeout(fin, 4000); });
   let done = 0, cancelled = false;
@@ -21760,7 +21880,7 @@ async function exportBatchFormats(){
           if(Math.abs(sz.w / Math.max(1, sz.h) - origAspect) > 0.02){
             const bounds = fitPts.reduce((b,c)=>b.extend(c), new maplibregl.LngLatBounds(fitPts[0], fitPts[0]));
             state.screenPan = {x:0, y:0};
-            m.fitBounds(bounds, {padding:getFitPadding(), duration:0, bearing: origCam.bearing, pitch: origCam.pitch});
+            m.fitBounds(bounds, {padding: pzFitOverlayPadding(getFitPadding(), bounds.toArray()), duration:0, bearing: origCam.bearing, pitch: origCam.pitch});
           } else {
             if(origPan) state.screenPan = {...origPan};
             m.jumpTo(origCam);
@@ -23723,6 +23843,7 @@ Object.assign(I18N, {
   "Napiš místo (kraj, stát nebo město).": {cs:"Napiš místo (kraj, stát nebo město).",sk:"Napíš miesto (kraj, štát alebo mesto).",bg:"Напиши място (област, държава или град).",hr:"Upiši mjesto (regiju, državu ili grad).",ro:"Scrie locul (regiune, stat sau oraș).",en:"Type a place (region, country or city)."},
   "Vlož sloupce: řádek Popisek: hodnota.": {cs:"Vlož sloupce: řádek Popisek: hodnota.",sk:"Vlož stĺpce: riadok Popis: hodnota.",bg:"Въведи стълбовете: ред Надпис: стойност.",hr:"Unesi stupce: redak Oznaka: vrijednost.",ro:"Introdu barele: rând Etichetă: valoare.",en:"Enter bars: one line Label: value."},
   "Graf u místa {0} (sloupců: {1}).": {cs:"Graf u místa {0} (sloupců: {1}).",sk:"Graf pri mieste {0} (stĺpcov: {1}).",bg:"Диаграма при {0} (стълбове: {1}).",hr:"Grafikon uz {0} (stupaca: {1}).",ro:"Grafic la {0} (bare: {1}).",en:"Chart at {0} (bars: {1})."},
+  "Sloupce z datové mapy: {0} (nejvýš 12 — dalších {1} míst má dál číslo).": {cs:"Sloupce z datové mapy: {0} (nejvýš 12 — dalších {1} míst má dál číslo).",sk:"Stĺpce z dátovej mapy: {0} (najviac 12 — ďalších {1} miest má naďalej číslo).",bg:"Стълбове от картата с данни: {0} (най-много 12 — още {1} места остават с число).",hr:"Stupci iz podatkovne karte: {0} (najviše 12 — još {1} mjesta zadržava broj).",ro:"Bare din harta de date: {0} (maximum 12 — alte {1} locuri păstrează numărul).",en:"Bars from data map: {0} (max. 12 — {1} more places keep their number)."},
   "Sloupce z datové mapy: {0}.": {cs:"Sloupce z datové mapy: {0}.",sk:"Stĺpce z dátovej mapy: {0}.",bg:"Стълбове от картата с данни: {0}.",hr:"Stupci iz podatkovne karte: {0}.",ro:"Bare din harta de date: {0}.",en:"Bars from data map: {0}."},
   "Datová mapa je prázdná.": {cs:"Datová mapa je prázdná.",sk:"Dátová mapa je prázdna.",bg:"Картата с данни е празна.",hr:"Podatkovna karta je prazna.",ro:"Harta de date este goală.",en:"The data map is empty."},
   "Grafy smazány.": {cs:"Grafy smazány.",sk:"Grafy zmazané.",bg:"Диаграмите са изтрити.",hr:"Grafikoni obrisani.",ro:"Graficele au fost șterse.",en:"Charts deleted."},
@@ -26477,6 +26598,17 @@ function pzPickBuiltinIcon(kind){
 // Obálka (bbox) skupiny polygonů pro fitBounds. Státy přes 180. poledník
 // (Rusko, USA s Aljaškou, Fidži) by jinak daly obálku přes celou planetu —
 // když je rozpětí větší než 180°, západní délky posuneme o +360.
+// Stát bez zámořských kusů: největší polygon + ty, které jsou od něj blíž než
+// jeho úhlopříčka (Korsika ano, Kanárské ostrovy a Francouzská Guyana ne).
+function pzMainlandFeature(f){
+  const g = f?.geometry; if(g?.type !== 'MultiPolygon' || g.coordinates.length < 2) return f;
+  const box = p => { let x0 = 180, y0 = 90, x1 = -180, y1 = -90; (p[0] || []).forEach(([x, y]) => { if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y; }); return {x0, y0, x1, y1, cx:(x0 + x1) / 2, cy:(y0 + y1) / 2, d:Math.hypot(x1 - x0, y1 - y0)}; };
+  const area = r => { let a = 0; for(let i = 0, j = r.length - 1; i < r.length; j = i++) a += r[j][0] * r[i][1] - r[i][0] * r[j][1]; return Math.abs(a / 2); };
+  let bi = 0, ba = -1; g.coordinates.forEach((p, i) => { const a = area(p[0] || []); if(a > ba){ ba = a; bi = i; } });
+  const B = box(g.coordinates[bi]), lim = Math.max(2, B.d);
+  const keep = g.coordinates.filter(p => { const b = box(p); return Math.hypot(b.cx - B.cx, b.cy - B.cy) <= lim; });
+  return {...f, geometry:{type:'MultiPolygon', coordinates:keep}};
+}
 function pzFeaturesBBox(features){
   const lons = [], lats = [];
   const walk = c => { if(typeof c[0] === 'number'){ lons.push(c[0]); lats.push(c[1]); } else c.forEach(walk); };
@@ -26545,6 +26677,7 @@ function pzColorFromName(v){
     createSceneArrow, createScenePerimeterAt, createSceneDistance, createSceneIconAt, addMapLabelAt, pzIconDataUrl,   // 21_scene_objects
     buildPreferredMapLabelExpr, applyPreset, setPresetAsDefault, getDefaultPresetToken, getCountryNameById, applyPoliticalCountryColor, pzLngLatsInFrame,   // 31_flags, 28_style_layers
     pzKrajResolve, pzKrajResolveList, pzKrajeSet, pzKrajeColorByValue, pzKrajeReset, pzKrajeFit,   // 32_kraje
+    pzFeaturesBBox, pzMainlandFeature, pzFitOverlayPadding,   // 33_datova_mapa, 38_graf (rámování)
     get state(){ return state; }};
   // Kraje ČR pro další kód (datová mapa s legendou, asistent): čisté API bez UI.
   //   pzKraje.list() → [{id:'CZ064', name:'Jihomoravský kraj', short:'Jihomoravský'}, …]
@@ -26570,7 +26703,7 @@ function pzColorFromName(v){
   };
   // sloupcové grafy (tests/38_graf.test.js): stav, rozvržení v px výstupu, kreslení v čase
   window.pzBars = {state: () => JSON.parse(JSON.stringify(pzBarState())), parse: pzBarParseBars, clear: pzBarClear, clock: pzBarClock,
-    layouts: (w, h) => pzBarLayouts(document.createElement('canvas').getContext('2d'), w, h).map(L => ({id:L.c.id, x:L.x, y:L.y, w:L.w, h:L.h, anchor:L.anchor, baseY:L.baseY,
+    layouts: (w, h) => pzBarLayouts(document.createElement("canvas").getContext("2d"), w, h).map(L => ({id:L.c.id, place:L.c.place, need:L.need || 0, x:L.x, y:L.y, w:L.w, h:L.h, anchor:L.anchor, baseY:L.baseY,
       cols:L.cols.map(c => ({x:c.x, cx:c.cx, w:c.w, hFin:c.hFin, color:c.color, label:c.b.label, value:pzBarValText(c.b, L.c.unit)}))})),
     draw: (ctx, w, h, clock) => pzDrawBarCharts(ctx, w, h, clock).length};
   // animace (tests/23_animation.test.js)
@@ -26948,7 +27081,10 @@ function pzColorFromName(v){
     // bands = počet pásem nebo pole hranic [2, 5, 10]; labels = all | none | [názvy s číslem];
     // kind = auto|country|kraj|city; legend = false | roh (bl, tl, tr, br); clear:true = smazat.
     async dataMap({rows, values, unit, scale, colors, bands, breaks, labels, names, legendTitle, title, legend, corner, kind, clear, fit} = {}){
-      if(clear){ const had = pzDataMapClear(true); return {ok:true, cleared: had ? 'data' : 'nothing'}; }
+      if(clear){
+        // smazání jde vrátit krokem zpět (dřív Ctrl+Z vrátil až krok před datovou mapou)
+        if(pzDmActive()) try{ window.__pzPushUndo?.(); }catch(e){}
+        const had = pzDataMapClear(true); return {ok:true, cleared: had ? 'data' : 'nothing'}; }
       rows = rows ?? values;
       let parsed = [];
       if(typeof rows === 'string'){ const p = pzDmParseText(rows); parsed = p.rows; if(unit == null && p.unit) unit = p.unit; }
@@ -27031,7 +27167,8 @@ function pzColorFromName(v){
       if(fromDataMap){
         if(!pzDmActive()) return {ok:false, error:'Datová mapa je prázdná — nejdřív dataMap s řádky, nebo pošli bars.'};
         try{ window.__pzPushUndo?.(); }catch(e){}
-        const n = pzBarFromDataMap(); return {ok:true, charts:n, note:'Čísla datové mapy jsem schoval — hodnota je nad sloupcem.'};
+        const n = pzBarFromDataMap(), k = pzBarFromDataMap.skipped || 0;
+        return {ok:true, charts:n, note: k ? 'Sloupce jen u prvních ' + n + ' míst (nejvýš 12); dalších ' + k + ' má dál číslo. Pro sloupce u vybraných zemí zavolej dataMap s labels a pak fromDataMap znovu.' : 'Čísla datové mapy jsem schoval — hodnota je nad sloupcem.'};
       }
       if(place == null || place === '') return {ok:false, error:'Chybí place (kraj, stát nebo město v 1. pádu).'};
       let p = pzBarParseBars(bars);

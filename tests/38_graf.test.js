@@ -12,6 +12,8 @@ const fs = require('fs'), path = require('path'), {execSync} = require('child_pr
   const downloads = []; page.on('download', d => downloads.push(d));
   const waitDl = async n => { for(let i = 0; i < 600 && downloads.length < n; i++) await page.waitForTimeout(200); return downloads.length >= n; };
   const st = () => page.evaluate(() => window.pzBars.state());
+  // Zarámovat scénu se může jednou doladit (graf nad krajem potřebuje místo) — počkat na klidný záběr
+  const stable = async () => { let prev = ''; for(let i = 0; i < 20; i++){ const z = await page.evaluate(() => { const m = window.__tnMap, c = m.getCenter(); return [m.getZoom(), c.lng, c.lat].map(v => v.toFixed(4)).join(); }); if(z === prev) return; prev = z; await page.waitForTimeout(500); } };
   const T = (name, args) => page.evaluate(([n, a]) => window.TNMAP[n](a), [name, args]);
 
   // --- převod řádků
@@ -25,6 +27,7 @@ const fs = require('fs'), path = require('path'), {execSync} = require('child_pr
   r = await T('barChart', {place:'Moravskoslezský kraj', bars:[{label:'2024', value:1250}, {label:'2025', value:1480}], unit:'Kč'});
   check(r.ok && r.kind === 'kraj' && r.bars.join('|').replace(/\s/g, ' ') === '2024: 1 250 Kč|2025: 1 480 Kč', 'barChart u kraje: ' + JSON.stringify(r));
   await T('fitScene', {}); await page.waitForTimeout(2500);
+  await stable();
   let L = (await page.evaluate(() => window.pzBars.layouts(1920, 1080)))[0];
   const safe = l => l.x >= 96 && l.y >= 54 && l.x + l.w <= 1824 && l.y + l.h <= 1026;
   check(L && L.cols.length === 2 && safe(L) && L.cols[1].hFin > L.cols[0].hFin && Math.abs(L.cols[0].hFin / L.cols[1].hFin - 1250 / 1480) < 0.01, 'dva sloupce, výška úměrná hodnotě, panel v bezpečné zóně ' + JSON.stringify(L && {x:L.x, y:L.y, w:L.w, h:L.h}));
@@ -145,6 +148,37 @@ const fs = require('fs'), path = require('path'), {execSync} = require('child_pr
   check(r.ok && (await st()).items.length === 2, 'clear s místem smaže jen ten graf');
   const bad = await T('barChart', {place:'Xqzzyw', bars:[1]});
   check(!bad.ok && /nenašel/.test(bad.error), 'neznámé místo vrátí chybu ' + JSON.stringify(bad));
+  // --- QA: grafy u sousedních států se nepřekrývají a nezakryjí místo jiného grafu
+  await T('barChart', {clear:true});
+  for(const [k, v] of [['Česko', 2.6], ['Slovensko', 4.1], ['Polsko', 4.9], ['Německo', 2.2]]) await T('barChart', {place:k, bars:[{label:'', value:v}], unit:'%', title:k});
+  await page.evaluate(() => window.__tnMap.jumpTo({center:[15, 50.5], zoom:4.2})); await page.waitForTimeout(1500);
+  Ls = await page.evaluate(() => window.pzBars.layouts(1920, 1080));
+  const ov = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+  const clash = []; Ls.forEach((a, i) => Ls.forEach((b, j) => { if(i < j && ov(a, b)) clash.push(a.place + '×' + b.place);
+    if(i !== j && b.anchor && b.anchor[0] > a.x && b.anchor[0] < a.x + a.w && b.anchor[1] > a.y && b.anchor[1] < a.y + a.h) clash.push(a.place + " zakrývá " + b.place); }));
+  check(Ls.length === 4 && !clash.length && Ls.every(safe), 'čtyři sousední státy: panely vedle sebe, místa nezakryté ' + JSON.stringify(clash));
+  await shot(page, '38_graf_sousedi.png');
+  // titulek v 9:16: panel přes titulek nevede; MSK + graf po Zarámovat scénu v záběru
+  await T('barChart', {clear:true});
+  await T('setTitle', {title:'Nájemné v Moravskoslezském kraji', source:'Deloitte'});
+  await T('barChart', {place:'Moravskoslezský kraj', bars:'2024: 1 250 Kč\n2025: 1 480 Kč', title:'Nájemné za m²'});
+  await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1080x1920'; r.dispatchEvent(new Event('change', {bubbles:true})); });
+  await page.waitForTimeout(800); await T('fitScene', {}); await page.waitForTimeout(2500); await stable();
+  const v = await page.evaluate(() => { const c = document.createElement('canvas'), L = window.pzBars.layouts(1080, 1920)[0], tb = window.__pzFns.pzDrawTitleOverlay(c.getContext('2d'), (c.width = 1080, 1080), (c.height = 1920, 1920)); return {L: {x:L.x, y:L.y, w:L.w, h:L.h, need:L.need, a:L.anchor}, t:tb.title}; });
+  check(!ov(v.L, v.t) && v.L.a[0] > 0 && v.L.a[0] < 1080 && v.L.a[1] >= v.L.y + v.L.h - 1 && !v.L.need, '9:16: graf pod titulkem, nad krajem, kraj v záběru ' + JSON.stringify(v));
+  await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1920x1080'; r.dispatchEvent(new Event('change', {bubbles:true})); });
+  await T('setTitle', {off:true}); await T('barChart', {clear:true});
+  // sloupce z datové mapy: „čísla jen u ČR a Německa" → sloupce jen u nich; nad 12 míst zbytek s čísly
+  await T('dataMap', {rows:'Česko: 2,6 / Německo: 2,2 / Rakousko: 3,5 / Polsko: 4,9', unit:'%', labels:'ČR, Německa'}); await page.waitForTimeout(2500);
+  r = await T('barChart', {fromDataMap:true});
+  check(r.ok && r.charts === 2 && (await st()).items.map(x => x.place).sort().join() === 'Německo,Česko'.split(',').sort().join(), 'sloupce z datové mapy jen u vybraných zemí ' + JSON.stringify(r));
+  const many = Array.from({length:14}, (_, i) => ['Česko','Německo','Rakousko','Polsko','Slovensko','Maďarsko','Slovinsko','Chorvatsko','Itálie','Francie','Belgie','Nizozemsko','Dánsko','Švédsko'][i] + ': ' + (i + 1)).join(' / ');
+  await T('dataMap', {rows:many, unit:'%'}); await page.waitForTimeout(3000);
+  r = await T('barChart', {fromDataMap:true});
+  const lab = await page.evaluate(() => window.__pzFns.state.mapLabels.filter(l => l.dm).length);
+  check(r.ok && r.charts === 12 && /12/.test(r.note) && lab === 2, '14 míst: 12 sloupců, 2 místa si nechají číslo ' + JSON.stringify(r) + ' čísel: ' + lab);
+  await T('dataMap', {clear:true}); await T('barChart', {clear:true});
+
   check(errors.length === 0, 'žádná chyba stránky ' + errors.join(' | '));
   await close(); done();
 })();

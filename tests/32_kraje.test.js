@@ -125,6 +125,15 @@ const fs = require('fs'), path = require('path');
   const ord = await page.evaluate(() => { const L = window.__tnMap.getStyle().layers.map(l => l.id); return {k: L.indexOf('pz-kraje-fill'), p: L.indexOf('pz-political-fill'), vis: window.__tnMap.getLayoutProperty('pz-kraje-fill', 'visibility')}; });
   check(ord.k > ord.p && ord.p >= 0 && ord.vis === 'visible', 'na Politické mapě jsou kraje nad výplní států ' + JSON.stringify(ord));
 
+  // --- QA: „Zarámovat scénu" zná zvýrazněné kraje — v 9:16 celá ČR v záběru (dřív kraj mimo)
+  await page.evaluate(() => window.TNMAP.colorRegion({region:'Moravskoslezský', color:'červená', fit:false}));
+  await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1080x1920'; r.dispatchEvent(new Event('change', {bubbles:true})); });
+  await page.waitForTimeout(800); await page.evaluate(() => window.TNMAP.fitScene()); await page.waitForTimeout(3000);
+  const fit = await page.evaluate(() => { const F = window.__pzFns, m = window.__tnMap, f = document.getElementById('exportFrame').getBoundingClientRect(), mr = document.getElementById('map').getBoundingClientRect();
+    return [[12.09, 50.25], [18.86, 49.55], [14.32, 51.05], [14.33, 48.55]].map(p => { const q = m.project(p); return [(q.x + mr.left - f.left) / f.width, (q.y + mr.top - f.top) / f.height]; }); });
+  check(fit.every(([x, y]) => x > 0.02 && x < 0.98 && y > 0.1 && y < 0.9), '9:16: Zarámovat scénu ukáže celou ČR se zvýrazněným krajem ' + JSON.stringify(fit.map(p => p.map(v => +v.toFixed(2)))));
+  await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1920x1080'; r.dispatchEvent(new Event('change', {bubbles:true})); });
+
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close(); done();
 })();
