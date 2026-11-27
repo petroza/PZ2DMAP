@@ -992,6 +992,7 @@ html[lang="en"] .tab-btn,html[lang="ro"] .tab-btn,html[lang="bg"] .tab-btn{font-
         <label class="check layer-visibility-row"><input id="showAeroway" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="aerowayColor" aria-label="Barva letišť"> Letiště</label>
         <label class="check layer-visibility-row"><input id="showBoundaries" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="boundaryColor" aria-label="Barva hranic"> Hranice<div class="layer-width-popover">Tloušťka <span class="val" id="boundaryWidthVal">1.2×</span><input id="boundaryWidth" type="range" min="0.2" max="5" step="0.1" value="1.2"></div></label>
         <label class="check layer-visibility-row"><input id="showLabels" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="labelColor" aria-label="Barva názvů"> Názvy<span class="layer-halo-cap" data-i18n="obrys">obrys</span><input class="layer-color-input layer-color-input--halo" type="color" data-sync-color="haloColor" aria-label="Obrys textu" title="Obrys textu"></label>
+        <label class="check layer-visibility-row" title="Názvy měst a států z podkladu se schovají tam, kde by prosvítaly pod popisky, ikonami, titulkem, legendou a grafy (i stejnojmenný název vedle popisku). Vypni, když chceš všechny názvy podkladu."><input id="basemapYield" type="checkbox" checked><span class="layer-color-spacer" aria-hidden="true"></span> <span data-i18n="Názvy podkladu uhnou grafice">Názvy podkladu uhnou grafice</span></label>
         <label class="check layer-visibility-row" title="Ikony a názvy obchodů, kaváren, parkovišť… Názvy měst a ulic zůstávají."><input id="showPoi" type="checkbox"><span class="layer-color-spacer" aria-hidden="true"></span> <span data-i18n="Body zájmu">Body zájmu</span></label>
         <label class="check layer-visibility-row"><input id="showRoadShields" type="checkbox" checked><span class="layer-color-spacer" aria-hidden="true"></span> Čísla silnic</label>
         <label class="check layer-visibility-row"><input id="showMinorRoads" type="checkbox" checked><input class="layer-color-input" type="color" data-sync-color="roadMinorColor" aria-label="Barva vedlejších silnic"> Vedlejší silnice<div class="layer-width-popover">Tloušťka <span class="val" id="minorWidthVal">1.0×</span><input id="minorWidth" type="range" min="0.2" max="3" step="0.1" value="1.0"></div></label>
@@ -3590,6 +3591,8 @@ function getCurrentStyleVisibility(){
     showBoundaries: !!$('showBoundaries')?.checked,
     showLabels: !!$('showLabels')?.checked,
     showRoadShields: !!$('showRoadShields')?.checked,
+    basemapYield: $('basemapYield')?.checked !== false,   // názvy podkladu uhnou grafice
+    hideAdmin1Labels: !!state.pzHideAdmin1Labels,   // klidný podklad: bez názvů regionů sousedů
     showMinorRoads: !!$('showMinorRoads')?.checked,
     showMajorRoads: !!$('showMajorRoads')?.checked,
     showMotorways: !!$('showMotorways')?.checked,
@@ -4049,6 +4052,7 @@ function applyDefaultPresetOnStartup(){
     if(kind === 'builtin') applyPreset(key);
     else applyCustomPreset(key);
     state._defaultPresetApplied = true;
+    state._pzLookIsDefault = true;   // vzhled si grafik zatím nevybral (viz pzNewsCalmAuto)
   }catch(e){ console.warn('Default preset apply failed', e); }
 }
 function duplicatePreset(id, isBuiltin){
@@ -4500,6 +4504,7 @@ function dbDeletePreset(){
   setStatus(t('Preset smazán.'));
 }
 function applyCustomPreset(id){
+  state._pzLookIsDefault = false; pzNewsCalmReset();
   const {entry, idx} = findCustomPresetById(id); if(!entry) return;
   state.pzNativeColors = false;
   applyStylePresetEntry(entry);
@@ -6207,6 +6212,7 @@ function initMap(){
   window.__tnMap = state.map; // debug/diagnostic handle (read-only use)
   makeStyleCheckLenient(state.map);
   pzBindArrowPictoMissing(state.map);
+  pzOccBind(state.map);   // názvy podkladu uhnou grafice
   unlockVerticalWorldPan();
   initInteractivePixelRatio();
   showMapLoading();
@@ -7527,7 +7533,7 @@ function setSceneArrowData(){
   // During native export the map renders at the output width while the on-screen map is
   // smaller, so scale arrow px up to keep the same relative size (mirrors _exportMarkerScale).
   const scale = (state._exporting && state._exportMarkerScale) ? state._exportMarkerScale : 1;
-  const feats = [], icons = [], placed = [], imgs = new Set();
+  const feats = [], icons = [], placed = [], imgs = new Set(), pzArrowOcc = [];
   pzArrowPictoInit();
   const ll = p => { const q = m.unproject([p.x, p.y]); return [q.lng, q.lat]; };
   // glóbus: konec šipky za obzorem se promítne na nesmyslné místo přivrácené strany
@@ -7566,6 +7572,7 @@ function setSceneArrowData(){
       if(free) break;
     }
     placed.push({x: best.x, y: best.y, D});
+    pzArrowOcc.push({ll: ll(best), D});
     // tečna v místě piktogramu
     const q1 = g.at(bd - 4 * scale), q2 = g.at(bd + 4 * scale);
     const dx = q2.x - q1.x, dy = q2.y - q1.y;
@@ -7576,6 +7583,7 @@ function setSceneArrowData(){
     feats.push({type:'Feature', properties:{kind:'icon', id:a.id, img, isz: +(D / (PZ_ARROW_PICTO_BADGE / 2)).toFixed(4),
       rot: rot === 'dir' ? Math.atan2(dx, -dy) * 180 / Math.PI : 0}, geometry:{type:'Point', coordinates: ll(best)}});
   });
+  m.__pzOccArrowIcons = pzArrowOcc;   // piktogramy pro zakrývač názvů podkladu
   if(imgs.size) pzEnsureArrowPictoImages(m, imgs);
   // Rubber-band preview while placing the second point.
   if(state.addingSceneArrow && state.sceneArrowDraft && state.sceneArrowPreview){
@@ -9448,6 +9456,9 @@ function applyBasicProjectSnapshot(snapshot){
   ['showBuildings','showParks','showLandcover','showLanduse','showAeroway','showBoundaries','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit','showPoi'].forEach(id => {
     if($(id) && visibility[id] != null) $(id).checked = !!visibility[id];
   });
+  // názvy podkladu uhnou grafice: starší projekty klíč nemají → zapnuto
+  if($('basemapYield')){ $('basemapYield').checked = visibility.basemapYield !== false; try{ pzOccUpdate(window.__tnMap); }catch(e){} }
+  state._pzLookIsDefault = false; state.pzHideAdmin1Labels = !!visibility.hideAdmin1Labels;
   if('presetToken' in snapshot){
     state.activePresetToken = snapshot.presetToken || null;
     state._presetAppliedSig = snapshot.presetSig || null;
@@ -10026,6 +10037,7 @@ function pzUnpaintCountry(id){
 }
 // Tlačítko Obarvit: vezme napsaný název (první shodu), jinak stát vybraný v seznamu.
 async function applyPoliticalCountryColor(){
+  try{ pzNewsCalmAuto(); }catch(e){}
   const q = ($('politicalCountrySearch')?.value || '').trim();
   let id = '';
   if(q){
@@ -10307,6 +10319,7 @@ function pzKrajeApply(){
 }
 // Po každé změně stavu: mapa, panel, popisky a zdroj mapy.
 function pzKrajeChanged(){
+  try{ const S = state.czKraje; if(S && (Object.keys(S.fill || {}).length || Object.keys(S.outline || {}).length)) pzNewsCalmAuto(); }catch(e){}
   try{ pzKrajeApply(); }catch(e){ console.error(e); }
   try{ pzKrajeSyncLabels(); }catch(e){ console.error(e); }
   try{ pzKrajeSyncUi(); pzKrajeRenderList(); }catch(e){}
@@ -10807,6 +10820,7 @@ async function pzDataMapApply({resolve = true, fit = true} = {}){
 }
 // Čísla, tečky, legenda, panel — bez přepočtu barev (posun legendy, načtení projektu).
 function pzDmRefresh(){
+  try{ if(pzDmActive()) pzNewsCalmAuto(); }catch(e){}
   try{ pzDmApplyDots(); }catch(e){ console.error(e); }
   try{ pzDmSyncLabels(); }catch(e){ console.error(e); }
   try{ pzUpdateFrameLegend(); }catch(e){}
@@ -12642,6 +12656,7 @@ function applyMapTweaks(){
     safeSetLayout('pz-political-outline', 'visibility', showPoliticalOutline ? 'visible' : 'none');
   }
 
+  try{ pzApplyAdmin1Labels(); }catch(e){}   // klidný podklad: bez názvů regionů sousedů
   try{ pzKrajeApply(); }catch(e){}
   try{ pzDmApplyDots(); }catch(e){}
   try{ pzUpdateLayerRows(); }catch(e){}
@@ -12800,6 +12815,7 @@ function pzPresetBaseStyle(override){
 // force: preset skrytý ve Správě presetů jen na výslovné přání (asistent, konektor)
 function applyPreset(name, {force = false} = {}){
   const p = PRESETS[name]; if(!p || (!force && !isBuiltinPresetVisible(name))) return false;
+  state._pzLookIsDefault = false; pzNewsCalmReset();
   const override = BUILTIN_PRESET_STYLE_OVERRIDES[name] || {};
   if(override.native){
     // podklad v původních barvách: přepnout a načíst čistý styl bez přebarvení
@@ -20522,6 +20538,253 @@ function pzHideBasemapLayers(map){
   }catch(e){}
   return n;
 }
+// ===== Názvy podkladu uhnou grafice =====
+// Názvy měst a států z podkladu dřív prosvítaly vedle našich popisků, ikon, titulku,
+// legendy a grafů („Ukrajina" pod naší bublinou „Ukrajina", useknutý „Volgograd").
+// Nad všechny symbolové vrstvy podkladu dáme neviditelnou symbolovou vrstvu „zakrývačů":
+// průhledné ikony velikosti každého našeho prvku (px mapy), icon-allow-overlap:true
+// a icon-ignore-placement:false. MapLibre umisťuje symboly shora dolů, takže názvy
+// podkladu, které do zakrývače narazí, sám schová — v náhledu, v PNG i ve videu
+// (exportní mapa si zakrývače spočítá pro každý snímek). Naše vlastní symbolové vrstvy
+// (uzavírky, úseky, piktogramy šipek…) leží nad zakrývačem, takže je neovlivní.
+// Stejnojmenný název podkladu poblíž našeho popisku („Ostrava" vedle popisku Ostrava)
+// zmizí taky. Vypínač: Styly › Vrstvy › „Názvy podkladu uhnou grafice".
+const PZ_OCC_SRC = 'pz-occ', PZ_OCC_LAYER = 'pz-occ-zakryvac', PZ_OCC_IMG = 'pz-occ-img', PZ_OCC_IMG_PX = 8;
+// vrstvy aplikace (ne podklad) — ty zakrývač nikdy neschová
+const PZ_OWN_LAYER_RE = /^(route-|scene-|pzuz-|pz-|pz_|measure-|model3d-|tn-)/;
+function pzOccOn(){ return $('basemapYield')?.checked !== false; }
+function pzOccBasemapSymbolIds(m){
+  try{ return (m.getStyle()?.layers || []).filter(l => l.type === 'symbol' && !PZ_OWN_LAYER_RE.test(l.id)).map(l => l.id); }catch(e){ return []; }
+}
+// Zdroj, obrázek a vrstva; vrstva těsně nad nejvyšší symbolovou vrstvou podkladu.
+function pzOccEnsure(m){
+  if(!m || !m.getStyle) return false;
+  try{
+    if(!m.getStyle()) return false;
+    if(!m.hasImage(PZ_OCC_IMG)) m.addImage(PZ_OCC_IMG, {width:PZ_OCC_IMG_PX, height:PZ_OCC_IMG_PX, data:new Uint8Array(PZ_OCC_IMG_PX * PZ_OCC_IMG_PX * 4)});
+    if(!m.getSource(PZ_OCC_SRC)) m.addSource(PZ_OCC_SRC, {type:'geojson', data:emptyFC(), tolerance:0, buffer:16});
+    const ids = (m.getStyle().layers || []).map(l => l.id).filter(id => id !== PZ_OCC_LAYER);
+    const base = pzOccBasemapSymbolIds(m);
+    const top = base.length ? ids.indexOf(base[base.length - 1]) : -1;
+    const beforeId = top >= 0 ? ids[top + 1] : undefined;
+    if(!m.getLayer(PZ_OCC_LAYER)){
+      m.addLayer({id:PZ_OCC_LAYER, type:'symbol', source:PZ_OCC_SRC, layout:{
+        'icon-image':PZ_OCC_IMG, 'icon-size':['get', 's'], 'icon-allow-overlap':true, 'icon-ignore-placement':false,
+        'icon-padding':0, 'icon-pitch-alignment':'viewport', 'icon-rotation-alignment':'viewport'}}, beforeId);
+    }else{
+      const all = m.getStyle().layers.map(l => l.id), cur = all.indexOf(PZ_OCC_LAYER);
+      if(all[cur + 1] !== beforeId) m.moveLayer(PZ_OCC_LAYER, beforeId);
+    }
+    return true;
+  }catch(e){ return false; }
+}
+const pzOccNorm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+// Kde v px mapy leží výřez exportu (titulek, legenda a grafy se kreslí v px výstupu).
+function pzOccFrame(m){
+  if(m.__pzOccFrame) return m.__pzOccFrame;   // exportní mapa: nastaví export
+  try{
+    const fr = pzExportFrameRect(), cr = m.getCanvas().getBoundingClientRect();
+    if(fr?.width) return {x: fr.left - cr.left, y: fr.top - cr.top, w: fr.width, h: fr.height};
+  }catch(e){}
+  return null;
+}
+// Obdélníky našich prvků v px mapy [{x, y, w, h}] a texty popisků (kvůli stejnojmenným názvům).
+function pzOccBoxes(m){
+  const boxes = [], texts = [];
+  const cr = m.getCanvas().getBoundingClientRect(), W = cr.width, H = cr.height;
+  const add = (x, y, w, h) => { if(!(w > 1 && h > 1) || x > W || y > H || x + w < 0 || y + h < 0) return; boxes.push({x, y, w, h}); };
+  const addRect = r => add(r.left - cr.left, r.top - cr.top, r.width, r.height);
+  // DOM značky v mapě: popisky, ikony, body trasy, čísla datové mapy, cedulky perimetrů…
+  m.getCanvasContainer().querySelectorAll('.maplibregl-marker').forEach(el => {
+    if(el.classList.contains('scene-edit-handle') || el.classList.contains('animated-marker')) return;
+    const cs = getComputedStyle(el);
+    if(cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity === 0) return;
+    if(el.classList.contains('map-label-marker')){
+      const bubble = el.querySelector('.map-label-bubble');
+      el.querySelectorAll('.map-label-bubble,.map-label-square').forEach(c => { const r = c.getBoundingClientRect(); if(r.width && r.height) addRect(r); });
+      const tx = bubble?.textContent?.trim();
+      if(tx){ const r = bubble.getBoundingClientRect(); texts.push({text: pzOccNorm(tx), x: r.left - cr.left + r.width / 2, y: r.top - cr.top + r.height / 2, r: Math.max(r.width, r.height)}); }
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    if(r.width && r.height && r.width < W * 0.8 && r.height < H * 0.8) addRect(r);
+  });
+  // piktogramy na šipkách (symbolová vrstva — názvy podkladu pod nimi neschová sama)
+  (m.__pzOccArrowIcons || []).forEach(q => { try{ const p = m.project(q.ll); add(p.x - q.D / 2, p.y - q.D / 2, q.D, q.D); }catch(e){} });
+  // titulek, zdroj, „Zdroj mapy", legendy a grafy — v px výstupu, přepočet na px mapy
+  const fr = pzOccFrame(m);
+  if(fr){
+    const {w:outW, h:outH} = getExportSize(), sx = fr.w / outW, sy = fr.h / outH;
+    const addOut = b => { if(b && b.w > 0 && b.h > 0) add(fr.x + b.x * sx, fr.y + b.y * sy, b.w * sx, b.h * sy); };
+    try{ const T = pzTitleBoxesFor(outW, outH); if(T){ addOut(T.title); addOut(T.source); } }catch(e){}
+    try{
+      if(!_pzTitleProbe) _pzTitleProbe = document.createElement('canvas');
+      const ctx = _pzTitleProbe.getContext('2d');
+      if(!isTransparentExportOn()) addOut(drawMapSourceWatermark(ctx, outW, outH, true));
+      const L = pzDmLegendLayout(ctx, outW, outH); addOut(L);
+      addOut(pzSecLegendLayout(ctx, outW, outH, L));
+      if(pzBarActive()) pzBarLayouts(ctx, outW, outH).forEach(addOut);
+    }catch(e){}
+  }
+  return {boxes, texts};
+}
+// Stejnojmenné názvy podkladu poblíž našich popisků (z dlaždic, ne z vykreslení — jinak by
+// schovaný název při dalším přepočtu „zmizel" z dotazu a zase se objevil).
+function pzOccSameName(m, texts){
+  const out = [];
+  if(!texts.length) return out;
+  const want = new Set(texts.map(t => t.text).filter(s => s.length >= 3));
+  if(!want.size) return out;
+  const style = m.getStyle(), z = m.getZoom(), seen = new Set();
+  const cr = m.getCanvas().getBoundingClientRect();
+  (style.layers || []).forEach(l => {
+    if(l.type !== 'symbol' || PZ_OWN_LAYER_RE.test(l.id) || !l.source || !l['source-layer']) return;
+    if((l.layout?.['symbol-placement'] || 'point') !== 'point') return;
+    if((l.minzoom != null && z < l.minzoom) || (l.maxzoom != null && z >= l.maxzoom)) return;
+    const key = l.source + '|' + l['source-layer'];
+    if(seen.has(key)) return; seen.add(key);
+    let feats = [];
+    try{ feats = m.querySourceFeatures(l.source, {sourceLayer: l['source-layer']}); }catch(e){}
+    feats.forEach(f => {
+      if(f.geometry?.type !== 'Point') return;
+      const P = f.properties || {};
+      const names = [P['name:cs'], P.name, P['name:latin'], P.name_int, P['name:en'], P['name:sk']].filter(Boolean).map(pzOccNorm);
+      const hit = names.find(n => want.has(n));
+      if(!hit) return;
+      let p; try{ p = m.project(f.geometry.coordinates); }catch(e){ return; }
+      if(p.x < -200 || p.y < -200 || p.x > cr.width + 200 || p.y > cr.height + 200) return;
+      const near = texts.some(t => t.text === hit && Math.hypot(t.x - p.x, t.y - p.y) < Math.max(260, t.r * 3));
+      if(!near) return;
+      const id = hit + '|' + Math.round(p.x / 8) + '|' + Math.round(p.y / 8);
+      if(seen.has(id)) return; seen.add(id);
+      const w = Math.max(48, hit.length * 15 + 16), h = 54;   // text + tečka města nad / pod bodem
+      out.push({x: p.x - w / 2, y: p.y - h / 2, w, h});
+    });
+  });
+  return out;
+}
+// Obdélník → průhledné čtverce (icon-size je jen jeden rozměr): řada čtverců o straně
+// menšího rozměru, poslední zarovnaný na konec, aby nepřečníval.
+function pzOccFeatures(m, boxes){
+  const feats = [];
+  boxes.forEach(b => {
+    const s = Math.max(2, Math.min(b.w, b.h)), long = Math.max(b.w, b.h), n = Math.min(40, Math.ceil(long / s));
+    for(let i = 0; i < n; i++){
+      const off = Math.min(i * s, long - s) + s / 2;
+      const cx = b.w >= b.h ? b.x + off : b.x + b.w / 2, cy = b.w >= b.h ? b.y + b.h / 2 : b.y + off;
+      let ll; try{ ll = m.unproject([cx, cy]); }catch(e){ continue; }
+      feats.push({type:'Feature', properties:{s: +(s / PZ_OCC_IMG_PX).toFixed(3)}, geometry:{type:'Point', coordinates:[+ll.lng.toFixed(6), +ll.lat.toFixed(6)]}});
+    }
+  });
+  return feats;
+}
+// Přepočet zakrývačů pro mapu m (živá i exportní). Vrací true, když se data změnila.
+function pzOccUpdate(m){
+  m = m || state.map;
+  if(!m || !m.getStyle) return false;
+  try{ if(!m.getStyle()) return false; }catch(e){ return false; }
+  if(!pzOccEnsure(m)) return false;
+  let feats = [];
+  if(pzOccOn() && !isTransparentExportOn()){
+    try{
+      const {boxes, texts} = pzOccBoxes(m);
+      feats = pzOccFeatures(m, boxes.concat(pzOccSameName(m, texts)));
+    }catch(e){ feats = []; }
+  }
+  const sig = JSON.stringify(feats);
+  if(sig === m.__pzOccSig) return false;
+  m.__pzOccSig = sig;
+  try{ m.getSource(PZ_OCC_SRC).setData({type:'FeatureCollection', features:feats}); }catch(e){ return false; }
+  return true;
+}
+// Export: spočítat, počkat na zpracování zdroje a nové umístění popisků.
+async function pzOccSync(m){
+  if(!pzOccUpdate(m)) return;
+  const t0 = performance.now();
+  while(performance.now() - t0 < 800){
+    let ok = false; try{ ok = m.isSourceLoaded(PZ_OCC_SRC); }catch(e){ ok = true; }
+    if(ok) break;
+    await new Promise(r => setTimeout(r, 16));
+  }
+  try{ m.triggerRepaint(); }catch(e){}
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+// Živá mapa: přepočet nejvýš jednou za snímek (posun, zoom, změna popisků / titulku…).
+let _pzOccRaf = 0, _pzOccLast = 0, _pzOccTimer = 0;
+function pzOccSoon(){
+  if(_pzOccRaf) return;
+  _pzOccRaf = requestAnimationFrame(() => { _pzOccRaf = 0; _pzOccLast = performance.now(); try{ if(state.map === window.__tnMap) pzOccUpdate(window.__tnMap); }catch(e){} });
+}
+function pzOccLater(){ if(_pzOccTimer) clearTimeout(_pzOccTimer); _pzOccTimer = setTimeout(() => { _pzOccTimer = 0; pzOccSoon(); }, 350); }
+function pzOccBind(m){
+  if(!m || m.__pzOccBound) return; m.__pzOccBound = true;
+  ['move', 'resize'].forEach(ev => m.on(ev, pzOccSoon));
+  // nové dlaždice (stejnojmenné názvy), změna stylu, dokreslení — s odstupem
+  ['moveend', 'styledata', 'idle'].forEach(ev => m.on(ev, pzOccLater));
+  try{
+    // bublina po přidání ještě dorůstá (přechod CSS, načtení písma) — přepočet i chvíli potom
+    new MutationObserver(() => { if(performance.now() - _pzOccLast > 30) pzOccSoon(); pzOccLater(); })
+      .observe(m.getCanvasContainer(), {subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['style', 'class', 'data-side', 'data-lstyle']});
+  }catch(e){}
+  // pojistka (tažení popisku, změna velikosti bez mutace…): levná kontrola, data se mění jen při rozdílu
+  setInterval(() => { if(!document.hidden && !state._exporting) pzOccSoon(); }, 700);
+}
+function pzOccInfo(m){
+  m = m || window.__tnMap;
+  let n = 0; try{ n = JSON.parse(m.__pzOccSig || '[]').length; }catch(e){}
+  return {on: pzOccOn(), layer: !!m?.getLayer?.(PZ_OCC_LAYER), features: n, basemapSymbols: pzOccBasemapSymbolIds(m)};
+}
+// ===== Klidný podklad pro zpravodajské mapy (kraje, datová mapa, politická mapa) =====
+// Nejpoužívanější výchozí vzhled („Čistá navigační") má oranžové silnice, sytě zelené
+// lesy a kurzívou psané názvy polských vojvodství — na obrazovce TN to přebíjí obarvené
+// kraje. Když grafik začne barvit kraje / státy nebo dělá datovou mapu a vzhled je pořád
+// jen výchozí (sám si žádný nevybral), ztlumíme podklad přes běžné ovládání Vrstev:
+// vedlejší silnice, čísla silnic a body zájmu vypnout, hlavní silnice bílé a tenčí,
+// zeleň blíž barvě pevniny, názvy regionů (vojvodství, spolkových zemí…) schovat.
+// Vše je vidět v panelu (preset „upraveno"), jde to vrátit klikem na preset nebo krokem zpět.
+// Výslovně zvolený styl (preset, podklad, ruční změna, načtený projekt) se nemění.
+const PZ_ADMIN1_LABEL_RE = /(^|[_-])(state|province|admin_?1|region)s?([_-]|$)/i;
+function pzIsAdmin1LabelLayer(l){
+  if(!l || l.type !== 'symbol' || PZ_OWN_LAYER_RE.test(l.id)) return false;
+  if(PZ_ADMIN1_LABEL_RE.test(l.id)) return true;
+  try{ const f = JSON.stringify(l.filter || ''); return /"class"/.test(f) && /"(state|province)"/.test(f) && !/"(city|town|village|country)"/.test(f); }catch(e){ return false; }
+}
+// názvy regionů sousedních států (u ČR kraje kreslí aplikace sama) — v náhledu i exportu
+function pzApplyAdmin1Labels(m){
+  m = m || state.map;
+  if(!state.pzHideAdmin1Labels || !m?.getStyle) return;
+  try{ (m.getStyle()?.layers || []).forEach(l => { if(pzIsAdmin1LabelLayer(l)) safeSetLayout(l.id, 'visibility', 'none'); }); }catch(e){}
+}
+function pzMixHex(a, b, k){
+  const p = h => { const v = String(h || '').replace('#', ''); return v.length === 6 ? [0, 2, 4].map(i => parseInt(v.slice(i, i + 2), 16)) : null; };
+  const A = p(a), B = p(b); if(!A || !B) return a;
+  return '#' + A.map((x, i) => Math.round(x + (B[i] - x) * k).toString(16).padStart(2, '0')).join('');
+}
+// výslovná volba vzhledu: názvy regionů zase ukázat
+function pzNewsCalmReset(){
+  if(!state.pzHideAdmin1Labels) return;
+  state.pzHideAdmin1Labels = false;
+  const m = state.map;
+  try{ if($('showLabels')?.checked !== false) (m.getStyle()?.layers || []).forEach(l => { if(pzIsAdmin1LabelLayer(l)) safeSetLayout(l.id, 'visibility', 'visible'); }); }catch(e){}
+}
+function pzNewsCalmAuto(){
+  if(!state._pzLookIsDefault || state.pzNativeColors) return false;
+  state._pzLookIsDefault = false;   // jen jednou — další úpravy jsou grafikovy
+  const set = (id, v) => { const el = $(id); if(!el) return; if(el.type === 'checkbox') el.checked = !!v; else el.value = String(v); };
+  ['showMinorRoads', 'showRoadShields', 'showPoi'].forEach(id => set(id, false));
+  ['roadMajorColor', 'motorwayColor', 'primaryColor', 'secondaryColor'].forEach(id => set(id, '#ffffff'));
+  ['majorWidth', 'motorwayWidth', 'primaryWidth', 'secondaryWidth'].forEach(id => { const v = parseFloat($(id)?.value); if(isFinite(v)) set(id, Math.min(v, 0.85)); });
+  const land = $('landColor')?.value || '#f1eee5';
+  ['parkColor', 'landcoverColor', 'landuseColor'].forEach(id => { const v = $(id)?.value; if(v) set(id, pzMixHex(v, land, 0.6)); });
+  document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(inp => { const tg = $(inp.dataset.syncColor); if(tg?.value) inp.value = tg.value; });
+  state.pzHideAdmin1Labels = true;
+  try{ applyMapTweaks(); }catch(e){}
+  try{ enforceRoadShieldToggle(); }catch(e){}
+  pzApplyAdmin1Labels();
+  try{ updateReadouts(); }catch(e){}
+  try{ setStatus(t('Podklad ztlumen pro zpravodajskou mapu (silnice, zeleň, názvy regionů) — vrátíš ho klikem na preset.')); }catch(e){}
+  return true;
+}
 // Popisky perimetrů („R 15 km") a měřených vzdáleností jsou HTML prvky nad živou
 // mapou; do exportní mapy se nepřenášejí, proto se kreslí přímo na plátno exportu.
 function pzDrawSceneTagLabels(ctx, crop){
@@ -20798,6 +21061,9 @@ async function drawNativeMapFrameChunked(targetCanvas, camera, capturedGhost, ca
         if(!(await pzWaitExportTilesStrict(exportMap, tilesRes))) return false;
         enforceRoadShieldToggle();
         applyHiddenStyleLayerIds(capturedHiddenLayers);
+        // dlaždice výstupu: výřez exportu leží v px této dlaždice posunutý o (bleed − x, bleed − y)
+        exportMap.__pzOccFrame = {x: bleed - x, y: bleed - y, w: outW, h: outH};
+        try{ await pzOccSync(exportMap); }catch(e){}
         // přepínač čísel silnic mohl vrstvu podkladu znovu zapnout — schovat a dokreslit
         if(isTransparentExportOn() && pzHideBasemapLayers(exportMap)) await waitMapRender(200);
 
@@ -21047,6 +21313,9 @@ async function pzDrawNativeMapFrameInner(targetCanvas){
       }
       try{ exportMap.triggerRepaint(); }catch(e){}
     }
+    // názvy podkladu uhnou popiskům, ikonám, titulku a legendě (exportní mapa = celý výřez)
+    exportMap.__pzOccFrame = {x:0, y:0, w:camera.cssW, h:camera.cssH};
+    try{ await pzOccSync(exportMap); }catch(e){}
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const ok = await drawBrowserMapFrame(targetCanvas);
     if(ok && state._exportKeepSession && !state._exportMapSession){
@@ -22684,6 +22953,9 @@ function bindUI(){
   });
   ['landColor','waterColor','buildingColor','parkColor','landcoverColor','landuseColor','aerowayColor','roadMajorColor','roadMinorColor','labelColor','haloColor','railwayColor','transitColor','motorwayColor','primaryColor','secondaryColor','majorWidth','minorWidth','motorwayWidth','primaryWidth','secondaryWidth','railwayWidth','metroWidth','transitWidth','waterwayWidth','buildingOpacity','showBuildings','showParks','showLandcover','showLanduse','showAeroway','showLabels','showRoadShields','showMinorRoads','showMajorRoads','showMotorways','showPrimaryRoads','showSecondaryRoads','showWaterways','showRailways','showMetro','showTransit','showPoi']
     .forEach(id => $(id)?.addEventListener(id.includes('show') ? 'change' : 'input', id.includes('show') ? applyMapTweaks : applyMapTweaksDebounced));
+  $('basemapYield')?.addEventListener('change', () => { try{ pzOccUpdate(window.__tnMap); }catch(e){} });
+  // ruční změna vzhledu = výslovná volba grafika (klidný podklad pro zprávy ji nepřepíše)
+  ['input', 'change'].forEach(ev => document.addEventListener(ev, e => { const id = e.target?.id || e.target?.dataset?.syncColor; if(e.isTrusted && id && (AUTO_PRESET_CONTROL_IDS.has(id) || id === 'baseStyle')) state._pzLookIsDefault = false; }, true));
   $('boundaryColor')?.addEventListener('input', applyMapTweaksDebounced);
   document.querySelectorAll('.layer-color-input[data-sync-color]').forEach(input => {
     const target = $(input.dataset.syncColor);
@@ -24177,7 +24449,10 @@ Object.assign(I18N, {
   "Hotovo — staženo {0} z {1} videí.": {cs:"Hotovo — staženo {0} z {1} videí.",sk:"Hotovo — stiahnuté {0} z {1} videí.",bg:"Готово — изтеглени {0} от {1} видеа.",hr:"Gotovo — preuzeto {0} od {1} videa.",ro:"Gata — descărcate {0} din {1} videoclipuri.",en:"Done — downloaded {0} of {1} videos."},
   "Nájezd na {0} je připravený. Přehraj animaci, dolaď záběry a vyexportuj video.": {cs:"Nájezd na {0} je připravený. Přehraj animaci, dolaď záběry a vyexportuj video.",sk:"Nájazd na {0} je pripravený. Prehraj animáciu, dolaď zábery a vyexportuj video.",bg:"Приближаването към {0} е готово. Пусни анимацията, донастрой кадрите и експортирай видеото.",hr:"Zumiranje na {0} je spremno. Pokreni animaciju, doradi kadrove i izvezi video.",ro:"Zoomul pe {0} este pregătit. Redă animația, ajustează cadrele și exportă videoclipul.",en:"Zoom to {0} is ready. Play the animation, fine-tune the shots and export the video."},
   "Výška zdvihu kamery": {cs:"Výška zdvihu kamery",sk:"Výška zdvihu kamery",bg:"Височина на издигане на камерата",hr:"Visina podizanja kamere",ro:"Înălțimea ridicării camerei",en:"Camera lift height"},
+  "Podklad ztlumen pro zpravodajskou mapu (silnice, zeleň, názvy regionů) — vrátíš ho klikem na preset.": {cs:"Podklad ztlumen pro zpravodajskou mapu (silnice, zeleň, názvy regionů) — vrátíš ho klikem na preset.",sk:"Podklad stlmený pre spravodajskú mapu (cesty, zeleň, názvy regiónov) — vrátiš ho kliknutím na preset.",bg:"Картата е приглушена за новинарска графика (пътища, зеленина, имена на региони) — върни я с клик на пресет.",hr:"Podloga je prigušena za vijesti (ceste, zelenilo, nazivi regija) — vrati je klikom na predložak.",ro:"Harta de bază a fost atenuată pentru știri (drumuri, verdeață, nume de regiuni) — o readuci cu un clic pe presetare.",en:"Basemap muted for a news map (roads, greenery, region names) — click a preset to restore it."},
   "Body zájmu": {cs:"Body zájmu",sk:"Body záujmu",bg:"Обекти",hr:"Točke interesa",ro:"Puncte de interes",en:"Points of interest"},
+  "Názvy podkladu uhnou grafice": {cs:"Názvy podkladu uhnou grafice",sk:"Názvy podkladu uhnú grafike",bg:"Имената от картата отстъпват на графиката",hr:"Nazivi podloge ustupaju grafici",ro:"Numele hărții de bază lasă loc graficii",en:"Basemap names give way to graphics"},
+  "Názvy měst a států z podkladu se schovají tam, kde by prosvítaly pod popisky, ikonami, titulkem, legendou a grafy (i stejnojmenný název vedle popisku). Vypni, když chceš všechny názvy podkladu.": {cs:"Názvy měst a států z podkladu se schovají tam, kde by prosvítaly pod popisky, ikonami, titulkem, legendou a grafy (i stejnojmenný název vedle popisku). Vypni, když chceš všechny názvy podkladu.",sk:"Názvy miest a štátov z podkladu sa skryjú tam, kde by presvitali pod popiskami, ikonami, titulkom, legendou a grafmi (aj rovnomenný názov vedľa popisku). Vypni, keď chceš všetky názvy podkladu.",bg:"Имената на градове и държави от картата се скриват там, където биха прозирали под надписи, икони, заглавие, легенда и графики (и еднаквото име до надпис). Изключи, ако искаш всички имена.",hr:"Nazivi gradova i država s podloge skrivaju se tamo gdje bi provirivali ispod oznaka, ikona, naslova, legende i grafova (i istoimeni naziv uz oznaku). Isključi ako želiš sve nazive podloge.",ro:"Numele orașelor și țărilor de pe harta de bază se ascund acolo unde ar apărea sub etichete, pictograme, titlu, legendă și grafice (și numele identic de lângă etichetă). Dezactivează dacă vrei toate numele.",en:"City and country names from the basemap are hidden where they would peek out under labels, icons, the title, legend and charts (including a same-named place next to a label). Turn off to keep all basemap names."},
   "Velikost vlajek": {cs:"Velikost vlajek",sk:"Veľkosť vlajok",bg:"Размер на знамената",hr:"Veličina zastava",ro:"Mărimea steagurilor",en:"Flag size"},
   "Státy se ještě načítají — klikni za chvíli.": {cs:"Státy se ještě načítají — klikni za chvíli.",sk:"Štáty sa ešte načítavajú — klikni o chvíľu.",bg:"Държавите още се зареждат — кликни след малко.",hr:"Države se još učitavaju — klikni za trenutak.",ro:"Țările încă se încarcă — dă clic peste puțin timp.",en:"Countries are still loading — click again in a moment."},
   "Obrys": {cs:"Obrys",sk:"Obrys",bg:"Контур",hr:"Obrub",ro:"Contur",en:"Outline"},
@@ -26937,6 +27212,7 @@ function pzColorFromName(v){
     buildPreferredMapLabelExpr, applyPreset, setPresetAsDefault, getDefaultPresetToken, getCountryNameById, applyPoliticalCountryColor, pzLngLatsInFrame,   // 31_flags, 28_style_layers
     pzKrajResolve, pzKrajResolveList, pzKrajeSet, pzKrajeColorByValue, pzKrajeReset, pzKrajeFit,   // 32_kraje
     pzFeaturesBBox, pzMainlandFeature, pzFitOverlayPadding,   // 33_datova_mapa, 38_graf (rámování)
+    pzOccUpdate, pzOccInfo, pzOccSync, drawCurrentMapFrame,   // 40_podklad_popisky
     get state(){ return state; }};
   // Kraje ČR pro další kód (datová mapa s legendou, asistent): čisté API bez UI.
   //   pzKraje.list() → [{id:'CZ064', name:'Jihomoravský kraj', short:'Jihomoravský'}, …]
@@ -27043,6 +27319,7 @@ function pzColorFromName(v){
 
     // ---- look & feel ------------------------------------------------------
     setBaseStyle({style} = {}){
+      state._pzLookIsDefault = false;   // výslovně zvolený podklad se neztlumí
       if(!TOOL_STYLE_KEYS.includes(style)) return {ok:false, error:'Neznámý styl. Dostupné: ' + TOOL_STYLE_KEYS.join(', ')};
       const sel = $('baseStyle'); if(!sel) return {ok:false, error:'Přepínač stylu není dostupný.'};
       const prev = sel.value;
