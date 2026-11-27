@@ -26,6 +26,23 @@ const {check, done, open, status} = require('./lib');
   const noSec = await page.evaluate(ids => ids.filter(id => !document.getElementById(id)), ids);
   check(ids.length >= 12 && noSec.length === 0, `všech ${ids.length} sekcí pro openSection existuje` + (noSec.length ? ' — chybí ' + noSec.join(', ') : ''));
   check(!/pzTemplateSection|czPoliticalSection|weatherLayersSection|setWeather \{/.test(worker), 'worker neodkazuje na zrušené věci (Rychlá scéna, stará sekce krajů, počasí)');
+  // chat smí všechno, co mu worker nabízí (kromě dávky videí) — fitScene dřív chat odmítl („asistent nepoužívá")
+  const allNames = [...toolsTxt.matchAll(/(?:^|\s{2})([a-zA-Z][a-zA-Z0-9]*) \{/gm)].map(m => m[1]);   // i „undo {} …  redo {} …" na jednom řádku
+  const chatTools = await page.evaluate(() => window.__tnchat.tools());
+  const noChat = allNames.filter(n => n !== 'flyInBatch' && !chatTools.includes(n));
+  check(noChat.length === 0 && !chatTools.includes('flyInBatch') && chatTools.every(n => allNames.includes(n)), 'chat povolí všechny nástroje z workeru kromě flyInBatch' + (noChat.length ? ' — chybí ' + noChat.join(', ') : ''));
+  // MCP konektor = stejný seznam jako worker; parametry, bez kterých jde clear/off, nejsou povinné
+  const mcp = fs.readFileSync(path.join(__dirname, '..', 'worker', 'tnmap-mcp', 'src', 'tools.js'), 'utf8');
+  const mcpTools = JSON.parse(mcp.slice(mcp.indexOf('['), mcp.lastIndexOf(']') + 1));
+  const req = n => (mcpTools.find(t => t.name === n)?.inputSchema.required || []);
+  check(mcpTools.map(t => t.name).join() === allNames.join() && ['colorPolitical', 'dataMap', 'roadSections', 'setCameraFlight', 'barChart', 'setTitle', 'colorRegion'].every(n => !req(n).length),
+    'MCP tools.js odpovídá workeru (node tools/gen_mcp_tools.mjs) a clear/off nemá povinné parametry — ' + ['dataMap', 'roadSections', 'colorPolitical', 'setCameraFlight'].map(n => n + ':' + req(n)).join(' '));
+  // popis clearScene zná všechny druhy, které appka umí smazat; openSection i nové sekce
+  const clrLine = (/^clearScene \{what\} – (.*)$/m.exec(toolsTxt) || [])[1] || '';
+  const clrMiss = ['labels', 'icons', 'arrows', 'perimeters', 'distances', 'closures', 'sections', 'colors', 'regions', 'data', 'charts', 'flags', 'route', 'vehicles', 'flyin', 'title', 'all'].filter(k => !new RegExp('\\b' + k + '\\b').test(clrLine));
+  const okClr = await page.evaluate(ks => ks.filter(k => window.TNMAP.clearScene({what: k}).ok !== true), ['sections', 'charts', 'flyin', 'regions', 'data', 'title']);
+  check(!clrMiss.length && !okClr.length && ['czKrajeSection', 'dataMapSection', 'barChartSection', 'pzJingleSection'].every(id => ids.includes(id)),
+    'worker: clearScene zná úseky, grafy, nájezd…; openSection nové sekce' + (clrMiss.length ? ' — chybí ' + clrMiss.join(', ') : '') + (okClr.length ? ' — appka neumí ' + okClr.join(', ') : ''));
   const tabs = await page.evaluate(() => window.TNMAP.catalog.tabs);
   check(['scena', 'trasa', 'animace', 'export', 'styly', 'projekt', 'nastaveni'].every(t => tabs.includes(t)), 'záložky: 5 + Projekt + Nastavení');
 
@@ -184,6 +201,21 @@ const {check, done, open, status} = require('./lib');
   await page.click('.tnchat-fab'); await sleep(300);
   await page.click('#projectPanelBtn'); await sleep(400);
   check(await page.evaluate(() => !document.getElementById('projectPanel').hidden && !document.getElementById('tnchatPanel').classList.contains('open')), 'užší obrazovka: otevřený Projekt chat zavře (nepřekrývají se)');
+  // datová mapa a pak titulek (jak to volá chat): legenda vlevo dole uhne nad nově přidaný „Zdroj:"
+  await T('dataMap', {rows: [{name: 'Česko', value: 26.6}, {name: 'Německo', value: 8}, {name: 'Polsko', value: 15}], unit: '%', legendTitle: 'Inflace'});
+  await T('setTitle', {title: 'Inflace', source: 'Eurostat'}); await sleep(500);
+  const lg = await page.evaluate(() => { const g = document.getElementById('dmLegendGrip').getBoundingClientRect(), fr = document.getElementById('exportFrame').getBoundingClientRect(), W = 1920, H = 1080;
+    const c = document.createElement('canvas'); c.width = W; c.height = H; const tb = window.__pzFns.pzDrawTitleOverlay(c.getContext('2d'), W, H);
+    return {legendBottom: Math.round(g.bottom - fr.top), sourceTop: Math.round(tb.source.y * fr.width / W)}; });
+  check(lg.legendBottom < lg.sourceTop, 'dataMap → setTitle: legenda se v náhledu hned vyhne zdroji — ' + JSON.stringify(lg));
+  await T('clearScene', {what: 'all'}); await T('clearScene', {what: 'title'});
+  // panel propojení s Claude a rychlé odpovědi přeložené
+  await T('setLanguage', {lang: 'en'}); await sleep(600);
+  await page.keyboard.press('Escape'); if(!(await page.$eval('#tnchatPanel', e => e.classList.contains('open')))) await page.click('.tnchat-fab');
+  await sleep(300); await page.click('#tnchatClaude'); await sleep(300);
+  const cb = await page.evaluate(() => ({txt: document.getElementById('tnchatClaudeBox').textContent, title: document.getElementById('tnchatClaude').title, say: window.TNMAP._t('Barvím: {0}.', 'X')}));
+  check(!/[ěščřžýáíéůú]/i.test(cb.txt) && cb.title === 'Connect to Claude' && cb.say === 'Colouring: X.', 'angličtina: panel Claude, jeho tooltip i odpovědi rychlých povelů — ' + cb.txt.slice(0, 80));
+  await page.click('#tnchatClaude'); await T('setLanguage', {lang: 'cs'}); await sleep(600);
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close();
 
