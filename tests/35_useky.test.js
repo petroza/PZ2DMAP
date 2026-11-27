@@ -111,6 +111,12 @@ const fold = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
   r = await page.evaluate(() => window.TNMAP.roadSections({sections:[{from:'Praha', to:'Kolín', mode:'rail', status:'zvýrazněný', label:'výluka'}], legend:false}));
   s = await st();
   check(r.ok && s.items.length === 1 && s.items[0].mode === 'rail' && s.items[0].km > 55 && s.items[0].km < 90 && s.items[0].coords.length > 20 && !s.legend.on, 'trať Praha – Kolín po železnici (' + s.items[0]?.km + ' km), legenda vypnutá');
+  // jeden stav: bez nadpisu legenda není, s nadpisem / vlastním názvem ano („Chytré sypače: úseky se sypači")
+  r = await page.evaluate(() => window.TNMAP.roadSections({legend:true, legendTitle:''}));
+  check(r.ok && r.legend === false && !(await page.evaluate(() => window.pzUseky.legendLayout(1920, 1080))), 'jeden stav bez nadpisu = bez legendy');
+  r = await page.evaluate(() => window.TNMAP.roadSections({legend:{title:'Chytré sypače'}, legendNames:{zvyrazneny:'úseky se sypači'}}));
+  check(r.ok && r.legend && r.legend.title === 'Chytré sypače' && r.legend.rows.join() === 'úseky se sypači' && !!(await page.evaluate(() => window.pzUseky.legendLayout(1920, 1080))), 'jeden stav s nadpisem legendy = jednořádková legenda ' + JSON.stringify(r.legend));
+  await page.evaluate(() => window.TNMAP.roadSections({legend:false, legendTitle:'', legendNames:{zvyrazneny:''}}));
 
   // --- export PNG: čára a legenda v barvách stavů jako v náhledu
   r = await page.evaluate(() => window.TNMAP.roadSections({sections:[
@@ -151,6 +157,15 @@ const fold = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
     return window.pzUseky.state().items.flatMap(it => it.coords).filter(p => { const q = window.__tnMap.project(p), x = q.x + c.left, y = q.y + c.top;
       return x > f.left + L.x * k && x < f.left + (L.x + L.w) * k && y > f.top + L.y * k && y < f.top + (L.y + L.h) * k; }).length; });
   check(under === 0, 'Celá scéna: žádný úsek pod legendou v rohu (bodů pod legendou: ' + under + ')');
+  // --- Rozlišení 1080×1920 z rozbalovacího seznamu: úseky zůstanou v rámečku (dřív jen výřez ze středu 16:9)
+  const ends = () => page.evaluate(() => window.pzUseky.state().items.flatMap(it => [it.coords[0], it.coords[it.coords.length - 1]]));
+  const inFrame = pts => page.evaluate(pts => window.__pzFns.pzLngLatsInFrame(pts), pts);
+  const setRes = v => page.evaluate(v => { const s = document.getElementById('exportResolution'); s.value = v; s.dispatchEvent(new Event('change', {bubbles:true})); }, v);
+  const e0 = await ends();
+  check(await inFrame(e0), 'před změnou formátu jsou konce úseků v rámečku');
+  await setRes('1080x1920'); await page.waitForTimeout(3500);
+  check(await inFrame(e0), 'po výběru 1080×1920 v Rozlišení zůstanou konce úseků v rámečku');
+  await setRes('1920x1080'); await page.waitForTimeout(1500);
   // --- D11 u hranice s Polskem: termín nového úseku nahoře nesmí zůstat pod titulkem
   r = await page.evaluate(() => window.TNMAP.roadSections({sections:[
     {from:'Jaroměř', to:'Trutnov', status:'ve výstavbě', label:'zprovoznění 2027'},

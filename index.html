@@ -19296,7 +19296,9 @@ function pzApiSetExportResolution(resolution){
   const w = m && +m[1], h = m && +m[2];
   if(!m || w < 64 || h < 64 || w > 8192 || h > 8192)
     return {error:`Rozlišení „${resolution}" neznám — zadej např. 1920x1080, 1080x1920, 1080x1080 nebo poměr 16:9, 9:16, 1:1, 4:5.`};
+  const snap = pzFrameSnapshot();
   pzSetExportResolution((w & ~1) + 'x' + (h & ~1));
+  pzKeepSceneAfterResize(snap, {duration:0});   // export běží hned — bez animace záběru
   return {w: w & ~1, h: h & ~1};
 }
 // Body scény jako [lng,lat] — kvůli přerámování: trasa, A/B, ikonky, popisky (i rohy bublin),
@@ -19536,6 +19538,31 @@ function pzLngLatsInFrameMask(pts){
   return pts.map(p => { const q = m.project(p), x = q.x + c.left, y = q.y + c.top; return x >= r.left - 1 && x <= r.right + 1 && y >= r.top - 1 && y <= r.bottom + 1; });
 }
 function pzLngLatsInFrame(pts){ return !!pts.length && pzLngLatsInFrameMask(pts).every(Boolean); }
+// Co bylo ve výřezu (body scény i rohy bublin popisků), se po změně poměru stran vejde
+// i do nového — dřív po kliku na 9:16 vypadla Praha i Brno z rámečku a popisky se ořízly.
+// Body, které byly mimo už předtím (záměrný detail), záběr neroztahují.
+function pzFrameSnapshot(){
+  try{
+    const r = pzExportFrameRect(), pts = pzSceneLngLats(), mask = pzLngLatsInFrameMask(pts);
+    return {aspect: r && r.height ? r.width / r.height : null, keep: pts.filter((_p, i) => mask[i])};
+  }catch(_e){ return null; }
+}
+function pzKeepSceneAfterResize(snap, opts){
+  if(!snap || !snap.keep?.length || !snap.aspect || state._batchRunning || state._exporting) return false;
+  const after = getExportSize();
+  if(Math.abs(after.w / after.h - snap.aspect) <= 0.02 || pzLngLatsInFrame(snap.keep)) return false;
+  const hint = () => { setStatus(t('Po změně formátu je část scény mimo rámeček — klikni na ⤢ Vejít scénu.')); $('fitSceneBtn')?.classList.add('pz-attn'); };
+  // záběr řídí kamera animace — nepřepisovat, jen nabídnout
+  if(cameraAnimReady() || $('followCamera')?.checked){ hint(); return false; }
+  try{
+    const bb = pzFeaturesBBox([{geometry:{coordinates: snap.keep}}]), m = state.map, dur = opts?.duration ?? 500;
+    state.screenPan = {x:0, y:0};
+    if(bb) m.fitBounds(bb, {padding:getFitPadding(), duration:dur, maxZoom:m.getZoom(), bearing:m.getBearing(), pitch:m.getPitch()});
+    const check = () => { try{ if(pzMarkOutsideObjects().length) hint(); }catch(_e){} };
+    if(dur) m.once('moveend', () => setTimeout(check, 30)); else setTimeout(check, 30);
+  }catch(_e){}
+  return true;
+}
 // Video má smysl i bez trasy a kamery, když sloupce grafu „vyskočí" (statický záběr).
 function pzBarHasMotion(){ return (state.barCharts?.items || []).some(c => c.grow !== false); }
 function pzExportHasMotion(){ return !!((state.routeCoords && state.routeCoords.length) || cameraAnimReady() || pzBarHasMotion()); }
@@ -19701,14 +19728,31 @@ function pzCleanSource(v){ return String(v ?? '').replace(/^\s*(zdroj|zdroje|sou
 function pzCleanTitle(v){ return String(v ?? '').replace(/^\s*(název|nazev|nadpis|titulek)\s*[:;]\s*/i, '').trim(); }
 function pzTitleFont(){ try{ return getComputedStyle(document.body).fontFamily || 'sans-serif'; }catch(e){ return 'sans-serif'; } }
 // Řádkový zlom podle šířky; slovo delší než řádek zůstane celé (fillText ho stlačí).
+// Jednopísmenné předložky a spojky (a, v, k, s, z, o, u, i) nezůstanou na konci řádku
+// a řádky se vyrovnají: „…na D1, D5 a / D11" → „…sypače / na D1, D5 a D11".
 function pzWrapText(ctx, text, maxW){
-  const words = String(text).split(/\s+/).filter(Boolean), lines = [];
-  let cur = '';
-  for(const w of words){
-    const tryL = cur ? cur + ' ' + w : w;
-    if(cur && ctx.measureText(tryL).width > maxW){ lines.push(cur); cur = w; } else cur = tryL;
+  const words = [];
+  String(text).split(/\s+/).filter(Boolean).forEach(w => {
+    const prev = words[words.length - 1];
+    if(prev != null && /(^|\s)[aikosuvzAIKOSUVZ]$/.test(prev)) words[words.length - 1] = prev + ' ' + w; else words.push(w);
+  });
+  const wrap = mw => {
+    const lines = []; let cur = '';
+    for(const w of words){
+      const tryL = cur ? cur + ' ' + w : w;
+      if(cur && ctx.measureText(tryL).width > mw){ lines.push(cur); cur = w; } else cur = tryL;
+    }
+    if(cur) lines.push(cur);
+    return lines;
+  };
+  let lines = wrap(maxW);
+  if(lines.length >= 2){
+    // nejužší šířka se stejným počtem řádků (vyrovnané řádky místo „vdovy" na konci)
+    let lo = maxW * 0.4, hi = maxW;
+    for(let i = 0; i < 12; i++){ const mid = (lo + hi) / 2; if(wrap(mid).length <= lines.length) hi = mid; else lo = mid; }
+    const bal = wrap(hi);
+    if(bal.length === lines.length) lines = bal;
   }
-  if(cur) lines.push(cur);
   return lines;
 }
 // Kde ve výstupu W×H leží titulek a zdroj (bez kreslení do výstupu) — pro legendu apod.
@@ -19840,8 +19884,12 @@ function pzFlyInFitView(bb){
   const {w, h} = getExportSize(), W = 1280, H = 1280 * h / Math.max(1, w);
   const a = maplibregl.MercatorCoordinate.fromLngLat({lng: bb[0][0], lat: bb[0][1]}), b = maplibregl.MercatorCoordinate.fromLngLat({lng: bb[1][0], lat: bb[1][1]});
   const dx = Math.max(1e-6, Math.abs(b.x - a.x) * 512), dy = Math.max(1e-6, Math.abs(b.y - a.y) * 512);
-  const c = new maplibregl.MercatorCoordinate((a.x + b.x) / 2, (a.y + b.y) / 2).toLngLat();
-  return {center: [c.lng, c.lat], zoom: Math.max(0.5, Math.min(18, Math.log2(Math.min(W * 0.88 / dx, H * 0.84 / dy)))), pitch: 0, bearing: 0};
+  // titulek grafiky nahoře ubere výšku — území (a cíl u jeho okraje, třeba Liberec) pod něj
+  let top = 0;
+  try{ const tb = pzTitleBoxesFor(W, Math.round(H))?.title; if(tb) top = Math.max(0, tb.y + tb.h + 8 - H * 0.08); }catch(e){}
+  const zoom = Math.max(0.5, Math.min(18, Math.log2(Math.min(W * 0.88 / dx, (H * 0.84 - top) / dy))));
+  const c = new maplibregl.MercatorCoordinate((a.x + b.x) / 2, (a.y + b.y) / 2 - top / 2 / (512 * Math.pow(2, zoom))).toLngLat();
+  return {center: [c.lng, c.lat], zoom, pitch: 0, bearing: 0};
 }
 function pzFlyInEndView(ll, zoom){
   const z = PZ_FLYIN_ZOOM[zoom] || (isFinite(+zoom) ? {zoom: Math.max(3, Math.min(19, +zoom)), pitch: 0, bearing: 0} : PZ_FLYIN_ZOOM.city);
@@ -19953,7 +20001,19 @@ function pzDrawFlyIn(ctx, W, H, xy){
     let bx = f.pin ? x + 34 * k : x - bw / 2;
     if(f.pin && bx + bw > safeR) bx = x - 34 * k - bw;   // u pravého okraje doleva od špendlíku
     bx = Math.max(safeL, Math.min(safeR - bw, bx));
-    const by = Math.round(cy - bh / 2), r = Math.max(2, Math.round(3 * k));
+    let by = Math.round(cy - bh / 2);
+    // Název nesmí vjet pod titulek grafiky (Liberec v záběru ČR leží těsně pod titulkem) —
+    // pak pod špendlík, a když ani tam není místo, vedle titulku.
+    try{
+      const tb = pzTitleBoxesFor(W, H)?.title, g = 10 * k;
+      const hit = (X, Y) => tb && X < tb.x + tb.w + g && X + bw > tb.x - g && Y < tb.y + tb.h + g && Y + bh > tb.y - g;
+      if(hit(bx, by)){
+        const below = Math.round(y + 16 * k);
+        if(!hit(bx, below) && below + bh <= H * 0.95) by = below;
+        else if(tb.x + tb.w + g + bw <= safeR) bx = tb.x + tb.w + g;
+      }
+    }catch(_e){}
+    const r = Math.max(2, Math.round(3 * k));
     const e = _pzEaseOut(q), shift = (1 - e) * 24 * k * (bx < x ? 1 : -1);
     ctx.globalAlpha = Math.min(1, q * 1.6);
     ctx.beginPath(); ctx.rect(bx - 2, by - 20 * k, bw * e + 4, bh + 40 * k); ctx.clip();   // odkrývá se zleva doprava
@@ -22912,26 +22972,15 @@ function bindUI(){
   // Předvolby formátu (TV / Sítě / Čtverec / 4K): jedno kliknutí nastaví rozměr.
   $('exportChips')?.addEventListener('click', e => {
     const b = e.target.closest('.exp-chip'); if(!b || b.disabled) return;
-    // Co bylo ve výřezu (body scény i rohy bublin popisků), se vejde i do nového poměru —
-    // dřív po kliku na 9:16 vypadla Praha i Brno z rámečku a popisky se ořízly. Body, které
-    // byly mimo už předtím (záměrný detail), záběr neroztahují.
-    const before = getExportSize(), pts = pzSceneLngLats(), mask = pzLngLatsInFrameMask(pts);
-    const keep = pts.filter((_p, i) => mask[i]);
+    const snap = pzFrameSnapshot();
     pzSetExportResolution(b.dataset.res);
-    const after = getExportSize();
-    if(keep.length && Math.abs(after.w / after.h - before.w / before.h) > 0.02 && !pzLngLatsInFrame(keep)){
-      if(cameraAnimReady() || $('followCamera')?.checked){
-        // záběr řídí kamera animace — nepřepisovat, jen nabídnout
-        setStatus(t('Po změně formátu je část scény mimo rámeček — klikni na ⤢ Vejít scénu.'));
-        $('fitSceneBtn')?.classList.add('pz-attn');
-      } else try{
-        const bb = pzFeaturesBBox([{geometry:{coordinates: keep}}]);
-        state.screenPan = {x:0, y:0};
-        if(bb) state.map.fitBounds(bb, {padding:getFitPadding(), duration:500, maxZoom:state.map.getZoom(), bearing:state.map.getBearing(), pitch:state.map.getPitch()});
-        state.map.once('moveend', () => setTimeout(() => { try{ const out = pzMarkOutsideObjects(); if(out.length){ setStatus(t('Po změně formátu je část scény mimo rámeček — klikni na ⤢ Vejít scénu.')); $('fitSceneBtn')?.classList.add('pz-attn'); } }catch(_e){} }, 30));
-      }catch(_e){}
-    }
+    pzKeepSceneAfterResize(snap);
   });
+  // Totéž při výběru v rozbalovacím „Rozlišení" (1080×1920 apod.) — dřív se 9:16 jen
+  // vyřízl ze středu 16:9 a z dálnic D1/D5 zbyl kousek u Prahy. Snímek výřezu se bere
+  // ještě před změnou (zachycení na dokumentu), rámeček je v tu chvíli starý.
+  document.addEventListener('change', e => { if(e.target?.id === 'exportResolution') state._pzResSnap = pzFrameSnapshot(); }, true);
+  $('exportResolution')?.addEventListener('change', () => { const snap = state._pzResSnap; state._pzResSnap = null; if(snap) pzKeepSceneAfterResize(snap); });
   ['fitSceneBtn','fitSceneMapBtn'].forEach(id => $(id)?.addEventListener('click', () => { $('fitSceneBtn')?.classList.remove('pz-attn'); pzFitScene(); }));
   ['exportFps','exportVideoFormat','exportTransparent','animDuration','animStart','animEndHold'].forEach(id => {
     ['input','change'].forEach(ev => $(id)?.addEventListener(ev, () => { try{ updateExportSummary(); }catch(_e){} }));
@@ -26397,8 +26446,11 @@ function pzSecDedupe(){
     const p = m.project(e.c), r = 70;
     let hits = [];
     try{ hits = m.queryRenderedFeatures([[p.x - r, p.y - r], [p.x + r, p.y + r]]) || []; }catch(_e){}
+    // Název podkladu přímo v bodě konce úseku zakryje bílé kolečko a čára (z „Praha" zbylo
+    // „Prah", Brno pod čárou D1) — takový za duplicitu nepočítat, náš tučný název zůstane.
+    const covered = f => { try{ const g = f.geometry; if(g?.type !== 'Point') return false; const q = m.project(g.coordinates); return Math.hypot(q.x - p.x, q.y - p.y) < 25; }catch(_e){ return false; } };
     if(hits.some(f => f.layer?.type === 'symbol' && !/^(pz|route|scene|measure)/.test(f.layer.id) &&
-      ['name', 'name:cs', 'name:latin', 'name_int', 'name_en'].some(k => f.properties?.[k] && pzDia(f.properties[k]) === n))) dup.add(n);
+      ['name', 'name:cs', 'name:latin', 'name_int', 'name_en'].some(k => f.properties?.[k] && pzDia(f.properties[k]) === n) && !covered(f))) dup.add(n);
   });
   if([...dup].join('|') === [...prev].join('|')) return;
   state.pzSecDup = dup;
@@ -26486,11 +26538,18 @@ function pzSecLegendRows(){
   const S = pzSec(), used = new Set(S.items.filter(i => i.coords?.length > 1).map(i => PZ_SEC_STATUS[i.status] ? i.status : 'hotovy'));
   return PZ_SEC_ORDER.filter(k => used.has(k)).map(k => ({st:k, text: String(S.legend?.names?.[k] || PZ_SEC_STATUS[k].legend), color: PZ_SEC_STATUS[k].color, dash: PZ_SEC_STATUS[k].dash}));
 }
+// Jeden stav legendu nepotřebuje — leda grafik legendě dal nadpis nebo vlastní název
+// („Chytré sypače: úseky se sypači"); pak má jednořádková legenda smysl.
+function pzSecLegendWanted(rows){
+  const S = pzSec(); rows = rows || pzSecLegendRows();
+  if(rows.length >= 2) return true;
+  return rows.length === 1 && !!(String(S.legend?.title || '').trim() || S.legend?.names?.[rows[0].st]);
+}
 // Stejný vzhled jako legenda datové mapy (bílý box, červený pruh TN), vzorek = kus čáry.
 // avoid = box legendy datové mapy (ve stejném rohu se legendy naskládají nad sebe).
 function pzSecLegendLayout(ctx, w, h, avoid){
   const S = pzSec(); if(!S.legend?.on) return null;
-  const rows = pzSecLegendRows(); if(rows.length < 2) return null;   // jeden stav legendu nepotřebuje
+  const rows = pzSecLegendRows(); if(!pzSecLegendWanted(rows)) return null;
   const k = Math.max(0.5, Math.min(4, Math.max(w, h) / 1920));
   const F = '"Segoe UI", Arial, Helvetica, sans-serif', title = String(S.legend.title || '').trim();
   const L = {k, F, title, rows, pad:22 * k, sw:56 * k, gap:10 * k, rowH:40 * k, titleF:30 * k, rowF:26 * k, accent:6 * k, lw:10 * k};
@@ -26929,7 +26988,7 @@ function pzColorFromName(v){
 
   // Háček pro automatické testy (tests/14_fixes.test.js) — funkce appky jsou
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
-  window.__pzFns = {setStatus, pzObjectsOutsideFrame, pzObjectsUnderTitle, pzSecLabelsOutside, pzExportFrameRect, pzSceneLngLats, pzLngLatsInFrame, pzFitScene, pzRedrawClosures, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
+  window.__pzFns = {setStatus, pzWrapText, pzDrawFlyIn, pzTitleBoxesFor, pzObjectsOutsideFrame, pzObjectsUnderTitle, pzSecLabelsOutside, pzExportFrameRect, pzSceneLngLats, pzLngLatsInFrame, pzFitScene, pzRedrawClosures, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
     serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading, pzVehicleParts, pzExtraVehicles, pzFlagList,
     pzSetKeyboardInset, pzMobilePanel,
@@ -27591,7 +27650,7 @@ function pzColorFromName(v){
       pzRedrawSections(); pzSecSyncUi();
       if(fit !== false && out.length) pzFitClosures();
       const res = {ok:true, sections: S.items.map(it => ({from: it.from, to: it.to, status: PZ_SEC_STATUS[it.status]?.name, km: it.km, ...(it.label ? {label: it.label} : {}), ...(it.mode === 'rail' ? {mode:'rail'} : {})})),
-        legend: S.legend.on && pzSecLegendRows().length >= 2 ? {corner: S.legend.corner, ...(S.legend.title ? {title: S.legend.title} : {}), rows: pzSecLegendRows().map(r => r.text)} : false};
+        legend: S.legend.on && pzSecLegendWanted() ? {corner: S.legend.corner, ...(S.legend.title ? {title: S.legend.title} : {}), rows: pzSecLegendRows().map(r => r.text)} : false};
       if(failed.length){ res.failed = failed; res.note = 'Nenakreslil jsem: ' + failed.map(f => (f.from || '?') + ' – ' + (f.to || '?') + ' (' + f.error + ')').join('; ') + ' — oprav místo (obec, okres) a zavolej znovu s append:true.'; }
       if(warnings.length) res.warning = warnings.join(' ');
       return res;

@@ -73,6 +73,10 @@ const path = require('path'), fs = require('fs');
   // --- nástroj setTitle, stav, styl, vypnutí ---
   let r = await page.evaluate(() => window.TNMAP.setTitle({title: 'Výluka metra C', source: '', style: 'TN červený'}));
   check(r.ok && r.title === 'Výluka metra C' && r.source === null && r.style === 'red', 'setTitle: titulek, prázdný zdroj = vypnout, styl červený — ' + JSON.stringify(r));
+  // zalomení titulku: jednopísmenná spojka nezůstane na konci řádku, řádky vyrovnané (ne „… D5 a / D11")
+  const wr = await page.evaluate(() => { const x = document.createElement('canvas').getContext('2d'); x.font = '800 52px sans-serif';
+    const ls = window.__pzFns.pzWrapText(x, 'První sníh: chytré sypače na D1, D5 a D11', 900), w = ls.map(l => x.measureText(l).width); return {ls, ratio: Math.min(...w) / Math.max(...w)}; });
+  check(wr.ls.length === 2 && wr.ls.every(l => !/\s[aikosuvz]$/i.test(l)) && wr.ratio > 0.5, 'titulek: bez „a" na konci řádku, vyrovnané řádky ' + JSON.stringify(wr));
   check(await page.evaluate(() => window.TNMAP.getState().graphic?.title === 'Výluka metra C' && document.getElementById('pzTitleStyle').value === 'red'), 'stav mapy hlásí titulek, panel ukazuje styl');
   check((await page.evaluate(() => window.TNMAP.setTitle({style: 'duhový'}))).ok === false, 'setTitle: neznámý styl vrátí chybu');
   r = await page.evaluate(() => window.TNMAP.setTitle({off: true}));
