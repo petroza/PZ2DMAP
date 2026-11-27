@@ -11178,11 +11178,22 @@ async function pzBarResolvePlace(place){
 }
 // Kotva v px výstupu: poloha místa v živé mapě vůči výřezu exportu (stejně v náhledu
 // i při exportu — exportní kamera vzniká z téhož výřezu).
-function pzBarAnchorPx(c, w, h){
+function pzBarAnchorPx(c, w, h, center){
   const m = window.__tnMap || state.map; if(!m || !c?.lngLat) return null;
   let fr = null; try{ fr = pzExportFrameRect(); }catch(e){}
   if(!fr?.width) return null;
-  const mr = m.getCanvas().getBoundingClientRect(), p = m.project(c.lngLat);
+  const mr = m.getCanvas().getBoundingClientRect();
+  let ll = c.lngLat;
+  // kraj: zobáček na severní okraj kraje (nad středem) — panel nad krajem, ne přes něj
+  try{
+    const id = !center && /^kraj:/.test(c.key || '') && c.key.slice(5), f = id && state.czKrajeGeo?.features?.find(x => x.properties.id === id);
+    if(f){
+      let north = -90; const scan = a => { if(typeof a[0] === 'number'){ if(Math.abs(a[0] - ll[0]) < 0.6 && a[1] > north) north = a[1]; } else a.forEach(scan); };
+      scan(f.geometry.coordinates);
+      if(north > ll[1]) ll = [ll[0], north];
+    }
+  }catch(e){}
+  const p = m.project(ll);
   return [(p.x + mr.left - fr.left) / fr.width * w, (p.y + mr.top - fr.top) / fr.height * h];
 }
 // Čas „vyskočení": null = konečná výška (PNG, klidový náhled), jinak sekundy časové osy
@@ -11221,11 +11232,13 @@ function pzBarLayout(ctx, w, h, c, scaleMax){
   L.w = Math.ceil(Math.max(inner, tw) + L.pad * 2);
   L.h = Math.ceil(L.pad + L.titleH + L.valueF * 1.25 + L.tall + 3 * k + L.capH + L.pad * 0.8);
   // poloha: zobáček na kotvě, panel nad ní; posun z tažení je ve zlomcích výstupu
-  const a = pzBarAnchorPx(c, w, h);
-  L.anchor = a;
+  let a = pzBarAnchorPx(c, w, h);
   const off = Array.isArray(c.off) ? c.off : [0, 0];
-  let x = (a ? a[0] : w / 2) - L.w / 2 + off[0] * w, y = (a ? a[1] : h / 2) - L.ptrH - L.h + off[1] * h;
   const safe = pzDmSafeRect(w, h);
+  // nad krajem není místo (kraj u horního okraje) → zpět na střed kraje
+  if(a && a[1] - L.ptrH - L.h + off[1] * h < safe.t){ const a2 = pzBarAnchorPx(c, w, h, true); if(a2) a = a2; }
+  L.anchor = a;
+  let x = (a ? a[0] : w / 2) - L.w / 2 + off[0] * w, y = (a ? a[1] : h / 2) - L.ptrH - L.h + off[1] * h;
   L.x = Math.round(Math.max(safe.l, Math.min(safe.r - L.w, x)));
   L.y = Math.round(Math.max(safe.t, Math.min(safe.b - L.h, y)));
   L.baseY = L.y + L.h - L.pad * 0.8 - L.capH;
