@@ -19306,7 +19306,8 @@ function pzFitScene(opts){
     // kde stačí menší posun (u D1 s legendou vlevo nahoře ležel začátek úseku pod legendou)
     const under = fr && !single ? pzSceneUnderLegends(fr).concat(pzSecLabelsOutside(fr)) : [];
     if((!out.length && !need && !under.length) || ++tries > 3 || single || !fr){ pzMarkOutsideObjects(); return; }
-    padding.top += need;
+    // o kousek víc, než chybí — fitBounds zároveň oddálí, takže přesně „need" nestačí
+    padding.top += need ? need * 1.15 + 6 : 0;
     under.forEach(u => { padding[u.side] += u.px; });
     out.forEach(({el}) => { const b = el.getBoundingClientRect();
       padding.left += Math.max(0, fr.left - b.left); padding.right += Math.max(0, b.right - fr.right);
