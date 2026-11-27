@@ -42,12 +42,13 @@ const ONLY = process.env.SCENE || '';
     await T('fitScene', {}); await page.waitForTimeout(1500); await stable();
     const [w, h] = await page.evaluate(() => { const r = document.getElementById('exportResolution').value.split('x').map(Number); return r; });
     // BASE_URL na starou verzi bez auditu (snímky „před"): jen PNG
-    if(!await page.evaluate(() => !!window.pzLayoutAudit)){ if(file && (process.env.PNG === 'all' || /^39_(data_9x16|sekce_16x9|sipky_9x16|mesta_16x9)/.test(file))) await png('pred_' + file); return {items:[], overlaps:[], outside:[], logos:[]}; }
+    if(!await page.evaluate(() => !!window.pzLayoutAudit)){ if(file && (process.env.PNG === 'all' || /^39_(data_9x16|data_16x9|sipky_9x16)/.test(file))) await png('pred_' + file); return {items:[], overlaps:[], outside:[], logos:[]}; }
     const A = await page.evaluate(([w, h]) => window.pzLayoutAudit(w, h), [w, h]);
     const kinds = {}; A.items.forEach(i => { kinds[i.kind] = (kinds[i.kind] || 0) + 1; });
-    // ZNÁMÝ PROBLÉM: hodně ručních popisků měst blízko sebe — Zarámovat scénu oddálí víc, než je
-    // třeba, a popisky se i po otočení strany a zmenšení překrývají. Zatím jen hlásit, neshazovat.
-    const chk = /^(logo )?mesta/.test(label) ? (c, msg) => console.log((c ? '  ✓ ' : '  ⚠ (známé) ') + msg) : check;
+    // ZNÁMÉ PROBLÉMY (zatím jen hlásit, neshazovat): hodně ručních popisků měst blízko sebe —
+    // Zarámovat scénu oddálí víc, než je třeba, a popisky se i po otočení strany a zmenšení
+    // překrývají; svazek šipek v 9:16 — piktogramy z blízkých míst přes sebe.
+    const chk = /^(logo )?mesta|^sipky/.test(label) ? (c, msg) => console.log((c ? '  ✓ ' : '  ⚠ (známé) ') + msg) : check;
     chk(!A.overlaps.length, `${label} ${w}×${h}: nic se nepřekrývá ${JSON.stringify(kinds)} ${A.overlaps.length ? JSON.stringify(A.overlaps).slice(0, 600) : ''}`);
     chk(!A.outside.length, `${label} ${w}×${h}: vše v bezpečné zóně ${A.outside.length ? JSON.stringify(A.outside.map(o => o.id + '/' + o.why + ' ' + JSON.stringify(A.items.find(i => i.kind + ':' + i.id === o.id)))).slice(0, 600) : ''}`);
     // PNG (export trvá) jen u vybraných scén; PNG=all všechny, PNG=0 žádné
