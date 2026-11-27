@@ -8556,6 +8556,8 @@ function pzClampFlagToFrame(ll, feat){
     if(!pzPointInGeom(p, feat.geometry)) continue;
     const d = (x - q.x) ** 2 + (y - q.y) ** 2; if(d < bd){ bd = d; best = p; }
   }
+  // žádné místo státu v rámu (Malta u záběru Španělska) → vlajka stojí na cizím území; volající to ohlásí
+  pzClampFlagToFrame.foreign = !best;
   return best || m.unproject([Math.max(x0, Math.min(x1, q.x)), Math.max(y0, Math.min(y1, q.y))]).toArray();
 }
 function pzFlagsRefresh(){ try{ pzEnsureFlagLayer(); pzInitFlagDrag(); }catch(e){ console.warn('flags', e); } try{ pzRenderFlagList(); }catch(e){} }
@@ -28164,7 +28166,10 @@ function pzColorFromName(v){
       const id = 'flag_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
       pzFlagList().push({id, iso, lngLat: ll});
       pzFlagsRefresh();
-      return {ok:true, iso, flags: pzFlagList().length, ...(moved ? {note:'Stát je mimo záběr — vlajka posunuta k okraji výřezu.'} : {})};
+      const foreign = moved && pzClampFlagToFrame.foreign;
+      return {ok:true, iso, flags: pzFlagList().length, ...(moved ? {note: foreign
+        ? 'Stát v záběru vůbec není — vlajka stojí u okraje výřezu na území jiného státu. Přesuň ji (place: k popisku nebo k místu události), nebo zvětši záběr.'
+        : 'Stát je mimo záběr — vlajka posunuta k okraji výřezu.', ...(foreign ? {outsideCountry: true} : {})} : {})};
     },
     // Přelet kamery: záběry v pořadí (rovnoměrně v čase animace). keyframes: [{center:"lat,lng"|[lng,lat]|místo, zoom, pitch?, bearing?}]
     async setCameraFlight({keyframes, arc, lift, off} = {}){

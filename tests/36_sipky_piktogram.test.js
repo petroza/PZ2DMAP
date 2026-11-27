@@ -148,7 +148,8 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
 
   // --- druh dopravy „letadlo" a ikonka lodi (tanker) z běžných slov
   check((await T('setTransportMode', {mode: 'letadlo'})).mode === 'planeArc' && (await T('setTransportMode', {mode: 'auto'})).mode === 'driving', 'setTransportMode rozumí „letadlo" i „auto"');
-  check(await page.evaluate(() => pzIconKind('tanker') === 'lod' && pzIconKind('dron') === 'vybuch' && pzArrowPictoKind('dron') === 'dron'), 'ikonka lodi pro tanker, dron na šipce má vlastní piktogram');
+  r = await T('drawArrow', {from: '50,14', to: '50,16', icon: 'drony', fit: false});
+  check(r.ok && r.icon === 'dron', 'dron na šipce má vlastní piktogram (ne výbuch) ' + JSON.stringify(r));
   check(await page.$$eval('#pzIconPalette .pz-icon-pick[data-kind="lod"]', e => e.length) === 1 && await page.$$eval('#sceneArrowIcon option[value="dron"]', e => e.length) === 1, 'loď je v paletě ikonek, dron v nabídce piktogramů');
 
   check(errors.length === 0, 'bez chyb v konzoli ' + errors.join(' | '));

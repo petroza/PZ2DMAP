@@ -75,6 +75,12 @@ const {check, done, open, tab, openSection} = require('./lib');
   check(col['Řecko'] === 'EL' && col['Velká Británie'] === 'UK' && col['Ukrajinu'] === 'UA' && col['USA'] === 'US' && /v datech hranic není/.test(col['Kosovo']), 'obarvení států podle českých názvů ' + JSON.stringify(col));
   const sug = await page.evaluate(() => ['USA', 'Británie', 'Ukrajinu'].map(q => window.__pzFns.getCountrySearchItems(q)[0]?.id).join(','));
   check(sug === 'US,UK,UA', 'našeptávač států: USA, Británie, Ukrajinu (' + sug + ')');
+  // vlajka státu, který v záběru vůbec není (Malta u záběru Španělska): asistent se dozví, že stojí na cizím území
+  await page.evaluate(() => window.__tnMap.jumpTo({center: [-2.5, 38.5], zoom: 5.2})); await page.waitForTimeout(600);
+  const ef = await page.evaluate(() => window.TNMAP.placeFlag({country: 'Španělsko'}));
+  check(ef.ok && !ef.outsideCountry, 'vlajka Španělska v záběru bez upozornění ' + JSON.stringify(ef));
+  const mf = await page.evaluate(() => window.TNMAP.placeFlag({country: 'Malta'}));
+  check(mf.ok && mf.outsideCountry === true && /jiného státu/.test(mf.note || ''), 'vlajka Malty mimo záběr: upozornění, že stojí na cizím území ' + JSON.stringify(mf));
   // metro: běžné zápisy a hovorové názvy
   const mt = await page.evaluate(async () => [(await window.TNMAP.metroClosure({station: 'IP Pavlova', fit: false})).ok, (await window.TNMAP.metroClosure({station: 'Hlavák', fit: false})).ok, (await window.TNMAP.metroClosure({})).error]);
   check(mt[0] && mt[1] && /Chybí station/.test(mt[2]), 'metro: IP Pavlova, Hlavák a srozumitelná chyba bez stanice ' + JSON.stringify(mt));
