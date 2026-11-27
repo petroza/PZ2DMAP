@@ -27502,7 +27502,8 @@ function pzColorFromName(v){
     // Jedním voláním: šipky z každého místa do cíle, mírně zakřivené a rozvějířené,
     // aby se hroty v cíli nepřekrývaly; volitelně piktogram a popisky míst.
     async flowArrows({from, to, icon, color, width, iconSize, labels, toLabel, fromLabel, curve, fit} = {}){
-      const fs0 = String(from || ''), list = (Array.isArray(from) ? from : fs0.split(/[;\n]/.test(fs0) ? /\s*[;\n]\s*/ : /\s*,\s*/)).map(x => String(x || '').trim()).filter(Boolean);
+      // „49.0,31.4" je jedno místo (souřadnice), ne dvě
+      const fs0 = String(from || ''), list = (Array.isArray(from) ? from : (!/[;\n]/.test(fs0) && parseLatLng(fs0.trim()) ? [fs0] : fs0.split(/[;\n]/.test(fs0) ? /\s*[;\n]\s*/ : /\s*,\s*/))).map(x => String(x || '').trim()).filter(Boolean);
       if(!list.length || !to) return {ok:false, error:'Chybí from (seznam míst) nebo to (cíl).'};
       if(list.length > 15) return {ok:false, error:'Nejvýš 15 míst najednou.'};
       if(color != null && color !== '' && !pzColorFromName(color)) return {ok:false, error:'Barvu „' + color + '" neznám.'};
@@ -27514,7 +27515,7 @@ function pzColorFromName(v){
       let toList = Array.isArray(to) ? to.map(x => String(x || '').trim()).filter(Boolean) : [ts0.trim()];
       if(!Array.isArray(to) && list.length === 1){
         if(/[;\n]/.test(ts0)) toList = ts0.split(/\s*[;\n]\s*/).map(x => x.trim()).filter(Boolean);
-        else if(/,/.test(ts0)){
+        else if(/,/.test(ts0) && !parseLatLng(ts0.trim())){
           const parts = ts0.split(/\s*,\s*/).map(x => x.trim()).filter(Boolean);
           let isCountry = () => false;
           try{ state.geoDataRequested = true; await ensureGeoDataLoaded(); isCountry = q => !!pzResolveCountry(q)?.id; }catch(e){}
