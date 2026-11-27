@@ -13,7 +13,7 @@ const fs = require('fs'), path = require('path'), {execSync} = require('child_pr
   const waitDl = async n => { for(let i = 0; i < 600 && downloads.length < n; i++) await page.waitForTimeout(200); return downloads.length >= n; };
   const st = () => page.evaluate(() => window.pzBars.state());
   // Zarámovat scénu se může jednou doladit (graf nad krajem potřebuje místo) — počkat na klidný záběr
-  const stable = async () => { let prev = ''; for(let i = 0; i < 20; i++){ const z = await page.evaluate(() => { const m = window.__tnMap, c = m.getCenter(); return [m.getZoom(), c.lng, c.lat].map(v => v.toFixed(4)).join(); }); if(z === prev) return; prev = z; await page.waitForTimeout(500); } };
+  const stable = async () => { let prev = '', same = 0; for(let i = 0; i < 30; i++){ const z = await page.evaluate(() => { const m = window.__tnMap, c = m.getCenter(); return [m.getZoom(), c.lng, c.lat].map(v => v.toFixed(4)).join(); }); if(z === prev && ++same >= 3) return; if(z !== prev) same = 0; prev = z; await page.waitForTimeout(500); } };
   const T = (name, args) => page.evaluate(([n, a]) => window.TNMAP[n](a), [name, args]);
 
   // --- převod řádků
