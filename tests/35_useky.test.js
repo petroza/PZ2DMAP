@@ -11,7 +11,9 @@ const PLACES = {
   // dvě obce Ostrov: vesnice 5 km od Opatovic (první u Opatovic) a Ostrov (okres Chrudim) na D35
   'ostrov': [[15.8000, 50.1900], [16.0305, 49.9725]],
   'litomysl': [[16.3125, 49.8709]], 'januvky': [[16.5410, 49.7420]], 'mohelnice': [[16.9195, 49.7770]],
-  'praha': [[14.4355, 50.0830]], 'kolin': [[15.2010, 50.0270]]
+  'praha': [[14.4355, 50.0830]], 'kolin': [[15.2010, 50.0270]],
+  // D11 na Trutnovsku (zadání 27. 11. 2026)
+  'jaromer': [[15.9213, 50.3562]], 'trutnov': [[15.9127, 50.5610]], 'lampertice': [[15.9930, 50.6620]], 'kralovec': [[16.0380, 50.6800]]
 };
 const fold = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(',')[0].trim();
 (async () => {
@@ -149,6 +151,15 @@ const fold = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
     return window.pzUseky.state().items.flatMap(it => it.coords).filter(p => { const q = window.__tnMap.project(p), x = q.x + c.left, y = q.y + c.top;
       return x > f.left + L.x * k && x < f.left + (L.x + L.w) * k && y > f.top + L.y * k && y < f.top + (L.y + L.h) * k; }).length; });
   check(under === 0, 'Celá scéna: žádný úsek pod legendou v rohu (bodů pod legendou: ' + under + ')');
+  // --- D11 u hranice s Polskem: termín nového úseku nahoře nesmí zůstat pod titulkem
+  r = await page.evaluate(() => window.TNMAP.roadSections({sections:[
+    {from:'Jaroměř', to:'Trutnov', status:'ve výstavbě', label:'zprovoznění 2027'},
+    {from:'Lampertice', to:'Královec', status:'zvýraznit', label:'otevřeno 27. 11. 2026'}], legend:'bl'}));
+  await page.evaluate(() => window.TNMAP.setTitle({title:'Nový úsek D11 u hranice s Polskem', source:'ŘSD'}));
+  await page.evaluate(() => window.TNMAP.fitScene()); await page.waitForTimeout(5000);
+  const secTop = await page.evaluate(() => { const F = window.__pzFns; return F.pzSecLabelsOutside(F.pzExportFrameRect()); });
+  check(r.ok && !secTop.length, 'Celá scéna: termín „otevřeno 27. 11. 2026" není pod titulkem ani mimo výřez ' + JSON.stringify(secTop));
+  await page.evaluate(() => window.TNMAP.setTitle({off:true}));
   // --- angličtina: nápovědy v polích panelu Úseky
   await page.evaluate(() => window.TNMAP.setLanguage({lang:'en'})); await page.waitForTimeout(500);
   const ph = await page.evaluate(() => ['pzSecFrom', 'pzSecTo', 'pzSecLabel', 'pzSecVia'].map(id => document.getElementById(id).placeholder));

@@ -134,6 +134,15 @@ const fs = require('fs'), path = require('path');
   check(fit.every(([x, y]) => x > 0.02 && x < 0.98 && y > 0.1 && y < 0.9), '9:16: Zarámovat scénu ukáže celou ČR se zvýrazněným krajem ' + JSON.stringify(fit.map(p => p.map(v => +v.toFixed(2)))));
   await page.evaluate(() => { const r = document.getElementById('exportResolution'); r.value = '1920x1080'; r.dispatchEvent(new Event('change', {bubbles:true})); });
 
+  // --- „Středočeským mostům hrozí uzavření": kraj obrysem + mosty uvnitř → záběr jen na kraj, ne celá ČR
+  const bw = () => page.evaluate(() => { const p = window.__pzFns.pzSceneLngLats({countries:true, bubbles:false}), xs = p.map(q => q[0]); return Math.max(...xs) - Math.min(...xs); });
+  await page.evaluate(async () => { const T = window.TNMAP; await T.colorRegion({clear:true}); await T.colorRegion({region:'Středočeský', outline:true, fit:false});
+    await T.addLabel({place:'50.2416,14.3115', text:'Most přes Vltavu', fit:false}); await T.addLabel({place:'50.1859,15.0428', text:'Most přes Labe', fit:false}); });
+  const wK = await bw();
+  await page.evaluate(() => window.TNMAP.addLabel({place:'49.1951,16.6068', text:'Brno', fit:false}));
+  const wCz = await bw();
+  check(wK < 3.2 && wCz > 6, 'Zarámovat scénu: mosty uvnitř kraje → jen kraj (' + wK.toFixed(2) + '°), bod mimo kraj → celá ČR (' + wCz.toFixed(2) + '°)');
+
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close(); done();
 })();
