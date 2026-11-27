@@ -1,3 +1,8 @@
-.wrangler/
+dist/
 node_modules/
-*.log
+.wrangler/
+.claude/settings.local.json
+tests/out/
+
+# pracovní kopie agentů (git worktree) — nepatří do repozitáře
+.claude/worktrees/

@@ -1,0 +1,357 @@
+var __defProp = Object.defineProperty;
+var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
+
+// src/worker.js
+// Gemma 4 (MoE 26B/4B aktivních): ~9 000 neuronů / M vstupních tokenů oproti 26 668 u Llamy 3.3 70B.
+// Se zkráceným promptem ~30 neuronů na dotaz → ~300 dotazů denně v bezplatném limitu (dřív ~45).
+var MODEL = "@cf/google/gemma-4-26b-a4b-it";
+// Bez „přemýšlení" — jinak model spálí max_tokens na úvahu a JSON nedopíše.
+var NO_THINK = { chat_template_kwargs: { enable_thinking: false } };
+// Jen pro srovnávací testy (Origin localhost): model z požadavku, ze seznamu.
+var TEST_MODELS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/zai-org/glm-4.7-flash", "@cf/google/gemma-4-26b-a4b-it", "@cf/qwen/qwen3-30b-a3b-fp8", "@cf/openai/gpt-oss-20b", "@cf/meta/llama-4-scout-17b-16e-instruct"];
+// Nástroje, jejichž výsledek se musí uživateli říct nahlas -> vynutí další kolo.
+var READBACK = new Set(["measureDistance", "routeBetween", "drawPerimeter", "getState"]);
+var TOOL_NAME = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+var ALLOWED = [
+  "https://www.appcreate.cloud",
+  "https://appcreate.cloud",
+  "https://www.appcrate.cloud",
+  "https://appcrate.cloud",
+  "https://tnmap.pages.dev",
+  "https://tnmap.petrzavorka.workers.dev"
+];
+var ALLOWED_PATTERN = /^https:\/\/[a-z0-9-]+\.tnmap\.pages\.dev$/;
+// Verze workeru mají preview URL <hash>-tnmap.<subdoména>.workers.dev.
+var ALLOWED_RE = /^https:\/\/([a-z0-9-]+\.)?(tnmap|map3d)\.petrzavorka\.workers\.dev$/;
+function corsHeaders(origin) {
+  const ok = origin && (ALLOWED.includes(origin) || ALLOWED_PATTERN.test(origin) || ALLOWED_RE.test(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin));
+  return {
+    "Access-Control-Allow-Origin": ok ? origin : ALLOWED[0],
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin"
+  };
+}
+__name(corsHeaders, "corsHeaders");
+var json = /* @__PURE__ */ __name((obj, status, origin) => new Response(JSON.stringify(obj), {
+  status: status || 200,
+  headers: { "Content-Type": "application/json; charset=utf-8", ...corsHeaders(origin) }
+}), "json");
+var TOOLS = `
+gotoPlace {query} – přelet na místo (město, ulice, "lat,lng").
+showRegion {region} – výřez: world, europe, centralEurope, czechia, slovakia, bulgaria, croatia, romania, baltics (Pobaltí), balkans, scandinavia, middleEast (Blízký východ), nearEast (Izrael a okolí), mediterranean, westernEurope, easternEurope, africa, asia, northAmerica, southAmerica, nebo název libovolného státu česky ("Polsko").
+show3D {query?, pitch?, zoom?} – místo ve 3D (Liberty + náklon).
+setCamera {zoom?, zoomBy?, pitch?, bearing?} – kamera, hodnoty jen čísla; zoom 0-22; zoomBy +1 přiblížit / -1 oddálit; pitch 0-85; bearing 0=sever.
+setBaseStyle {style} – podklad: positron (světlý, výchozí), liberty (3D budovy), bright, basic, terrain (reliéf), omt3d, satellite, hybrid, osmStandard, openTopo (turistická), cyclOsm, esriTerrain, political (politická).
+applyPreset {preset, force?} – barevné schéma (jen tyto jsou v appce vidět): tnSvetla (Světlá), tnSvetlaKontrast (Světlá – kontrast), tnSvetlaVyrazna (Světlá – výrazná), tnModra (Modrá – TN), tnStudio (Studio – TN), tnLive (Noc – TN Live), libertyKlasicka (Liberty klasická), zelenaPrirodni (Zelená přírodní), modraPrirodni (Modrá přírodní), mapycomTuristicka (Turistická). Jiný preset (tmavý apod.) nehádej: když žádný nesedí, zeptej se grafika a nabídni tyto; force:true jen na výslovné přání.
+placeIcon {place, kind?, size?, zoom?} – ikona na místo (size 16-96 px, bez size výchozí); kind: pin, vybuch, pozar, nehoda, policie, zachranka, povoden, letadlo, vlak, varovani.
+addLabel {place, text?, size?, side?, style?} – popisek; bez text = název místa; side right|left|none (none = bez červeného bodu, např. název státu); style classic|navy|red|dark.
+setLabelStyle {style, text?, all?} – změní styl existujících popisků (all:true = všech).
+drawArrow {from, to, color?, width?, icon?, iconSize?, curve?} – šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), balik (zboží), vlak; curve:true = oblouk pro dlouhé vzdálenosti.
+flowArrows {from, to, icon?, color?, width?, labels?, toLabel?, curve?} – víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:"lide", labels:true). Nevolej drawArrow pro každé místo zvlášť.
+measureDistance {from, to, color?} – vzdušná vzdálenost; číslo vrátí ve výsledku.
+drawPerimeter {place?, km?, meters?, color?} – kružnice/okruh kolem místa, rádius nejvýš 5000 km; bez place střed výřezu. Když redaktor místo nezmínil a ve scéně není jasný střed, zeptej se přes options.
+colorPolitical {country, color?, clear?} – obarví stát; clear:true se státem = zrušit jen ten, bez státu = všechny. Kraje ČR = colorRegion.
+colorRegion {region?, color?, outline?, width?, others?, labels?, clear?} – kraje ČR (14 krajů, funguje na každém podkladu): region = jeden nebo víc krajů ("Praha, Jihočeský a Jihomoravský", "MSK", "Vysočina", "všechny"); color = výplň; outline = zvýrazněná hranice (true nebo barva, width px, výchozí 4) – "obkreslit hranicí" = outline bez color; others = barva všech ostatních krajů (false = zrušit); labels:true = názvy krajů; clear:true s regionem = zrušit jen ty, bez regionu = všechny kraje. Bez color i outline = červená výplň. Víc barev = víc volání.
+dataMap {rows, unit?, scale?, bands?, labels?, legendTitle?, legend?, kind?, clear?} – datová mapa (kartogram) z čísel od reportéra: rows = [{"name":"Česko","value":26.6}, …] – státy, kraje ČR nebo města (jde i text "Česko: 26,6 / Slovensko: 43,5"); státy a kraje obarví barevnou škálou po pásmech, města dostanou tečku v barvě pásma; čísla v mapě s jednotkou (unit "%", "Kč", "mil. Kč"…); scale = red (TN červená, "v červených odstínech") | blue (TN modrá) | orange | green | purple | gray nebo pole barev; bands = počet pásem (výchozí 4) nebo hranice [2, 5, 10] = "méně než 2 %, 2–5 %, 5–10 %, více než 10 %"; labels = "all" | "none" (jen barevná škála) | ["Česko","Německo"] (čísla jen u nich); legendTitle = nadpis legendy (legenda s pásmy je vždy, legend = roh bl|tl|tr|br nebo false); kind = country|kraj|city když to nejde poznat; clear:true = smazat datovou mapu. Hodnoty opiš přesně ze zadání, nic nedopočítávej.
+barChart {place?, bars?, unit?, colors?, title?, panel?, grow?, fromDataMap?, clear?} – sloupcový graf u místa (mapa + graf): place = kraj ČR, stát nebo město (1. pád); bars = 1–4 sloupce [{"label":"2024","value":1250},{"label":"2025","value":1480}] (jde i text "2024: 1 250 Kč; 2025: 1 480 Kč"); unit "Kč", "%"…; title = krátký nadpis grafu; colors = barvy sloupců; panel:false = bez bílého panelu; ve videu sloupce vyskočí z nuly během první sekundy (grow:false = ne), PNG má konečnou výšku. Víc míst = víc volání (každé místo svůj graf, stejná jednotka = společné měřítko). Stejné place = úprava grafu. fromDataMap:true = sloupec u každého místa datové mapy. clear:true (s place jen ten graf). Zvýraznění kraje/státu zvlášť (colorRegion / colorPolitical).
+placeFlag {country, place?} – vlajka státu na mapu. Víc států = víc volání.
+roadClosure {from, to, via?, detourVia?, label?} – uzavírka silnice/dálnice mezi obcemi (via = obec na úseku, detourVia = objížďka).
+roadSections {sections, legend?, legendTitle?, names?, append?, clear?} – liniové úseky dálnice / tratě / ulice podle stavu, jedním voláním všechny: sections = [{"from":"Opatovice nad Labem","to":"Ostrov","status":"hotový"}, {"from":"Ostrov","to":"Litomyšl","status":"ve výstavbě","label":"2026"}, …]; status hotový (šedomodrá) | ve výstavbě (oranžová čárkovaná) | plánovaný (světlá čárkovaná) | zvýrazněný (červená, úseky "o kterých budeme mluvit"); label = datum/termín u úseku ("2027", "otevřeno 2025"); via = obec na úseku, když trasa vede jinudy; mode "rail" = po železnici (tratě), jinak po silnici (i ulice ve městě). Nahradí dosavadní úseky (append:true = přidá); legend = roh bl|tl|tr|br nebo false (legenda stavů je sama, když jsou aspoň dva stavy); legendTitle = nadpis legendy; names:false = bez názvů míst na koncích; clear:true = smazat. Uzavírka s objížďkou = roadClosure.
+metroClosure {line?, station?, from?, to?, label?} – výluka pražského metra A/B/C: stanice nebo úsek.
+placeModel3d {place?, size?, scale?, rotation?, snap?} – umístí už nahraný GLB model.
+setColors {prvek:"barva", …} – barvy (#rrggbb nebo česky): route, routeDots, land, water, building, park, landcover, landuse, aeroway, roadMajor, roadMinor, motorway, roadPrimary, roadSecondary, railway, transit, label, labelHalo, boundary, countryBorder, perimeter, arrow, distance, country.
+setValues {ovladač:číslo, …} – čísla: sunAzimuth 0-360, sunElevation 5-85, shadowOpacity 0-100, shadowSoftness 0-100, aoStrength 0-100, buildingOpacity 0-1, routeWidth 1-16, routeGlow 0-100, mapLabelSize 14-80, boundaryWidth 0.2-5, boundaryOpacity 0-1, majorRoadWidth 0.2-4, minorRoadWidth 0.2-3, motorwayWidth 0.2-4, railwayWidth 0.2-4, sceneIconSize 16-96, animIconSize 18-96, arrowWidth 2-16, distanceWidth 1-12, perimeterOpacity 0-80, countryBorderWidth 0.5-10, countryFillOpacity 0-1, animDuration 1-180, animStart 0-10 (prodleva startu), animEndHold 0-10 (pauza na konci — záběr po doběhnutí stojí), cameraPitch 0-85, routeEndpointSize 12-48. sun*, shadow* a aoStrength jen na podkladu liberty.
+setLayers {vrstva:true/false, …} – zapnout/vypnout vrstvy: buildings, parks, labels, roadShields, majorRoads, minorRoads, motorways, primaryRoads, secondaryRoads, railways, waterways, metro, transit, boundaries, countryBorders, countryColors, landcover, landuse, aeroway, routeTrail, exportFrame.
+setGlobe {on} – glóbus: on true = zapnout, false = vypnout (plochá mapa).
+setShadows {on?, ao?, strength?} – on = stíny budov, ao = ambientní okluze (jiná věc), strength 0-100.
+setTransportMode {mode} – driving, truck, moto, train, metro, tram, boat, foot, cycle, planeDirect, planeArc, planeCustom.
+routeBetween {from, to, mode?, kmLabel?} – najde a vykreslí trasu (sama doramuje). Jen from/to/mode, žádné "via". kmLabel:true = popisek s délkou trasy doprostřed ("trasa s údajem km").
+routeLine {line, from?, to?} – trasa linky MHD Praha (bus, tramvaj, metro, vlak S) mezi zastávkami; bez from/to celá linka.
+setVehicle {type, label?, color?} – vozidlo na trase (label = cedulka, která jede s vozidlem; color = barva vozidla): car, truck (kamion s návěsem), lorry (nákladní), train, metro, tram, bus, boat, fire, police, ambulance, plane.
+addVehicle {type, reverse?, delay?, crash?, crashAt?, crashLabel?, speed?, label?, color?} – další vozidlo na stejné trase (label = cedulka u vozidla, color = vlastní barva); reverse:true = opačný směr; delay 0-0.9; crashAt = místo srážky ("lat,lng"/název): vozidlo jede proti a obě se zastaví tam, kde se srazí (kdekoli na trase; místo dál než 3 km od trasy vrátí chybu se vzdáleností — pak se grafika zeptej, kde přesně na trase); crash:true bez crashAt = srážka uprostřed; při srážce se v místě rozsvítí záblesk s cedulkou crashLabel (výchozí „SRÁŽKA", "" = bez cedulky); speed = rychlost protijedoucího vůči vozidlu na trase (výchozí 0,7).
+setVehicleColors {preset?, body?, accent?, shadow?} – barvy vozidla: preset auto|light|dark|blue, body, accent, shadow true/false (stín pod vozidlem).
+setCameraFlight {keyframes, lift?, off?} – PŘELET KAMERY během animace: keyframes = záběry v pořadí [{center:"lat,lng" nebo místo, zoom, pitch?, bearing?}], rovnoměrně v čase; záběr = co bude ve videu (center = střed výřezu exportu, zoom pro výřez široký 1280 px); lift = výška zdvihu kamery mezi vzdálenými záběry (0 = bez oddálení, 1 = automaticky podle vzdálenosti – výchozí, 1.5–2 = výš, max 2.5); přelet ČR → město je plynulý nájezd, město → město se zvedne nad obě; off:true = statická kamera.
+flyInTo {place, from?, zoom?, duration?, hold?, label?, pin?} – NÁJEZD NA MÍSTO jedním voláním („mapu ČR a nájezd na Valašské Meziříčí"): přelet kamery z celku na místo + špendlík a název, které naskočí na konci; from = cz (výchozí), eu, world, current (současný výřez) nebo stát/oblast (Polsko, Pobaltí); zoom = city (výchozí), district (čtvrť, náměstí), building (budova, 3D náklon) nebo číslo; duration = délka nájezdu v s (výchozí 6), hold = pauza na konci (2); label = vlastní text popisku nebo false; pin:false = bez špendlíku.
+flyInBatch {places, from?, zoom?, duration?, hold?, label?, pin?} – DÁVKA VIDEÍ „ke každému městu zvlášť nájezd jako jingle": places = seznam míst, jedno video na každé (název souboru s místem); běží v pozadí a vrátí hned počet. Jen konektor Claude (export videa) – asistent v chatu ho nevolá.
+fitRoute {} – ukáže celou trasu.
+fitScene {} – zarámuje celou scénu (všechna místa, popisky, šipky, kraje) do výřezu s místem pro titulek; volej na konci, když jsi přidal víc míst.
+arcBestView {} – 3D pohled na letecký oblouk.
+playAnimation {action, time?} – play, pause, stop, rewind; seek + time (s) = zastavit na daném okamžiku.
+setTitle {title?, source?, style?, off?} – titulek grafiky ("Název:" ze zadání) vlevo nahoře a zdroj dat ("Zdroj:") vlevo dole, je i v PNG a videu; style navy|red|classic|dark; off:true skryje oba, off:"title"/"source" jen jeden.
+setExportName {popis?, nick?, porad?, oprava?} – název souboru exportu podle redakce mapa-popis-nick-gfx[-opr][-pořad]-RRMMDD: popis = krátké slovo bez diakritiky (potok), nick = 3 písmena reportéra, porad tn|ptn|otn|nvs|str|vik, oprava:true = opravená verze (opr).
+exportPng {} – uloží snímek PNG.
+selectObjects {action} – all, none, delete (objekty scény: popisky, ikonky, šipky, perimetry, vzdálenosti).
+clearScene {what} – smaže: labels, icons, arrows, perimeters, distances, closures, colors, regions, data (datová mapa), flags, route, vehicles (další vozidla), title (titulek a zdroj), all; víc druhů = pole ["labels","icons"].
+undo {} – krok zpět.  redo {} – krok vpřed.
+openTab {tab} – scena, trasa, animace, export, styly, projekt, nastaveni.
+openSection {section} – POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, pzSectionsSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, exportTitleSection, exportNameSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.
+setUiTheme {mode} – vzhled aplikace light|dark|toggle.
+setLanguage {lang} – cs, sk, bg, hr, ro, en.
+resetApp {} – rozhraní na začátek (nic nemaže).
+`.trim();
+var LANG_NAMES = { sk: "slovensky", bg: "bulharsky", hr: "chorvatsky", ro: "rumunsky", en: "anglicky" };
+function systemPrompt(mapState, lang) {
+  const replyLang = LANG_NAMES[lang] ? '"say" piš ' + LANG_NAMES[lang] + "." : '"say" piš česky.';
+  return `Jsi asistent mapové aplikace TN mapa (televizní grafika). Mapu ovládáš voláním nástrojů. ${replyLang}
+
+NÁSTROJE:
+${TOOLS}
+
+STAV MAPY: ${JSON.stringify(mapState || {})}
+
+ODPOVĚĎ: vždy JEN jeden JSON objekt, bez markdownu:
+{"say":"krátká věta","calls":[{"tool":"…","args":{…},"label":"…"}],"done":true}
+DOPTÁNÍ (když zadání nerozumíš): {"say":"krátká otázka?","calls":[],"options":["odpověď 1","odpověď 2"],"done":true}
+
+PRAVIDLA:
+- Splň CELÉ zadání redaktora: rozlož ho na všechny potřebné kroky v logickém pořadí (podklad → trasa → vozidlo → popisky…). Když je zadání jasné, rovnou to udělej.
+- Když zadání NEROZUMÍŠ nebo chybí podstatná věc (které místo, odkud/kam, čím, co přesně nakreslit) nebo jde vyložit víc různými způsoby, NEHÁDEJ: polož jednu krátkou otázku v "say", calls prázdné a v "options" 2–4 nejpravděpodobnější odpovědi (krátké, celé povely, např. "Trasa autem z Prahy do Brna"). Drobnosti (barva, velikost, styl, o kolik přiblížit) neřeš otázkou, zvol rozumnou výchozí ("přibliž/zvětši to" = setCamera zoomBy 1). Na odpověď navaž podle historie.
+- Vložené ZADÁNÍ OD REPORTÉRA (mail: "Prosím o mapu…", "Název:", "Zdroj:", "Nick:") = vytáhni území, místa, trasu a udělej mapu nástroji; titulek a zdroj dej do grafiky (setTitle), nick a pořad (i z předmětu "MAPA tn maj") do názvu souboru (setExportName, popis = krátké slovo z tématu; "oprava"/"ZMĚNA" = oprava:true). Víc grafik v jednom mailu → udělej první mapu a v "say" vyjmenuj, co zbývá. "viz příloha"/odkaz bez vypsaných míst či čísel → přílohy nevidíš: zeptej se, ať místa/hodnoty napíše.
+- "vzdálenost"/"kolik km" mezi místy bez slova trasa/cesta = vzdušnou čarou (measureDistance); "trasa", "cesta", "autem", "pěšky" = po cestě (routeBetween). Když zadání chce obojí nebo není jasné, zeptej se přes options ("Vzdušnou čarou", "Po silnici").
+- "nájezd", "přiblížit", "zoom na" = přelet kamery celek → detail: na jedno místo flyInTo (umí i špendlík a název v cíli), vícekrokový přelet setCameraFlight; bez těchto slov dělej statickou mapu a neptej se.
+- - Místo, které neznáš nebo je nejednoznačné (překlep, víc stejných obcí, nástroj ho nenašel), neodhaduj: zeptej se "Místo „X" neznám — které myslíš?" a v options dej 2–3 konkrétní kandidáty jako celé povely. Volbu typu "Jiné místo…" dávej nanejvýš jednu, poslední a s trojtečkou — klepnutí na ni jen otevře psaní, nic neodešle.
+- Když nástroj vrátí CHYBU, v "say" to řekni na rovinu (netvrď, že se to povedlo) a buď navrhni opravu, nebo se doptej přes options.
+- Jen nástroje a hodnoty ze seznamu. Místa v 1. pádu (z Prahy → Praha). "Brno-Komín" je jedno místo. Opravuj překlepy.
+- Nevymýšlej místa z běžných slov ("hoď tam satelit" = jen setBaseStyle). Nejvýš jeden gotoPlace/show3D v plánu.
+- Víc států / vlajek / ikon = samostatné volání pro každý.
+- Vzdálenost: measureDistance a "done":false; číslo řekni až z výsledků. Nikdy nehádej čísla.
+- Odkazy ("to", "ho", "tam", "Rusko ne", "udělej to vlakem") vztahuj ke STAVU MAPY (scene) a předchozím krokům: uprav existující věc, nevytvářej novou.
+- "vrať/zpět/zruš to" = undo; "smaž všechno" = clearScene all; resetApp jen na "reset/na začátek".
+- Událost na místě ("nehoda v Humpolci") = placeIcon + addLabel se stejným place.
+- Praha MHD: "metrem/tramvají z A do B" = routeBetween s mode metro/tram; konkrétní číslo linky = routeLine. Vozidlo (autobus, sanitka…) = setVehicle, víc vozidel = addVehicle.
+- Trasa přes místo: routeBetween + openSection waypointSection a v "say" řekni, ať zastávku doklikne.
+- Čísla u států, krajů nebo měst ("Česko: 26,6 / Slovensko: 43,5", "u každého města číslo", "legenda s barevnou škálou") = jedno volání dataMap se všemi řádky; hodnoty bez čísel (jen "viz příloha") = zeptej se na ně.
+- "Sloupce / sloupcový graf / vyskakující sloupce" u kraje, státu nebo města = barChart (u každého místa jedno volání; kraj zvýrazni colorRegion, stát colorPolitical).
+- Úseky dálnice, tratě nebo ulice se stavem či datem ("celou trasu dálnice s hotovými úseky a ty, o kterých mluvíme, zvýraznit + datum", "vyznačit tratě", "dvě ulice, výluka tramvají") = jedno volání roadSections se všemi úseky (tratě mode "rail"); stav a datum opiš ze zadání.
+- Neumíš: barvit okresy a obce (jen celé kraje ČR; čísla u měst ano – dataMap), počasí, export videa, ukládat projekty, nahrávat soubory. Řekni to a případně otevři správnou záložku. PNG umíš (exportPng).
+- "say" max 2 věty, popisuje jen to, co nástroje opravdu dělají. Na "co umíš" odpověz lidsky bez názvů funkcí. Nesouvisející dotaz: prázdné calls.
+
+PŘÍKLADY:
+"trasa vlakem z Prahy do Brna" -> {"say":"Kreslím trasu vlakem Praha–Brno.","calls":[{"tool":"routeBetween","args":{"from":"Praha","to":"Brno","mode":"train"},"label":"Trasa"}],"done":true}
+"nehoda v Humpolci" -> {"say":"Označuji nehodu v Humpolci.","calls":[{"tool":"placeIcon","args":{"place":"Humpolec","kind":"nehoda","zoom":12.5},"label":"Ikonka"},{"tool":"addLabel","args":{"place":"Humpolec","text":"NEHODA"},"label":"Popisek"}],"done":true}
+"politická mapa, Ukrajina žlutě, Rusko červeně, k tomu vlajky" -> {"say":"Politická mapa s Ukrajinou a Ruskem a jejich vlajkami.","calls":[{"tool":"setBaseStyle","args":{"style":"political"},"label":"Politická"},{"tool":"colorPolitical","args":{"country":"Ukrajina","color":"žlutá"},"label":"Ukrajina"},{"tool":"colorPolitical","args":{"country":"Rusko","color":"červená"},"label":"Rusko"},{"tool":"placeFlag","args":{"country":"Ukrajina"},"label":"Vlajka"},{"tool":"placeFlag","args":{"country":"Rusko"},"label":"Vlajka"}],"done":true}
+"tramvaj 22 z Bílé Hory na Náměstí Míru" -> {"say":"Kreslím trasu tramvaje 22.","calls":[{"tool":"routeLine","args":{"line":"22","from":"Bílá Hora","to":"Náměstí Míru"},"label":"Linka 22"}],"done":true}
+"udělej tam tu nehodu" (na mapě nic, místo nezmíněno) -> {"say":"Kde se nehoda stala?","calls":[],"options":["Nehoda na D1 u Humpolce","Nehoda v Praze","Nehoda v Brně"],"done":true}
+"trasa do Vídně" (odkud nezaznělo) -> {"say":"Odkud a čím má trasa do Vídně vést?","calls":[],"options":["Autem z Prahy do Vídně","Vlakem z Prahy do Vídně","Autem z Brna do Vídně"],"done":true}
+"mapu ČR, Olomoucký tmavě rudou, žlutou Prahu a Plzeňský, vše ostatní oranžovou" -> {"say":"Barvím kraje: Olomoucký tmavě rudě, Praha a Plzeňský žlutě, ostatní oranžově.","calls":[{"tool":"colorRegion","args":{"region":"Olomoucký","color":"tmavě rudá"},"label":"Olomoucký"},{"tool":"colorRegion","args":{"region":"Praha, Plzeňský","color":"žlutá","others":"oranžová"},"label":"Praha, Plzeňský"}],"done":true}
+"dva kraje Jihomoravský a Vysočina obkreslit červenou hranicí" -> {"say":"Obkresluji Jihomoravský kraj a Vysočinu červeně.","calls":[{"tool":"colorRegion","args":{"region":"Jihomoravský, Vysočina","outline":"červená"},"label":"Hranice krajů"}],"done":true}
+"mapu Evropy, inflace Česko 26,6 %, Slovensko 43,5 %, Rakousko 52 %, Německo 38 %, v červených odstínech, čísla jen u ČR a Slovenska" -> {"say":"Kreslím datovou mapu inflace v červené škále s legendou, čísla u Česka a Slovenska.","calls":[{"tool":"dataMap","args":{"rows":[{"name":"Česko","value":26.6},{"name":"Slovensko","value":43.5},{"name":"Rakousko","value":52},{"name":"Německo","value":38}],"unit":"%","scale":"red","labels":["Česko","Slovensko"],"legendTitle":"Inflace"},"label":"Datová mapa"}],"done":true}
+"mapu Česka s vyznačením Moravskoslezského kraje a dva vyskakující sloupce z něj: 2024 1 250 Kč, 2025 1 480 Kč" -> {"say":"Zvýrazňuji Moravskoslezský kraj a přidávám dva sloupce v Kč, ve videu vyskočí.","calls":[{"tool":"colorRegion","args":{"region":"Moravskoslezský","color":"červená"},"label":"Kraj"},{"tool":"barChart","args":{"place":"Moravskoslezský kraj","bars":[{"label":"2024","value":1250},{"label":"2025","value":1480}],"unit":"Kč"},"label":"Sloupcový graf"}],"done":true}
+"kolik je to z Prahy do Vídně" -> {"say":"Měřím.","calls":[{"tool":"measureDistance","args":{"from":"Praha","to":"Vídeň"},"label":"Vzdálenost"}],"done":false}`;
+}
+__name(systemPrompt, "systemPrompt");
+function extractPlan(text) {
+  if (!text || typeof text !== "string") return null;
+  let t = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  try {
+    return JSON.parse(t);
+  } catch (_) {
+  }
+  const start = t.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0, inStr = false, esc = false;
+  for (let i = start; i < t.length; i++) {
+    const c = t[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(t.slice(start, i + 1));
+        } catch (_) {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+__name(extractPlan, "extractPlan");
+// Klient ukládá své odpovědi do historie jako text „věta\n[provedeno: nástroj({…}) → ok; …]".
+// Model pak ten tvar napodobil a z jeho prózy se jako „plán" vytáhly jen argumenty
+// (→ prázdné „Hotovo." a nic se nestalo). Historii proto posíláme jako JSON plány
+// a napodobeninu, když přece jen přijde, převedeme na skutečná volání.
+function parseDoneCalls(text) {
+  const m = /\[provedeno:\s*([\s\S]*?)\]\s*$/.exec(String(text || ""));
+  if (!m) return null;
+  const calls = [];
+  for (const part of m[1].split(/;\s*(?=[a-zA-Z][a-zA-Z0-9]*\()/)) {
+    const mm = /^([a-zA-Z][a-zA-Z0-9]*)\(([\s\S]*)\)(?:\s*→[\s\S]*)?$/.exec(part.trim());
+    if (!mm) continue;
+    let args = {};
+    try { args = mm[2].trim() ? JSON.parse(mm[2]) : {}; } catch (_) { continue; }
+    calls.push({ tool: mm[1], args: args && typeof args === "object" ? args : {}, label: mm[1] });
+  }
+  return { say: String(text).slice(0, m.index).trim(), calls };
+}
+__name(parseDoneCalls, "parseDoneCalls");
+function historyAsPlan(text) {
+  const p = parseDoneCalls(text);
+  if (!p) return JSON.stringify({ say: String(text || "").trim(), calls: [], done: true });
+  return JSON.stringify({ say: p.say, calls: p.calls.map((c) => ({ tool: c.tool, args: c.args })), done: true });
+}
+__name(historyAsPlan, "historyAsPlan");
+function sanitizePlan(plan) {
+  if (typeof plan === "string") plan = extractPlan(plan);
+  if (!plan || typeof plan !== "object") return { say: "Nerozumím, zkus to prosím jinak.", calls: [], done: true };
+  if (!plan.say && !plan.calls) {
+    for (const k of ["response", "plan", "result", "output"]) {
+      if (plan[k] && typeof plan[k] === "object") {
+        plan = plan[k];
+        break;
+      }
+    }
+  }
+  if (!plan.say && !plan.calls && !plan.tool) return { say: "Nerozumím, zkus to prosím jinak.", calls: [], done: true };
+  if (!plan.calls && typeof plan.tool === "string") plan = { say: "", calls: [plan], done: true };
+  const calls = Array.isArray(plan.calls) ? plan.calls.slice(0, 8) : [];
+  let say = plan.say;
+  if (typeof say !== "string") say = say == null ? "" : Array.isArray(say) ? say.filter((x) => typeof x === "string").join(" ") : "";
+  const options = !calls.length && Array.isArray(plan.options) ? plan.options.filter((o) => typeof o === "string" && o.trim()).map((o) => o.trim().slice(0, 80)).slice(0, 4) : [];
+  return {
+    ...(options.length ? { options } : {}),
+    say: say.trim() ? say.trim().slice(0, 400) : calls.length ? "Provádím…" : "Hotovo.",
+    calls: calls.filter((c) => c && typeof c.tool === "string").map((c) => ({
+      tool: c.tool,
+      args: c.args && typeof c.args === "object" ? c.args : {},
+      label: typeof c.label === "string" ? c.label.slice(0, 80) : c.tool
+    })),
+    done: plan.done !== false
+  };
+}
+__name(sanitizePlan, "sanitizePlan");
+var worker_default = {
+  async fetch(request, env) {
+    const origin = request.headers.get("Origin") || "";
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    if (request.method === "GET") return json({ ok: true, service: "tnmap-chat", model: MODEL }, 200, origin);
+    if (request.method !== "POST") return json({ error: "Použij POST." }, 405, origin);
+    let body;
+    try {
+      body = await request.json();
+    } catch (_) {
+      return json({ error: "Neplatný JSON." }, 400, origin);
+    }
+    const history = Array.isArray(body.messages) ? body.messages.slice(-8) : [];
+    const model = /^http:\/\/localhost(:\d+)?$/.test(origin) && TEST_MODELS.includes(body.model) ? body.model : MODEL;
+    if (!history.length) return json({ say: "Napiš mi, co má mapa udělat.", calls: [], done: true }, 200, origin);
+    const messages = [{ role: "system", content: systemPrompt(body.mapState, typeof body.lang === "string" ? body.lang.slice(0, 2).toLowerCase() : "cs") }];
+    for (const m of history) {
+      const role = m && m.role === "assistant" ? "assistant" : "user";
+      let content = String(m && m.content || "").slice(0, 2e3);
+      if (role === "assistant" && content && !/^\s*\{/.test(content)) content = historyAsPlan(content);
+      if (content) messages.push({ role, content });
+    }
+    if (Array.isArray(body.toolResults) && body.toolResults.length) {
+      messages.push({
+        role: "user",
+        content: "VÝSLEDKY PROVEDENÝCH NÁSTROJŮ:\n" + JSON.stringify(body.toolResults).slice(0, 3e3) + '\nPokud je úkol hotový, vrať {"say":"...","calls":[],"done":true}. Pokud něco selhalo, vysvětli to v "say" nebo to zkus jinak. Pokud je potřeba další krok, vrať ho v "calls".'
+      });
+    }
+    try {
+      // Strop se platí jen za skutečně vygenerované tokeny, krátkou odpověď
+      // nezdraží; 450 ale ořízne delší plán uprostřed JSONu.
+      const extra = model !== MODEL && body.extra && typeof body.extra === "object" ? body.extra : {};
+      const think = /gemma-4|qwen3|glm-4/.test(model) ? NO_THINK : {};
+      const out = await env.AI.run(model, { messages, max_tokens: 900, temperature: 0.2, ...think, ...extra });
+      if (body.debug && model !== MODEL) return json({ raw: out }, 200, origin);
+      const r = out && (out.response ?? out.result ?? out.output_text);
+      let plan = null;
+      if (r && typeof r === "object") plan = r;
+      else if (typeof r === "string" && r.trim()) plan = extractPlan(r);
+      if (!plan) {
+        const c = out && out.choices && out.choices[0] && out.choices[0].message && out.choices[0].message.content;
+        if (typeof c === "string") plan = extractPlan(c);
+        else if (c && typeof c === "object") plan = c;
+      }
+      // Jedno opravné kolo. Bez něj je selhání parsování koncový stav a uživatel
+      // dostane hluché "Nerozumím" i na dotaz, kterému model rozuměl.
+      if (!plan) {
+        try {
+          const fix = await env.AI.run(model, {
+            messages: [
+              ...messages,
+              { role: "assistant", content: String(r || "").slice(0, 500) },
+              { role: "user", content: 'Tohle nebyl platný JSON. Vrať POUZE jeden JSON objekt {"say":"…","calls":[],"done":true}, nic jiného, žádný text okolo.' }
+            ],
+            max_tokens: 900,
+            temperature: 0,
+            ...think
+          });
+          const fr = fix && (fix.response ?? fix.result ?? fix.output_text);
+          plan = fr && typeof fr === "object" ? fr : typeof fr === "string" ? extractPlan(fr) : null;
+        } catch (_) {
+        }
+      }
+      // Když i tak přišla próza, je to skoro vždy použitelná odpověď nebo doptání.
+      // Ukázat ji je vždy lepší než ji zahodit a napsat "Nerozumím".
+      if (typeof r === "string" && /\[provedeno:/.test(r)) {
+        const p = parseDoneCalls(r.trim());
+        if (p && p.calls.length) plan = { say: p.say, calls: p.calls, done: true };
+      }
+      if (!plan && typeof r === "string" && r.trim().length > 2 && !r.includes("{")) {
+        plan = { say: r.trim().slice(0, 400), calls: [], done: true };
+      }
+      const finalPlan = sanitizePlan(plan);
+      // Model občas pošle totéž volání dvakrát — jednou s prázdnými args. Nechat
+      // oboje znamená nakreslit dvě čáry nebo spustit akci dvakrát. Držíme pro
+      // každý nástroj tu variantu, která opravdu nese argumenty.
+      {
+        // Pozor: víc volání TÉHOŽ nástroje s různými args je legitimní (dvě země,
+        // dvě ikony, dvě šipky). Zahazujeme jen přesné duplikáty a prázdné kopie.
+        const valid = finalPlan.calls.filter((c) => TOOL_NAME.test(c.tool));
+        const withArgs = new Set(valid.filter((c) => Object.keys(c.args || {}).length).map((c) => c.tool));
+        const seenKeys = /* @__PURE__ */ new Set();
+        finalPlan.calls = valid.filter((c) => {
+          const empty = !Object.keys(c.args || {}).length;
+          if (empty && withArgs.has(c.tool)) return false;
+          const key = c.tool + "|" + JSON.stringify(c.args || {});
+          if (seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
+      }
+      // say občas nese ocásek rozbitého JSON — uživateli ho neukazujeme.
+      finalPlan.say = String(finalPlan.say || "").replace(/[,{\[]?\s*['"]?(done|calls|args|tool)['"]?\s*:.*$/s, "").trim() || (finalPlan.calls.length ? "Provádím…" : "Hotovo.");
+      // done defaultuje na true, takže klient smyčku ukončil a změřenou hodnotu
+      // nikdy nevyslovil. U čtecích nástrojů si další kolo vynutíme sami.
+      if (finalPlan.calls.some((c) => READBACK.has(c.tool))) finalPlan.done = false;
+      try {
+        const lastUser = [...history].reverse().find((m) => m && m.role === "user");
+        const tools = (finalPlan.calls || []).map((c) => c.tool).join(",") || "NONE";
+        console.log(JSON.stringify({
+          tag: "tnchat",
+          miss: tools === "NONE" && !finalPlan.options,
+          asked: !!finalPlan.options,
+          q: String(lastUser && lastUser.content || "").slice(0, 200),
+          tools,
+          say: String(finalPlan.say || "").slice(0, 120),
+          round: history.filter((m) => m && m.role === "user").length
+        }));
+      } catch (_) {
+      }
+      return json(finalPlan, 200, origin);
+    } catch (e) {
+      const msg = String(e && e.message || e);
+      // Vyčerpaný denní limit Workers AI (4006) — grafik dřív viděl anglickou technickou hlášku.
+      if (/4006|daily free allocation|neurons/i.test(msg)) {
+        return json({ say: "Asistent má na dnešek vyčerpaný denní limit (obnoví se v 1:00). Jednoduché povely jako „zpět“, „satelit“, „nehoda v Brně“, „smaž popisky“ nebo „export png“ fungují dál, vše ostatní zvládneš v panelu vlevo.", calls: [], done: true, quota: true }, 200, origin);
+      }
+      return json({ say: "Asistent teď nemůže odpovědět (" + msg.slice(0, 120) + ").", calls: [], done: true }, 200, origin);
+    }
+  }
+};
+export {
+  worker_default as default
+};
+//# sourceMappingURL=worker.js.map
+

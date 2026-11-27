@@ -16,3 +16,13 @@ CREATE TABLE IF NOT EXISTS usage_daily (
 
 CREATE INDEX IF NOT EXISTS idx_usage_day ON usage_daily (day);
 CREATE INDEX IF NOT EXISTS idx_usage_last ON usage_daily (last_seen);
+
+-- Počty použití jednotlivých funkcí (tlačítka, režimy dopravy, šablony, podklady,
+-- nástroje asistenta) — bez uživatele, jen „funkce → počet za den". Podklad pro
+-- rozhodnutí, co se v appce používá a co je zbytečné. Plní /api/usage (pole features).
+CREATE TABLE IF NOT EXISTS usage_features (
+  day      TEXT    NOT NULL,
+  feature  TEXT    NOT NULL,
+  count    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, feature)
+);
