@@ -19313,7 +19313,12 @@ function pzSceneLngLats(opts){
     if(bb){ add(bb[0]); add(bb[1]); add([bb[0][0], bb[1][1]]); add([bb[1][0], bb[0][1]]); }
     // Kraje ČR (zvýrazněné / kartogram) = celá ČR jako u colorRegion; místa datové mapy
     // a sloupcových grafů — dřív „Zarámovat scénu" kraj ani graf neznalo a 9:16 je ořízlo.
-    try{ if(pzKrajeHighlighted().length){ const kb = pzKrajeBBox(null); if(kb){ add(kb[0]); add(kb[1]); } } }catch(_e){}
+    // Když jsou ale body scény (aspoň 2, např. mosty) všechny uvnitř zvýrazněných krajů, je
+    // tématem kraj → zarámovat jen ten (6 mostů ve Středočeském kraji se na celé ČR slilo).
+    try{ const hl = pzKrajeHighlighted(); if(hl.length){
+      const hb = pzKrajeBBox(hl), objs = out.slice();
+      const inK = hb && objs.length >= 2 && objs.every(p => p[0] >= hb[0][0] && p[0] <= hb[1][0] && p[1] >= hb[0][1] && p[1] <= hb[1][1]);
+      const kb = inK ? hb : pzKrajeBBox(null); if(kb){ add(kb[0]); add(kb[1]); } } }catch(_e){}
     (state.dataMap?.items || []).forEach(i => { if(i?.kind && i.lngLat) add(i.lngLat); });
     (state.barCharts?.items || []).forEach(c => add(c?.lngLat));
   }
@@ -19345,6 +19350,28 @@ function pzObjectsOutsideFrame(){
     const b = el.getBoundingClientRect(); if(!b.width || !b.height) return false;
     return b.left < r.left - 1 || b.right > r.right + 1 || b.top < r.top - 1 || b.bottom > r.bottom + 1;
   });
+}
+// Popisky a ikonky pod titulkem (nahoře) nebo pod „Zdroj:" (dole) → o kolik px odsadit
+// záběr na té straně. Bublina popisku stojí nad svým bodem, takže odsazení bodu od titulku
+// nestačí (Zadov u horního okraje Šumavy zmizel celý pod titulkem).
+function pzObjectsUnderTitle(fr){
+  if(!fr?.width) return [];
+  const tb = pzTitleBoxesFor(Math.round(fr.width), Math.round(fr.height)); if(!tb) return [];
+  const g = Math.round(Math.min(fr.width, fr.height) * 0.02) + 6, res = [];
+  const box = b => b && b.w > 0 && b.h > 0 ? {l: fr.left + b.x, t: fr.top + b.y, r: fr.left + b.x + b.w, b: fr.top + b.y + b.h} : null;
+  const T = box(tb.title), S = box(tb.source);
+  pzSceneObjectEls().forEach(({el}) => {
+    if(el.closest('.maplibregl-marker')?.style.display === 'none') return;
+    const b = el.getBoundingClientRect(); if(!b.width || !b.height) return;
+    const hit = q => q && b.left < q.r && b.right > q.l && b.top < q.b && b.bottom > q.t;
+    if(hit(T)) res.push({side: 'top', px: Math.ceil(T.b - b.top) + g});
+    else if(hit(S)) res.push({side: 'bottom', px: Math.ceil(b.bottom - S.t) + g});
+  });
+  return res;
+}
+function pzMaxPerSide(list){
+  const m = {}; list.forEach(u => { m[u.side] = Math.max(m[u.side] || 0, u.px); });
+  return Object.entries(m).map(([side, px]) => ({side, px}));
 }
 // Červený obrys přesahujících objektů (jen náhled, do exportu se nedostane) + počet.
 function pzMarkOutsideObjects(){
@@ -19392,7 +19419,8 @@ function pzFitScene(opts){
     const out = pzObjectsOutsideFrame(), fr = pzExportFrameRect(), need = fr ? barNeed(fr) : 0;
     // legenda (úseky, datová mapa) v rohu nesmí zakrýt úsek ani bod scény — odsadit stranu,
     // kde stačí menší posun (u D1 s legendou vlevo nahoře ležel začátek úseku pod legendou)
-    const under = fr && !single ? pzSceneUnderLegends(fr).concat(pzSecLabelsOutside(fr)) : [];
+    // + popisky/ikonky schované pod titulkem nebo zdrojem (jedna strana = největší přesah)
+    const under = fr && !single ? pzSceneUnderLegends(fr).concat(pzSecLabelsOutside(fr), pzMaxPerSide(pzObjectsUnderTitle(fr))) : [];
     if((!out.length && !need && !under.length) || ++tries > 3 || single || !fr){ pzMarkOutsideObjects(); return; }
     // o kousek víc, než chybí — fitBounds zároveň oddálí, takže přesně „need" nestačí
     padding.top += need ? need * 1.15 + 6 : 0;
@@ -19470,6 +19498,11 @@ function pzSecLabelsOutside(fr){
   if(!feats.length) return [];
   const c = m.getCanvas().getBoundingClientRect(), ctx = document.createElement('canvas').getContext('2d'), g = 6;
   const need = {left:0, right:0, top:0, bottom:0};
+  // titulek a „Zdroj:" v rámečku — termín „otevřeno 27. 11. 2026" u D11 ležel celý pod titulkem
+  let T = null, S = null;
+  try{ const tb = pzTitleBoxesFor(Math.round(fr.width), Math.round(fr.height));
+    const box = b => b && b.w > 0 && b.h > 0 ? {l: fr.left + b.x, t: fr.top + b.y, r: fr.left + b.x + b.w, b: fr.top + b.y + b.h} : null;
+    T = box(tb?.title); S = box(tb?.source); }catch(_e){}
   feats.forEach(f => {
     const P = f.properties, size = P.kind === 'misto' ? 17 : 22, maxW = size * 10;   // text-max-width 10 em
     ctx.font = `700 ${size}px "Noto Sans", Arial, sans-serif`;
@@ -19481,6 +19514,9 @@ function pzSecLabelsOutside(fr){
     else if(anchor === 'left') l = x + off; else if(anchor === 'right') l = x - off - w;
     need.left = Math.max(need.left, fr.left + g - l); need.right = Math.max(need.right, l + w - (fr.right - g));
     need.top = Math.max(need.top, fr.top + g - t); need.bottom = Math.max(need.bottom, t + h - (fr.bottom - g));
+    const hit = q => q && l < q.r && l + w > q.l && t < q.b && t + h > q.t;
+    if(hit(T)) need.top = Math.max(need.top, T.b + g - t);
+    else if(hit(S)) need.bottom = Math.max(need.bottom, t + h - (S.t - g));
   });
   return Object.entries(need).filter(([, v]) => v > 0.5).map(([side, v]) => ({side, px: Math.ceil(v)}));
 }
@@ -26693,7 +26729,9 @@ const PZ_ICON_ALIASES = {
   povoden:'povoden', zaplava:'povoden', voda:'povoden', zaplavy:'povoden',
   letadlo:'letadlo', letiste:'letadlo', let:'letadlo',
   vlak:'vlak', zeleznice:'vlak', nadrazi:'vlak', srazka_vlaku:'vlak',
-  varovani:'varovani', pozor:'varovani', vystraha:'varovani', nebezpeci:'varovani'
+  varovani:'varovani', pozor:'varovani', vystraha:'varovani', nebezpeci:'varovani',
+  // zátaras na silnici (kamion přes cestu, policejní blokáda) = výstražný trojúhelník
+  zataras:'varovani', blokada:'varovani', prekazka:'varovani', honicka:'policie', pronasledovani:'policie'
 };
 function pzIconKind(name){
   const k = String(name || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -26877,7 +26915,7 @@ function pzColorFromName(v){
 
   // Háček pro automatické testy (tests/14_fixes.test.js) — funkce appky jsou
   // uvnitř uzávěru, testy k nim jinak nesáhnou. Nic nemění, jen zpřístupní.
-  window.__pzFns = {setStatus, pzObjectsOutsideFrame, pzSceneLngLats, pzLngLatsInFrame, pzFitScene, pzRedrawClosures, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
+  window.__pzFns = {setStatus, pzObjectsOutsideFrame, pzObjectsUnderTitle, pzSecLabelsOutside, pzExportFrameRect, pzSceneLngLats, pzLngLatsInFrame, pzFitScene, pzRedrawClosures, t, applyLang, requestGeoData, getCountrySearchItems, pzCountryFillOpacity,
     syncCountrySelects, openSettings, playAnimation, stopAnimation, finalAngle, pzAutoHeading, getExportBaseName, setAnimProgress,
     serializeProjectSnapshot, applyProjectSnapshot, PZ_LANG_TEXT, PZ_EN_TEXT, pzConsistSpec, PZ_SPRITE_GEO, pzRailPose, pzLeadHeading, pzVehicleParts, pzExtraVehicles, pzFlagList,
     pzSetKeyboardInset, pzMobilePanel,

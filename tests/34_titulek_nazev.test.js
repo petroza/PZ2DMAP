@@ -150,6 +150,17 @@ const path = require('path'), fs = require('fs');
   await page.evaluate(() => { document.getElementById('pzNameNick').value = ''; document.getElementById('pzNameNick').dispatchEvent(new Event('input', {bubbles:true})); document.getElementById('projectName').value = ''; });
   check(await page.evaluate(() => /^tnmap-\d{8}-\d{4}$/.test(window.__pzFns.getExportBaseName())), 'bez nicku a popisu zpět tnmap-datum-čas');
 
+  // --- „Vejít scénu" nenechá popisek pod titulkem (Zadov + Hochficht, Šumava, zadání 27. 11.) ---
+  await tab(page, 'export'); await page.click('#exportChips .exp-chip[data-res="1920x1080"]'); await page.waitForTimeout(400);
+  await page.evaluate(async () => { const T = window.TNMAP;
+    T.setTitle({title: 'Na Šumavě se v sobotu začne lyžovat', source: ''});
+    await T.placeIcon({place: '49.07186,13.62684', kind: 'pin', fit: false}); await T.addLabel({place: '49.07186,13.62684', text: 'Zadov', fit: false});
+    await T.placeIcon({place: '48.73658,13.92098', kind: 'pin', fit: false}); await T.addLabel({place: '48.73658,13.92098', text: 'Hochficht', fit: false});
+    window.__pzFns.pzFitScene({quiet: true}); });
+  await page.waitForTimeout(4000);
+  const ut = await page.evaluate(() => { const F = window.__pzFns, fr = F.pzExportFrameRect(); return {under: F.pzObjectsUnderTitle(fr), out: F.pzObjectsOutsideFrame().length}; });
+  check(!ut.under.length && !ut.out, 'Vejít scénu: popisek „Zadov" nad bodem není pod titulkem ani mimo výřez — ' + JSON.stringify(ut));
+
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ' — ' + errors[0] : ''));
   await close(); done();
 })();
