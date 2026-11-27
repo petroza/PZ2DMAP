@@ -265,6 +265,28 @@ const item = p => ({lat:String(p[1]), lon:String(p[0]), display_name:p[2] + ', �
   await page.click('#routePreDraw'); await page.waitForTimeout(300); s = await S();
   check(s.ghost === 1 && /předkreslená/.test(s.status), 'zapnutí trasu zase ukáže celou');
 
+  // ---- „Délku do mapy": popisek vedle trasy (ne přes čáru), po změně trasy nová délka i místo ----
+  await page.click('#animStopBtn').catch(() => {});
+  let rk = await page.evaluate(() => window.TNMAP.routeBetween({from:'Praha', to:'Brno', mode:'driving'}));
+  check(rk.ok, 'trasa Praha – Brno pro popisek délky'); await page.waitForTimeout(1500);
+  await tab(page, 'trasa'); await page.click('#routeKmLabelBtn'); await page.waitForTimeout(500);
+  const kmLab = () => page.evaluate(() => { const L = (window.__pzFns.state.mapLabels || []).filter(l => /km$/.test(l.text)); if(L.length !== 1) return {n: L.length};
+    const it = L[0], r = it.marker.getElement().querySelector('.map-label-bubble').getBoundingClientRect(), c = window.__tnMap.getCanvas().getBoundingClientRect();
+    const hits = (window.__pzFns.state.routeCoords || []).filter((p, i, a) => i > 0).some((p, i) => { const a = window.__pzFns.state.routeCoords[i];
+      for(let k = 0; k <= 20; k++){ const q = window.__tnMap.project([a[0] + (p[0] - a[0]) * k / 20, a[1] + (p[1] - a[1]) * k / 20]), x = q.x + c.left, y = q.y + c.top;
+        if(x > r.left - 2 && x < r.right + 2 && y > r.top - 2 && y < r.bottom + 2) return true; } return false; });
+    return {n: 1, text: it.text, hits, ll: [it.marker.getLngLat().lng, it.marker.getLngLat().lat]}; });
+  let kl = await kmLab();
+  check(kl.n === 1 && /^\d[\d\s ]* km$/.test(kl.text) && !kl.hits, 'popisek délky leží vedle trasy, čáru nezakrývá ' + JSON.stringify(kl));
+  rk = await page.evaluate(() => window.TNMAP.routeBetween({from:'Praha', to:'Jihlava', mode:'driving'})); await page.waitForTimeout(1500);
+  const kl2 = await kmLab();
+  check(rk.ok && kl2.n === 1 && kl2.text !== kl.text && kl2.text === rk.distanceKm + ' km' && kl2.ll[0] < kl.ll[0] && !kl2.hits, 'změna cíle: popisek ukáže novou délku a posune se doprostřed nové trasy ' + JSON.stringify([kl, kl2]));
+  await page.click('#undoActionBtn'); await page.waitForTimeout(1800);
+  const kl3 = await kmLab();
+  check(kl3.n === 1 && kl3.text === kl.text, 'krok zpět vrátí trasu i původní délku v popisku ' + JSON.stringify(kl3));
+  const kSnap = await page.evaluate(() => window.__pzFns.serializeProjectSnapshot().mapLabels.find(l => /km$/.test(l.text)));
+  check(kSnap?.routeKm?.text === kl.text && Array.isArray(kSnap.offset), 'popisek délky si v projektu nese vazbu na trasu a odsazení');
+
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close(); done();
 })();

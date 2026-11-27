@@ -135,6 +135,26 @@ const fold = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
     check(px.pts[1].e < 14 && px.pts[2].e < 14, 'v exportu je legenda stavů se stejnými barvami ' + JSON.stringify(px.pts.slice(1)));
   }
 
+  // --- uzavírka přes úsek s termínem: nápisy se neprolnou (termín ustoupí nápisu UZAVŘENO)
+  r = await page.evaluate(() => window.TNMAP.roadClosure({from:'49.9725, 16.0305', to:'Litomyšl', label:'uzavřeno do pátku'})); await page.waitForTimeout(1500);
+  const popisy = async () => (await feats()).filter(x => x.kind === 'popis').map(x => x.text).join();
+  const pc = await popisy();
+  await page.evaluate(() => window.TNMAP.clearScene({what:'uzavírky'})); await page.waitForTimeout(500);
+  const pc2 = await popisy();
+  check(r.ok && pc === '' && pc2 === '2026', 'uzavírka na úseku Ostrov – Litomyšl: termín 2026 se nepíše přes UZAVŘENO, po smazání uzavírky se vrátí (' + JSON.stringify([r.ok, pc, pc2]) + ')');
+  // --- Celá scéna s legendou vlevo nahoře: začátek úseku nesmí zůstat pod legendou
+  await page.evaluate(() => window.TNMAP.roadSections({legend:'tl'}));
+  await page.evaluate(() => window.TNMAP.fitScene()); await page.waitForTimeout(4000);
+  const under = await page.evaluate(() => { const L = window.pzUseky.legendLayout(1920, 1080), f = document.getElementById('exportFrame').getBoundingClientRect(), c = window.__tnMap.getCanvas().getBoundingClientRect(), k = f.width / 1920;
+    return window.pzUseky.state().items.flatMap(it => it.coords).filter(p => { const q = window.__tnMap.project(p), x = q.x + c.left, y = q.y + c.top;
+      return x > f.left + L.x * k && x < f.left + (L.x + L.w) * k && y > f.top + L.y * k && y < f.top + (L.y + L.h) * k; }).length; });
+  check(under === 0, 'Celá scéna: žádný úsek pod legendou v rohu (bodů pod legendou: ' + under + ')');
+  // --- angličtina: nápovědy v polích panelu Úseky
+  await page.evaluate(() => window.TNMAP.setLanguage({lang:'en'})); await page.waitForTimeout(500);
+  const ph = await page.evaluate(() => ['pzSecFrom', 'pzSecTo', 'pzSecLabel', 'pzSecVia'].map(id => document.getElementById(id).placeholder));
+  check(ph.every(v => /^e\.g\. /.test(v)), 'EN: nápovědy polí Úseků přeložené ' + JSON.stringify(ph));
+  await page.evaluate(() => window.TNMAP.setLanguage({lang:'cs'})); await page.waitForTimeout(300);
+
   check(errors.length === 0, 'žádná chyba stránky' + (errors.length ? ': ' + errors.join(' | ') : ''));
   await close(); done();
 })();

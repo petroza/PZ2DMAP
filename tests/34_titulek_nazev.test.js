@@ -86,6 +86,27 @@ const path = require('path'), fs = require('fs');
   await page.evaluate(() => window.__pzRedo()); await page.waitForTimeout(500);
   check(await page.$eval('#pzTitleText', e => e.value) === 'Druhý titulek', 'Ctrl+Y ho zase vrátí');
 
+  // titulek a hned zdroj (přechod Tabem / klikem z pole do pole): Ctrl+Z vrací po jednom, popořadě
+  await page.evaluate(() => window.TNMAP.setTitle({off: true, title: '', source: ''}));
+  await page.click('#pzTitleText'); await page.keyboard.type('Uzavírka D1', {delay: 5});
+  await page.click('#pzSourceText'); await page.keyboard.type('ŘSD', {delay: 5}); await page.press('#pzSourceText', 'Tab'); await page.waitForTimeout(300);
+  const gT = () => page.evaluate(() => { const g = window.TNMAP.getState().graphic || {}; return (g.title || '-') + '|' + (g.source || '-'); });
+  const seq = [await gT()];
+  for(let i = 0; i < 2; i++){ await page.evaluate(() => window.__pzUndo()); await page.waitForTimeout(500); seq.push(await gT()); }
+  check(seq.join(' > ') === 'Uzavírka D1|ŘSD > Uzavírka D1|- > -|-', 'titulek a zdroj: krok zpět nejdřív zdroj, pak titulek — ' + seq.join(' > '));
+  // legenda úseků vlevo nahoře: po změně titulku na dva řádky se v náhledu posune pod něj (jako v PNG)
+  await page.evaluate(() => { window.__pzFns.state.pzSections = {items:[{id:'u1', from:'A', to:'B', status:'hotovy', coords:[[15.0, 49.6], [15.3, 49.5]]},
+    {id:'u2', from:'B', to:'C', status:'stavba', coords:[[15.3, 49.5], [15.6, 49.4]]}], legend:{on:true, corner:'tl', title:'D1'}, names:false}; });
+  await page.evaluate(() => window.TNMAP.roadSections({legend:'tl'}));
+  await page.evaluate(() => window.TNMAP.setTitle({title: 'Dálnice D1 mezi Humpolcem a Velkým Meziříčím: co se o víkendu zavírá a kudy jet', source: 'ŘSD'})); await page.waitForTimeout(300);
+  const [EW, EH] = (await page.$eval('#exportFrame', e => e.getAttribute('data-label'))).match(/\d+/g).map(Number);
+  const TL = (await layout(EW, EH)).title;
+  const lg = await page.evaluate(([W, H]) => { const L = window.pzUseky.legendLayout(W, H), c = document.getElementById('exportFrameLegend'), k = c.width / W;
+    const px = c.getContext('2d').getImageData(Math.round((L.x + L.w - 8) * k), Math.round((L.y + L.h - 8) * k), 1, 1).data;
+    return {y: L.y, h: L.h, px: [...px]}; }, [EW, EH]);
+  check(TL && TL.lines >= 2 && lg.y >= TL.y + TL.h && lg.px[3] > 200 && lg.px[0] > 230 && lg.px[1] > 230, 'legenda úseků v náhledu je pod dvouřádkovým titulkem (jako v PNG) — ' + JSON.stringify({lg, TL}));
+  await page.evaluate(() => window.TNMAP.roadSections({clear: true}));
+
   // --- projekt: uložit a načíst ---
   await page.evaluate(() => window.TNMAP.setTitle({title: 'Volby 2026', source: 'ČSÚ', style: 'bílý'}));
   const snap = await page.evaluate(() => JSON.parse(JSON.stringify(window.__pzFns.serializeProjectSnapshot())));
