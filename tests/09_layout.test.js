@@ -24,6 +24,9 @@ async function overlaps(page){
       check(w.length === 5 && Math.max(...w) <= vw, `${dev}: všech 5 záložek v řádku`);
       await page.tap('#mobileCloseBtn'); await page.waitForTimeout(500);
       check(await page.evaluate(() => !document.body.classList.contains('mobile-panel-open')), `${dev}: menu jde zavřít`);
+      // každé tlačítko lišty nad mapou jde trefit (na 320 px zajel Projekt pod Menu)
+      const hidden = await page.evaluate(() => [...document.querySelectorAll('.map-actions .map-action-btn')].filter(b => b.offsetParent).filter(b => { const r = b.getBoundingClientRect(); const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !e || !b.contains(e); }).map(b => b.id));
+      check(!hidden.length, `${dev}: tlačítka lišty nad mapou nic nezakrývá` + (hidden.length ? ' — ' + hidden.join(', ') : ''));
     }
     await close();
   }
@@ -33,6 +36,18 @@ async function overlaps(page){
     await page.click('.tnchat-fab'); await page.waitForTimeout(300);
     const r = await overlaps(page);
     check(!r.ov.length, `${w}×${h}: bez překryvů` + (r.ov.length ? ' — ' + r.ov.join(', ') : ''));
+    if(w === 1366){
+      // nové sekce panelu (kraje, datová mapa, graf, úseky, nájezd): nic nepřetéká do strany, víceřádková pole vypadají jako ostatní pole
+      const nb = await page.evaluate(() => { const out = {over: [], ta: []};
+        for(const id of ['czKrajeSection', 'dataMapSection', 'barChartSection', 'pzSectionsSection', 'pzJingleSection', 'exportTitleSection', 'exportNameSection']){
+          window.TNMAP.openSection({section: id}); const s = document.getElementById(id), sr = s.getBoundingClientRect();
+          if([...s.querySelectorAll('*')].some(e => e.offsetParent && e.getBoundingClientRect().width && e.getBoundingClientRect().right > sr.right + 1)) out.over.push(id); }
+        const sb = document.querySelector('.sidebar-content'); if(sb.scrollWidth > sb.clientWidth + 1) out.over.push('sidebar');
+        const ref = getComputedStyle(document.getElementById('dmUnit') || document.querySelector('.section input[type=text]')).backgroundColor;
+        for(const id of ['dmRows', 'bcRows', 'pzJingPlaces']){ const e = document.getElementById(id); if(e && getComputedStyle(e).backgroundColor !== ref) out.ta.push(id + ' ' + getComputedStyle(e).backgroundColor + ' ≠ ' + ref); }
+        return out; });
+      check(!nb.over.length && !nb.ta.length, '1366×768: nové sekce panelu bez přetečení, pole hodnot jako ostatní pole' + (nb.over.length || nb.ta.length ? ' — ' + nb.over.concat(nb.ta).join(', ') : ''));
+    }
     await close();
   }
   done();

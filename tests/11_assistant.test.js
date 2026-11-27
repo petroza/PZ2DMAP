@@ -4,6 +4,10 @@ const {check, done, open} = require('./lib');
 const PLANS = {
   'vlak praha brno': {say:'Kreslím trasu vlakem.', calls:[{tool:'routeBetween', args:{from:'Praha', to:'Brno', mode:'train'}, label:'Vlak'}], done:false},
   'kolik je to do kyjeva': {say:'Měřím.', calls:[{tool:'measureDistance', args:{from:'Praha', to:'Kyjev'}, label:'Měření'}], done:false},
+  // model na konci zarámuje scénu (fitScene) — dřív ho chat odmítl a stálo to druhé kolo
+  'kraj a graf': {say:'Hotovo.', calls:[{tool:'colorRegion', args:{region:'Moravskoslezský', color:'červená'}, label:'Kraj'},
+    {tool:'barChart', args:{place:'Moravskoslezský kraj', bars:[{label:'2024', value:1250}, {label:'2025', value:1480}], unit:'Kč'}, label:'Graf'},
+    {tool:'setTitle', args:{title:'Ceny tepla', source:'ERÚ'}, label:'Titulek'}, {tool:'fitScene', args:{}, label:'Celá scéna'}], done:true},
   'chyba': {say:'Kreslím trasu.', calls:[{tool:'routeBetween', args:{from:'Xqzwyvxqq', to:'Brno', mode:'train'}, label:'Trasa'}], done:false},
 };
 (async () => {
@@ -79,6 +83,14 @@ const PLANS = {
   m = await ask('vlak praha brno'); check(n === 1 && /Délka trasy \d/.test(m), 'trasa: 1 dotaz, délku doplní appka — ' + m);
   m = await ask('kolik je to do kyjeva'); check(n === 1 && /Vzdušnou čarou .* km/.test(m), 'vzdálenost: 1 dotaz — ' + m);
   m = await ask('chyba'); check(n === 2, 'při chybě proběhne druhé kolo (model vysvětlí)');
+  // nové prvky scény: „smaž všechno" je vidí, smazat jde i jednotlivě (bez modelu)
+  m = await ask('kraj a graf'); await page.waitForTimeout(500);
+  check(n === 1 && await page.$$eval('.tnchat-act', e => e.slice(-4).every(x => /✓/.test(x.textContent))), 'chat: kraj + graf + titulek + fitScene v jednom kole bez chyby');
+  m = await ask('smaž titulek'); check(n === 0 && /titulek/.test(m) && !(await page.evaluate(() => window.TNMAP.getState().graphic.title)), '„smaž titulek" bez modelu — ' + m);
+  m = await ask('smaž všechno'); sc = await scene();
+  check(n === 0 && !sc.kraje && !sc.barCharts && /Ctrl\+Z/.test(m), '„smaž všechno" smaže i kraje a sloupcový graf (dřív „Není co mazat") — ' + m);
+  const qk = await page.evaluate(() => ['smaž kraje', 'smaž datovou mapu', 'smaž úseky', 'smaž sloupcový graf', 'smaž grafy', 'smaž legendu', 'smaž nájezd'].map(q => window.__tnchat.quick(q)?.say || ''));
+  check(['kraje ČR', 'datovou mapu', 'úseky', 'sloupcové grafy', 'sloupcové grafy', 'datovou mapu', 'cíl nájezdu'].every((w, i) => qk[i].includes(w)), 'povely „smaž kraje / datovou mapu / úseky / graf / nájezd" rozpozná bez modelu — ' + JSON.stringify(qk));
   check(errors.length === 0, 'žádná chyba stránky');
   await close(); done();
 })();

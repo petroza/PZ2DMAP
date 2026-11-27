@@ -4269,7 +4269,7 @@ function pzPresetSwatchHtml(colors){
   const ok = v => /^#[0-9a-f]{3,8}$/i.test(String(v || '')) ? v : '#8a8f98';
   return '<span class="pz-preset-swatch" aria-hidden="true">' +
     [c.land, c.water, c.park, c.roadMajor, c.label].map(v => '<i style="background:' + ok(v) + '"></i>').join('') + '</span>' +
-    '<span class="pz-preset-mod">' + escapeHtml(t('upraveno')) + '</span>';
+    '<span class="pz-preset-mod" data-i18n="upraveno">' + escapeHtml(t('upraveno')) + '</span>';   // data-i18n: přepnutí jazyka bez nového vykreslení dlaždic
 }
 // „Výchozí vzhled": zpět na preset s hvězdičkou (nebo TN Světlá) — jedno tlačítko
 // místo ručního vracení barev a tlouštěk.
@@ -4305,7 +4305,7 @@ function renderPresetTiles(){
   if(db.length){
     const sep = document.createElement('div');
     sep.className = 'preset-grid-sep';
-    sep.textContent = t('Vlastní presety');
+    sep.textContent = t('Vlastní presety'); sep.dataset.i18n = 'Vlastní presety';
     grid.appendChild(sep);
   }
   db.forEach((entry, idx) => {
@@ -9538,7 +9538,7 @@ function applyProjectSnapshot(snapshot, statusMsg){
   state.pzFlagSel = null;
   state.pzFlagScale = isFinite(+snapshot?.countryFlagScale) && +snapshot.countryFlagScale > 0 ? +snapshot.countryFlagScale : PZ_FLAG_SCALE_DEFAULT;
   if($('pzFlagSize')) $('pzFlagSize').value = String(pzFlagScale());
-  try{ const g = snapshot?.graphicTitle; state.pzTitle = (g && typeof g === 'object') ? {title: String(g.title || ''), source: String(g.source || ''), titleOn: !!g.titleOn, sourceOn: !!g.sourceOn, style: g.style} : null; pzSyncTitleUi(); pzUpdateTitlePreview(); }catch(e){}
+  try{ const g = snapshot?.graphicTitle; state.pzTitle = (g && typeof g === 'object') ? {title: String(g.title || ''), source: String(g.source || ''), titleOn: !!g.titleOn, sourceOn: !!g.sourceOn, style: g.style} : null; pzSyncTitleUi(); pzUpdateTitlePreview(); pzUpdateFrameLegend(); }catch(e){}
   try{ if(snapshot?.exportName) pzApplyNameSnapshot(snapshot.exportName); }catch(e){}
   try{ pzFlyInApplySnapshot(snapshot?.flyIn); }catch(e){}
   try{ updateReadouts(); }catch(e){}
@@ -19475,6 +19475,9 @@ function pzSetTitleState(patch, sync = true){
   state.pzTitle = {...pzTitleState(), ...(patch || {})};
   if(sync) pzSyncTitleUi();
   try{ pzUpdateTitlePreview(); }catch(e){}
+  // legendy (datová mapa, úseky) se vyhýbají titulku a zdroji — po změně titulku je překreslit,
+  // jinak legenda z dřívějška zůstala pod nově přidaným „Zdroj:" (chat: dataMap → setTitle)
+  try{ pzUpdateFrameLegend(); }catch(e){}
 }
 function pzTitleSnapshot(){ const s = pzTitleState(); return (s.title || s.source || s.titleOn || s.sourceOn) ? s : null; }
 
@@ -24066,6 +24069,12 @@ Object.assign(I18N, {
   "Napiš vlastní odpověď…": {cs:"Napiš vlastní odpověď…",sk:"Napíš vlastnú odpoveď…",bg:"Напиши свой отговор…",hr:"Napiši vlastiti odgovor…",ro:"Scrie propriul răspuns…",en:"Type your own answer…"},
   "Nepovedlo se: {0}": {cs:"Nepovedlo se: {0}",sk:"Nepodarilo sa: {0}",bg:"Не се получи: {0}",hr:"Nije uspjelo: {0}",ro:"Nu a reușit: {0}",en:"Failed: {0}"},
   "vlajky": {cs:"vlajky",sk:"vlajky",bg:"знамената",hr:"zastave",ro:"steagurile",en:"flags"},
+  "kraje ČR": {cs:"kraje ČR",sk:"kraje ČR",bg:"областите в Чехия",hr:"češke regije",ro:"regiunile Cehiei",en:"Czech regions"},
+  "datovou mapu": {cs:"datovou mapu",sk:"dátovú mapu",bg:"картата с данни",hr:"podatkovnu kartu",ro:"harta de date",en:"data map"},
+  "úseky": {cs:"úseky",sk:"úseky",bg:"участъците",hr:"dionice",ro:"tronsoanele",en:"sections"},
+  "sloupcové grafy": {cs:"sloupcové grafy",sk:"stĺpcové grafy",bg:"стълбовидните диаграми",hr:"stupčaste grafikone",ro:"graficele cu bare",en:"bar charts"},
+  "cíl nájezdu": {cs:"cíl nájezdu",sk:"cieľ nájazdu",bg:"целта на приближаването",hr:"cilj približavanja",ro:"ținta apropierii",en:"fly-in target"},
+  "titulek a zdroj": {cs:"titulek a zdroj",sk:"titulok a zdroj",bg:"заглавието и източника",hr:"naslov i izvor",ro:"titlul și sursa",en:"title and source"},
   "vozidla": {cs:"vozidla",sk:"vozidlá",bg:"превозните средства",hr:"vozila",ro:"vehiculele",en:"vehicles"},
   "Hledám místo": {cs:"Hledám místo",sk:"Hľadám miesto",bg:"Търся мястото",hr:"Tražim mjesto",ro:"Caut locul",en:"Looking up the place"},
   "Zkusit znovu": {cs:"Zkusit znovu",sk:"Skúsiť znova",bg:"Опитай отново",hr:"Pokušaj ponovno",ro:"Încearcă din nou",en:"Try again"},
@@ -24076,6 +24085,35 @@ Object.assign(I18N, {
   "Hotovo.": {cs:"Hotovo.",sk:"Hotovo.",bg:"Готово.",hr:"Gotovo.",ro:"Gata.",en:"Done."},
   "přeskočeno": {cs:"přeskočeno",sk:"preskočené",bg:"пропуснато",hr:"preskočeno",ro:"omis",en:"skipped"},
   "Nepodařilo se.": {cs:"Nepodařilo se.",sk:"Nepodarilo sa.",bg:"Не се получи.",hr:"Nije uspjelo.",ro:"Nu a reușit.",en:"That did not work."},
+  // asistent: rychlé povely, nabídky bez AI a panel propojení s Claude
+  "Obarvi Polsko modře": {cs:"Obarvi Polsko modře",sk:"Zafarbi Poľsko namodro",bg:"Оцвети Полша в синьо",hr:"Oboji Poljsku plavo",ro:"Colorează Polonia cu albastru",en:"Colour Poland blue"},
+  "Vlajky Česka a Německa": {cs:"Vlajky Česka a Německa",sk:"Vlajky Česka a Nemecka",bg:"Знамената на Чехия и Германия",hr:"Zastave Češke i Njemačke",ro:"Steagurile Cehiei și Germaniei",en:"Flags of Czechia and Germany"},
+  "Tramvaj 22": {cs:"Tramvaj 22",sk:"Električka 22",bg:"Трамвай 22",hr:"Tramvaj 22",ro:"Tramvaiul 22",en:"Tram 22"},
+  "Šipka z Kyjeva na Charkov": {cs:"Šipka z Kyjeva na Charkov",sk:"Šípka z Kyjeva na Charkov",bg:"Стрелка от Киев към Харков",hr:"Strelica od Kijeva prema Harkivu",ro:"Săgeată de la Kiev la Harkov",en:"Arrow from Kyiv to Kharkiv"},
+  "Perimetr 5 km kolem Ostravy": {cs:"Perimetr 5 km kolem Ostravy",sk:"Perimeter 5 km okolo Ostravy",bg:"Периметър 5 км около Острава",hr:"Perimetar 5 km oko Ostrave",ro:"Perimetru de 5 km în jurul Ostravei",en:"5 km perimeter around Ostrava"},
+  "Kreslím trasu {0} – {1}.": {cs:"Kreslím trasu {0} – {1}.",sk:"Kreslím trasu {0} – {1}.",bg:"Чертая маршрут {0} – {1}.",hr:"Crtam rutu {0} – {1}.",ro:"Desenez traseul {0} – {1}.",en:"Drawing the route {0} – {1}."},
+  "Kreslím šipku {0} → {1}.": {cs:"Kreslím šipku {0} → {1}.",sk:"Kreslím šípku {0} → {1}.",bg:"Чертая стрелка {0} → {1}.",hr:"Crtam strelicu {0} → {1}.",ro:"Desenez săgeata {0} → {1}.",en:"Drawing an arrow {0} → {1}."},
+  "Měřím vzdálenost {0} – {1}.": {cs:"Měřím vzdálenost {0} – {1}.",sk:"Meriam vzdialenosť {0} – {1}.",bg:"Измервам разстоянието {0} – {1}.",hr:"Mjerim udaljenost {0} – {1}.",ro:"Măsor distanța {0} – {1}.",en:"Measuring the distance {0} – {1}."},
+  "Perimetr {0} km kolem {1}.": {cs:"Perimetr {0} km kolem {1}.",sk:"Perimeter {0} km okolo {1}.",bg:"Периметър {0} км около {1}.",hr:"Perimetar {0} km oko {1}.",ro:"Perimetru de {0} km în jurul {1}.",en:"{0} km perimeter around {1}."},
+  "Barvím: {0}.": {cs:"Barvím: {0}.",sk:"Farbím: {0}.",bg:"Оцветявам: {0}.",hr:"Bojim: {0}.",ro:"Colorez: {0}.",en:"Colouring: {0}."},
+  "Přidávám vlajky: {0}.": {cs:"Přidávám vlajky: {0}.",sk:"Pridávam vlajky: {0}.",bg:"Добавям знамена: {0}.",hr:"Dodajem zastave: {0}.",ro:"Adaug steaguri: {0}.",en:"Adding flags: {0}."},
+  "Vlajka": {cs:"Vlajka",sk:"Vlajka",bg:"Знаме",hr:"Zastava",ro:"Steag",en:"Flag"},
+  "Kreslím trasu linky {0}.": {cs:"Kreslím trasu linky {0}.",sk:"Kreslím trasu linky {0}.",bg:"Чертая маршрута на линия {0}.",hr:"Crtam rutu linije {0}.",ro:"Desenez traseul liniei {0}.",en:"Drawing the route of line {0}."},
+  "Přepínám preset: {0}.": {cs:"Přepínám preset: {0}.",sk:"Prepínam preset: {0}.",bg:"Превключвам схемата: {0}.",hr:"Mijenjam predložak: {0}.",ro:"Schimb presetarea: {0}.",en:"Switching preset: {0}."},
+  "Na trasu dávám: {0}.": {cs:"Na trasu dávám: {0}.",sk:"Na trasu dávam: {0}.",bg:"Добавям по маршрута: {0}.",hr:"Na rutu stavljam: {0}.",ro:"Pun pe traseu: {0}.",en:"Putting on the route: {0}."},
+  "Vypnuto": {cs:"Vypnuto",sk:"Vypnuté",bg:"Изключено",hr:"Isključeno",ro:"Dezactivat",en:"Off"},
+  "Připojeno — Claude může ovládat tuto mapu.": {cs:"Připojeno — Claude může ovládat tuto mapu.",sk:"Pripojené — Claude môže ovládať túto mapu.",bg:"Свързано — Claude може да управлява тази карта.",hr:"Povezano — Claude može upravljati ovom kartom.",ro:"Conectat — Claude poate controla această hartă.",en:"Connected — Claude can control this map."},
+  "Připojuji…": {cs:"Připojuji…",sk:"Pripájam…",bg:"Свързване…",hr:"Povezujem…",ro:"Se conectează…",en:"Connecting…"},
+  "Ovládání mapy z Claude": {cs:"Ovládání mapy z Claude",sk:"Ovládanie mapy z Claude",bg:"Управление на картата от Claude",hr:"Upravljanje kartom iz Claudea",ro:"Controlul hărții din Claude",en:"Control the map from Claude"},
+  "Povolit Claude ovládat tuto mapu": {cs:"Povolit Claude ovládat tuto mapu",sk:"Povoliť Claude ovládať túto mapu",bg:"Разреши на Claude да управлява тази карта",hr:"Dopusti Claudeu upravljanje ovom kartom",ro:"Permite lui Claude să controleze această hartă",en:"Allow Claude to control this map"},
+  "Stav:": {cs:"Stav:",sk:"Stav:",bg:"Състояние:",hr:"Stanje:",ro:"Stare:",en:"Status:"},
+  "Kód:": {cs:"Kód:",sk:"Kód:",bg:"Код:",hr:"Kod:",ro:"Cod:",en:"Code:"},
+  "Kopírovat": {cs:"Kopírovat",sk:"Kopírovať",bg:"Копирай",hr:"Kopiraj",ro:"Copiază",en:"Copy"},
+  "Adresa konektoru:": {cs:"Adresa konektoru:",sk:"Adresa konektora:",bg:"Адрес на конектора:",hr:"Adresa konektora:",ro:"Adresa conectorului:",en:"Connector URL:"},
+  "V Claude: Nastavení → Konektory → Přidat vlastní konektor a vložit adresu (stačí jednou). Se společným konektorem TN mapa stačí Claudovi napsat kód. Pak mu napiš, co má mapa udělat.": {cs:"V Claude: Nastavení → Konektory → Přidat vlastní konektor a vložit adresu (stačí jednou). Se společným konektorem TN mapa stačí Claudovi napsat kód. Pak mu napiš, co má mapa udělat.",sk:"V Claude: Nastavenia → Konektory → Pridať vlastný konektor a vložiť adresu (stačí raz). So spoločným konektorom TN mapa stačí Claudovi napísať kód. Potom mu napíš, čo má mapa urobiť.",bg:"В Claude: Настройки → Конектори → Добави собствен конектор и постави адреса (веднъж стига). С общия конектор TN mapa е достатъчно да напишеш кода на Claude. После му напиши какво да направи картата.",hr:"U Claudeu: Postavke → Konektori → Dodaj vlastiti konektor i zalijepi adresu (dovoljno jednom). Sa zajedničkim konektorom TN mapa dovoljno je Claudeu napisati kod. Zatim mu napiši što karta treba napraviti.",ro:"În Claude: Setări → Conectori → Adaugă conector propriu și lipește adresa (o singură dată). Cu conectorul comun TN mapa ajunge să-i scrii lui Claude codul. Apoi scrie-i ce să facă harta.",en:"In Claude: Settings → Connectors → Add custom connector and paste the URL (once is enough). With the shared TN mapa connector just send Claude the code. Then tell it what the map should do."},
+  "Propojit s Claude": {cs:"Propojit s Claude",sk:"Prepojiť s Claude",bg:"Свържи с Claude",hr:"Poveži s Claudeom",ro:"Conectează cu Claude",en:"Connect to Claude"},
+  "Nový kód": {cs:"Nový kód",sk:"Nový kód",bg:"Нов код",hr:"Novi kod",ro:"Cod nou",en:"New code"},
+  "Zkopírováno": {cs:"Zkopírováno",sk:"Skopírované",bg:"Копирано",hr:"Kopirano",ro:"Copiat",en:"Copied"},
   "Nehoda v Humpolci": {cs:"Nehoda v Humpolci",sk:"Nehoda v Humpolci",bg:"Катастрофа в Хумполец",hr:"Nesreća u Humpolecu",ro:"Accident în Humpolec",en:"Accident in Humpolec"},
   "Nehoda v Brně": {cs:"Nehoda v Brně",sk:"Nehoda v Brne",bg:"Катастрофа в Бърно",hr:"Nesreća u Brnu",ro:"Accident în Brno",en:"Accident in Brno"},
   "Trasa autem z Prahy do Brna": {cs:"Trasa autem z Prahy do Brna",sk:"Trasa autom z Prahy do Brna",bg:"Маршрут с кола от Прага до Бърно",hr:"Ruta autom od Praga do Brna",ro:"Traseu cu mașina de la Praga la Brno",en:"Route by car from Prague to Brno"},
@@ -27051,7 +27089,7 @@ function pzColorFromName(v){
       if(Array.isArray(offset) && offset.length === 2 && offset.every(v => isFinite(+v))){ c.off = [+offset[0], +offset[1]]; pzBarsChanged(); }
       const out = {ok:true, place:c.place, kind:c.kind, bars:c.bars.map(b => (b.label ? b.label + ': ' : '') + pzBarValText(b, c.unit)), charts:s.items.length};
       if(p.note) out.note = p.note;
-      if(c.grow !== false && !(state.routeCoords || []).length && !cameraAnimReady()) out.hint = 'Sloupce vyskočí během první sekundy videa (export_videa); PNG ukáže konečnou výšku.';
+      if(c.grow !== false && !(state.routeCoords || []).length && !cameraAnimReady()) out.hint = 'Sloupce vyskočí během první sekundy videa (export videa); PNG ukáže konečnou výšku.';
       return out;
     },
 
@@ -28915,6 +28953,9 @@ html:not([data-ui="light"]) .maplibregl-ctrl-group .maplibregl-ctrl-icon{filter:
 @media (max-width:359px){
   .map-actions{gap:1px}
   .map-actions .map-action-btn{min-width:40px;padding:0}
+  /* 320 px (iPhone SE): sedm tlačítek po 40 px vedle Menu se nevejde — Projekt zajel pod Menu a nešel otevřít;
+     Obnovit mapu (vzácná záchrana, nahradí ji obnovení stránky) na nejužším displeji schovat */
+  .map-actions #refreshMapBtn{display:none}
   .sidebar{width:min(calc(100vw - 28px),390px)}
 }
 /* ── Telefon na šířku: přehrávač a stav vedle sebe v jednom řádku ─────────── */
@@ -29048,6 +29089,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
 #czKrajList .pz-cc-name{flex:1 1 auto;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #czKrajList .pz-kraj-ol{padding:2px 7px;font-size:11px}
 /* Datová mapa: škály jako proužky, řádky hodnot, pásma legendy, táhlo legendy v rámečku */
+/* víceřádková pole v panelu (datová mapa, graf, nájezd) jako ostatní pole — bez toho prohlížeč kreslil světle šedou výchozí plochu */
+.section textarea{background:var(--bg0);color:var(--tx1);border:1px solid var(--border);border-radius:var(--radius);padding:7px 11px;outline:0}
 #pzJingPlaces{width:100%;min-height:76px;resize:vertical;font-family:var(--font);font-size:12.5px;line-height:1.4}
 #pzJingInfo:empty{display:none}
 #dmRows,#bcRows{width:100%;min-height:84px;resize:vertical;font-family:var(--font);font-size:12.5px;line-height:1.4}
@@ -29395,7 +29438,15 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [/^(barv|obarven)/, 'colors', 'barvy států', s => Object.keys(s.colored || {}).length],
     [/^vlajk/, 'flags', 'vlajky', s => (s.flags || []).length],
     [/^(vozidl|auta|auto)/, 'vehicles', 'vozidla', s => (s.extraVehicles || []).length],
-    [/^tras/, 'route', 'trasu', (s, st) => (st && st.hasRoute) || s.line ? 1 : 0]
+    [/^tras/, 'route', 'trasu', (s, st) => (st && st.hasRoute) || s.line ? 1 : 0],
+    // nové prvky scény — bez nich „smaž všechno" u mapy jen s kraji / datovou mapou / grafem hlásilo „Není co mazat"
+    [/^kraj/, 'regions', 'kraje ČR', s => s.kraje ? 1 : 0],
+    [/^(datov|legend)/, 'data', 'datovou mapu', s => s.dataMap ? 1 : 0],
+    [/^usek/, 'sections', 'úseky', s => (s.sections || []).length],
+    [/^(graf|sloupc)/, 'charts', 'sloupcové grafy', s => (s.barCharts || []).length],
+    [/^(najezd|spendlik)/, 'flyin', 'cíl nájezdu', s => s.flyIn ? 1 : 0],
+    // titulek a zdroj do „smaž všechno" nepatří (clearScene all je nechává) — 5. prvek = mimo „vše"
+    [/^(titul|zdroj)/, 'title', 'titulek a zdroj', (s, st) => st && st.graphic && (st.graphic.title || st.graphic.source) ? 1 : 0, true]
   ];
   // Událost na místě (dřív Rychlá scéna): ikonka + popisek nad ní.
   const EVENTS = [
@@ -29459,8 +29510,8 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     [/^(reset|resetuj|na zacatek|domu)$/, () => ({say: tr('Vracím aplikaci na začátek.'), calls: one('resetApp', {}, tr('Na začátek'))})],
     // --- mazání (jde vrátit: snímek pro Krok zpět se dělá před prvním nástrojem)
     [new RegExp('^(?:' + DEL + '(?: to)? (vsechno|vse|vsecko|celou scenu|scenu|celou mapu)|vycisti(?:t)? (mapu|scenu))$'), () => clearPlan('all', 'všechno', (s, st) =>
-      KINDS.reduce((n, k) => n + k[3](s, st), 0))],
-    [new RegExp('^' + DEL + '(?: vsechny| vsechna| vsechnu| ty| ten| tu)? (\\w+)( statu| zemi)?$'), m => { const k = KINDS.find(([re]) => re.test(m[1])); return k ? clearPlan(k[1], k[2], k[3]) : null; }],
+      KINDS.filter(k => !k[4]).reduce((n, k) => n + k[3](s, st), 0))],
+    [new RegExp('^' + DEL + '(?: vsechny| vsechna| vsechnu| ty| ten| tu)? (\\w+)( statu| zemi| cr| mapu| graf| grafy| najezdu)?$'), m => { const k = KINDS.find(([re]) => re.test(m[1])); return k ? clearPlan(k[1], k[2], k[3]) : null; }],
     // --- událost na místě: „nehoda v Humpolci", „dej požár do Ostravy"
     [new RegExp('^(?:(?:dej|pridej|vloz|oznac|ukaz|zobraz|vyznac) )?(nehod[au]|bourack[au]|havari[ei]|pozar|ohen|vybuch|exploz[ei]|polici[ei]|zasah|zachrank[au]|sanitk[au]|povoden|zaplav[ay]|varovani|spendlik|misto|bod) (?:je |byla? |se stala? )?(v|ve|na|u|do|pobliz|pri) (.+)$'),
       (m, words) => { const ev = EVENTS.find(([re]) => re.test(m[1])); const n = m[3].split(' ').length; return ev ? {prepare: () => eventPlan(ev, words.slice(-n).join(' '))} : null; }],
@@ -29784,7 +29835,7 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
     'drawArrow','flowArrows','measureDistance','drawPerimeter','colorPolitical','colorRegion','dataMap','barChart','placeFlag','roadClosure','roadSections','metroClosure','placeModel3d','setColors','setValues',
     'setLayers','setGlobe','setShadows','setTransportMode','routeBetween','routeLine','setVehicle','addVehicle','setVehicleColors','setCameraFlight',
     'fitRoute','arcBestView','playAnimation','exportPng','selectObjects','clearScene','undo','redo','openTab','openSection','setUiTheme','setLanguage','resetApp',
-    'setTitle','setExportName','flyInTo']);
+    'setTitle','setExportName','flyInTo','fitScene']);
 
   async function ask(userText, isRetry, shown){
     if(busy) return;
@@ -29966,12 +30017,13 @@ html[data-ui="light"] .tnchat-msg.err{color:#8f1420}
   const ATTRS = [[$q('tnchatFab'), 'title', 'AI asistent mapy'], [$q('tnchatFab'), 'aria-label', 'AI asistent'], [panel, 'aria-label', 'AI asistent mapy'],
                  [newBtn, 'title', 'Nová konverzace'], [newBtn, 'aria-label', 'Nová konverzace'], [$q('tnchatClose'), 'aria-label', 'Zavřít'],
                  [input, 'placeholder', 'Napiš, co má mapa udělat…'], [input, 'aria-label', 'Zpráva'], [sendBtn, 'aria-label', 'Odeslat'],
-                 [stopBtn, 'aria-label', 'Zastavit'], [stopBtn, 'title', 'Zastavit']];
+                 [stopBtn, 'aria-label', 'Zastavit'], [stopBtn, 'title', 'Zastavit'],
+                 [$q('tnchatClaude'), 'title', 'Propojit s Claude'], [$q('tnchatClaude'), 'aria-label', 'Propojit s Claude']];
   const applyAttrs = () => ATTRS.forEach(([el, a, key]) => { if(el) el.setAttribute(a, tr(key)); });
   try{ new MutationObserver(applyAttrs).observe(document.documentElement, {attributes:true, attributeFilter:['lang']}); }catch(e){}
   applyAttrs();
   // Háček pro testy: rozpoznání povelu bez odeslání.
-  window.__tnchat = {plan: async text => { let q = quickCommand(text); if(q && q.prepare) q = await q.prepare(); return q ? {say: q.say || '', calls: q.calls || []} : null; }, quick: text => { const q = quickCommand(text); return q ? {say: q.say || '', calls: q.calls || [], local: !!q.local, prepare: !!q.prepare} : null; }, guesses: nominativeGuesses};
+  window.__tnchat = {plan: async text => { let q = quickCommand(text); if(q && q.prepare) q = await q.prepare(); return q ? {say: q.say || '', calls: q.calls || []} : null; }, quick: text => { const q = quickCommand(text); return q ? {say: q.say || '', calls: q.calls || [], local: !!q.local, prepare: !!q.prepare} : null; }, guesses: nominativeGuesses, tools: () => [...CHAT_TOOLS]};
 })();
 </script>
 <!-- defer: only used by video/PNG-sequence export (a much later user action), so it

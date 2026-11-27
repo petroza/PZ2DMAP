@@ -219,9 +219,6 @@ export const MAP_TOOLS = [
     "color": {},
     "clear": {}
    },
-   "required": [
-    "country"
-   ],
    "additionalProperties": true
   }
  },
@@ -258,9 +255,6 @@ export const MAP_TOOLS = [
     "kind": {},
     "clear": {}
    },
-   "required": [
-    "rows"
-   ],
    "additionalProperties": true
   }
  },
@@ -330,9 +324,6 @@ export const MAP_TOOLS = [
     "append": {},
     "clear": {}
    },
-   "required": [
-    "sections"
-   ],
    "additionalProperties": true
   }
  },
@@ -530,9 +521,6 @@ export const MAP_TOOLS = [
     "lift": {},
     "off": {}
    },
-   "required": [
-    "keyframes"
-   ],
    "additionalProperties": true
   }
  },
@@ -671,7 +659,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "clearScene",
-  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, colors, regions, data (datová mapa), flags, route, vehicles (další vozidla), title (titulek a zdroj), all; víc druhů = pole [\"labels\",\"icons\"].",
+  "description": "smaže: labels, icons, arrows, perimeters, distances, closures, sections (úseky), colors, regions (kraje ČR), data (datová mapa), charts (sloupcové grafy), flags, route, vehicles (další vozidla), flyin (špendlík a název nájezdu), title (titulek a zdroj, all ho nemaže), all; víc druhů = pole [\"labels\",\"icons\"].",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -717,7 +705,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "openSection",
-  "description": "POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, pzSectionsSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, exportActionsSection, exportTitleSection, exportNameSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.",
+  "description": "POVOLENÁ ID: mapLabelSection, sceneIconSection, sceneArrowSection, pzClosureSection, pzSectionsSection, scenePerimeterSection, sceneDistanceSection, countryBordersOverlaySection, czKrajeSection (kraje ČR), dataMapSection (datová mapa), barChartSection (sloupcový graf), model3dSection, navigationABSection, animationSystemIconsSection, waypointSection, flightWaypointSection, cameraAnimSection, pzJingleSection (nájezd na místa), exportActionsSection, exportTitleSection, exportNameSection, stylePresetSection, presetManageSection, sunShadowSection, tileSourcesSection.",
   "inputSchema": {
    "type": "object",
    "properties": {

@@ -26,9 +26,10 @@ náhled i produkce sdílejí jednu databázi D1, test ji nesmí přepsat.
 | 06 labels_export | styly popisků Nova na mapě i v exportu PNG |
 | 07 advanced | Pokročilé funkce schované / zapnuté / zapamatované |
 | 08 contrast | kontrast textu ≥ 3:1 ve světlém i tmavém režimu |
-| 09 layout | telefon, tablet, notebook: nic se nepřekrývá, 5 záložek v řádku |
+| 09 layout | telefon, tablet, notebook: nic se nepřekrývá, 5 záložek v řádku; na 1366×768 nové sekce panelu (kraje, datová mapa, graf, úseky, nájezd, titulek) nepřetékají a pole hodnot vypadají jako ostatní pole |
 | 10 i18n | angličtina bez zbytků češtiny, čistý návrat do češtiny |
-| 11 assistant | rychlé povely a délka trasy bez dotazu na model (odpovědi podvržené) |
+| 11 assistant | rychlé povely a délka trasy bez dotazu na model (odpovědi podvržené); kraj + graf + titulek + fitScene v jednom kole, „smaž všechno / kraje / datovou mapu / úseky / graf / titulek“ |
+| 27 assistant_tools | nástroje `window.TNMAP` proti popisu ve workeru: chat povolí vše kromě `flyInBatch`, MCP `tools.js` = worker (bez povinných parametrů u clear/off), clearScene a openSection znají nové druhy a sekce; datová mapa → titulek (legenda uhne zdroji), panel Claude v angličtině, panel chatu (výpadek, limit, historie, klávesy), zkratky |
 | 12 search | Hledat skočí na místo, záloha Photon při výpadku Nominatimu |
 | 13 transport | vlak (nádraží, vagony), loď, kamion s návěsem, uzavírky |
 | 24 export | záložka Export (předvolby, shrnutí), PNG se všemi vrstvami a s průhledným pozadím, krátké video (průběh, dvojklik, zrušení), PNG sekvence, více formátů, názvy souborů |
