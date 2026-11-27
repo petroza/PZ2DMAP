@@ -6,6 +6,8 @@ const path = require('path');
 const {check, done, open, tab, openSection, OUT} = require('./lib');
 (async () => {
   const {page, errors, close} = await open();
+  const warns = [];
+  page.on('console', m => { if(m.type() === 'warning' || m.type() === 'error') warns.push(m.text().slice(0, 160)); });
   // appka po startu ještě dojíždí (úvodní záběr, načtení dat) — počkat na klid mapy
   await page.waitForFunction(() => window.__tnMap?.loaded?.() && !window.__tnMap.isMoving(), null, {timeout: 30000}).catch(() => {});
   await page.waitForTimeout(2000);
@@ -50,10 +52,13 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
 
   // --- krok zpět vrátí celý svazek naráz, vpřed ho vrátí i s piktogramy a tvarem
   await T('undo');
-  await page.waitForTimeout(600);
+  await page.waitForFunction(() => window.__pzFns.state.sceneArrows.length === 0, null, {timeout: 8000}).catch(() => {});
+  await page.waitForTimeout(300);
   check((await S()).length === 0 && (await labels()).length === 0, 'jeden krok zpět smaže všechny šipky i popisky svazku');
   await T('redo');
-  await page.waitForTimeout(800);
+  // krok vpřed se uplatní asynchronně (načtení projektu) — počkat na šipky, ne na pevný čas
+  await page.waitForFunction(() => window.__pzFns.state.sceneArrows.length === 5, null, {timeout: 8000}).catch(() => {});
+  await page.waitForTimeout(300);
   const A2 = await S();
   check(A2.length === 5 && A2.every((a, i) => a.icon === 'lide' && a.bend === A[i].bend && a.gap === A[i].gap && a.dot && a.hdot), 'krok vpřed vrátí šipky i s piktogramem a zakřivením ' + JSON.stringify(A2.map(a => [a.icon, a.bend, a.gap])) + JSON.stringify(A.map(a => [a.bend, a.gap])));
   // projekt: uložit → vyčistit → načíst
@@ -117,10 +122,70 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
   await page.evaluate(() => { const s = document.getElementById('sceneArrowIcon'); s.value = 'balik'; s.dispatchEvent(new Event('change', {bubbles: true})); });
   await page.waitForTimeout(400);
   check((await S())[0].icon === 'balik' && (await S())[0].bend === A[0].bend, 'změna piktogramu v panelu změní vybranou šipku (tvar zůstane)');
-  await page.keyboard.press('Control+z'); await page.waitForTimeout(500);
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => window.__pzFns.state.sceneArrows[0]?.icon === 'letadlo', null, {timeout: 8000}).catch(() => {});
   check((await S())[0]?.icon === 'letadlo', 'Ctrl+Z vrátí původní piktogram');
   await page.screenshot({path: path.join(OUT, '36_panel.png')});
   check((await T('clearScene', {what: 'all'})).ok !== false && (await S()).length === 0 && (await feats()).length === 0, 'clearScene smaže šipky i piktogramy');
+
+  // --- titulek a zdroj: svazek se zarámuje pod titulek, popisky do něj nevlezou
+  // (Fidži a Madagaskar → Chotovice: popisek „Chotovice" ležel pod titulkem)
+  const underTitle = () => page.evaluate(() => { const c = document.getElementById('pzTitleOverlay'); if(!c || c.hidden) return -1;
+    const cr = c.getBoundingClientRect(), x = c.getContext('2d'), sx = c.width / cr.width; let hit = 0;
+    document.querySelectorAll('#map .map-label-marker .map-label-bubble').forEach(b => { const r = b.getBoundingClientRect();
+      for(let px = r.left + 2; px < r.right - 2; px += 6) for(let py = r.top + 2; py < r.bottom - 2; py += 6){
+        const X = Math.round((px - cr.left) * sx), Y = Math.round((py - cr.top) * sx); if(X < 0 || Y < 0 || X >= c.width || Y >= c.height) continue;
+        if(x.getImageData(X, Y, 1, 1).data[3] > 100) hit++; } });
+    return hit; });
+  await T('setTitle', {title: 'Odkud přiletěli', source: 'Zdroj: policie ČR'});
+  r = await T('flowArrows', {from: ['-17.8,178.0', '-19.0,46.7'], to: '49.95,14.77', icon: 'letadlo', labels: ['Fidži', 'Madagaskar'], toLabel: 'Chotovice'});
+  await page.waitForTimeout(1200);
+  let ut = await underTitle();
+  check(r.ok && ut === 0, 'popisky svazku nejsou pod titulkem ani zdrojem (' + ut + ')');
+  // titulek až po šipkách: popisky, které by zakryl, se přesunou
+  await T('setTitle', {off: true});
+  await T('clearScene', {what: 'all'});
+  await T('flowArrows', {from: ['-17.8,178.0', '-19.0,46.7'], to: '49.95,14.77', icon: 'letadlo', labels: ['Fidži', 'Madagaskar'], toLabel: 'Chotovice'});
+  await page.waitForTimeout(1000);
+  r = await T('setTitle', {title: 'Odkud přiletěli', source: 'Zdroj: policie ČR'});
+  await page.waitForTimeout(1200);
+  ut = await underTitle();
+  check(r.ok && ut === 0 && !r.warning, 'titulek přidaný až po svazku: popisky se mu uhnou (' + ut + ') ' + (r.warning || ''));
+
+  // --- svazek + datová mapa: záběr dat nevyhodí cíl šipek z rámečku, čísla nezakryjí názvy míst
+  await T('clearScene', {what: 'all'});
+  await T('flowArrows', {from, to: '-1.95,29.9', icon: 'lidé', labels: names, toLabel: 'Rwanda'});
+  r = await T('dataMap', {rows: 'Německo: 120\nRakousko: 40\nŘecko: 25\nDánsko: 15\nNizozemsko: 30', unit: 'osob'});
+  await page.waitForTimeout(2500);
+  const dm = await page.evaluate(dest => { const m = window.__tnMap, fr = document.getElementById('exportFrame').getBoundingClientRect(), mr = m.getCanvas().getBoundingClientRect();
+    const p = m.project(dest), inside = p.x + mr.left > fr.left && p.x + mr.left < fr.right && p.y + mr.top > fr.top && p.y + mr.top < fr.bottom;
+    const box = l => { const r = l.marker.getElement().querySelector('.map-label-bubble').getBoundingClientRect(); return r; };
+    const L = window.__pzFns.state.mapLabels, dmL = L.filter(l => l.dm).map(box), other = L.filter(l => !l.dm).map(box);
+    let over = 0; dmL.forEach(a => other.forEach(b => { if(a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top) over++; }));
+    return {inside, over, n: dmL.length}; }, DEST);
+  check(r.ok && dm.inside, 'datová mapa po svazku: cíl šipek (Rwanda) zůstane v rámečku');
+  check(dm.n === 5 && dm.over === 0, 'čísla datové mapy nezakryjí popisky míst u šipek ' + JSON.stringify(dm));
+  await T('dataMap', {clear: true});
+
+  // --- glóbus: Fidži je na odvrácené straně — žádná šipka z Himálaje ani popisek jinde, varování
+  await T('clearScene', {what: 'all'});
+  await T('setGlobe', {on: true}); await page.waitForTimeout(2500);
+  r = await T('flowArrows', {from: ['-17.8,178.0', '-19.0,46.7'], to: '49.95,14.77', icon: 'letadlo', labels: ['Fidži', 'Madagaskar'], toLabel: 'Chotovice'});
+  await page.waitForTimeout(1500);
+  F = await feats();
+  const madId = (await S()).find(a => a.tail[0] > 40 && a.tail[0] < 50)?.id, fijiId = (await S()).find(a => a.tail[0] > 170)?.id;
+  L = await labels();
+  check(r.ok && r.farSide?.length === 1 && /Fidži|178/.test(r.farSide[0]) && /odvrácené/.test(r.warning || ''), 'glóbus: místo za obzorem ohlásí ' + JSON.stringify({farSide: r.farSide}));
+  check(F.some(f => f.id === madId && f.kind === 'icon') && !F.some(f => f.id === fijiId), 'glóbus: šipka z Madagaskaru je vidět, z Fidži se nekreslí (nezačíná na přivrácené straně)');
+  check(!L.some(l => l.t === 'Fidži') && L.some(l => l.t === 'Madagaskar') && L.some(l => l.t === 'Chotovice'), 'glóbus: popisek Fidži nevznikne, ostatní ano ' + L.map(l => l.t).join(','));
+  const inFr = await page.evaluate(() => { const m = window.__tnMap, fr = document.getElementById('exportFrame').getBoundingClientRect(), mr = m.getCanvas().getBoundingClientRect();
+    return [[46.7, -19.0], [14.77, 49.95]].every(ll => { const p = m.project(ll), x = p.x + mr.left, y = p.y + mr.top; return x > fr.left && x < fr.right && y > fr.top && y < fr.bottom; }); });
+  check(inFr, 'glóbus: Madagaskar i Chotovice jsou v rámečku');
+  check(/odvrácené straně/.test(await page.$eval('#statusBar', e => e.textContent)), 'glóbus: varování i ve stavovém řádku');
+  await T('setGlobe', {on: false}); await page.waitForTimeout(1500);
+  await T('setTitle', {off: true});
+  await T('clearScene', {what: 'all'});
+  check(!warns.some(w => /pzarr/.test(w)), 'piktogramy: žádné „Image could not be loaded" v konzoli ' + warns.filter(w => /pzarr/.test(w)).slice(0, 1).join(''));
 
   check(errors.length === 0, 'bez chyb v konzoli ' + errors.join(' | '));
   await close();
