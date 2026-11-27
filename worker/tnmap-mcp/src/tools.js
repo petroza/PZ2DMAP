@@ -137,7 +137,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "drawArrow",
-  "description": "šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), balik (zboží), vlak; curve:true = oblouk pro dlouhé vzdálenosti.",
+  "description": "šipka z místa do místa (postup, migrace). NENÍ to trasa. icon = piktogram na šipce: lide, letadlo, lod, kamion, penize, raketa (zbraně), balik (zboží), dron, vlak; curve:true = oblouk pro dlouhé vzdálenosti.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -158,7 +158,7 @@ export const MAP_TOOLS = [
  },
  {
   "name": "flowArrows",
-  "description": "víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:\"lide\", labels:true). Nevolej drawArrow pro každé místo zvlášť.",
+  "description": "víc šipek z několika míst (from = seznam států/měst) do jednoho cíle jedním voláním, rozvějířené, aby se hroty nepřekrývaly („z Německa, Rakouska… čáry s obrázkem lidí do Rwandy“ → icon:\"lide\", labels:true). Funguje i opačně z jednoho místa do víc cílů (from:\"Ukrajina\", to:\"Rjazaň; Volgograd; Saratov\" — údery na rafinerie): popisky u cílů, fromLabel = popisek zdroje. Nevolej drawArrow pro každé místo zvlášť.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -169,6 +169,7 @@ export const MAP_TOOLS = [
     "width": {},
     "labels": {},
     "toLabel": {},
+    "fromLabel": {},
     "curve": {}
    },
    "required": [

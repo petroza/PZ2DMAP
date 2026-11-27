@@ -122,6 +122,35 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
   await page.screenshot({path: path.join(OUT, '36_panel.png')});
   check((await T('clearScene', {what: 'all'})).ok !== false && (await S()).length === 0 && (await feats()).length === 0, 'clearScene smaže šipky i piktogramy');
 
+  // --- z jednoho místa do víc cílů („údery z Ukrajiny na rafinerie v Rusku"), s titulkem, piktogram dronu
+  await T('setTitle', {title: 'Ukrajinské údery na ruské rafinerie a další cíle'});
+  r = await T('flowArrows', {from: '49.0,31.4', to: '54.63,39.74; 48.71,44.51; 51.53,46.03; 44.10,39.08', icon: 'drony', labels: ['Rjazaň', 'Volgograd', 'Saratov', 'Tuapse'], fromLabel: 'Ukrajina'});
+  check(r.ok && r.arrows === 4 && r.icon === 'dron', 'flowArrows z jednoho místa do 4 cílů jedním voláním, piktogram dronu ' + JSON.stringify(r));
+  await page.waitForTimeout(800);
+  A = await S();
+  check(A.length === 4 && A.every(a => a.tail[0] === A[0].tail[0] && a.tail[1] === A[0].tail[1] && a.icon === 'dron' && a.hdot && a.dot) && new Set(A.map(a => a.head.join())).size === 4,
+    'šipky vychází z jednoho bodu a míří do čtyř různých cílů, bod na začátku i u cíle');
+  check(await page.evaluate(() => window.__tnMap.hasImage('pzarr|dron|#e22d2d|0')), 'obrázek piktogramu dronu je v mapě (stojí rovně)');
+  L = await labels();
+  check(L.length === 5 && ['Rjazaň', 'Volgograd', 'Saratov', 'Tuapse', 'Ukrajina'].every(n => L.some(l => l.t === n)), 'popisky u cílů i u zdroje ' + L.map(l => l.t).join(','));
+  over = 0; for(let i = 0; i < L.length; i++) for(let j = i + 1; j < L.length; j++){ const a = L[i], b = L[j]; if(a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0) over++; }
+  check(over === 0, 'popisky svazku z jednoho místa se nepřekrývají (' + over + ')');
+  const tbox = await page.evaluate(() => { if(typeof pzTitleBoxesFor !== 'function') return null; const r = pzExportFrameRect(); const tb = pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
+    return tb?.title ? {x0: r.left + tb.title.x, y0: r.top + tb.title.y, x1: r.left + tb.title.x + tb.title.w, y1: r.top + tb.title.y + tb.title.h} : null; });
+  check(!!tbox && L.every(l => !(l.x0 < tbox.x1 && l.x1 > tbox.x0 && l.y0 < tbox.y1 && l.y1 > tbox.y0)), 'žádný popisek pod titulkem grafiky ' + JSON.stringify(tbox));
+  const heads = await Promise.all(A.map(a => px(a.head)));
+  check(!!tbox && heads.every(h => !(h[0] > tbox.x0 && h[0] < tbox.x1 && h[1] > tbox.y0 && h[1] < tbox.y1)), 'záběr nenechá cíl šipky pod titulkem');
+  // „Kyjev, Ukrajina" je jedno místo (čárka před státem nedělí cíle); z víc míst do víc cílů = chyba
+  check((await T('flowArrows', {from: '49.0,31.4; 50.45,30.52', to: '54.63,39.74; 48.71,44.51'})).ok === false, 'z víc míst do víc cílů vrátí srozumitelnou chybu');
+  await T('undo'); await page.waitForTimeout(400);
+  check((await S()).length === 0 && (await labels()).length === 0, 'jeden krok zpět smaže celý svazek z jednoho místa');
+  await T('setTitle', {off: true});
+
+  // --- druh dopravy „letadlo" a ikonka lodi (tanker) z běžných slov
+  check((await T('setTransportMode', {mode: 'letadlo'})).mode === 'planeArc' && (await T('setTransportMode', {mode: 'auto'})).mode === 'driving', 'setTransportMode rozumí „letadlo" i „auto"');
+  check(await page.evaluate(() => pzIconKind('tanker') === 'lod' && pzIconKind('dron') === 'vybuch' && pzArrowPictoKind('dron') === 'dron'), 'ikonka lodi pro tanker, dron na šipce má vlastní piktogram');
+  check(await page.$$eval('#pzIconPalette .pz-icon-pick[data-kind="lod"]', e => e.length) === 1 && await page.$$eval('#sceneArrowIcon option[value="dron"]', e => e.length) === 1, 'loď je v paletě ikonek, dron v nabídce piktogramů');
+
   check(errors.length === 0, 'bez chyb v konzoli ' + errors.join(' | '));
   await close();
   done();
