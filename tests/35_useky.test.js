@@ -161,7 +161,7 @@ const fold = v => String(v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
   const setRes = v => page.evaluate(v => { const s = document.getElementById('exportResolution'); s.value = v; s.dispatchEvent(new Event('change', {bubbles:true})); }, v);
   const e0 = await ends();
   check(await inFrame(e0), 'před změnou formátu jsou konce úseků v rámečku');
-  await setRes('1080x1920'); await page.waitForTimeout(1500);
+  await setRes('1080x1920'); await page.waitForTimeout(3500);
   check(await inFrame(e0), 'po výběru 1080×1920 v Rozlišení zůstanou konce úseků v rámečku');
   await setRes('1920x1080'); await page.waitForTimeout(1500);
   // --- angličtina: nápovědy v polích panelu Úseky
