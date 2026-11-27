@@ -9287,7 +9287,7 @@ function serializeProjectSnapshot(){
     // localStorage, so it isn't stored — the placement is remembered and re-applies as soon
     // as the same .glb is loaded again; within a session it survives undo/redo + project switch).
     model3d: (state.model3d && state.model3d.lngLat) ? (m=>({lngLat:m.lngLat, altitude:m.altitude, scale:m.scale, sizeMeters:m.sizeMeters, rotationDeg:m.rotationDeg, rotX:m.rotX, rotZ:m.rotZ, upAxis:m.upAxis, snapSurface:m.snapSurface, followRoute:m.followRoute, shadowOn:m.shadowOn, shadowBlur:m.shadowBlur, sun:m.sun}))(state.model3d) : null,
-    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, ...(item.offset ? {offset:item.offset} : {}), ...(item.kraj ? {kraj:item.kraj} : {}), ...(item.dm ? {dm:item.dm} : {}), lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
+    mapLabels: state.mapLabels.map(item => ({id:item.id, text:item.text, size:item.size, side:item.side, style:item.style || 'classic', baseZoom: item.baseZoom ?? null, ...(item.offset ? {offset:item.offset} : {}), ...(item.kraj ? {kraj:item.kraj} : {}), ...(item.dm ? {dm:item.dm} : {}), ...(item.routeKm ? {routeKm:item.routeKm} : {}), lngLat:item.marker?.getLngLat ? [item.marker.getLngLat().lng, item.marker.getLngLat().lat] : item.lngLat})),
     animation: {
       currentRotMode: state.currentRotMode,
       animIconSize: $('animIconSize')?.value || '34',
@@ -9472,7 +9472,7 @@ function applyBasicProjectSnapshot(snapshot){
       model3dClear();
     }
   }catch(_e){}
-  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null, offset: item.offset, kraj: item.kraj, dm: item.dm}));
+  (snapshot.mapLabels || []).forEach(item => addMapLabelAt(item.lngLat, {text:item.text, size:item.size, side:item.side, style:item.style || 'classic', silent:true, baseZoom: item.baseZoom ?? null, offset: item.offset, kraj: item.kraj, dm: item.dm, routeKm: item.routeKm}));
   // Každý popisek si drží vlastní velikost (dřív se všechny srovnaly na poslední).
   // Posuvník jen ukáže velikost posledního, ať další nový popisek navazuje.
   if(state.mapLabels.length){
@@ -9538,7 +9538,7 @@ function applyProjectSnapshot(snapshot, statusMsg){
   state.pzFlagSel = null;
   state.pzFlagScale = isFinite(+snapshot?.countryFlagScale) && +snapshot.countryFlagScale > 0 ? +snapshot.countryFlagScale : PZ_FLAG_SCALE_DEFAULT;
   if($('pzFlagSize')) $('pzFlagSize').value = String(pzFlagScale());
-  try{ const g = snapshot?.graphicTitle; state.pzTitle = (g && typeof g === 'object') ? {title: String(g.title || ''), source: String(g.source || ''), titleOn: !!g.titleOn, sourceOn: !!g.sourceOn, style: g.style} : null; pzSyncTitleUi(); pzUpdateTitlePreview(); }catch(e){}
+  try{ const g = snapshot?.graphicTitle; state.pzTitle = (g && typeof g === 'object') ? {title: String(g.title || ''), source: String(g.source || ''), titleOn: !!g.titleOn, sourceOn: !!g.sourceOn, style: g.style} : null; pzSyncTitleUi(); pzUpdateTitlePreview(); pzUpdateFrameLegend(); }catch(e){}
   try{ if(snapshot?.exportName) pzApplyNameSnapshot(snapshot.exportName); }catch(e){}
   try{ pzFlyInApplySnapshot(snapshot?.flyIn); }catch(e){}
   try{ updateReadouts(); }catch(e){}
@@ -14654,7 +14654,7 @@ function addMapLabelAt(lngLatObj, options={}){
   // čitelných 14 px), při přiblížení zůstává. Starší popisky (bez údaje) beze změny.
   const baseZoom = options.baseZoom !== undefined ? options.baseZoom : (state.map?.getZoom?.() ?? null);
   // kraj = název kraje z Scéna › Kraje ČR › Názvy krajů (vypnutí je zase odebere)
-  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker, baseZoom, ...(offset ? {offset} : {}), ...(options.kraj ? {kraj: options.kraj} : {}), ...(options.dm ? {dm: options.dm} : {})};
+  const item = {id, text:textVal, size:sizeVal, side:sideVal, style:styleVal, lngLat, marker, baseZoom, ...(offset ? {offset} : {}), ...(options.kraj ? {kraj: options.kraj} : {}), ...(options.dm ? {dm: options.dm} : {}), ...(options.routeKm?.text ? {routeKm: {text: String(options.routeKm.text), ll: options.routeKm.ll}} : {})};
   state.mapLabels.push(item);
   pzApplyLabelZoom(item, state.map?.getZoom?.());
   selectMapLabel(id);
@@ -16363,6 +16363,7 @@ function updateRouteSummary(){
   el.textContent = txt;
   el.hidden = !txt;
   if($('routeKmLabelBtn')) $('routeKmLabelBtn').hidden = !txt;
+  try{ pzSyncRouteKmLabels(); }catch(e){}
 }
 // „Trasou auta s údajem 150 km": popisek s délkou doprostřed trasy (běžný popisek —
 // jde přetáhnout, přepsat, je v exportu, v projektu i v kroku zpět).
@@ -16373,12 +16374,50 @@ function pzRouteKmText(){
 function pzAddRouteKmLabel(){
   const rc = state.routeCoords || [], text = pzRouteKmText();
   if(rc.length < 2 || !text){ setStatus(t('Nejdřív najdi trasu.'), 'error'); return null; }
-  const half = lineLength(rc) / 2; let acc = 0, mid = rc[Math.floor(rc.length / 2)];
-  for(let i = 1; i < rc.length; i++){ const d = haversineKm(rc[i - 1], rc[i]); if(acc + d >= half){ const f = d ? (half - acc) / d : 0; mid = [rc[i - 1][0] + (rc[i][0] - rc[i - 1][0]) * f, rc[i - 1][1] + (rc[i][1] - rc[i - 1][1]) * f]; break; } acc += d; }
   try{ window.__pzPushUndo?.(); }catch(e){}
-  const item = addMapLabelAt({lng: mid[0], lat: mid[1]}, {text, side:'none', silent:true});
+  const item = addMapLabelAt({lng: rc[0][0], lat: rc[0][1]}, {text, side:'none', silent:true});
+  if(item) pzPlaceRouteKmLabel(item);
   setStatus(t('Popisek s délkou trasy je uprostřed trasy — přetáhni ho, kam potřebuješ.'));
   return item;
+}
+// Popisek délky doprostřed trasy. Bublina vystředěná přímo na čáře zakryla kus trasy
+// (v exportu bílý obdélník přes čáru) — odsadit ji kolmo od trasy, přednostně nad ni
+// (u svislé trasy vpravo). routeKm = automatický text a místo, ať jde po změně trasy poznat,
+// jestli ho grafik nepřepsal / nepřetáhl.
+function pzPlaceRouteKmLabel(item){
+  const rc = state.routeCoords || [], m = state.map; if(rc.length < 2 || !item?.marker) return;
+  const half = lineLength(rc) / 2;
+  const at = f => { let acc = 0; for(let i = 1; i < rc.length; i++){ const d = haversineKm(rc[i - 1], rc[i]); if(acc + d >= half * f){ const k = d ? (half * f - acc) / d : 0; return [rc[i - 1][0] + (rc[i][0] - rc[i - 1][0]) * k, rc[i - 1][1] + (rc[i][1] - rc[i - 1][1]) * k]; } acc += d; } return rc[rc.length - 1]; };
+  const mid = at(1);
+  item.marker.setLngLat(mid); item.lngLat = mid.slice();
+  let off = null;
+  try{
+    const b = item.marker.getElement()?.querySelector('.map-label-bubble')?.getBoundingClientRect();
+    const p = m.project(at(0.8)), q = m.project(at(1.2));
+    let dx = q.x - p.x, dy = q.y - p.y; const L = Math.hypot(dx, dy);
+    if(b?.width && L > 2){
+      dx /= L; dy /= L;
+      let nx = -dy, ny = dx;                       // kolmice k trase
+      if(Math.abs(ny) > 0.35 ? ny > 0 : nx < 0){ nx = -nx; ny = -ny; }   // nahoru, u svislé trasy doprava
+      const ext = b.width / 2 * Math.abs(nx) + b.height / 2 * Math.abs(ny) + 10;
+      off = [Math.round(nx * ext), Math.round(ny * ext)];
+    }
+  }catch(e){}
+  if(off) item.offset = off; else delete item.offset;
+  try{ item.marker.setOffset(off || [0, 0]); }catch(e){}
+  item.routeKm = {text: item.text, ll: mid.slice()};
+}
+// Trasa se změnila (jiný cíl, zastávka, druh dopravy): popisek délky, který grafik
+// nepřepsal, dostane novou délku; když ho nepřetáhl, přesune se doprostřed nové trasy.
+function pzSyncRouteKmLabels(){
+  const txt = pzRouteKmText(); if(!txt) return;
+  (state.mapLabels || []).forEach(it => {
+    const rk = it.routeKm; if(!rk || it.text !== rk.text) return;
+    const ll = it.marker?.getLngLat?.(), still = ll && Array.isArray(rk.ll) && Math.abs(ll.lng - rk.ll[0]) < 1e-7 && Math.abs(ll.lat - rk.ll[1]) < 1e-7;
+    if(rk.text === txt && still) return;
+    if(rk.text !== txt) updateMapLabel(it.id, {text: txt});
+    if(still) pzPlaceRouteKmLabel(it); else it.routeKm = {text: txt, ll: rk.ll};
+  });
 }
 
 function setRouteBusy(on){
@@ -19173,7 +19212,11 @@ function pzFitScene(opts){
   const check = () => {
     if(state.map !== m) return;
     const out = pzObjectsOutsideFrame(), fr = pzExportFrameRect();
-    if(!out.length || ++tries > 3 || single || !fr){ pzMarkOutsideObjects(); return; }
+    // legenda (úseky, datová mapa) v rohu nesmí zakrýt úsek ani bod scény — odsadit stranu,
+    // kde stačí menší posun (u D1 s legendou vlevo nahoře ležel začátek úseku pod legendou)
+    const under = fr && !single ? pzSceneUnderLegends(fr).concat(pzSecLabelsOutside(fr)) : [];
+    if((!out.length && !under.length) || ++tries > 3 || single || !fr){ pzMarkOutsideObjects(); return; }
+    under.forEach(u => { padding[u.side] += u.px; });
     out.forEach(({el}) => { const b = el.getBoundingClientRect();
       padding.left += Math.max(0, fr.left - b.left); padding.right += Math.max(0, b.right - fr.right);
       padding.top += Math.max(0, fr.top - b.top); padding.bottom += Math.max(0, b.bottom - fr.bottom); });
@@ -19183,6 +19226,55 @@ function pzFitScene(opts){
   m.once('moveend', () => setTimeout(check, 30));
   if(!opts.quiet) setStatus(t('Celá scéna je v rámečku.'));
   return true;
+}
+// Body scény (trasa, úseky, uzavírky, objekty) pod legendou v rohu výřezu → o kolik px
+// a na které straně odsadit záběr. Legendy se kreslí v px exportu, rámeček je zmenšený.
+function pzSceneUnderLegends(fr){
+  const m = state.map; if(!m || !fr?.width) return [];
+  const {w: outW, h: outH} = getExportSize(), sc = fr.width / outW;
+  let boxes = [];
+  try{
+    const ctx = document.createElement('canvas').getContext('2d');
+    const Ld = pzDmLegendLayout(ctx, outW, outH), Ls = pzSecLegendLayout(ctx, outW, outH, Ld);
+    boxes = [Ld, Ls].filter(L => L && L.w > 0 && L.h > 0);
+  }catch(_e){ return []; }
+  if(!boxes.length) return [];
+  const c = m.getCanvas().getBoundingClientRect(), g = 10;
+  const pts = pzSceneLngLats({bubbles:false}).map(p => { const q = m.project(p); return [q.x + c.left, q.y + c.top]; });
+  const res = [];
+  boxes.forEach(L => {
+    const l = fr.left + L.x * sc - g, t = fr.top + L.y * sc - g, r = fr.left + (L.x + L.w) * sc + g, b = fr.top + (L.y + L.h) * sc + g;
+    const inside = pts.filter(([x, y]) => x > l && x < r && y > t && y < b); if(!inside.length) return;
+    const left = (L.x + L.w / 2) < outW / 2, top = (L.y + L.h / 2) < outH / 2;
+    const dx = left ? r - Math.min(...inside.map(p => p[0])) : Math.max(...inside.map(p => p[0])) - l;
+    const dy = top ? b - Math.min(...inside.map(p => p[1])) : Math.max(...inside.map(p => p[1])) - t;
+    res.push(dx <= dy ? {side: left ? 'left' : 'right', px: Math.ceil(dx) + 4} : {side: top ? 'top' : 'bottom', px: Math.ceil(dy) + 4});
+  });
+  return res;
+}
+// Názvy míst a termíny úseků jsou text v mapě (ne prvky stránky) — u výřezu 9:16 končil
+// „Opatovice nad Labem" uříznutý na kraji. Odhad rámečku textu podle první kotvy
+// (tak ho MapLibre bez kolize položí) → o kolik px odsadit kterou stranu.
+function pzSecLabelsOutside(fr){
+  const m = state.map; if(!m || !fr?.width || !state.pzSections?.items?.length) return [];
+  let feats = [];
+  try{ feats = pzSecFeatures().features.filter(f => f.properties.kind === 'misto' || f.properties.kind === 'popis'); }catch(_e){ return []; }
+  if(!feats.length) return [];
+  const c = m.getCanvas().getBoundingClientRect(), ctx = document.createElement('canvas').getContext('2d'), g = 6;
+  const need = {left:0, right:0, top:0, bottom:0};
+  feats.forEach(f => {
+    const P = f.properties, size = P.kind === 'misto' ? 17 : 22, maxW = size * 10;   // text-max-width 10 em
+    ctx.font = `700 ${size}px "Noto Sans", Arial, sans-serif`;
+    const tw = ctx.measureText(String(P.text || '')).width, n = Math.max(1, Math.ceil(tw / maxW)), w = tw / n * 1.08, h = size * 1.2 * n;   // MapLibre láme řádky vyváženě
+    const anchor = P.kind === 'misto' ? (Array.isArray(P.vao) ? P.vao[0] : 'center') : P.anchor, off = (P.kind === 'misto' ? 0.85 : 0.95) * size;
+    const q = m.project(f.geometry.coordinates), x = q.x + c.left, y = q.y + c.top;
+    let l = x - w / 2, t = y - h / 2;
+    if(anchor === 'bottom') t = y - off - h; else if(anchor === 'top') t = y + off;
+    else if(anchor === 'left') l = x + off; else if(anchor === 'right') l = x - off - w;
+    need.left = Math.max(need.left, fr.left + g - l); need.right = Math.max(need.right, l + w - (fr.right - g));
+    need.top = Math.max(need.top, fr.top + g - t); need.bottom = Math.max(need.bottom, t + h - (fr.bottom - g));
+  });
+  return Object.entries(need).filter(([, v]) => v > 0.5).map(([side, v]) => ({side, px: Math.ceil(v)}));
 }
 function pzLngLatsInFrameMask(pts){
   const m = state.map, r = pzExportFrameRect(); if(!m || !r) return pts.map(() => false);
@@ -19475,6 +19567,9 @@ function pzSetTitleState(patch, sync = true){
   state.pzTitle = {...pzTitleState(), ...(patch || {})};
   if(sync) pzSyncTitleUi();
   try{ pzUpdateTitlePreview(); }catch(e){}
+  // legendy (datová mapa, úseky) se titulku a zdroji vyhýbají — po změně textu je přeskládat,
+  // jinak v náhledu dvouřádkový titulek překryl legendu nahoře (v PNG byla správně pod ním)
+  try{ pzUpdateFrameLegend(); }catch(e){}
 }
 function pzTitleSnapshot(){ const s = pzTitleState(); return (s.title || s.source || s.titleOn || s.sourceOn) ? s : null; }
 
@@ -23998,6 +24093,10 @@ Object.assign(I18N, {
   "Stav": {cs:"Stav",sk:"Stav",bg:"Състояние",hr:"Stanje",ro:"Stare",en:"Status"},
   "Popisek": {cs:"Popisek",sk:"Popis",bg:"Надпис",hr:"Natpis",ro:"Etichetă",en:"Label"},
   "Hotový": {cs:"Hotový",sk:"Hotový",bg:"Готов",hr:"Gotova",ro:"Finalizat",en:"Finished"},
+  "např. Opatovice nad Labem": {cs:"např. Opatovice nad Labem",sk:"napr. Opatovice nad Labem",bg:"напр. Opatovice nad Labem",hr:"npr. Opatovice nad Labem",ro:"de ex. Opatovice nad Labem",en:"e.g. Opatovice nad Labem"},
+  "např. Ostrov": {cs:"např. Ostrov",sk:"napr. Ostrov",bg:"напр. Ostrov",hr:"npr. Ostrov",ro:"de ex. Ostrov",en:"e.g. Ostrov"},
+  "např. 2026": {cs:"např. 2026",sk:"napr. 2026",bg:"напр. 2026",hr:"npr. 2026",ro:"de ex. 2026",en:"e.g. 2026"},
+  "např. Vysoké Mýto": {cs:"např. Vysoké Mýto",sk:"napr. Vysoké Mýto",bg:"напр. Vysoké Mýto",hr:"npr. Vysoké Mýto",ro:"de ex. Vysoké Mýto",en:"e.g. Vysoké Mýto"},
   "Ve výstavbě": {cs:"Ve výstavbě",sk:"Vo výstavbe",bg:"В строеж",hr:"U izgradnji",ro:"În construcție",en:"Under construction"},
   "Plánovaný": {cs:"Plánovaný",sk:"Plánovaný",bg:"Планиран",hr:"Planirana",ro:"Planificat",en:"Planned"},
   "Zvýrazněný": {cs:"Zvýrazněný",sk:"Zvýraznený",bg:"Откроен",hr:"Istaknuta",ro:"Evidențiat",en:"Highlighted"},
@@ -24937,19 +25036,24 @@ function pzExportRunning(){ return !!(state._batchRunning || (state._exporting &
   }, true);
   document.addEventListener('change', (e) => {
     if(e.target !== fieldEl || !fieldSnap) return;
-    const snap = fieldSnap;
+    const snap = fieldSnap, el = e.target, len0 = undoStack.length;
     setTimeout(() => {   // počkat na vlastní obsluhu změny
       if(applyingUndo || window.__pzUndoHold) return;
       const now = snapshotNow();
       if(!now || sceneKey(now) === sceneKey(snap)) return;
-      const last = undoStack[undoStack.length - 1];
-      if(!last || sceneKey(last) !== sceneKey(snap)){
-        undoStack.push(snap);
+      // Stav před změnou patří do historie na místo, kde byl vrchol v okamžiku změny:
+      // přechod do dalšího pole (titulek → zdroj) mezitím mohl uložit vlastní snímek
+      // „před" a pod vytíženou mapou časovač doběhne až během psaní do dalšího pole.
+      // Dřív se snap přidal navrch → Ctrl+Z vracel titulek a zdroj na přeskáčku.
+      const at = Math.min(len0, undoStack.length), below = undoStack[at - 1];
+      if(!below || sceneKey(below) !== sceneKey(snap)){
+        undoStack.splice(at, 0, snap);
         if(undoStack.length > UNDO_LIMIT) undoStack.shift();
         redoStack.length = 0;
         updateUndoBtn();
       }
-      fieldSnap = now;   // další změna ve stejném poli = další krok
+      // další změna ve stejném poli = další krok (snímek jiného pole nepřepsat)
+      if(fieldEl === el) fieldSnap = now;
     }, 0);
   }, true);
 
@@ -25765,6 +25869,8 @@ function pzRedrawClosures(){
   if(pzClosures().length) PZ_CLOSURE_LAYERS.forEach(id => { try{ if(m.getLayer(id)) m.moveLayer(id); }catch(e){} });
   try{ m.getSource('pz-closures')?.setData(pzClosureFeatures()); }catch(e){}
   try{ pzRenderClosureList(); }catch(e){}
+  // termín úseku pod uzavírkou se skryje / po smazání uzavírky vrátí (pzSecFeatures)
+  try{ if(state.pzSections?.items?.length) m.getSource('pz-useky')?.setData(pzSecFeatures()); }catch(e){}
 }
 
 // Bez seznamu = celá scéna: všechny uzavírky + ikonky, popisky, trasa… Dřív se
@@ -25982,10 +26088,18 @@ function pzSecFeatures(){
     if(n && !dup.has(pzDia(n))) pt(e.c, {kind:'misto', text: n, vao: pzSecNameAnchors(e.dirs)});
   });
   // popisek (termín, „otevřeno 2025") doprostřed úseku, vedle čáry: u svislé čáry vpravo, jinak nad ní
+  // Úsek pod uzavírkou: termín by se prolnul s nápisem „UZAVŘENO…" v nečitelnou změť —
+  // uzavírka má přednost (termín se vrátí, když se uzavírka smaže)
+  const closed = (state.pzClosures || []).filter(c => c?.kind === 'road' && c.coords?.length > 1);
+  const underClosure = mid => closed.some(c => c.coords.some((b, i) => { if(!i) return false;   // vzdálenost bodu od úseku čáry (km, rovinně)
+    const a = c.coords[i - 1], k = Math.cos(mid[1] * Math.PI / 180), ax = (a[0] - mid[0]) * k * 111.3, ay = (a[1] - mid[1]) * 111.3, bx = (b[0] - mid[0]) * k * 111.3, by = (b[1] - mid[1]) * 111.3;
+    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / L)) : 0;
+    return Math.hypot(ax + dx * t, ay + dy * t) < 1; }));
   items.forEach(it => {
     const text = String(it.label || '').trim(); if(!text) return;
     const st = PZ_SEC_STATUS[it.status] || PZ_SEC_STATUS.hotovy;
     const p = pzSecLineAt(it.coords, 0.42), q = pzSecLineAt(it.coords, 0.58), mid = pzSecLineAt(it.coords, 0.5);
+    if(closed.length && underClosure(mid)) return;
     const dx = (q[0] - p[0]) * Math.cos(mid[1] * Math.PI / 180), dy = q[1] - p[1];
     const vert = Math.abs(dy) > Math.abs(dx) * 1.2;
     pt(mid, {kind:'popis', text, tc: it.color ? pzDarkHex(it.color) : st.text, anchor: vert ? 'left' : 'bottom', offset: vert ? [0.95, 0] : [0, -0.95]});
