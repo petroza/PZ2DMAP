@@ -207,7 +207,7 @@ const {check, done, open, tab, openSection, OUT} = require('./lib');
   check(L.length === 5 && ['Rjazaň', 'Volgograd', 'Saratov', 'Tuapse', 'Ukrajina'].every(n => L.some(l => l.t === n)), 'popisky u cílů i u zdroje ' + L.map(l => l.t).join(','));
   over = 0; for(let i = 0; i < L.length; i++) for(let j = i + 1; j < L.length; j++){ const a = L[i], b = L[j]; if(a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0) over++; }
   check(over === 0, 'popisky svazku z jednoho místa se nepřekrývají (' + over + ')');
-  const tbox = await page.evaluate(() => { if(typeof pzTitleBoxesFor !== 'function') return null; const r = pzExportFrameRect(); const tb = pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
+  const tbox = await page.evaluate(() => { const F = window.__pzFns; if(typeof F?.pzTitleBoxesFor !== 'function') return null; const r = F.pzExportFrameRect(); const tb = F.pzTitleBoxesFor(Math.round(r.width), Math.round(r.height));
     return tb?.title ? {x0: r.left + tb.title.x, y0: r.top + tb.title.y, x1: r.left + tb.title.x + tb.title.w, y1: r.top + tb.title.y + tb.title.h} : null; });
   check(!!tbox && L.every(l => !(l.x0 < tbox.x1 && l.x1 > tbox.x0 && l.y0 < tbox.y1 && l.y1 > tbox.y0)), 'žádný popisek pod titulkem grafiky ' + JSON.stringify(tbox));
   const heads = await Promise.all(A.map(a => px(a.head)));

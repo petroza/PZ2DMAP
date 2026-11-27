@@ -12922,6 +12922,8 @@ const PZ_LAYER_ROW_TESTS = {
   showAeroway: () => pzBaseHasLayer(/aeroway|aerodrome|airport|runway|taxiway/, ['fill','line','symbol']),
   showBoundaries: () => getControlledBoundaryLayers().target.some(l => !PZ_APP_LAYER_RE.test(String(l.id || '').toLowerCase())),
   showLabels: () => pzBaseHasLayer(/label|place|name|poi|airport|aerodrome/, ['symbol']),
+  // „Názvy podkladu uhnou grafice" má smysl jen u podkladu s názvy (satelit bez názvů → schovat)
+  basemapYield: () => pzBaseHasLayer(/label|place|name|poi|airport|aerodrome/, ['symbol']),
   showRoadShields: () => { let hit = false; eachStyleLayer(l => { if(!hit && isRoadShieldLayer(l)) hit = true; }); return hit; },
   showMinorRoads: () => pzBaseHasLayer(/road|street|minor/, ['line']),
   showMajorRoads: () => pzBaseHasLayer(/motorway|trunk|primary|major/, ['line']),
